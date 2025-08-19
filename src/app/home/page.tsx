@@ -1,9 +1,9 @@
-import { HydrateClient, prefetch, trpc } from "@/trpc/server";
-import { Suspense } from "react";
-import { ErrorBoundary } from "react-error-boundary";
-import { ClientGreeting } from "./client-greeting";
+import {HydrateClient, prefetch, trpc} from '@/trpc/server';
+import {Suspense} from 'react';
+import {ErrorBoundary} from 'react-error-boundary';
+import {ClientGreeting} from './client-greeting';
 export default async function Home() {
-  prefetch(trpc.hello.queryOptions({ text: "world" }));
+  prefetch(trpc.hello.queryOptions({text: 'world'}));
   return (
     <HydrateClient>
       <div>...</div>
