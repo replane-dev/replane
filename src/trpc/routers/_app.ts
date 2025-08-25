@@ -1,4 +1,5 @@
 import {Config} from '@/engine/core/config-store';
+import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
 
@@ -15,11 +16,11 @@ export const appRouter = createTRPCRouter({
       };
     }),
   getHealth: baseProcedure.query(async opts => {
-    const health = await (await opts.ctx).engine.useCases.getHealth({});
+    const health = await (await opts.ctx).engine.useCases.getHealth(GLOBAL_CONTEXT, {});
     return {health, status: 'ok'};
   }),
   getConfigNames: baseProcedure.query(async opts => {
-    const configNames = await (await opts.ctx).engine.useCases.getConfigNames({});
+    const configNames = await (await opts.ctx).engine.useCases.getConfigNames(GLOBAL_CONTEXT, {});
     return configNames;
   }),
   putConfig: baseProcedure
@@ -29,7 +30,7 @@ export const appRouter = createTRPCRouter({
       }),
     )
     .mutation(async opts => {
-      await (await opts.ctx).engine.useCases.putConfig({config: opts.input.config});
+      await (await opts.ctx).engine.useCases.putConfig(GLOBAL_CONTEXT, {config: opts.input.config});
       return {};
     }),
 });

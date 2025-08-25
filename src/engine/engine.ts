@@ -1,34 +1,142 @@
+import {Kysely, PostgresDialect} from 'kysely';
+import {Pool} from 'pg';
+import {ConfigStore} from './core/config-store';
+import {Context} from './core/context';
+import {DateProvider, DefaultDateProvider} from './core/date-provider';
+import {DB} from './core/db';
+import {ConflictError} from './core/errors';
+import {createLogger, Logger} from './core/logger';
+import {migrate} from './core/migrations';
+import {UseCase, UseCaseTransaction} from './core/use-case';
 import {createGetConfigNamesUseCase} from './core/use-cases/get-config-names-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createPutConfigUseCase} from './core/use-cases/put-config-use-case';
-import {DynamoDBConfigStore} from './dynamodb-config-store';
 
-export interface EngineOptions {}
+export interface EngineOptions {
+  databaseUrl: string;
+  dbSchema: string;
+  dateProvider?: DateProvider;
+  loggingLevel: 'debug' | 'info' | 'warn' | 'error';
+  onConflictRetriesCount?: number;
+}
+
+interface ToEngineUseCaseOptions {
+  onConflictRetriesCount: number;
+}
+
+export interface LibUseCase<TRequest, TResponse> {
+  (ctx: Context, request: TRequest): Promise<TResponse>;
+}
+
+function toEngineUseCase<TReq, TRes>(
+  db: Kysely<DB>,
+  logger: Logger,
+  dateProvider: DateProvider,
+  useCase: UseCase<TReq, TRes>,
+  options: ToEngineUseCaseOptions,
+): LibUseCase<TReq, TRes> {
+  return async (ctx: Context, req: TReq) => {
+    for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
+      const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
+      const tx: UseCaseTransaction = {
+        configStore: new ConfigStore(dbTx),
+      };
+      try {
+        const result = await useCase(ctx, tx, req);
+        await dbTx.commit().execute();
+        return result;
+      } catch (error) {
+        await dbTx.rollback().execute();
+
+        if (error instanceof Error && 'code' in error && error.code === '40001') {
+          // we got SerializationFailure (SQLSTATE 40001), retry
+
+          if (attempt === options.onConflictRetriesCount) {
+            throw new ConflictError(
+              `Transaction failed after ${options.onConflictRetriesCount} attempts due to serialization failure.`,
+              {cause: error},
+            );
+          } else {
+            logger.warn(ctx, {
+              msg: `Transaction failed due to serialization failure, retrying... (attempt ${attempt + 1})`,
+              attempt,
+              error,
+            });
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error('unreachable');
+  };
+}
+
+type InferEngineUserCaseMap<T> = {
+  [K in keyof T]: T[K] extends UseCase<infer Req, infer Res> ? LibUseCase<Req, Res> : never;
+};
+
+type UseCaseMap = Record<string, UseCase<any, any>>;
 
 export async function createEngine(options: EngineOptions) {
-  const configStore = new DynamoDBConfigStore({
-    region: 'us-east-1',
-    tableName: 'configs',
-    endpoint: 'http://localhost:8000',
-    accessKeyId: 'fake',
-    secretAccessKey: 'fake',
-  });
+  const logger = createLogger({level: options.loggingLevel});
+  const db = await prepareDb(options);
 
-  await configStore.createTableIfNotExists();
+  const dateProvider = options.dateProvider ?? new DefaultDateProvider();
 
   const useCases = {
     getHealth: createGetHealthUseCase(),
-    getConfigNames: createGetConfigNamesUseCase({
-      configStore,
-    }),
-    putConfig: createPutConfigUseCase({
-      configStore,
-    }),
+    getConfigNames: createGetConfigNamesUseCase({}),
+    putConfig: createPutConfigUseCase({}),
+  } satisfies UseCaseMap;
+
+  const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;
+
+  const useCaseOptions: ToEngineUseCaseOptions = {
+    onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
   };
 
+  for (const name of Object.keys(useCases) as Array<keyof typeof engineUseCases>) {
+    engineUseCases[name] = toEngineUseCase(db, logger, dateProvider, (useCases as UseCaseMap)[name], useCaseOptions);
+    engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
+  }
+
   return {
-    useCases,
+    useCases: engineUseCases,
   };
+}
+
+function addUseCaseLogging(useCase: LibUseCase<any, any>, useCaseName: string, logger: Logger): LibUseCase<any, any> {
+  return async (ctx, request): Promise<any> => {
+    logger.info(ctx, {msg: `Running use case: ${useCaseName}...`});
+    return await useCase(ctx, request);
+  };
+}
+
+async function prepareDb(options: EngineOptions) {
+  const pool = new Pool({
+    connectionString: options.databaseUrl,
+    max: 50,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+
+  const client = await pool.connect();
+  try {
+    await migrate(client);
+  } finally {
+    client.release();
+  }
+
+  const dialect = new PostgresDialect({
+    pool,
+  });
+
+  const dbSchema = options.dbSchema ?? 'public';
+  const db = new Kysely<DB>({dialect}).withSchema(dbSchema);
+
+  return db;
 }
 
 export type Engine = ReturnType<typeof createEngine>;

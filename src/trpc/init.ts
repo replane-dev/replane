@@ -2,7 +2,11 @@ import {createEngine} from '@/engine/engine';
 import {initTRPC} from '@trpc/server';
 import {cache} from 'react';
 
-const engine = await createEngine({});
+const engine = await createEngine({
+  databaseUrl: process.env.DATABASE_URL!,
+  loggingLevel: 'info',
+  dbSchema: 'public',
+});
 
 export const createTRPCContext = cache(async () => {
   /**

@@ -1,4 +1,5 @@
-import {Config, ConfigStore} from '../config-store';
+import {Config} from '../config-store';
+import {UseCase} from '../use-case';
 
 export interface PutConfigRequest {
   config: Config;
@@ -6,18 +7,11 @@ export interface PutConfigRequest {
 
 export interface PutConfigResponse {}
 
-export interface PutConfigUseCaseDeps {
-  configStore: ConfigStore;
-}
+export interface PutConfigUseCaseDeps {}
 
-export function createPutConfigUseCase(
-  deps: PutConfigUseCaseDeps,
-): (data: PutConfigRequest) => Promise<PutConfigResponse> {
-  return async (req: PutConfigRequest) => {
-    const {configStore} = deps;
-
-    // Implement the use case logic here
-    await configStore.put(req.config);
+export function createPutConfigUseCase(deps: PutConfigUseCaseDeps): UseCase<PutConfigRequest, PutConfigResponse> {
+  return async (ctx, tx, req) => {
+    await tx.configStore.put(req.config);
 
     return {};
   };
