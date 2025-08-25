@@ -1,18 +1,21 @@
+import {Lazy} from '@/engine/core/lazy';
 import {createEngine} from '@/engine/engine';
 import {initTRPC} from '@trpc/server';
 import {cache} from 'react';
 
-const engine = await createEngine({
-  databaseUrl: process.env.DATABASE_URL!,
-  loggingLevel: 'info',
-  dbSchema: 'public',
+const engine = new Lazy(async () => {
+  return await createEngine({
+    databaseUrl: process.env.DATABASE_URL!,
+    loggingLevel: 'info',
+    dbSchema: 'public',
+  });
 });
 
 export const createTRPCContext = cache(async () => {
   /**
    * @see: https://trpc.io/docs/server/context
    */
-  return {userId: 'user_123', engine};
+  return {userId: 'user_123', engine: await engine.get()};
 });
 // Avoid exporting the entire t-object
 // since it's not very descriptive.

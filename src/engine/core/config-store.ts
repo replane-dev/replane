@@ -38,7 +38,6 @@ export class ConfigStore {
   }
 
   async put(config: Config): Promise<void> {
-    console.log('hello');
     try {
       const query = this.db
         .insertInto('configs')
@@ -56,8 +55,6 @@ export class ConfigStore {
           }),
         );
 
-      const compiled = query.compile();
-      console.log('sql', compiled.sql, compiled.parameters);
       await query.execute();
     } catch (error) {
       console.error(error);
