@@ -31,8 +31,10 @@ function errorToJson(error: unknown): unknown {
 
 class ConsoleLogger implements Logger {
   private logger: PinoLogger;
+  private level: LogLevel;
 
   constructor(options: {level: LogLevel}) {
+    this.level = options.level;
     this.logger = pino({level: options.level});
   }
 

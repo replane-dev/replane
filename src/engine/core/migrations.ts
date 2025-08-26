@@ -1,5 +1,7 @@
 import assert from 'node:assert';
 import {ClientBase} from 'pg';
+import {Context} from './context';
+import {Logger} from './logger';
 
 export interface Migration {
   sql: string;
@@ -22,7 +24,7 @@ export const migrations: Migration[] = [
   },
 ];
 
-export async function migrate(client: ClientBase) {
+export async function migrate(ctx: Context, client: ClientBase, logger: Logger) {
   await client.query(/*sql*/ `
     CREATE TABLE IF NOT EXISTS migrations (
       id INT PRIMARY KEY,
@@ -35,14 +37,14 @@ export async function migrate(client: ClientBase) {
     SELECT id, sql FROM migrations ORDER BY id ASC
   `);
 
-  console.log('Run migrations count:', runMigrations.length);
+  logger.info(ctx, {msg: 'Run migrations count: ' + runMigrations.length});
 
   assert(
     runMigrations.length <= migrations.length,
     `Unexpected number of run migrations: ${runMigrations.length} > ${migrations.length}`,
   );
 
-  console.log('Not run migrations count:', migrations.length - runMigrations.length);
+  logger.info(ctx, {msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length)});
 
   for (let i = 0; i < runMigrations.length; i++) {
     assert(
@@ -52,7 +54,7 @@ export async function migrate(client: ClientBase) {
   }
 
   for (let i = runMigrations.length; i < migrations.length; i++) {
-    console.log(`Running migration ${i}: ${migrations[i].sql}`);
+    logger.info(ctx, {msg: `Running migration ${i}: ${migrations[i].sql}`});
     try {
       await client.query('BEGIN;');
       const {rows: newMigration} = await client.query<{id: number}>(

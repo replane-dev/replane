@@ -16,8 +16,7 @@ export const appRouter = createTRPCRouter({
       };
     }),
   getHealth: baseProcedure.query(async opts => {
-    const health = await (await opts.ctx).engine.useCases.getHealth(GLOBAL_CONTEXT, {});
-    return {health, status: 'ok'};
+    return await (await opts.ctx).engine.useCases.getHealth(GLOBAL_CONTEXT, {});
   }),
   getConfigNames: baseProcedure.query(async opts => {
     const configNames = await (await opts.ctx).engine.useCases.getConfigNames(GLOBAL_CONTEXT, {});

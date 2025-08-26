@@ -1,7 +1,11 @@
 import {Pool} from 'pg';
+import {Context, GLOBAL_CONTEXT} from '../core/context';
+import {createLogger} from '../core/logger';
 import {migrate} from '../core/migrations';
 
-async function main() {
+async function main(ctx: Context) {
+  const logger = createLogger({level: 'info'});
+
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 50,
@@ -11,16 +15,16 @@ async function main() {
 
   try {
     const client = await pool.connect();
-    console.log('Starting migration...');
-    await migrate(client).finally(() => {
+    logger.info(ctx, {msg: 'Starting migration...'});
+    await migrate(ctx, client, logger).finally(() => {
       client.release();
     });
   } catch (error) {
     console.error('Migration failed:', error);
   } finally {
-    console.log('Migration finished.');
+    logger.info(ctx, {msg: 'Migration finished.'});
     pool.end();
   }
 }
 
-main().catch(console.error);
+main(GLOBAL_CONTEXT).catch(console.error);
