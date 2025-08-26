@@ -33,7 +33,7 @@ export function ClientGreeting() {
     <div>
       {data.greeting}
       <br />
-      health: {health.status}
+      health: {JSON.stringify(health)}
       <br />
       configs: {configNames.join(', ')}
       <br />
