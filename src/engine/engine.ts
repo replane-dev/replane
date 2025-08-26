@@ -7,6 +7,7 @@ import {DB} from './core/db';
 import {ConflictError} from './core/errors';
 import {createLogger, Logger, LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
+import {getPgPool} from './core/pg-pool-cache';
 import {UseCase, UseCaseTransaction} from './core/use-case';
 import {createGetConfigNamesUseCase} from './core/use-cases/get-config-names-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
@@ -81,7 +82,7 @@ type UseCaseMap = Record<string, UseCase<any, any>>;
 
 export async function createEngine(options: EngineOptions) {
   const logger = createLogger({level: options.logLevel});
-  const {db, pool} = await prepareDb(GLOBAL_CONTEXT, logger, options);
+  const {db, pool, freePool} = await prepareDb(GLOBAL_CONTEXT, logger, options);
 
   const dateProvider = options.dateProvider ?? new DefaultDateProvider();
 
@@ -107,7 +108,7 @@ export async function createEngine(options: EngineOptions) {
     testing: {
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
-    destroy: () => pool.end(),
+    destroy: () => freePool(),
   };
 }
 
@@ -134,12 +135,7 @@ function addUseCaseLogging(useCase: LibUseCase<any, any>, useCaseName: string, l
 }
 
 async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
-  const pool = new Pool({
-    connectionString: options.databaseUrl,
-    max: 50,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  });
+  const [pool, freePool] = getPgPool(options.databaseUrl);
 
   const client = await pool.connect();
   try {
@@ -155,7 +151,7 @@ async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
   const dbSchema = options.dbSchema ?? 'public';
   const db = new Kysely<DB>({dialect}).withSchema(dbSchema);
 
-  return {db, pool};
+  return {db, pool, freePool};
 }
 
 export type Engine = Awaited<ReturnType<typeof createEngine>>;
