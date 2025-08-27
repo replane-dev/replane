@@ -10,20 +10,6 @@ export interface Migration {
 export const migrations: Migration[] = [
   {
     sql: /*sql*/ `
-      CREATE TABLE configs (
-        id UUID PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        value JSONB NOT NULL,
-        created_at TIMESTAMPTZ(3) NOT NULL,
-        updated_at TIMESTAMPTZ(3) NOT NULL,
-        version INT NOT NULL
-      );
-
-      CREATE INDEX idx_configs_name ON configs(name);
-    `,
-  },
-  {
-    sql: /*sql*/ `
       CREATE TABLE verification_token
       (
         identifier TEXT NOT NULL,
@@ -71,6 +57,27 @@ export const migrations: Migration[] = [
 
         PRIMARY KEY (id)
       );
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      CREATE TABLE configs (
+        id UUID PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        value JSONB NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE INDEX idx_configs_name ON configs(name);
+
+      CREATE TABLE api_tokens (
+        id UUID PRIMARY KEY,
+        token_hash TEXT NOT NULL UNIQUE,
+        created_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE INDEX idx_api_tokens_token_hash ON api_tokens(token_hash);
     `,
   },
 ];

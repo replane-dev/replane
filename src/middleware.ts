@@ -11,6 +11,6 @@ export const config = {
      * - Next.js image optimization files (starting with /_next/image)
      * - The favicon file (/favicon.ico)
      */
-    '/((?!api|login|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };

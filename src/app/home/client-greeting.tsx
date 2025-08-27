@@ -12,12 +12,10 @@ export function ClientGreeting() {
       config: {
         name: configName,
         value: configValue,
-        version: configVersion,
       },
     });
     setConfigName('');
     setConfigValue('');
-    setConfigVersion(1);
   }
 
   const {data: health} = useSuspenseQuery(trpc.getHealth.queryOptions());
@@ -27,7 +25,6 @@ export function ClientGreeting() {
 
   const [configName, setConfigName] = useState<string>('');
   const [configValue, setConfigValue] = useState<string>('');
-  const [configVersion, setConfigVersion] = useState<number>(1);
 
   return (
     <div>
@@ -43,12 +40,6 @@ export function ClientGreeting() {
         value={configValue}
         onChange={e => setConfigValue(e.target.value)}
         placeholder="Config Value"
-      />
-      <input
-        type="number"
-        value={configVersion}
-        onChange={e => setConfigVersion(Number(e.target.value))}
-        placeholder="Config Version"
       />
       <button
         onClick={async () => {

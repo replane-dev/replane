@@ -1,10 +1,12 @@
+import {authOptions} from '@/app/api/auth/[...nextauth]/route';
 import {Lazy} from '@/engine/core/lazy';
 import {createEngine, Engine} from '@/engine/engine';
 import {initTRPC} from '@trpc/server';
+import {DefaultSession, getServerSession} from 'next-auth';
 import {cache} from 'react';
 
 export interface TrpcContext {
-  userId: string;
+  session: DefaultSession['user'] | undefined;
   engine: Engine;
 }
 
@@ -17,10 +19,11 @@ const engine = new Lazy(async () => {
 });
 
 export const createTrpcContext = cache(async (): Promise<TrpcContext> => {
+  const session = await getServerSession(authOptions);
   /**
    * @see: https://trpc.io/docs/server/context
    */
-  return {userId: 'user_123', engine: await engine.get()};
+  return {session: session?.user, engine: await engine.get()};
 });
 
 // Avoid exporting the entire t-object

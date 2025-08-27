@@ -39,13 +39,18 @@ export interface Accounts {
   userId: number;
 }
 
+export interface ApiTokens {
+  created_at: Timestamp;
+  id: string;
+  token_hash: string;
+}
+
 export interface Configs {
   created_at: Timestamp;
   id: string;
   name: string;
   updated_at: Timestamp;
   value: Json;
-  version: number;
 }
 
 export interface Migrations {
@@ -77,6 +82,7 @@ export interface VerificationToken {
 
 export interface DB {
   accounts: Accounts;
+  api_tokens: ApiTokens;
   configs: Configs;
   migrations: Migrations;
   sessions: Sessions;

@@ -11,7 +11,6 @@ export function Config() {
   return z.object({
     name: ConfigName(),
     value: z.unknown(),
-    version: z.number(),
   });
 }
 
@@ -47,7 +46,6 @@ export class ConfigStore {
           updated_at: new Date(),
           name: config.name,
           value: {value: config.value} as JsonValue,
-          version: config.version,
         })
         .onConflict(oc =>
           oc.column('name').doUpdateSet({
