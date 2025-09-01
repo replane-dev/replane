@@ -10,10 +10,8 @@ export function ConfigList() {
 
   async function handleSaveConfig() {
     await createConfig.mutateAsync({
-      config: {
-        name: configName,
-        value: configValue,
-      },
+      name: configName,
+      value: configValue,
     });
     setConfigName('');
     setConfigValue('');

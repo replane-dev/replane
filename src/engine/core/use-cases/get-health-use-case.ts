@@ -1,4 +1,4 @@
-import {UseCase} from '../use-case';
+import type {UseCase} from '../use-case';
 
 export interface GetHealthRequest {}
 

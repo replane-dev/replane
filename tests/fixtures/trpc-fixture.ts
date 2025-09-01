@@ -1,9 +1,9 @@
-import {Context, GLOBAL_CONTEXT} from '@/engine/core/context';
+import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
-import {LogLevel} from '@/engine/core/logger';
+import type {LogLevel} from '@/engine/core/logger';
 import {ensureDefined} from '@/engine/core/utils';
-import {createEngine, Engine} from '@/engine/engine';
-import {createCallerFactory, TrpcContext} from '@/trpc/init';
+import {createEngine, type Engine} from '@/engine/engine';
+import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
 
@@ -26,16 +26,18 @@ type TrpcCaller = ReturnType<typeof _createCaller>;
 export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
-  private overrideNow: Date | undefined = undefined;
+  private overrideNow: Date = new Date();
 
   constructor(private options: TrpcFixtureOptions) {}
 
   async init() {
+    this.overrideNow = new Date('2020-01-01T00:00:00Z');
+
     const engine = await createEngine({
       databaseUrl: ensureDefined(process.env.DATABASE_URL, 'DATABASE_URL environment variable is required'),
       dbSchema: `test_${Math.random().toString(36).substring(2, 15)}`,
       logLevel: this.options.logLevel ?? 'warn',
-      dateProvider: new MockDateProvider(() => new Date(this.overrideNow ?? new Date())),
+      dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
     });
 
@@ -43,6 +45,10 @@ export class AppFixture {
 
     this._trpc = createCaller({engine, accountEmail: this.options.authEmail});
     this._engine = engine;
+  }
+
+  get now() {
+    return this.overrideNow;
   }
 
   setNow(date: Date) {
@@ -71,7 +77,6 @@ export class AppFixture {
 
     this._trpc = undefined;
     this._engine = undefined;
-    this.overrideNow = undefined;
   }
 }
 

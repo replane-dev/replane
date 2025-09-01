@@ -1,14 +1,14 @@
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ConfigStore} from './core/config-store';
-import {Context, GLOBAL_CONTEXT} from './core/context';
-import {DateProvider, DefaultDateProvider} from './core/date-provider';
-import {DB} from './core/db';
+import {type Context, GLOBAL_CONTEXT} from './core/context';
+import {type DateProvider, DefaultDateProvider} from './core/date-provider';
+import type {DB} from './core/db';
 import {ConflictError} from './core/errors';
-import {createLogger, Logger, LogLevel} from './core/logger';
+import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {getPgPool} from './core/pg-pool-cache';
-import {UseCase, UseCaseTransaction} from './core/use-case';
+import type {UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
@@ -34,7 +34,6 @@ export interface LibUseCase<TRequest, TResponse> {
 function toEngineUseCase<TReq, TRes>(
   db: Kysely<DB>,
   logger: Logger,
-  dateProvider: DateProvider,
   useCase: UseCase<TReq, TRes>,
   options: ToEngineUseCaseOptions,
 ): LibUseCase<TReq, TRes> {
@@ -91,8 +90,8 @@ export async function createEngine(options: EngineOptions) {
   const useCases = {
     getHealth: createGetHealthUseCase(),
     getConfigList: createGetConfigListUseCase({}),
-    createConfig: createCreateConfigUseCase({}),
-    updateConfig: createUpdateConfigUseCase({}),
+    createConfig: createCreateConfigUseCase({dateProvider}),
+    updateConfig: createUpdateConfigUseCase({dateProvider}),
     getConfig: createGetConfigUseCase({}),
   } satisfies UseCaseMap;
 
@@ -103,7 +102,7 @@ export async function createEngine(options: EngineOptions) {
   };
 
   for (const name of Object.keys(useCases) as Array<keyof typeof engineUseCases>) {
-    engineUseCases[name] = toEngineUseCase(db, logger, dateProvider, (useCases as UseCaseMap)[name], useCaseOptions);
+    engineUseCases[name] = toEngineUseCase(db, logger, (useCases as UseCaseMap)[name], useCaseOptions);
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 

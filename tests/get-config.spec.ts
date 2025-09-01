@@ -1,4 +1,5 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
 import {describe} from 'node:test';
 import {expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
@@ -8,14 +9,17 @@ describe('getConfig', () => {
 
   it('should return requested config', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-      config: {
-        name: 'test-config',
-        value: 'test-value',
-      },
+      name: 'test-config',
+      value: 'test-value',
     });
     const {config} = await fixture.trpc.getConfig({name: 'test-config'});
 
-    expect(config).toEqual({name: 'test-config', value: 'test-value'});
+    expect(config).toEqual({
+      name: 'test-config',
+      value: 'test-value',
+      createdAt: fixture.now,
+      updatedAt: fixture.now,
+    } satisfies GetConfigResponse['config']);
   });
 
   it('should return undefined if config does not exist', async () => {

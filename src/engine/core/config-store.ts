@@ -1,8 +1,8 @@
-import {Kysely} from 'kysely';
+import {Kysely, type Selectable} from 'kysely';
 import assert from 'node:assert';
 import {v7 as uuidV7} from 'uuid';
 import {z} from 'zod';
-import {Configs, DB, JsonValue} from './db';
+import type {Configs, DB, JsonValue} from './db';
 
 export function ConfigName() {
   return z
@@ -11,12 +11,18 @@ export function ConfigName() {
     .describe('A config name consisting of lowercase letters and underscores, 1-100 characters long');
 }
 
+export function ConfigValue() {
+  return z.unknown().refine(val => {
+    return JSON.stringify(val).length < 1048576; // 1MB
+  });
+}
+
 export function Config() {
   return z.object({
     name: ConfigName(),
-    value: z.unknown().refine(val => {
-      return JSON.stringify(val).length < 1048576; // 1MB
-    }),
+    value: ConfigValue(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
   });
 }
 
@@ -48,9 +54,9 @@ export class ConfigStore {
       const query = this.db
         .insertInto('configs')
         .values({
-          created_at: new Date(),
+          created_at: config.createdAt,
           id: uuidV7(),
-          updated_at: new Date(),
+          updated_at: config.updatedAt,
           name: config.name,
           value: {value: config.value} as JsonValue,
         })
@@ -68,11 +74,13 @@ export class ConfigStore {
   }
 }
 
-function mapConfig(config: Pick<Configs, 'name' | 'value'>): Config {
+function mapConfig(config: Pick<Selectable<Configs>, 'name' | 'value' | 'created_at' | 'updated_at'>): Config {
   assert(typeof config.value === 'object' && config.value !== null && 'value' in config.value);
 
   return {
     name: config.name,
     value: config.value.value,
+    createdAt: config.created_at,
+    updatedAt: config.updated_at,
   };
 }

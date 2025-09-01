@@ -1,6 +1,6 @@
 import {dehydrate, HydrationBoundary} from '@tanstack/react-query';
 import {createTRPCClient, httpLink} from '@trpc/client';
-import {createTRPCOptionsProxy, TRPCQueryOptions} from '@trpc/tanstack-react-query';
+import {createTRPCOptionsProxy, type TRPCQueryOptions} from '@trpc/tanstack-react-query';
 import {cache} from 'react';
 import 'server-only'; // <-- ensure this file cannot be imported from the client
 import {createTrpcContext} from './init';

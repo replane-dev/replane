@@ -1,16 +1,16 @@
 'use client';
 
 import {
-  ColumnDef,
-  ColumnFiltersState,
+  type ColumnDef,
+  type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  SortingState,
+  type SortingState,
   useReactTable,
-  VisibilityState,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
 import {useRouter} from 'next/navigation';
@@ -23,54 +23,15 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
+import {useTRPC} from '@/trpc/client';
+import {useSuspenseQuery} from '@tanstack/react-query';
 
-const data: Payment[] = [
-  {
-    id: 'm5gr84i9',
-    amount: 316,
-    status: 'success',
-    email: 'ken99@example.com',
-  },
-  {
-    id: '3u1reuv4',
-    amount: 242,
-    status: 'success',
-    email: 'Abe45@example.com',
-  },
-  {
-    id: 'derv1ws0',
-    amount: 837,
-    status: 'processing',
-    email: 'Monserrat44@example.com',
-  },
-  {
-    id: '5kma53ae',
-    amount: 874,
-    status: 'success',
-    email: 'Silas22@example.com',
-  },
-  {
-    id: 'bhqecj4p',
-    amount: 721,
-    status: 'failed',
-    email: 'carmella@example.com',
-  },
-];
-
-export type Payment = {
-  id: string;
-  amount: number;
-  status: 'pending' | 'processing' | 'success' | 'failed';
-  email: string;
-};
-
-export const columns: ColumnDef<Payment>[] = [
+export const columns: ColumnDef<{name: string; createdAt: string; updatedAt: string}>[] = [
   {
     id: 'select',
     header: ({table}) => (
@@ -95,42 +56,39 @@ export const columns: ColumnDef<Payment>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({row}) => <div className="capitalize">{row.getValue('status')}</div>,
+    accessorKey: 'name',
+    header: 'Name',
+    cell: ({row}) => <div className="capitalize">{row.getValue('name')}</div>,
   },
   {
-    accessorKey: 'email',
+    accessorKey: 'createdAt',
     header: ({column}) => {
       return (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          Email
+          Created At
           <ArrowUpDown />
         </Button>
       );
     },
-    cell: ({row}) => <div className="lowercase">{row.getValue('email')}</div>,
+    cell: ({row}) => <div className="lowercase">{row.getValue('createdAt')}</div>,
   },
   {
-    accessorKey: 'amount',
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({row}) => {
-      const amount = parseFloat(row.getValue('amount'));
-
-      // Format the amount as a dollar amount
-      const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(amount);
-
-      return <div className="text-right font-medium">{formatted}</div>;
+    accessorKey: 'updatedAt',
+    header: ({column}) => {
+      return (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+          Updated At
+          <ArrowUpDown />
+        </Button>
+      );
     },
+    cell: ({row}) => <div className="lowercase">{row.getValue('updatedAt')}</div>,
   },
   {
     id: 'actions',
     enableHiding: false,
     cell: ({row}) => {
-      const payment = row.original;
+      const config = row.original;
 
       return (
         <DropdownMenu>
@@ -146,13 +104,11 @@ export const columns: ColumnDef<Payment>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(payment.id)}>
-              Copy payment ID
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(config.name)}>
+              Copy config name
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem>View config details</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -167,8 +123,13 @@ export function ConfigTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
+  const trpc = useTRPC();
+  const {
+    data: {configs},
+  } = useSuspenseQuery(trpc.getConfigList.queryOptions());
+
   const table = useReactTable({
-    data,
+    data: configs,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -188,17 +149,17 @@ export function ConfigTable() {
 
   const isInteractive = (el: EventTarget | null) => {
     if (!(el instanceof Element)) return false;
-    return !!el.closest('button, a, [role="checkbox"], input, select, textarea, [data-no-row-click]');
+    return !!el.closest('button, a, [role="checkbox"], [role="menu"], input, select, textarea, [data-no-row-click]');
   };
 
   const handleRowClick = React.useCallback(
-    (e: React.MouseEvent, payment: Payment) => {
+    (e: React.MouseEvent, configName: string) => {
       if (e.defaultPrevented) return;
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return; // allow text selection without navigation
 
-      router.push(`/app/configs/${encodeURIComponent(payment.id)}`);
+      router.push(`/app/configs/${encodeURIComponent(configName)}`);
     },
     [router],
   );
@@ -207,9 +168,9 @@ export function ConfigTable() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn('email')?.getFilterValue() as string) ?? ''}
-          onChange={event => table.getColumn('email')?.setFilterValue(event.target.value)}
+          placeholder="Filter names..."
+          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+          onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -258,7 +219,7 @@ export function ConfigTable() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  onClick={e => handleRowClick(e, row.original)}
+                  onClick={e => handleRowClick(e, row.original.name)}
                   className="cursor-pointer select-text"
                 >
                   {row.getVisibleCells().map(cell => (

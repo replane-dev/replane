@@ -1,5 +1,5 @@
 import {Config} from '../config-store';
-import {UseCase} from '../use-case';
+import type {UseCase} from '../use-case';
 
 export interface GetConfigRequest {
   name: string;
@@ -22,6 +22,8 @@ export function createGetConfigUseCase(deps: GetConfigUseCasesDeps): UseCase<Get
       config: {
         name: config.name,
         value: config.value,
+        createdAt: config.createdAt,
+        updatedAt: config.updatedAt,
       },
     };
   };

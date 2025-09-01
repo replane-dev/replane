@@ -1,6 +1,6 @@
 import {authOptions} from '@/app/api/auth/[...nextauth]/route';
 import {Lazy} from '@/engine/core/lazy';
-import {createEngine, Engine} from '@/engine/engine';
+import {createEngine, type Engine} from '@/engine/engine';
 import {initTRPC} from '@trpc/server';
 import {getServerSession} from 'next-auth';
 import {cache} from 'react';
