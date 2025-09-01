@@ -114,7 +114,7 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger) 
   for (let i = runMigrations.length; i < migrations.length; i++) {
     logger.info(ctx, {msg: `Running migration ${i}: ${migrations[i].sql}`});
     try {
-      await client.query('BEGIN;');
+      await client.query('BEGIN');
       const {rows: newMigration} = await client.query<{id: number}>(
         /*sql*/ `
           INSERT INTO migrations (id, sql, runAt)
@@ -126,9 +126,9 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger) 
       await client.query(migrations[i].sql);
 
       assert(newMigration.length === 1, `Failed to insert migration ${i}`);
-      await client.query('COMMIT;');
+      await client.query('COMMIT');
     } catch (error) {
-      await client.query('ROLLBACK;');
+      await client.query('ROLLBACK');
       throw new Error(`Failed to insert migration ${i}`, {cause: error});
     }
   }

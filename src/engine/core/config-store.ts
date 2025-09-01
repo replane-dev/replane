@@ -1,16 +1,22 @@
 import {Kysely} from 'kysely';
+import assert from 'node:assert';
 import {v7 as uuidV7} from 'uuid';
 import {z} from 'zod';
-import {DB, JsonValue} from './db';
+import {Configs, DB, JsonValue} from './db';
 
 export function ConfigName() {
-  return z.string().regex(/^[a-zA-Z0-9_]+$/);
+  return z
+    .string()
+    .regex(/^[a-z_]{1,100}$/)
+    .describe('A config name consisting of lowercase letters and underscores, 1-100 characters long');
 }
 
 export function Config() {
   return z.object({
     name: ConfigName(),
-    value: z.unknown(),
+    value: z.unknown().refine(val => {
+      return JSON.stringify(val).length < 1048576; // 1MB
+    }),
   });
 }
 
@@ -23,17 +29,18 @@ export class ConfigStore {
     return await this.db
       .selectFrom('configs')
       .selectAll()
+      .orderBy('configs.name')
       .execute()
-      .then(y =>
-        y.map(x => ({
-          ...x,
-          value: (x as unknown as {value: JsonValue}).value,
-        })),
-      );
+      .then(x => x.map(mapConfig));
   }
 
   async get(name: string): Promise<Config | undefined> {
-    return await this.db.selectFrom('configs').selectAll().where('name', '=', name).executeTakeFirst();
+    const result = await this.db.selectFrom('configs').selectAll().where('name', '=', name).executeTakeFirst();
+    if (result) {
+      return mapConfig(result);
+    }
+
+    return undefined;
   }
 
   async put(config: Config): Promise<void> {
@@ -59,4 +66,13 @@ export class ConfigStore {
       throw error;
     }
   }
+}
+
+function mapConfig(config: Pick<Configs, 'name' | 'value'>): Config {
+  assert(typeof config.value === 'object' && config.value !== null && 'value' in config.value);
+
+  return {
+    name: config.name,
+    value: config.value.value,
+  };
 }

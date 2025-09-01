@@ -2,13 +2,14 @@
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
-export function ClientGreeting() {
+
+export function ConfigList() {
   const trpc = useTRPC();
-  const putConfig = useMutation(trpc.putConfig.mutationOptions());
+  const createConfig = useMutation(trpc.createConfig.mutationOptions());
   const {data} = useSuspenseQuery(trpc.hello.queryOptions({text: 'world'}));
 
   async function handleSaveConfig() {
-    await putConfig.mutateAsync({
+    await createConfig.mutateAsync({
       config: {
         name: configName,
         value: configValue,
@@ -20,8 +21,8 @@ export function ClientGreeting() {
 
   const {data: health} = useSuspenseQuery(trpc.getHealth.queryOptions());
   const {
-    data: {names: configNames},
-  } = useSuspenseQuery(trpc.getConfigNames.queryOptions());
+    data: {configs},
+  } = useSuspenseQuery(trpc.getConfigList.queryOptions());
 
   const [configName, setConfigName] = useState<string>('');
   const [configValue, setConfigValue] = useState<string>('');
@@ -32,7 +33,7 @@ export function ClientGreeting() {
       <br />
       health: {JSON.stringify(health)}
       <br />
-      configs: {configNames.join(', ')}
+      configs: {configs.map(config => config.name).join(', ')}
       <br />
       <input type="text" value={configName} onChange={e => setConfigName(e.target.value)} placeholder="Config Name" />
       <input

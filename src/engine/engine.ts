@@ -9,9 +9,11 @@ import {createLogger, Logger, LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {getPgPool} from './core/pg-pool-cache';
 import {UseCase, UseCaseTransaction} from './core/use-case';
-import {createGetConfigNamesUseCase} from './core/use-cases/get-config-names-use-case';
+import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
+import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
+import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
-import {createPutConfigUseCase} from './core/use-cases/put-config-use-case';
+import {createUpdateConfigUseCase} from './core/use-cases/update-config-use-case';
 
 export interface EngineOptions {
   logLevel: LogLevel;
@@ -88,8 +90,10 @@ export async function createEngine(options: EngineOptions) {
 
   const useCases = {
     getHealth: createGetHealthUseCase(),
-    getConfigNames: createGetConfigNamesUseCase({}),
-    putConfig: createPutConfigUseCase({}),
+    getConfigList: createGetConfigListUseCase({}),
+    createConfig: createCreateConfigUseCase({}),
+    updateConfig: createUpdateConfigUseCase({}),
+    getConfig: createGetConfigUseCase({}),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;
@@ -139,6 +143,10 @@ async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
 
   const client = await pool.connect();
   try {
+    if (options.dbSchema !== 'public') {
+      await client.query(`CREATE SCHEMA ${options.dbSchema}`);
+    }
+    await client.query(`set search_path to ${options.dbSchema}`);
     await migrate(ctx, client, logger);
   } finally {
     client.release();
@@ -148,8 +156,7 @@ async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
     pool,
   });
 
-  const dbSchema = options.dbSchema ?? 'public';
-  const db = new Kysely<DB>({dialect}).withSchema(dbSchema);
+  const db = new Kysely<DB>({dialect}).withSchema(options.dbSchema);
 
   return {db, pool, freePool};
 }

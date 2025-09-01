@@ -16,21 +16,41 @@ export const appRouter = createTRPCRouter({
       };
     }),
   getHealth: baseProcedure.query(async opts => {
-    return await (await opts.ctx).engine.useCases.getHealth(GLOBAL_CONTEXT, {});
+    return await opts.ctx.engine.useCases.getHealth(GLOBAL_CONTEXT, {});
   }),
-  getConfigNames: baseProcedure.query(async opts => {
-    const configNames = await (await opts.ctx).engine.useCases.getConfigNames(GLOBAL_CONTEXT, {});
-    return configNames;
+  getConfigList: baseProcedure.query(async opts => {
+    const configList = await opts.ctx.engine.useCases.getConfigList(GLOBAL_CONTEXT, {});
+    return configList;
   }),
-  putConfig: baseProcedure
+  createConfig: baseProcedure
     .input(
       z.object({
         config: Config(),
       }),
     )
     .mutation(async opts => {
-      await (await opts.ctx).engine.useCases.putConfig(GLOBAL_CONTEXT, {config: opts.input.config});
+      await opts.ctx.engine.useCases.createConfig(GLOBAL_CONTEXT, {config: opts.input.config});
       return {};
+    }),
+  updateConfig: baseProcedure
+    .input(
+      z.object({
+        config: Config(),
+      }),
+    )
+    .mutation(async opts => {
+      await opts.ctx.engine.useCases.updateConfig(GLOBAL_CONTEXT, {config: opts.input.config});
+      return {};
+    }),
+  getConfig: baseProcedure
+    .input(
+      z.object({
+        name: z.string(),
+      }),
+    )
+    .query(async opts => {
+      const config = await opts.ctx.engine.useCases.getConfig(GLOBAL_CONTEXT, {name: opts.input.name});
+      return config;
     }),
 });
 

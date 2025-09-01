@@ -8,6 +8,7 @@ import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
 
 export interface TrpcFixtureOptions {
+  authEmail: string;
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
 }
@@ -40,7 +41,7 @@ export class AppFixture {
 
     const createCaller = createCallerFactory(appRouter);
 
-    this._trpc = createCaller({engine, userId: 'test'});
+    this._trpc = createCaller({engine, accountEmail: this.options.authEmail});
     this._engine = engine;
   }
 
@@ -65,7 +66,7 @@ export class AppFixture {
   async destroy(ctx: Context) {
     if (this._engine) {
       await this._engine.testing.dropDb(ctx);
-      await this._engine.destroy();
+      this._engine.destroy();
     }
 
     this._trpc = undefined;
@@ -74,7 +75,7 @@ export class AppFixture {
   }
 }
 
-export function useAppFixture(options: TrpcFixtureOptions = {}) {
+export function useAppFixture(options: TrpcFixtureOptions) {
   const fixture = new AppFixture(options);
 
   beforeEach(async () => {
