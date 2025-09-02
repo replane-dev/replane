@@ -14,9 +14,11 @@
     "migrate:codegen": "dotenv -- kysely-codegen --out-file ./src/engine/core/db.d.ts && prettier --write ./src/engine/core/db.d.ts && eslint ./src/engine/core/db.d.ts --fix"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
     "@auth/pg-adapter": "^1.10.0",
     "@hookform/resolvers": "^5.2.1",
     "@icons-pack/react-simple-icons": "^13.7.0",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -58,6 +60,7 @@
     "jotai": "^2.12.5",
     "kysely": "^0.28.5",
     "lucide-react": "^0.535.0",
+    "monaco-editor": "^0.52.2",
     "next": "15.4.5",
     "next-auth": "^4.24.11",
     "next-themes": "^0.4.6",

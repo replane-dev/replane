@@ -5,8 +5,12 @@
 
 import type {ColumnType} from 'kysely';
 
+export type ConfigUserRole = 'editor' | 'owner';
+
 export type Generated<T> =
-  T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : ColumnType<T, T | undefined, T>;
+  T extends ColumnType<infer S, infer I, infer U>
+    ? ColumnType<S, I | undefined, U>
+    : ColumnType<T, T | undefined, T>;
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
@@ -41,16 +45,26 @@ export interface Accounts {
 
 export interface ApiTokens {
   created_at: Timestamp;
+  creator_id: number;
   id: string;
   token_hash: string;
 }
 
 export interface Configs {
   created_at: Timestamp;
+  creator_id: number;
+  description: string;
   id: string;
   name: string;
+  schema: Json | null;
   updated_at: Timestamp;
   value: Json;
+}
+
+export interface ConfigUsers {
+  config_id: string;
+  role: ConfigUserRole;
+  user_email_normalized: string;
 }
 
 export interface Migrations {
@@ -83,6 +97,7 @@ export interface VerificationToken {
 export interface DB {
   accounts: Accounts;
   api_tokens: ApiTokens;
+  config_users: ConfigUsers;
   configs: Configs;
   migrations: Migrations;
   sessions: Sessions;

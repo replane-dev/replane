@@ -29,14 +29,44 @@ import {
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
-import {useSuspenseQuery} from '@tanstack/react-query';
+import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import Link from 'next/link';
 
-export const columns: ColumnDef<{name: string; createdAt: string; updatedAt: string}>[] = [
+function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
+  const d = value instanceof Date ? value : new Date(String(value ?? ''));
+  if (Number.isNaN(d.getTime())) {
+    return {display: String(value ?? '')};
+  }
+  const display = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(d);
+  return {display, dateTimeAttr: d.toISOString(), title: d.toLocaleString('en-US')};
+}
+
+function humanizeId(id: string): string {
+  return id
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/^\w/, c => c.toUpperCase());
+}
+
+export const columns: ColumnDef<{
+  name: string;
+  descriptionPreview?: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}>[] = [
   {
     id: 'select',
     header: ({table}) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+        checked={
+          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')
+        }
         onCheckedChange={value => table.toggleAllPageRowsSelected(!!value)}
         onClick={e => e.stopPropagation()}
         onMouseDown={e => e.stopPropagation()}
@@ -58,37 +88,79 @@ export const columns: ColumnDef<{name: string; createdAt: string; updatedAt: str
   {
     accessorKey: 'name',
     header: 'Name',
-    cell: ({row}) => <div className="capitalize">{row.getValue('name')}</div>,
+    cell: ({row}) => <div>{row.getValue('name')}</div>,
+  },
+  {
+    accessorKey: 'descriptionPreview',
+    header: 'Description',
+    cell: ({row}) => (
+      <div
+        className="max-w-[100px] truncate"
+        title={String(row.getValue('descriptionPreview') ?? '')}
+      >
+        {row.getValue('descriptionPreview')}
+      </div>
+    ),
   },
   {
     accessorKey: 'createdAt',
     header: ({column}) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
           Created At
           <ArrowUpDown />
         </Button>
       );
     },
-    cell: ({row}) => <div className="lowercase">{row.getValue('createdAt')}</div>,
+    cell: ({row}) => {
+      const {display, dateTimeAttr, title} = formatDateTime(row.getValue('createdAt'));
+      return (
+        <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap">
+          {display}
+        </time>
+      );
+    },
   },
   {
     accessorKey: 'updatedAt',
     header: ({column}) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
           Updated At
           <ArrowUpDown />
         </Button>
       );
     },
-    cell: ({row}) => <div className="lowercase">{row.getValue('updatedAt')}</div>,
+    cell: ({row}) => {
+      const {display, dateTimeAttr, title} = formatDateTime(row.getValue('updatedAt'));
+      return (
+        <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap">
+          {display}
+        </time>
+      );
+    },
   },
   {
     id: 'actions',
     enableHiding: false,
     cell: ({row}) => {
       const config = row.original;
+      const trpc = useTRPC();
+      const qc = useQueryClient();
+      const del = useMutation(
+        trpc.deleteConfig.mutationOptions({
+          onSuccess: async () => {
+            const key = trpc.getConfigList.queryKey();
+            await qc.invalidateQueries({queryKey: key});
+          },
+        }),
+      );
 
       return (
         <DropdownMenu>
@@ -109,6 +181,18 @@ export const columns: ColumnDef<{name: string; createdAt: string; updatedAt: str
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>View config details</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-700"
+              onClick={async e => {
+                e.stopPropagation();
+                if (confirm(`Delete config "${config.name}"? This cannot be undone.`)) {
+                  await del.mutateAsync({name: config.name});
+                }
+              }}
+            >
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -149,7 +233,9 @@ export function ConfigTable() {
 
   const isInteractive = (el: EventTarget | null) => {
     if (!(el instanceof Element)) return false;
-    return !!el.closest('button, a, [role="checkbox"], [role="menu"], input, select, textarea, [data-no-row-click]');
+    return !!el.closest(
+      'button, a, [role="checkbox"], [role="menu"], input, select, textarea, [data-no-row-click]',
+    );
   };
 
   const handleRowClick = React.useCallback(
@@ -166,12 +252,12 @@ export function ConfigTable() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-4 gap-4">
         <Input
-          placeholder="Filter names..."
+          placeholder="Search"
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className="max-w-sm"
+          className="max-w-md"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -184,19 +270,23 @@ export function ConfigTable() {
               .getAllColumns()
               .filter(column => column.getCanHide())
               .map(column => {
+                const header = column.columnDef.header as unknown;
+                const label = typeof header === 'string' ? header : humanizeId(column.id);
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize"
                     checked={column.getIsVisible()}
                     onCheckedChange={value => column.toggleVisibility(!!value)}
                   >
-                    {column.id}
+                    {label}
                   </DropdownMenuCheckboxItem>
                 );
               })}
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button asChild>
+          <Link href="/app/new-config">New Config</Link>
+        </Button>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -206,7 +296,9 @@ export function ConfigTable() {
                 {headerGroup.headers.map(header => {
                   return (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   );
                 })}
@@ -223,7 +315,9 @@ export function ConfigTable() {
                   className="cursor-pointer select-text"
                 >
                   {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
@@ -236,25 +330,6 @@ export function ConfigTable() {
             )}
           </TableBody>
         </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
-          selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-            Next
-          </Button>
-        </div>
       </div>
     </div>
   );

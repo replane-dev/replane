@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import {ClientBase} from 'pg';
-import {Context} from './context';
-import {Logger} from './logger';
+import type {Context} from './context';
+import type {Logger} from './logger';
 
 export interface Migration {
   sql: string;
@@ -65,19 +65,39 @@ export const migrations: Migration[] = [
         id UUID PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
         value JSONB NOT NULL,
+        description TEXT NOT NULL,
+        schema JSONB NULL,
+        creator_id INT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMPTZ(3) NOT NULL,
         updated_at TIMESTAMPTZ(3) NOT NULL
       );
 
-      CREATE INDEX idx_configs_name ON configs(name);
+      CREATE UNIQUE INDEX idx_configs_name ON configs(name);
+      CREATE INDEX idx_configs_creator_id ON configs(creator_id);
+
+      CREATE TYPE config_user_role AS ENUM (
+        'owner',
+        'editor'
+      );
+
+      CREATE TABLE config_users (
+        config_id UUID NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        user_email_normalized VARCHAR(255) NOT NULL,
+        role config_user_role NOT NULL,
+        PRIMARY KEY (config_id, user_email_normalized)
+      );
+
+      CREATE INDEX idx_config_users_user_email_normalized ON config_users(user_email_normalized);
 
       CREATE TABLE api_tokens (
         id UUID PRIMARY KEY,
+        creator_id INT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
         token_hash TEXT NOT NULL UNIQUE,
         created_at TIMESTAMPTZ(3) NOT NULL
       );
 
       CREATE INDEX idx_api_tokens_token_hash ON api_tokens(token_hash);
+      CREATE INDEX idx_api_tokens_creator_id ON api_tokens(creator_id);
     `,
   },
 ];
@@ -102,7 +122,9 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger) 
     `Unexpected number of run migrations: ${runMigrations.length} > ${migrations.length}`,
   );
 
-  logger.info(ctx, {msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length)});
+  logger.info(ctx, {
+    msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length),
+  });
 
   for (let i = 0; i < runMigrations.length; i++) {
     assert(

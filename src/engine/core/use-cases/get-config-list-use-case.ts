@@ -4,6 +4,7 @@ import type {UseCase} from '../use-case';
 export function ConfigInfo() {
   return z.object({
     name: z.string(),
+    descriptionPreview: z.string(),
     createdAt: z.date(),
     updatedAt: z.date(),
   });
@@ -23,7 +24,14 @@ export function createGetConfigListUseCase(
   deps: GetConfigListUseCasesDeps,
 ): UseCase<GetConfigListRequest, GetConfigListResponse> {
   return async (ctx, tx) => {
-    const configs = await tx.configStore.getAll();
-    return {configs: configs.map(c => ({name: c.name, createdAt: c.createdAt, updatedAt: c.updatedAt}))};
+    const configs = await tx.configs.getAll();
+    return {
+      configs: configs.map(c => ({
+        name: c.name,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        descriptionPreview: c.description.substring(0, 100),
+      })),
+    };
   };
 }

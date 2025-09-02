@@ -11,17 +11,23 @@ export interface GetConfigResponse {
 
 export interface GetConfigUseCasesDeps {}
 
-export function createGetConfigUseCase(deps: GetConfigUseCasesDeps): UseCase<GetConfigRequest, GetConfigResponse> {
+export function createGetConfigUseCase(
+  deps: GetConfigUseCasesDeps,
+): UseCase<GetConfigRequest, GetConfigResponse> {
   return async (ctx, tx, req) => {
-    const config = await tx.configStore.get(req.name);
+    const config = await tx.configs.get(req.name);
     if (!config) {
       return {config: undefined};
     }
 
     return {
       config: {
+        id: config.id,
         name: config.name,
         value: config.value,
+        description: config.description,
+        schema: config.schema,
+        creatorId: config.creatorId,
         createdAt: config.createdAt,
         updatedAt: config.updatedAt,
       },

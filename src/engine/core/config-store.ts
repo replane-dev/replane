@@ -3,12 +3,16 @@ import assert from 'node:assert';
 import {v7 as uuidV7} from 'uuid';
 import {z} from 'zod';
 import type {Configs, DB, JsonValue} from './db';
+import {isValidJsonSchema} from './utils';
+import {Uuid} from './zod';
 
 export function ConfigName() {
   return z
     .string()
     .regex(/^[a-z_]{1,100}$/)
-    .describe('A config name consisting of lowercase letters and underscores, 1-100 characters long');
+    .describe(
+      'A config name consisting of lowercase letters and underscores, 1-100 characters long',
+    );
 }
 
 export function ConfigValue() {
@@ -17,12 +21,35 @@ export function ConfigValue() {
   });
 }
 
+export function ConfigSchema() {
+  return z
+    .unknown()
+    .refine(val => JSON.stringify(val).length < 131072, {
+      message: 'Schema JSON must be smaller than 128KB',
+    })
+    .refine(val => val === null || typeof val === 'boolean' || typeof val === 'object', {
+      message: 'Schema must be an object or a boolean',
+    })
+    .refine(val => isValidJsonSchema(val), {
+      message: 'Invalid JSON Schema',
+    })
+    .nullable();
+}
+
+export function ConfigDescription() {
+  return z.string().max(1_000_000);
+}
+
 export function Config() {
   return z.object({
+    id: Uuid(),
     name: ConfigName(),
     value: ConfigValue(),
+    schema: ConfigSchema().nullable(),
+    description: ConfigDescription(),
     createdAt: z.date(),
     updatedAt: z.date(),
+    creatorId: z.number(),
   });
 }
 
@@ -41,7 +68,11 @@ export class ConfigStore {
   }
 
   async get(name: string): Promise<Config | undefined> {
-    const result = await this.db.selectFrom('configs').selectAll().where('name', '=', name).executeTakeFirst();
+    const result = await this.db
+      .selectFrom('configs')
+      .selectAll()
+      .where('name', '=', name)
+      .executeTakeFirst();
     if (result) {
       return mapConfig(result);
     }
@@ -58,11 +89,21 @@ export class ConfigStore {
           id: uuidV7(),
           updated_at: config.updatedAt,
           name: config.name,
+          description: config.description,
+          creator_id: config.creatorId,
           value: {value: config.value} as JsonValue,
+          schema: config.schema
+            ? ({value: config.schema} as unknown as JsonValue)
+            : (null as JsonValue),
         })
         .onConflict(oc =>
           oc.column('name').doUpdateSet({
             value: {value: config.value} as JsonValue,
+            description: config.description,
+            schema: config.schema
+              ? ({value: config.schema} as unknown as JsonValue)
+              : (null as JsonValue),
+            updated_at: config.updatedAt,
           }),
         );
 
@@ -72,14 +113,23 @@ export class ConfigStore {
       throw error;
     }
   }
+
+  async delete(name: string): Promise<void> {
+    await this.db.deleteFrom('configs').where('name', '=', name).execute();
+  }
 }
 
-function mapConfig(config: Pick<Selectable<Configs>, 'name' | 'value' | 'created_at' | 'updated_at'>): Config {
+function mapConfig(config: Selectable<Configs>): Config {
   assert(typeof config.value === 'object' && config.value !== null && 'value' in config.value);
+  assert(config.schema === null || (typeof config.schema === 'object' && 'value' in config.schema));
 
   return {
+    id: config.id,
+    creatorId: config.creator_id,
     name: config.name,
     value: config.value.value,
+    description: config.description,
+    schema: config.schema ? config.schema.value : null,
     createdAt: config.created_at,
     updatedAt: config.updated_at,
   };

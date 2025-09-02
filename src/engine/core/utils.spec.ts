@@ -1,5 +1,15 @@
 import {describe, expect, it} from 'vitest';
-import {chunkArray, getDaysAgo, mapConcurrently, trimEnd, unique, wait} from './utils';
+import {
+  chunkArray,
+  getDaysAgo,
+  isValidJsonSchema,
+  mapConcurrently,
+  normalizeUserEmail,
+  trimEnd,
+  unique,
+  validateAgainstJsonSchema,
+  wait,
+} from './utils';
 
 describe('chunkArray', () => {
   it('should chunk an array of numbers into smaller arrays of the specified size', () => {
@@ -135,6 +145,103 @@ describe('unique', () => {
     const result = unique(array);
 
     expect(result).toEqual(expectedUnique);
+  });
+});
+
+describe('validateAgainstJsonSchema', () => {
+  it('returns ok=true for valid object', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        id: {type: 'string'},
+        count: {type: 'number'},
+      },
+      required: ['id'],
+      additionalProperties: false,
+    } as const;
+
+    const res = validateAgainstJsonSchema({id: 'a1', count: 2}, schema as unknown as any);
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value).toEqual({id: 'a1', count: 2});
+    }
+  });
+
+  it('returns ok=false with readable errors for invalid object', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        id: {type: 'string'},
+        count: {type: 'number'},
+      },
+      required: ['id'],
+      additionalProperties: false,
+    } as const;
+
+    const res = validateAgainstJsonSchema({count: 'nope'}, schema as unknown as any);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/id|required/);
+    }
+  });
+});
+
+describe('isValidJsonSchema', () => {
+  it('returns true for a valid simple schema', () => {
+    expect(isValidJsonSchema({type: 'string'})).toBe(true);
+  });
+
+  it('returns true for boolean schemas', () => {
+    expect(isValidJsonSchema(true)).toBe(true);
+    expect(isValidJsonSchema(false)).toBe(true);
+  });
+
+  it('returns false for non-object/non-boolean (except null handled by caller)', () => {
+    expect(isValidJsonSchema(123 as unknown)).toBe(false);
+    expect(isValidJsonSchema('str' as unknown)).toBe(false);
+  });
+
+  it('honors $schema draft-07: schema with const is valid', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {role: {const: 'admin'}},
+    } as const;
+
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('honors $schema draft-04: same schema is not valid under draft-04', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {role: {const: 'admin'}},
+    } as const;
+
+    // Ajv v8 does not include draft-04 meta by default and const is not a draft-04 keyword
+    expect(isValidJsonSchema(schema)).toBe(false);
+  });
+});
+
+describe('normalizeUserEmail', () => {
+  it('trims whitespace and lowercases the email', () => {
+    const input = '  Alice.Smith+Dev@Example.COM  ';
+    const normalized = normalizeUserEmail(input);
+    expect(normalized).toBe('alice.smith+dev@example.com');
+  });
+
+  it('is idempotent', () => {
+    const input = 'User+Test@Example.com';
+    const once = normalizeUserEmail(input);
+    const twice = normalizeUserEmail(once);
+    expect(twice).toBe(once);
+  });
+
+  it('handles empty string', () => {
+    expect(normalizeUserEmail('')).toBe('');
   });
 });
 

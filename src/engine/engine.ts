@@ -1,6 +1,7 @@
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ConfigStore} from './core/config-store';
+import {ConfigUserStore} from './core/config-user-store';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
@@ -10,10 +11,12 @@ import {migrate} from './core/migrations';
 import {getPgPool} from './core/pg-pool-cache';
 import type {UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
+import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createUpdateConfigUseCase} from './core/use-cases/update-config-use-case';
+import {UserStore} from './core/user-store';
 
 export interface EngineOptions {
   logLevel: LogLevel;
@@ -41,7 +44,9 @@ function toEngineUseCase<TReq, TRes>(
     for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
       const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
       const tx: UseCaseTransaction = {
-        configStore: new ConfigStore(dbTx),
+        configs: new ConfigStore(dbTx),
+        users: new UserStore(dbTx),
+        configUsers: new ConfigUserStore(dbTx),
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -93,6 +98,7 @@ export async function createEngine(options: EngineOptions) {
     createConfig: createCreateConfigUseCase({dateProvider}),
     updateConfig: createUpdateConfigUseCase({dateProvider}),
     getConfig: createGetConfigUseCase({}),
+    deleteConfig: createDeleteConfigUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;
@@ -102,20 +108,29 @@ export async function createEngine(options: EngineOptions) {
   };
 
   for (const name of Object.keys(useCases) as Array<keyof typeof engineUseCases>) {
-    engineUseCases[name] = toEngineUseCase(db, logger, (useCases as UseCaseMap)[name], useCaseOptions);
+    engineUseCases[name] = toEngineUseCase(
+      db,
+      logger,
+      (useCases as UseCaseMap)[name],
+      useCaseOptions,
+    );
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
   return {
     useCases: engineUseCases,
     testing: {
+      pool,
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: () => freePool(),
   };
 }
 
-async function dropDb(ctx: Context, {pool, dbSchema, logger}: {pool: Pool; dbSchema: string; logger: Logger}) {
+async function dropDb(
+  ctx: Context,
+  {pool, dbSchema, logger}: {pool: Pool; dbSchema: string; logger: Logger},
+) {
   logger.info(ctx, {msg: `Dropping database schema ${dbSchema}...`});
 
   const connection = await pool.connect();
@@ -130,7 +145,11 @@ async function dropDb(ctx: Context, {pool, dbSchema, logger}: {pool: Pool; dbSch
   }
 }
 
-function addUseCaseLogging(useCase: LibUseCase<any, any>, useCaseName: string, logger: Logger): LibUseCase<any, any> {
+function addUseCaseLogging(
+  useCase: LibUseCase<any, any>,
+  useCaseName: string,
+  logger: Logger,
+): LibUseCase<any, any> {
   return async (ctx, request): Promise<any> => {
     logger.info(ctx, {msg: `Running use case: ${useCaseName}...`});
     return await useCase(ctx, request);

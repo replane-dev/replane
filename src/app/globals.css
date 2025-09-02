@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -113,6 +113,12 @@
 }
 
 @layer base {
+  html {
+    /* Ensure the rubber-band overscroll background matches app background on macOS */
+    background-color: var(--sidebar);
+    min-height: 100%;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }

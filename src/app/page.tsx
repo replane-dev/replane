@@ -1,4 +1,3 @@
-import {ConfigList} from '@/components/config-list';
 import {HydrateClient, prefetch, trpc} from '@/trpc/server';
 import {Suspense} from 'react';
 import {ErrorBoundary} from 'react-error-boundary';
@@ -8,9 +7,7 @@ export default function Home() {
   return (
     <HydrateClient>
       <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <ConfigList />
-        </Suspense>
+        <Suspense fallback={<div>Loading...</div>}>Empty (redirects to /app)</Suspense>
       </ErrorBoundary>
     </HydrateClient>
   );

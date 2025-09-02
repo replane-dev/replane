@@ -1,3 +1,4 @@
+import Ajv, {type ErrorObject, type JSONSchemaType} from 'ajv';
 import assert from 'node:assert';
 
 export function ensureDefined<T>(value: T | undefined, message: string): T {
@@ -92,4 +93,52 @@ export async function mapConcurrently<T, R>(options: {
 
   await Promise.all(executing);
   return results;
+}
+
+// JSON Schema validation
+// Lightweight wrapper around Ajv with a stable, testable return shape.
+const __ajv = new Ajv({allErrors: true, strict: false, allowUnionTypes: true});
+
+export type JsonSchema = JSONSchemaType<any> | Record<string, unknown>;
+
+export type JsonSchemaValidationResult<T = unknown> =
+  | {ok: true; value: T}
+  | {ok: false; errors: string[]};
+
+export function validateAgainstJsonSchema<T = unknown>(
+  value: unknown,
+  schema: JsonSchema,
+): JsonSchemaValidationResult<T> {
+  const validate = __ajv.compile<T>(schema as JSONSchemaType<T>);
+  const valid = validate(value);
+
+  if (valid) {
+    return {ok: true, value: value as T};
+  }
+
+  const errors: string[] = (validate.errors ?? []).map(formatAjvError);
+  return {ok: false, errors};
+}
+
+function formatAjvError(err: ErrorObject): string {
+  const instancePath =
+    err.instancePath ||
+    (err.params && 'missingProperty' in err.params ? `/${String(err.params.missingProperty)}` : '');
+  const where = instancePath ? `at ${instancePath}` : '';
+  return [err.message, where].filter(Boolean).join(' ');
+}
+
+// Validates that a given value is a valid JSON Schema (meta-schema validation)
+export function isValidJsonSchema(schema: unknown): boolean {
+  if (schema === null) return true;
+  if (!(typeof schema === 'object' || typeof schema === 'boolean')) return false;
+  try {
+    return __ajv.validateSchema(schema as any) as boolean;
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeUserEmail(email: string) {
+  return email.trim().toLowerCase();
 }

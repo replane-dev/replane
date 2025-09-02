@@ -23,6 +23,8 @@ function _createCaller() {
 
 type TrpcCaller = ReturnType<typeof _createCaller>;
 
+export const TEST_USER_ID = 1;
+
 export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
@@ -34,12 +36,25 @@ export class AppFixture {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
 
     const engine = await createEngine({
-      databaseUrl: ensureDefined(process.env.DATABASE_URL, 'DATABASE_URL environment variable is required'),
+      databaseUrl: ensureDefined(
+        process.env.DATABASE_URL,
+        'DATABASE_URL environment variable is required',
+      ),
       dbSchema: `test_${Math.random().toString(36).substring(2, 15)}`,
       logLevel: this.options.logLevel ?? 'warn',
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
     });
+
+    const connection = await engine.testing.pool.connect();
+    try {
+      await connection.query(
+        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Test User', $2, NOW())`,
+        [TEST_USER_ID, this.options.authEmail],
+      );
+    } finally {
+      connection.release();
+    }
 
     const createCaller = createCallerFactory(appRouter);
 
