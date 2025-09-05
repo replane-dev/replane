@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import type {ConfigId} from '../config-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
@@ -78,7 +79,7 @@ export function createPatchConfigUseCase(
 
     if (req.members) {
       const existingConfigUsers = await tx.configUsers.getByConfigId(existingConfig.id);
-      const {added, removed} = diffConfigUsers(
+      const {added, removed} = diffConfigMembers(
         existingConfigUsers.map(u => ({email: u.user_email_normalized, role: u.role})),
         req.members.newMembers,
       );
@@ -93,12 +94,23 @@ export function createPatchConfigUseCase(
   };
 }
 
-export function diffConfigUsers(existingUsers: Array<ConfigMember>, newUsers: Array<ConfigMember>) {
-  const existingEmails = new Set(existingUsers.map(u => u.email));
-  const newEmails = new Set(newUsers.map(u => u.email));
+export function diffConfigMembers(
+  existingMembers: Array<ConfigMember>,
+  newMembers: Array<ConfigMember>,
+) {
+  // email can contain only one @, so we use it twice for a separator
+  const SEPARATOR = '@@';
 
-  const added = newUsers.filter(u => !existingEmails.has(u.email));
-  const removed = existingUsers.filter(u => !newEmails.has(u.email));
+  assert(existingMembers.every(x => !x.email.includes(SEPARATOR) && !x.role.includes(SEPARATOR)));
+  assert(newMembers.every(x => !x.email.includes(SEPARATOR) && !x.role.includes(SEPARATOR)));
+
+  const toMemberId = (member: ConfigMember) => `${member.role}${SEPARATOR}${member.email}`;
+
+  const existingEmails = new Set(existingMembers.map(toMemberId));
+  const newEmails = new Set(newMembers.map(toMemberId));
+
+  const added = newMembers.filter(u => !existingEmails.has(toMemberId(u)));
+  const removed = existingMembers.filter(u => !newEmails.has(toMemberId(u)));
 
   return {added, removed};
 }

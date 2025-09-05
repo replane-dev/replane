@@ -84,8 +84,13 @@ export default function ConfigByNamePage() {
     ownerEmails: string[];
     editorEmails: string[];
   }) {
+    if (!config) {
+      throw new Error('unreachable: we do not render form when config is undefined');
+    }
+
     await patchConfig.mutateAsync({
-      configName: name,
+      configId: config?.config.id,
+      prevVersion: config?.config.version,
       value: {newValue: data.value},
       schema: config?.myRole === 'owner' ? {newSchema: data.schema} : undefined,
       description: {newDescription: data.description},

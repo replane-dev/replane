@@ -1,10 +1,12 @@
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {ensureDefined} from '@/engine/core/utils';
 import PostgresAdapter from '@auth/pg-adapter';
-import NextAuth, {AuthOptions} from 'next-auth';
+import NextAuth, {type AuthOptions} from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
 
-const [pool, freePool] = getPgPool(ensureDefined(process.env.DATABASE_URL, 'DATABASE_URL is not defined'));
+const [pool, freePool] = getPgPool(
+  ensureDefined(process.env.DATABASE_URL, 'DATABASE_URL is not defined'),
+);
 
 (['SIGINT', 'SIGTERM'] as const).forEach(signal => {
   process.on(signal, freePool);
@@ -22,7 +24,10 @@ export const authOptions: AuthOptions = {
   providers: [
     GithubProvider({
       clientId: ensureDefined(process.env.GITHUB_CLIENT_ID, 'GITHUB_CLIENT_ID is not defined'),
-      clientSecret: ensureDefined(process.env.GITHUB_CLIENT_SECRET, 'GITHUB_CLIENT_SECRET is not defined'),
+      clientSecret: ensureDefined(
+        process.env.GITHUB_CLIENT_SECRET,
+        'GITHUB_CLIENT_SECRET is not defined',
+      ),
     }),
   ],
 };

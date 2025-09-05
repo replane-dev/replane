@@ -26,7 +26,7 @@ export function EditorArray() {
 export function ConfigMember() {
   return z.object({
     email: Email(),
-    role: z.enum(['owner', 'editor']),
+    role: z.enum(['owner', 'editor', 'viewer']),
   });
 }
 

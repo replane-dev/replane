@@ -78,7 +78,8 @@ export const migrations: Migration[] = [
 
       CREATE TYPE config_user_role AS ENUM (
         'owner',
-        'editor'
+        'editor',
+        'viewer'
       );
 
       CREATE TABLE config_users (
@@ -112,6 +113,18 @@ export const migrations: Migration[] = [
       );
 
       CREATE UNIQUE INDEX idx_config_versions_config_id_version ON config_versions(config_id, version);
+
+      CREATE TABLE audit_messages (
+        id UUID PRIMARY KEY,
+        user_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+        config_id UUID NULL REFERENCES configs(id) ON DELETE SET NULL,
+        payload JSONB NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE INDEX idx_audit_messages_user_id ON audit_messages (user_id);
+      CREATE INDEX idx_audit_messages_config_id ON audit_messages (config_id);
+      CREATE INDEX idx_audit_messages_created_at_id ON audit_messages (created_at DESC, id DESC);
     `,
   },
 ];

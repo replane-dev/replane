@@ -1,6 +1,6 @@
 import {ConfigDescription, ConfigName, ConfigSchema, ConfigValue} from '@/engine/core/config-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {ConfigMember, EditorArray, OwnerArray} from '@/engine/core/zod';
+import {ConfigMember, EditorArray, OwnerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
@@ -54,10 +54,11 @@ export const appRouter = createTRPCRouter({
   patchConfig: baseProcedure
     .input(
       z.object({
-        configName: ConfigName(),
+        configId: Uuid(),
         value: z.object({newValue: ConfigValue()}).optional(),
         schema: z.object({newSchema: ConfigSchema()}).optional(),
         description: z.object({newDescription: ConfigDescription()}).optional(),
+        prevVersion: z.number(),
         members: z
           .object({
             newMembers: z.array(ConfigMember()),

@@ -20,7 +20,7 @@ type Mode = 'new' | 'edit';
 
 export interface ConfigFormProps {
   mode: Mode;
-  role: 'viewer' | 'owner' | 'editor' | 'editor';
+  role: 'viewer' | 'owner' | 'editor';
   defaultName?: string; // used in edit mode (read-only display)
   defaultValue: string; // JSON string
   defaultDescription?: string;
@@ -69,7 +69,6 @@ export function ConfigForm(props: ConfigFormProps) {
 
   // Permissions (apply strictly in edit mode; new mode is always editable)
   const isEdit = mode === 'edit';
-  const canEditEverything = !isEdit || role === 'owner';
   const canEditDescription = !isEdit || role !== 'viewer';
   const canEditValue = !isEdit || role !== 'viewer';
   const canEditSchema = !isEdit || role === 'owner';

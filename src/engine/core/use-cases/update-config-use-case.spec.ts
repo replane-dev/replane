@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {diffConfigUsers} from './patch-config-use-case';
+import {diffConfigMembers} from './patch-config-use-case';
 
 describe('diffConfigUsers', () => {
   it('returns added users that are present in new but not in existing', () => {
@@ -9,7 +9,7 @@ describe('diffConfigUsers', () => {
       {email: 'bob@example.com', role: 'owner' as const},
     ];
 
-    const {added, removed} = diffConfigUsers(existing, updated);
+    const {added, removed} = diffConfigMembers(existing, updated);
 
     expect(added).toEqual([{email: 'bob@example.com', role: 'owner'}]);
     expect(removed).toEqual([]);
@@ -22,7 +22,7 @@ describe('diffConfigUsers', () => {
     ];
     const updated = [{email: 'alice@example.com', role: 'editor' as const}];
 
-    const {added, removed} = diffConfigUsers(existing, updated);
+    const {added, removed} = diffConfigMembers(existing, updated);
 
     expect(added).toEqual([]);
     expect(removed).toEqual([{email: 'bob@example.com', role: 'owner'}]);
@@ -38,7 +38,7 @@ describe('diffConfigUsers', () => {
       {email: 'carol@example.com', role: 'editor' as const},
     ];
 
-    const {added, removed} = diffConfigUsers(existing, updated);
+    const {added, removed} = diffConfigMembers(existing, updated);
 
     expect(added).toEqual([{email: 'carol@example.com', role: 'editor'}]);
     expect(removed).toEqual([{email: 'alice@example.com', role: 'editor'}]);
@@ -54,7 +54,7 @@ describe('diffConfigUsers', () => {
       {email: 'bob@example.com', role: 'owner' as const},
     ];
 
-    const {added, removed} = diffConfigUsers(existing, updated);
+    const {added, removed} = diffConfigMembers(existing, updated);
 
     expect(added).toEqual([]);
     expect(removed).toEqual([]);
@@ -64,7 +64,7 @@ describe('diffConfigUsers', () => {
     const existing = [{email: 'alice@example.com', role: 'editor' as const}];
     const updated = [{email: 'alice@example.com', role: 'owner' as const}];
 
-    const {added, removed} = diffConfigUsers(existing, updated);
+    const {added, removed} = diffConfigMembers(existing, updated);
 
     expect(added).toEqual([]);
     expect(removed).toEqual([]);
@@ -77,7 +77,7 @@ describe('diffConfigUsers', () => {
       {email: 'dup@example.com', role: 'owner' as const},
     ];
 
-    const {added, removed} = diffConfigUsers(existing, updated);
+    const {added, removed} = diffConfigMembers(existing, updated);
 
     expect(removed).toEqual([]);
     // Added includes both duplicates because existing set is empty

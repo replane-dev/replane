@@ -5,7 +5,7 @@
 
 import type {ColumnType} from 'kysely';
 
-export type ConfigUserRole = 'editor' | 'owner';
+export type ConfigUserRole = 'editor' | 'owner' | 'viewer';
 
 export type Generated<T> =
   T extends ColumnType<infer S, infer I, infer U>
@@ -48,6 +48,14 @@ export interface ApiTokens {
   creator_id: number;
   id: string;
   token_hash: string;
+}
+
+export interface AuditMessages {
+  config_id: string | null;
+  created_at: Timestamp;
+  id: string;
+  payload: Json;
+  user_id: number | null;
 }
 
 export interface Configs {
@@ -109,6 +117,7 @@ export interface VerificationToken {
 export interface DB {
   accounts: Accounts;
   api_tokens: ApiTokens;
+  audit_messages: AuditMessages;
   config_users: ConfigUsers;
   config_versions: ConfigVersions;
   configs: Configs;

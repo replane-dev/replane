@@ -1,5 +1,5 @@
 import {Pool} from 'pg';
-import {Context, GLOBAL_CONTEXT} from '../core/context';
+import {type Context, GLOBAL_CONTEXT} from '../core/context';
 import {createLogger} from '../core/logger';
 import {migrate} from '../core/migrations';
 
