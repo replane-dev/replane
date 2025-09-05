@@ -33,6 +33,7 @@ describe('createConfig', () => {
         description: 'A new config for testing',
         creatorId: TEST_USER_ID,
         id: expect.any(String),
+        version: 1,
       },
       editorEmails: [],
       ownerEmails: [],
@@ -75,6 +76,7 @@ describe('createConfig', () => {
         description: 'A duplicate config for testing v1',
         creatorId: TEST_USER_ID,
         id: expect.any(String),
+        version: 1,
       },
       editorEmails: [],
       ownerEmails: [],
@@ -105,6 +107,7 @@ describe('createConfig', () => {
         description: 'A config without a schema',
         creatorId: TEST_USER_ID,
         id: expect.any(String),
+        version: 1,
       },
       editorEmails: [],
       ownerEmails: [],
@@ -113,7 +116,7 @@ describe('createConfig', () => {
   });
 
   it('should validate that config value matches schema', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'schema_validation_config',
       value: {flag: true},
       schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
@@ -125,11 +128,12 @@ describe('createConfig', () => {
 
     await expect(
       fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
-        configName: 'schema_validation_config',
+        configId,
         value: {newValue: {flag: 'not_a_boolean'}},
         schema: {newSchema: {type: 'object', properties: {flag: {type: 'boolean'}}}},
         description: {newDescription: 'An updated config with invalid value'},
         currentUserEmail: CURRENT_USER_EMAIL,
+        prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });

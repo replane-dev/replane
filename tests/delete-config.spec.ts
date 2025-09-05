@@ -19,7 +19,7 @@ describe('deleteConfig', () => {
       description: 'To be deleted',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
     });
 
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -29,21 +29,24 @@ describe('deleteConfig', () => {
       description: 'Should remain',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
     });
 
     // Ensure both exist
     {
       const {config} = await fixture.trpc.getConfig({name: 'config_to_delete'});
-      expect(config?.name).toBe('config_to_delete');
+      expect(config?.config.name).toBe('config_to_delete');
     }
     {
       const {config} = await fixture.trpc.getConfig({name: 'config_to_keep'});
-      expect(config?.name).toBe('config_to_keep');
+      expect(config?.config.name).toBe('config_to_keep');
     }
 
     // Delete one of them
-    await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {name: 'config_to_delete'});
+    await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+      name: 'config_to_delete',
+      currentUserEmail: TEST_USER_EMAIL,
+    });
 
     // Confirm deletion
     {
@@ -54,7 +57,7 @@ describe('deleteConfig', () => {
     // Other config remains
     {
       const {config} = await fixture.trpc.getConfig({name: 'config_to_keep'});
-      expect(config?.name).toBe('config_to_keep');
+      expect(config?.config.name).toBe('config_to_keep');
     }
 
     // And list reflects the single remaining config
@@ -64,7 +67,10 @@ describe('deleteConfig', () => {
 
   it('should throw BadRequestError when config does not exist', async () => {
     await expect(
-      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {name: 'missing_config'}),
+      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+        name: 'missing_config',
+        currentUserEmail: TEST_USER_EMAIL,
+      }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
@@ -76,13 +82,19 @@ describe('deleteConfig', () => {
       description: 'double delete case',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
     });
 
-    await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {name: 'double_delete'});
+    await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+      name: 'double_delete',
+      currentUserEmail: TEST_USER_EMAIL,
+    });
 
     await expect(
-      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {name: 'double_delete'}),
+      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+        name: 'double_delete',
+        currentUserEmail: TEST_USER_EMAIL,
+      }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 });

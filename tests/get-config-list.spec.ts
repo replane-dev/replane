@@ -44,12 +44,16 @@ describe('getConfigList', () => {
         createdAt: fixture.now,
         updatedAt: fixture.now,
         descriptionPreview: 'The first config',
+        myRole: 'viewer',
+        version: 1,
       },
       {
         name: 'second-config',
         createdAt: fixture.now,
         updatedAt: fixture.now,
         descriptionPreview: 'The second config',
+        myRole: 'viewer',
+        version: 1,
       },
     ] satisfies GetConfigListResponse['configs']);
     expect(configs.length).toBe(2);

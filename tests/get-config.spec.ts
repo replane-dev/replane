@@ -23,14 +23,20 @@ describe('getConfig', () => {
     const {config} = await fixture.trpc.getConfig({name: 'test-config'});
 
     expect(config).toEqual({
-      name: 'test-config',
-      value: 'test-value',
-      createdAt: fixture.now,
-      updatedAt: fixture.now,
-      schema: {type: 'string'},
-      description: 'A test config',
-      creatorId: TEST_USER_ID,
-      id: expect.any(String),
+      config: {
+        name: 'test-config',
+        value: 'test-value',
+        createdAt: fixture.now,
+        updatedAt: fixture.now,
+        schema: {type: 'string'},
+        description: 'A test config',
+        creatorId: TEST_USER_ID,
+        id: expect.any(String),
+        version: 1,
+      },
+      editorEmails: [],
+      myRole: 'viewer',
+      ownerEmails: [],
     } satisfies GetConfigResponse['config']);
   });
 

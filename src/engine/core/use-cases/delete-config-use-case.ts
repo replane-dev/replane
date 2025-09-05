@@ -16,7 +16,7 @@ export function createDeleteConfigUseCase(): UseCase<DeleteConfigRequest, Delete
       throw new BadRequestError('Config with this name does not exist');
     }
 
-    await tx.permissionService.ensureCanManageConfig(req.name, req.currentUserEmail);
+    await tx.permissionService.ensureCanManageConfig(existingConfig.id, req.currentUserEmail);
 
     await tx.configs.delete(req.name);
 

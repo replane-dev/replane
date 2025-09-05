@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import {createConfigId} from '../config-store';
+import {createConfigId, type ConfigId} from '../config-store';
 import type {NewConfigUser} from '../config-user-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
@@ -18,7 +18,9 @@ export interface CreateConfigRequest {
   ownerEmails: string[];
 }
 
-export interface CreateConfigResponse {}
+export interface CreateConfigResponse {
+  configId: ConfigId;
+}
 
 export interface CreateConfigUseCaseDeps {
   dateProvider: DateProvider;
@@ -88,6 +90,8 @@ export function createCreateConfigUseCase(
         ),
     );
 
-    return {};
+    return {
+      configId,
+    };
   };
 }
