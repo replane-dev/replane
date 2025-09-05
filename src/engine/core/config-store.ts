@@ -172,6 +172,10 @@ export class ConfigStore {
   async delete(name: string): Promise<void> {
     await this.db.deleteFrom('configs').where('name', '=', name).execute();
   }
+
+  async deleteById(id: string): Promise<void> {
+    await this.db.deleteFrom('configs').where('id', '=', id).execute();
+  }
 }
 
 function mapConfig(config: Selectable<Configs>): Config {

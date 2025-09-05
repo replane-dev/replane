@@ -34,6 +34,7 @@ export interface ConfigMember extends z.infer<ReturnType<typeof ConfigMember>> {
 
 export function ConfigInfo() {
   return z.object({
+    id: Uuid(),
     name: z.string(),
     descriptionPreview: z.string(),
     createdAt: z.date(),

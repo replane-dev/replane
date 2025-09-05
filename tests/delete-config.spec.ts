@@ -12,7 +12,7 @@ describe('deleteConfig', () => {
 
   it('should delete an existing config', async () => {
     // Create two configs
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: deleteId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'config_to_delete',
       value: {enabled: true},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
@@ -22,7 +22,7 @@ describe('deleteConfig', () => {
       ownerEmails: [TEST_USER_EMAIL],
     });
 
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: keepId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'config_to_keep',
       value: 'keep',
       schema: {type: 'string'},
@@ -44,7 +44,7 @@ describe('deleteConfig', () => {
 
     // Delete one of them
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-      name: 'config_to_delete',
+      configId: deleteId,
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -68,14 +68,14 @@ describe('deleteConfig', () => {
   it('should throw BadRequestError when config does not exist', async () => {
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        name: 'missing_config',
+        configId: '00000000-0000-0000-0000-000000000000' as any, // non-existent id
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
   it('should throw BadRequestError on double delete', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'double_delete',
       value: 1,
       schema: {type: 'number'},
@@ -86,20 +86,20 @@ describe('deleteConfig', () => {
     });
 
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-      name: 'double_delete',
+      configId,
       currentUserEmail: TEST_USER_EMAIL,
     });
 
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        name: 'double_delete',
+        configId,
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
   it('should forbid delete when current user is editor (not owner)', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'cannot_delete_as_editor',
       value: 123,
       schema: {type: 'number'},
@@ -111,7 +111,7 @@ describe('deleteConfig', () => {
 
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        name: 'cannot_delete_as_editor',
+        configId,
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -122,7 +122,7 @@ describe('deleteConfig', () => {
   });
 
   it('should forbid delete when current user is viewer (no membership)', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'cannot_delete_as_viewer',
       value: 'v',
       schema: {type: 'string'},
@@ -134,7 +134,7 @@ describe('deleteConfig', () => {
 
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        name: 'cannot_delete_as_viewer',
+        configId,
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);

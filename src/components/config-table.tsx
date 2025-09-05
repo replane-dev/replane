@@ -59,6 +59,7 @@ export const columns: ColumnDef<{
   createdAt: string | Date;
   updatedAt: string | Date;
   myRole: string;
+  id: string;
 }>[] = [
   {
     id: 'select',
@@ -186,7 +187,7 @@ export const columns: ColumnDef<{
                 onClick={async e => {
                   e.stopPropagation();
                   if (confirm(`Delete config "${config.name}"? This cannot be undone.`)) {
-                    await del.mutateAsync({name: config.name});
+                    await del.mutateAsync({configId: config.myRole});
                   }
                 }}
               >

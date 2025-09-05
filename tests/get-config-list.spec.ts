@@ -40,6 +40,7 @@ describe('getConfigList', () => {
 
     expect(configs).toEqual([
       {
+        id: expect.any(String),
         name: 'first-config',
         createdAt: fixture.now,
         updatedAt: fixture.now,
@@ -48,6 +49,7 @@ describe('getConfigList', () => {
         version: 1,
       },
       {
+        id: expect.any(String),
         name: 'second-config',
         createdAt: fixture.now,
         updatedAt: fixture.now,

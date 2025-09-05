@@ -149,7 +149,7 @@ export default function ConfigByNamePage() {
             onCancel={() => router.push('/app/configs')}
             onDelete={async () => {
               if (confirm(`Delete config "${name}"? This cannot be undone.`)) {
-                await deleteConfig.mutateAsync({name});
+                await deleteConfig.mutateAsync({configId: config.config.id});
                 router.push('/app/configs');
               }
             }}

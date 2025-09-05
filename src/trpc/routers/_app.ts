@@ -79,7 +79,7 @@ export const appRouter = createTRPCRouter({
   deleteConfig: baseProcedure
     .input(
       z.object({
-        name: ConfigName(),
+        configId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -87,7 +87,7 @@ export const appRouter = createTRPCRouter({
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
       await opts.ctx.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        name: opts.input.name,
+        configId: opts.input.configId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
       return {};
