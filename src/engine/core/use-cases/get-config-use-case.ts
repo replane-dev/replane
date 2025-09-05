@@ -46,10 +46,12 @@ export function createGetConfigUseCase(
         } satisfies Config,
         editorEmails: configUsers
           .filter(cu => cu.role === 'editor')
-          .map(cu => cu.user_email_normalized),
+          .map(cu => cu.user_email_normalized)
+          .sort(),
         ownerEmails: configUsers
           .filter(cu => cu.role === 'owner')
-          .map(cu => cu.user_email_normalized),
+          .map(cu => cu.user_email_normalized)
+          .sort(),
         myRole:
           configUsers.find(cu => cu.user_email_normalized === req.currentUserEmail)?.role ??
           'viewer',

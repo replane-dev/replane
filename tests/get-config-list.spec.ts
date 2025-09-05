@@ -58,4 +58,70 @@ describe('getConfigList', () => {
     ] satisfies GetConfigListResponse['configs']);
     expect(configs.length).toBe(2);
   });
+
+  it('should include myRole correctly for viewer, editor, owner and be name ordered', async () => {
+    // owner role
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'z_owner_config',
+      value: 1,
+      schema: {type: 'number'},
+      description: 'Owner config',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
+    });
+    // editor role
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'm_editor_config',
+      value: 2,
+      schema: {type: 'number'},
+      description: 'Editor config',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [TEST_USER_EMAIL],
+      ownerEmails: ['someone@example.com'],
+    });
+    // viewer (no membership)
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'a_viewer_config',
+      value: 3,
+      schema: {type: 'number'},
+      description: 'Viewer config',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: ['someoneelse@example.com'],
+    });
+
+    const {configs} = await fixture.trpc.getConfigList();
+    // Should be ordered by name ascending
+    expect(configs.map(c => c.name)).toEqual([
+      'a_viewer_config',
+      'm_editor_config',
+      'z_owner_config',
+    ]);
+    const roleMap = Object.fromEntries(configs.map(c => [c.name, c.myRole]));
+    expect(roleMap).toEqual({
+      a_viewer_config: 'viewer',
+      m_editor_config: 'editor',
+      z_owner_config: 'owner',
+    });
+  });
+
+  it('should truncate description to 100 chars for descriptionPreview', async () => {
+    const longDescription = 'x'.repeat(150);
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'long_desc_config',
+      value: 'v',
+      schema: {type: 'string'},
+      description: longDescription,
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [],
+    });
+
+    const {configs} = await fixture.trpc.getConfigList();
+    const found = configs.find(c => c.name === 'long_desc_config');
+    expect(found).toBeDefined();
+    expect(found!.descriptionPreview.length).toBe(100);
+    expect(found!.descriptionPreview).toBe(longDescription.substring(0, 100));
+  });
 });

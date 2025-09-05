@@ -115,26 +115,79 @@ describe('createConfig', () => {
     } satisfies GetConfigResponse['config']);
   });
 
-  it('should validate that config value matches schema', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-      name: 'schema_validation_config',
-      value: {flag: true},
-      schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
-      description: 'A config for testing schema validation',
-      currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [],
-      ownerEmails: [CURRENT_USER_EMAIL],
-    });
-
+  it('should reject creation when value does not match schema', async () => {
     await expect(
-      fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
-        configId,
-        value: {newValue: {flag: 'not_a_boolean'}},
-        schema: {newSchema: {type: 'object', properties: {flag: {type: 'boolean'}}}},
-        description: {newDescription: 'An updated config with invalid value'},
+      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'schema_mismatch_on_create',
+        value: {flag: 'not_boolean'},
+        schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+        description: 'Invalid create schema',
         currentUserEmail: CURRENT_USER_EMAIL,
-        prevVersion: 1,
+        editorEmails: [],
+        ownerEmails: [],
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it('should create config with members and set myRole=owner', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'config_with_members_owner',
+      value: 1,
+      schema: {type: 'number'},
+      description: 'Members test owner',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: ['editor1@example.com', 'editor2@example.com'],
+      ownerEmails: [CURRENT_USER_EMAIL, 'owner2@example.com'],
+    });
+
+    const {config} = await fixture.trpc.getConfig({name: 'config_with_members_owner'});
+    expect(config).toBeDefined();
+    // Structural checks (excluding ownerEmails order)
+    expect(config).toEqual({
+      config: {
+        name: 'config_with_members_owner',
+        value: 1,
+        schema: {type: 'number'},
+        description: 'Members test owner',
+        createdAt: fixture.now,
+        updatedAt: fixture.now,
+        creatorId: TEST_USER_ID,
+        id: expect.any(String),
+        version: 1,
+      },
+      editorEmails: ['editor1@example.com', 'editor2@example.com'].map(normalizeEmail),
+      ownerEmails: [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
+      myRole: 'owner',
+    } satisfies GetConfigResponse['config']);
+  });
+
+  it('should set myRole=editor when current user only an editor', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'config_with_editor_role',
+      value: 'x',
+      schema: {type: 'string'},
+      description: 'Members test editor',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: ['other-owner@example.com'],
+    });
+
+    const {config} = await fixture.trpc.getConfig({name: 'config_with_editor_role'});
+    expect(config).toEqual({
+      config: {
+        name: 'config_with_editor_role',
+        value: 'x',
+        schema: {type: 'string'},
+        description: 'Members test editor',
+        createdAt: fixture.now,
+        updatedAt: fixture.now,
+        creatorId: TEST_USER_ID,
+        id: expect.any(String),
+        version: 1,
+      },
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [normalizeEmail('other-owner@example.com')],
+      myRole: 'editor',
+    } satisfies GetConfigResponse['config']);
   });
 });

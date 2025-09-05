@@ -45,4 +45,54 @@ describe('getConfig', () => {
 
     expect(config).toBeUndefined();
   });
+
+  it('should reflect owner role and owner/editor lists', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'owner-role-config',
+      value: 'x',
+      schema: {type: 'string'},
+      description: 'Owner role',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: ['editor@example.com'],
+      ownerEmails: [TEST_USER_EMAIL, 'owner2@example.com'],
+    });
+    const {config} = await fixture.trpc.getConfig({name: 'owner-role-config'});
+    expect(config?.myRole).toBe('owner');
+    expect(config?.ownerEmails.sort()).toEqual(
+      [
+        TEST_USER_EMAIL,
+        expect.any(String), // normalized email of owner2
+      ].sort(),
+    );
+    expect(config?.editorEmails).toEqual(['editor@example.com']);
+  });
+
+  it('should reflect editor role', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'editor-role-config',
+      value: 'x',
+      schema: {type: 'string'},
+      description: 'Editor role',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [TEST_USER_EMAIL],
+      ownerEmails: ['another-owner@example.com'],
+    });
+    const {config} = await fixture.trpc.getConfig({name: 'editor-role-config'});
+    expect(config?.myRole).toBe('editor');
+    expect(config?.editorEmails).toContain(TEST_USER_EMAIL);
+  });
+
+  it('should reflect viewer role when not a member', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'viewer-role-config',
+      value: 'x',
+      schema: {type: 'string'},
+      description: 'Viewer role',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: ['different-owner@example.com'],
+    });
+    const {config} = await fixture.trpc.getConfig({name: 'viewer-role-config'});
+    expect(config?.myRole).toBe('viewer');
+  });
 });

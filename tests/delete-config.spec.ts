@@ -1,5 +1,5 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {BadRequestError} from '@/engine/core/errors';
+import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe} from 'node:test';
 import {expect, it} from 'vitest';
@@ -96,5 +96,50 @@ describe('deleteConfig', () => {
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it('should forbid delete when current user is editor (not owner)', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'cannot_delete_as_editor',
+      value: 123,
+      schema: {type: 'number'},
+      description: 'Editor cannot delete',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [TEST_USER_EMAIL],
+      ownerEmails: ['other-owner@example.com'],
+    });
+
+    await expect(
+      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+        name: 'cannot_delete_as_editor',
+        currentUserEmail: TEST_USER_EMAIL,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    // Still exists
+    const {config} = await fixture.trpc.getConfig({name: 'cannot_delete_as_editor'});
+    expect(config).toBeDefined();
+  });
+
+  it('should forbid delete when current user is viewer (no membership)', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'cannot_delete_as_viewer',
+      value: 'v',
+      schema: {type: 'string'},
+      description: 'Viewer cannot delete',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: ['other-owner@example.com'],
+    });
+
+    await expect(
+      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+        name: 'cannot_delete_as_viewer',
+        currentUserEmail: TEST_USER_EMAIL,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    const {config} = await fixture.trpc.getConfig({name: 'cannot_delete_as_viewer'});
+    expect(config).toBeDefined();
   });
 });
