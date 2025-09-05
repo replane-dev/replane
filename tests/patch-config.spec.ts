@@ -1,0 +1,223 @@
+import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
+import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
+import {normalizeEmail} from '@/engine/core/utils';
+import {describe, expect, it} from 'vitest';
+import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+
+const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
+
+// Additional emails for membership tests
+const OTHER_EDITOR_EMAIL = normalizeEmail('other-editor@example.com');
+const NEW_EDITOR_EMAIL = normalizeEmail('new-editor@example.com');
+
+describe('patchConfig', () => {
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
+
+  it('should patch value and description (editor permission)', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_basic',
+      value: {flag: true},
+      schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+      description: 'Initial description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+    });
+
+    // capture initial creation time before advancing time
+    const initialDate = fixture.now;
+    const nextDate = new Date('2020-01-02T00:00:00Z');
+    fixture.setNow(nextDate); // affects updatedAt only
+
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {flag: false}},
+      description: {newDescription: 'Updated description'},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const {config} = await fixture.trpc.getConfig({name: 'patch_basic'});
+
+    expect(config).toEqual({
+      config: {
+        name: 'patch_basic',
+        value: {flag: false},
+        schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+        description: 'Updated description',
+        createdAt: initialDate, // unchanged
+        updatedAt: fixture.now, // advanced date
+        creatorId: TEST_USER_ID,
+        id: expect.any(String),
+        version: 2,
+      },
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      myRole: 'editor',
+    } satisfies GetConfigResponse['config']);
+  });
+
+  it('should patch schema and value when both valid', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_schema',
+      value: {count: 1},
+      schema: {type: 'object', properties: {count: {type: 'number'}}},
+      description: 'Schema test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+    });
+
+    fixture.setNow(new Date('2020-01-03T00:00:00Z'));
+
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {count: 2, extra: 'ok'}},
+      schema: {
+        newSchema: {type: 'object', properties: {count: {type: 'number'}, extra: {type: 'string'}}},
+      },
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const {config} = await fixture.trpc.getConfig({name: 'patch_schema'});
+    expect(config?.config.version).toBe(2);
+    expect(config?.config.value).toEqual({count: 2, extra: 'ok'});
+    expect(config?.config.schema).toEqual({
+      type: 'object',
+      properties: {count: {type: 'number'}, extra: {type: 'string'}},
+    });
+  });
+
+  it('should fail when provided value does not match new schema', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_schema_invalid',
+      value: {flag: true},
+      schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+      description: 'Invalid schema test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+    });
+
+    await expect(
+      fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+        configId,
+        value: {newValue: {flag: 'nope'}},
+        schema: {newSchema: {type: 'object', properties: {flag: {type: 'boolean'}}}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+        prevVersion: 1,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it('should fail with version mismatch', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_version_conflict',
+      value: 1,
+      schema: {type: 'number'},
+      description: 'Version conflict test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+    });
+
+    await expect(
+      fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+        configId,
+        value: {newValue: 2},
+        currentUserEmail: CURRENT_USER_EMAIL,
+        prevVersion: 999, // wrong prev version
+      }),
+    ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it('should enforce manage permission when changing members', async () => {
+    const {configId: editorOnlyId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_members_forbidden',
+      value: 'v',
+      schema: {type: 'string'},
+      description: 'Members perm test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+    });
+
+    await expect(
+      fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+        configId: editorOnlyId,
+        members: {newMembers: [{email: CURRENT_USER_EMAIL, role: 'editor'}]},
+        currentUserEmail: CURRENT_USER_EMAIL,
+        prevVersion: 1,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('should update members (add & remove) when user is owner', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_members_success',
+      value: 'v1',
+      schema: {type: 'string'},
+      description: 'Members success test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [OTHER_EDITOR_EMAIL],
+      ownerEmails: [CURRENT_USER_EMAIL],
+    });
+
+    // Remove OTHER_EDITOR_EMAIL, add NEW_EDITOR_EMAIL
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      members: {
+        newMembers: [
+          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: NEW_EDITOR_EMAIL, role: 'editor'},
+        ],
+      },
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const {config} = await fixture.trpc.getConfig({name: 'patch_members_success'});
+
+    expect(config).toEqual({
+      config: {
+        name: 'patch_members_success',
+        value: 'v1',
+        schema: {type: 'string'},
+        description: 'Members success test',
+        createdAt: fixture.now,
+        updatedAt: fixture.now,
+        creatorId: TEST_USER_ID,
+        id: expect.any(String),
+        version: 2,
+      },
+      editorEmails: [NEW_EDITOR_EMAIL],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      myRole: 'owner',
+    } satisfies GetConfigResponse['config']);
+  });
+
+  it('should allow removing schema (set to null) without validation', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_remove_schema',
+      value: {flag: true},
+      schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+      description: 'Remove schema test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+    });
+
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      schema: {newSchema: null},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const {config} = await fixture.trpc.getConfig({name: 'patch_remove_schema'});
+    expect(config?.config.schema).toBeNull();
+    expect(config?.config.version).toBe(2);
+  });
+});

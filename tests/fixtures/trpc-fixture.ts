@@ -1,7 +1,7 @@
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
 import type {LogLevel} from '@/engine/core/logger';
-import {ensureDefined} from '@/engine/core/utils';
+import {ensureDefined, normalizeEmail} from '@/engine/core/utils';
 import {createEngine, type Engine} from '@/engine/engine';
 import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
@@ -58,7 +58,7 @@ export class AppFixture {
 
     const createCaller = createCallerFactory(appRouter);
 
-    this._trpc = createCaller({engine, currentUserEmail: this.options.authEmail});
+    this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
     this._engine = engine;
   }
 
