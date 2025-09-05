@@ -2,12 +2,14 @@ import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
+import {ConfigVersionStore} from './core/config-version-store';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
 import {ConflictError} from './core/errors';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
+import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
 import type {UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
@@ -15,7 +17,7 @@ import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
-import {createUpdateConfigUseCase} from './core/use-cases/update-config-use-case';
+import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
 import {UserStore} from './core/user-store';
 
 export interface EngineOptions {
@@ -43,10 +45,18 @@ function toEngineUseCase<TReq, TRes>(
   return async (ctx: Context, req: TReq) => {
     for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
       const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
+      const configs = new ConfigStore(dbTx);
+      const users = new UserStore(dbTx);
+      const configUsers = new ConfigUserStore(dbTx);
+      const configVersions = new ConfigVersionStore(dbTx);
+      const permissionService = new PermissionService(configUsers);
+
       const tx: UseCaseTransaction = {
-        configs: new ConfigStore(dbTx),
-        users: new UserStore(dbTx),
-        configUsers: new ConfigUserStore(dbTx),
+        configs,
+        users,
+        configUsers,
+        configVersions,
+        permissionService,
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -96,7 +106,7 @@ export async function createEngine(options: EngineOptions) {
     getHealth: createGetHealthUseCase(),
     getConfigList: createGetConfigListUseCase({}),
     createConfig: createCreateConfigUseCase({dateProvider}),
-    updateConfig: createUpdateConfigUseCase({dateProvider}),
+    patchConfig: createPatchConfigUseCase({dateProvider}),
     getConfig: createGetConfigUseCase({}),
     deleteConfig: createDeleteConfigUseCase(),
   } satisfies UseCaseMap;
@@ -151,8 +161,13 @@ function addUseCaseLogging(
   logger: Logger,
 ): LibUseCase<any, any> {
   return async (ctx, request): Promise<any> => {
-    logger.info(ctx, {msg: `Running use case: ${useCaseName}...`});
-    return await useCase(ctx, request);
+    try {
+      logger.info(ctx, {msg: `Running use case: ${useCaseName}...`});
+      return await useCase(ctx, request);
+    } catch (error) {
+      logger.error(ctx, {msg: `Use case ${useCaseName} failed`, error});
+      throw error;
+    }
   };
 }
 

@@ -1,5 +1,8 @@
 import Ajv, {type ErrorObject, type JSONSchemaType} from 'ajv';
 import assert from 'node:assert';
+import type {NormalizedEmail} from './zod';
+
+export type Brand<T, B> = T & {__brand: () => B | undefined};
 
 export function ensureDefined<T>(value: T | undefined, message: string): T {
   if (value === undefined || value === null) {
@@ -139,6 +142,6 @@ export function isValidJsonSchema(schema: unknown): boolean {
   }
 }
 
-export function normalizeUserEmail(email: string) {
-  return email.trim().toLowerCase();
+export function normalizeEmail(email: string): NormalizedEmail {
+  return email.trim().toLowerCase() as NormalizedEmail;
 }

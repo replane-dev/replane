@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import type {ConfigUserRole} from '@/engine/core/db';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
@@ -25,7 +26,7 @@ export default function ConfigByNamePage() {
   const name = decodeURIComponent(nameParam ?? '');
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name}));
-  const updateConfig = useMutation(trpc.updateConfig.mutationOptions());
+  const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
   const deleteConfig = useMutation(trpc.deleteConfig.mutationOptions());
 
   const config = data.config;
@@ -34,13 +35,17 @@ export default function ConfigByNamePage() {
     if (!config) return '';
     try {
       return JSON.stringify(
-        typeof config.value === 'string' ? JSON.parse(config.value) : config.value,
+        typeof config.config.value === 'string'
+          ? JSON.parse(config.config.value)
+          : config.config.value,
         null,
         2,
       );
     } catch {
       // if parsing fails, still show as string
-      return typeof config.value === 'string' ? config.value : String(config.value);
+      return typeof config.config.value === 'string'
+        ? config.config.value
+        : String(config.config.value);
     }
   }, [config]);
 
@@ -79,13 +84,20 @@ export default function ConfigByNamePage() {
     ownerEmails: string[];
     editorEmails: string[];
   }) {
-    await updateConfig.mutateAsync({
+    await patchConfig.mutateAsync({
       configName: name,
-      value: data.value,
-      schema: data.schema,
-      description: data.description,
-      editorEmails: data.editorEmails,
-      ownerEmails: data.ownerEmails,
+      value: {newValue: data.value},
+      schema: config?.myRole === 'owner' ? {newSchema: data.schema} : undefined,
+      description: {newDescription: data.description},
+      members:
+        config?.myRole === 'owner'
+          ? {
+              newMembers: [
+                ...data.ownerEmails.map(email => ({email, role: 'owner' as ConfigUserRole})),
+                ...data.editorEmails.map(email => ({email, role: 'editor' as ConfigUserRole})),
+              ],
+            }
+          : undefined,
     });
     router.push('/app/configs');
   }
@@ -115,18 +127,20 @@ export default function ConfigByNamePage() {
         <div className="max-w-3xl space-y-6">
           <ConfigForm
             mode="edit"
-            role="owner"
+            role={config.myRole}
             defaultName={name}
             defaultValue={defaultValue}
-            defaultSchemaEnabled={!!config?.schema}
-            defaultSchema={config?.schema ? JSON.stringify(config.schema, null, 2) : ''}
-            defaultDescription={config?.description ?? ''}
-            defaultOwnerEmails={[]}
-            defaultEditorEmails={[]}
+            defaultSchemaEnabled={!!config.config?.schema}
+            defaultSchema={
+              config.config?.schema ? JSON.stringify(config.config.schema, null, 2) : ''
+            }
+            defaultDescription={config.config?.description ?? ''}
+            defaultOwnerEmails={config.ownerEmails}
+            defaultEditorEmails={config.editorEmails}
             editorIdPrefix={`edit-config-${name}`}
-            createdAt={config.createdAt}
-            updatedAt={config.updatedAt}
-            submitting={updateConfig.isPending}
+            createdAt={config.config.createdAt}
+            updatedAt={config.config.updatedAt}
+            submitting={patchConfig.isPending}
             onCancel={() => router.push('/app/configs')}
             onDelete={async () => {
               if (confirm(`Delete config "${name}"? This cannot be undone.`)) {

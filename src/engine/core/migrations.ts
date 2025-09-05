@@ -69,7 +69,8 @@ export const migrations: Migration[] = [
         schema JSONB NULL,
         creator_id INT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMPTZ(3) NOT NULL,
-        updated_at TIMESTAMPTZ(3) NOT NULL
+        updated_at TIMESTAMPTZ(3) NOT NULL,
+        version INT NOT NULL
       );
 
       CREATE UNIQUE INDEX idx_configs_name ON configs(name);
@@ -98,6 +99,19 @@ export const migrations: Migration[] = [
 
       CREATE INDEX idx_api_tokens_token_hash ON api_tokens(token_hash);
       CREATE INDEX idx_api_tokens_creator_id ON api_tokens(creator_id);
+
+      CREATE TABLE config_versions (
+        id UUID PRIMARY KEY,
+        config_id UUID NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        version INT NOT NULL,
+        description TEXT NOT NULL,
+        value JSONB NOT NULL,
+        schema JSONB NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE UNIQUE INDEX idx_config_versions_config_id_version ON config_versions(config_id, version);
     `,
   },
 ];

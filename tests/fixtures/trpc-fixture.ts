@@ -58,7 +58,7 @@ export class AppFixture {
 
     const createCaller = createCallerFactory(appRouter);
 
-    this._trpc = createCaller({engine, accountEmail: this.options.authEmail});
+    this._trpc = createCaller({engine, currentUserEmail: this.options.authEmail});
     this._engine = engine;
   }
 

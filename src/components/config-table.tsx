@@ -23,7 +23,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {Input} from '@/components/ui/input';
@@ -59,6 +58,7 @@ export const columns: ColumnDef<{
   descriptionPreview?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+  myRole: string;
 }>[] = [
   {
     id: 'select',
@@ -177,22 +177,22 @@ export const columns: ColumnDef<{
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => navigator.clipboard.writeText(config.name)}>
-              Copy config name
+              Copy name
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View config details</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-red-600 focus:text-red-700"
-              onClick={async e => {
-                e.stopPropagation();
-                if (confirm(`Delete config "${config.name}"? This cannot be undone.`)) {
-                  await del.mutateAsync({name: config.name});
-                }
-              }}
-            >
-              Delete
-            </DropdownMenuItem>
+            <DropdownMenuItem>View details</DropdownMenuItem>
+            {config.myRole === 'owner' && (
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-700"
+                onClick={async e => {
+                  e.stopPropagation();
+                  if (confirm(`Delete config "${config.name}"? This cannot be undone.`)) {
+                    await del.mutateAsync({name: config.name});
+                  }
+                }}
+              >
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );

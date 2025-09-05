@@ -4,7 +4,7 @@ import {
   getDaysAgo,
   isValidJsonSchema,
   mapConcurrently,
-  normalizeUserEmail,
+  normalizeEmail,
   trimEnd,
   unique,
   validateAgainstJsonSchema,
@@ -229,19 +229,19 @@ describe('isValidJsonSchema', () => {
 describe('normalizeUserEmail', () => {
   it('trims whitespace and lowercases the email', () => {
     const input = '  Alice.Smith+Dev@Example.COM  ';
-    const normalized = normalizeUserEmail(input);
+    const normalized = normalizeEmail(input);
     expect(normalized).toBe('alice.smith+dev@example.com');
   });
 
   it('is idempotent', () => {
     const input = 'User+Test@Example.com';
-    const once = normalizeUserEmail(input);
-    const twice = normalizeUserEmail(once);
+    const once = normalizeEmail(input);
+    const twice = normalizeEmail(once);
     expect(twice).toBe(once);
   });
 
   it('handles empty string', () => {
-    expect(normalizeUserEmail('')).toBe('');
+    expect(normalizeEmail('')).toBe('');
   });
 });
 

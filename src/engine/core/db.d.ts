@@ -59,12 +59,24 @@ export interface Configs {
   schema: Json | null;
   updated_at: Timestamp;
   value: Json;
+  version: number;
 }
 
 export interface ConfigUsers {
   config_id: string;
   role: ConfigUserRole;
   user_email_normalized: string;
+}
+
+export interface ConfigVersions {
+  config_id: string;
+  created_at: Timestamp;
+  description: string;
+  id: string;
+  name: string;
+  schema: Json | null;
+  value: Json;
+  version: number;
 }
 
 export interface Migrations {
@@ -98,6 +110,7 @@ export interface DB {
   accounts: Accounts;
   api_tokens: ApiTokens;
   config_users: ConfigUsers;
+  config_versions: ConfigVersions;
   configs: Configs;
   migrations: Migrations;
   sessions: Sessions;

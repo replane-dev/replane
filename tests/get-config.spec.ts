@@ -1,10 +1,11 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
+import {normalizeEmail} from '@/engine/core/utils';
 import {describe} from 'node:test';
 import {expect, it} from 'vitest';
 import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
 
-const TEST_USER_EMAIL = 'test@example.com';
+const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
 describe('getConfig', () => {
   const fixture = useAppFixture({authEmail: TEST_USER_EMAIL});

@@ -1,12 +1,14 @@
 import {authOptions} from '@/app/api/auth/[...nextauth]/route';
 import {Lazy} from '@/engine/core/lazy';
+import {normalizeEmail} from '@/engine/core/utils';
+import type {NormalizedEmail} from '@/engine/core/zod';
 import {createEngine, type Engine} from '@/engine/engine';
 import {initTRPC} from '@trpc/server';
 import {getServerSession} from 'next-auth';
 import {cache} from 'react';
 
 export interface TrpcContext {
-  accountEmail: string | undefined;
+  currentUserEmail: NormalizedEmail | undefined;
   engine: Engine;
 }
 
@@ -24,7 +26,10 @@ const engine = new Lazy(async () => {
 export const createTrpcContext = cache(async (): Promise<TrpcContext> => {
   const session = await getServerSession(authOptions);
 
-  return {accountEmail: session?.user?.email ?? undefined, engine: await engine.get()};
+  return {
+    currentUserEmail: session?.user?.email ? normalizeEmail(session.user.email) : undefined,
+    engine: await engine.get(),
+  };
 });
 
 // Avoid exporting the entire t-object

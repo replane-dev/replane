@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {diffConfigUsers} from './update-config-use-case';
+import {diffConfigUsers} from './patch-config-use-case';
 
 describe('diffConfigUsers', () => {
   it('returns added users that are present in new but not in existing', () => {

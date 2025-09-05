@@ -1,18 +1,9 @@
-import z from 'zod';
 import type {UseCase} from '../use-case';
+import type {ConfigInfo, NormalizedEmail} from '../zod';
 
-export function ConfigInfo() {
-  return z.object({
-    name: z.string(),
-    descriptionPreview: z.string(),
-    createdAt: z.date(),
-    updatedAt: z.date(),
-  });
+export interface GetConfigListRequest {
+  currentUserEmail: NormalizedEmail;
 }
-
-export interface ConfigInfo extends z.infer<ReturnType<typeof ConfigInfo>> {}
-
-export interface GetConfigListRequest {}
 
 export interface GetConfigListResponse {
   configs: ConfigInfo[];
@@ -23,15 +14,9 @@ export interface GetConfigListUseCasesDeps {}
 export function createGetConfigListUseCase(
   deps: GetConfigListUseCasesDeps,
 ): UseCase<GetConfigListRequest, GetConfigListResponse> {
-  return async (ctx, tx) => {
-    const configs = await tx.configs.getAll();
+  return async (ctx, tx, req) => {
     return {
-      configs: configs.map(c => ({
-        name: c.name,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-        descriptionPreview: c.description.substring(0, 100),
-      })),
+      configs: await tx.configs.getAll({currentUserEmail: req.currentUserEmail}),
     };
   };
 }

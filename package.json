@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack | pino-pretty",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -14,7 +14,6 @@
     "migrate:codegen": "dotenv -- kysely-codegen --out-file ./src/engine/core/db.d.ts && prettier --write ./src/engine/core/db.d.ts && eslint ./src/engine/core/db.d.ts --fix"
   },
   "dependencies": {
-    "ajv": "^8.17.1",
     "@auth/pg-adapter": "^1.10.0",
     "@hookform/resolvers": "^5.2.1",
     "@icons-pack/react-simple-icons": "^13.7.0",
@@ -50,6 +49,7 @@
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
+    "ajv": "^8.17.1",
     "class-variance-authority": "^0.7.1",
     "client-only": "^0.0.1",
     "clsx": "^2.1.1",
@@ -97,6 +97,7 @@
     "eslint-config-next": "15.4.5",
     "jsdom": "^26.1.0",
     "kysely-codegen": "^0.18.5",
+    "pino-pretty": "^13.1.1",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",
     "tailwindcss": "^4",

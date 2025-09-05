@@ -1,6 +1,6 @@
 import type {Kysely} from 'kysely';
 import type {DB} from './db';
-import {normalizeUserEmail} from './utils';
+import {normalizeEmail} from './utils';
 
 export type ConfigUserRole = 'owner' | 'editor';
 
@@ -11,6 +11,15 @@ export interface NewConfigUser {
 
 export class ConfigUserStore {
   constructor(private readonly db: Kysely<DB>) {}
+
+  async getByConfigIdAndEmail(params: {configId: string; userEmail: string}) {
+    return await this.db
+      .selectFrom('config_users')
+      .selectAll()
+      .where('config_id', '=', params.configId)
+      .where('user_email_normalized', '=', normalizeEmail(params.userEmail))
+      .executeTakeFirst();
+  }
 
   async getByConfigId(configId: string) {
     return await this.db
@@ -29,7 +38,7 @@ export class ConfigUserStore {
       .values(
         configUsers.map(({email, role}) => ({
           config_id: configId,
-          user_email_normalized: normalizeUserEmail(email),
+          user_email_normalized: normalizeEmail(email),
           role,
         })),
       )
@@ -40,7 +49,7 @@ export class ConfigUserStore {
     await this.db
       .deleteFrom('config_users')
       .where('config_id', '=', configId)
-      .where('user_email_normalized', '=', normalizeUserEmail(userEmail))
+      .where('user_email_normalized', '=', normalizeEmail(userEmail))
       .execute();
   }
 }
