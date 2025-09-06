@@ -99,6 +99,7 @@ export class ConfigStore {
       descriptionPreview: c.description.substring(0, 100),
       myRole: c.myRole ?? 'viewer',
       version: c.version,
+      id: c.id,
     }));
   }
 
