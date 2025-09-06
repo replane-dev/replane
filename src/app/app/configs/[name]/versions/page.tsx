@@ -14,11 +14,12 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/c
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
-import {useParams} from 'next/navigation';
+import {useParams, useRouter} from 'next/navigation';
 import {Fragment} from 'react';
 
 export default function ConfigVersionsPage() {
   const {name: rawName} = useParams<{name: string}>();
+  const router = useRouter();
   const name = decodeURIComponent(rawName ?? '');
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name}));
@@ -65,16 +66,25 @@ export default function ConfigVersionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {versions.map(v => (
-                <TableRow key={v.id}>
-                  <TableCell>{v.version}</TableCell>
-                  <TableCell>{new Date(v.createdAt).toLocaleString()}</TableCell>
-                  <TableCell className="max-w-[400px] truncate" title={v.description}>
-                    {v.description}
-                  </TableCell>
-                  <TableCell>{v.authorEmail ?? '—'}</TableCell>
-                </TableRow>
-              ))}
+              {versions.map(v => {
+                const versionLink = `/app/configs/${encodeURIComponent(name)}/versions/${v.version}`;
+                return (
+                  <TableRow
+                    key={v.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => router.push(versionLink)}
+                  >
+                    <TableCell className="font-medium">{v.version}</TableCell>
+                    <TableCell>{new Date(v.createdAt).toLocaleString()}</TableCell>
+                    <TableCell className="max-w-[400px] truncate" title={v.description}>
+                      {v.description || '—'}
+                    </TableCell>
+                    <TableCell>{v.authorEmail ?? '—'}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

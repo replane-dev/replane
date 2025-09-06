@@ -17,8 +17,10 @@ import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
+import {createGetConfigVersionUseCase} from './core/use-cases/get-config-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
+import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
 import {UserStore} from './core/user-store';
 
 export interface EngineOptions {
@@ -111,6 +113,8 @@ export async function createEngine(options: EngineOptions) {
     getConfig: createGetConfigUseCase({}),
     deleteConfig: createDeleteConfigUseCase(),
     getConfigVersionList: createGetConfigVersionListUseCase({}),
+    getConfigVersion: createGetConfigVersionUseCase({}),
+    restoreConfigVersion: createRestoreConfigVersionUseCase({dateProvider}),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;

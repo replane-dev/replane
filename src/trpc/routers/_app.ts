@@ -125,6 +125,44 @@ export const appRouter = createTRPCRouter({
       });
       return result;
     }),
+  getConfigVersion: baseProcedure
+    .input(
+      z.object({
+        name: z.string(),
+        version: z.number(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const result = await opts.ctx.engine.useCases.getConfigVersion(GLOBAL_CONTEXT, {
+        name: opts.input.name,
+        version: opts.input.version,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return result;
+    }),
+  restoreConfigVersion: baseProcedure
+    .input(
+      z.object({
+        name: z.string(),
+        versionToRestore: z.number(),
+        expectedCurrentVersion: z.number(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const result = await opts.ctx.engine.useCases.restoreConfigVersion(GLOBAL_CONTEXT, {
+        name: opts.input.name,
+        versionToRestore: opts.input.versionToRestore,
+        expectedCurrentVersion: opts.input.expectedCurrentVersion,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return result;
+    }),
 });
 
 export type AppRouter = typeof appRouter;

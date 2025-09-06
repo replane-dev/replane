@@ -71,4 +71,56 @@ export class ConfigVersionStore {
       authorEmail: (r as any).author_email as string | null,
     }));
   }
+
+  async getByConfigIdAndVersion(
+    configId: string,
+    version: number,
+  ): Promise<
+    | {
+        id: ConfigVersionId;
+        version: number;
+        createdAt: Date;
+        description: string;
+        value: unknown;
+        schema: unknown;
+        authorEmail: string | null;
+      }
+    | undefined
+  > {
+    const row = await this.db
+      .selectFrom('config_versions')
+      .leftJoin('users', 'users.id', 'config_versions.author_id')
+      .select([
+        'config_versions.id as id',
+        'config_versions.version as version',
+        'config_versions.created_at as created_at',
+        'config_versions.description as description',
+        'config_versions.value as value',
+        'config_versions.schema as schema',
+        'users.email as author_email',
+      ])
+      .where('config_versions.config_id', '=', configId)
+      .where('config_versions.version', '=', version)
+      .executeTakeFirst();
+
+    if (!row) return undefined;
+
+    // value & schema columns stored as { value: ... }
+    const extractJsonWrapper = (input: unknown): unknown => {
+      if (input && typeof input === 'object' && 'value' in (input as Record<string, unknown>)) {
+        return (input as Record<string, unknown>).value;
+      }
+      return input;
+    };
+
+    return {
+      id: row.id as ConfigVersionId,
+      version: row.version,
+      createdAt: row.created_at,
+      description: row.description,
+      value: extractJsonWrapper(row.value),
+      schema: row.schema === null ? null : extractJsonWrapper(row.schema),
+      authorEmail: (row as unknown as {author_email: string | null}).author_email,
+    };
+  }
 }

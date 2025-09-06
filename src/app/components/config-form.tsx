@@ -280,13 +280,13 @@ export function ConfigForm(props: ConfigFormProps) {
                         <GitCommitVertical className="h-3.5 w-3.5" /> Version
                       </div>
                       <div className="sm:col-span-9 flex items-center gap-2">
-                        <span>v{currentVersion}</span>
+                        <span>{currentVersion}</span>
                         {versionsLink && (
                           <Link
                             href={versionsLink}
                             className="text-xs underline text-muted-foreground hover:text-foreground"
                           >
-                            View previous versions
+                            View history
                           </Link>
                         )}
                       </div>
