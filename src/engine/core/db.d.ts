@@ -48,6 +48,8 @@ export interface ApiTokens {
   creator_id: number;
   id: string;
   token_hash: string;
+  name: string;
+  description: string;
 }
 
 export interface AuditMessages {

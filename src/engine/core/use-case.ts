@@ -1,3 +1,4 @@
+import type {ApiTokenStore} from './api-token-store';
 import {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import type {ConfigVersionStore} from './config-version-store';
@@ -15,4 +16,5 @@ export interface UseCaseTransaction {
   configUsers: ConfigUserStore;
   configVersions: ConfigVersionStore;
   permissionService: PermissionService;
+  apiTokens: ApiTokenStore;
 }

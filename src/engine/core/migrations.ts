@@ -139,6 +139,14 @@ export const migrations: Migration[] = [
       WHERE cv.config_id = c.id AND cv.author_id IS NULL;
     `,
   },
+  {
+    // Add name & description to api_tokens for better identification
+    sql: /*sql*/ `
+      ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '';
+      ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+      -- No separate index needed now; queries primarily by creator or list all.
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger) {

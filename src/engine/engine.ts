@@ -1,5 +1,6 @@
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
+import {ApiTokenStore} from './core/api-token-store';
 import {ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
 import {ConfigVersionStore} from './core/config-version-store';
@@ -12,8 +13,12 @@ import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
 import type {UseCase, UseCaseTransaction} from './core/use-case';
+import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
+import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
+import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
+import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
@@ -52,6 +57,7 @@ function toEngineUseCase<TReq, TRes>(
       const users = new UserStore(dbTx);
       const configUsers = new ConfigUserStore(dbTx);
       const configVersions = new ConfigVersionStore(dbTx);
+      const apiTokens = new ApiTokenStore(dbTx);
       const permissionService = new PermissionService(configUsers);
 
       const tx: UseCaseTransaction = {
@@ -60,6 +66,7 @@ function toEngineUseCase<TReq, TRes>(
         configUsers,
         configVersions,
         permissionService,
+        apiTokens,
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -114,7 +121,11 @@ export async function createEngine(options: EngineOptions) {
     deleteConfig: createDeleteConfigUseCase(),
     getConfigVersionList: createGetConfigVersionListUseCase({}),
     getConfigVersion: createGetConfigVersionUseCase({}),
+    getApiKeyList: createGetApiKeyListUseCase(),
+    getApiKey: createGetApiKeyUseCase(),
+    deleteApiKey: createDeleteApiKeyUseCase(),
     restoreConfigVersion: createRestoreConfigVersionUseCase({dateProvider}),
+    createApiKey: createCreateApiKeyUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;

@@ -1,6 +1,5 @@
-import {Logger as PinoLogger, pino, type Level} from 'pino';
-import {Context} from './context';
-
+import {pino, type Level, type Logger as PinoLogger} from 'pino';
+import type {Context} from './context';
 export type LogLevel = Level | 'silent';
 
 export interface LogEntry {

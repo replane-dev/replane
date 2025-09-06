@@ -143,6 +143,46 @@ export const appRouter = createTRPCRouter({
       });
       return result;
     }),
+  getApiKeyList: baseProcedure.query(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
+  }),
+  getApiKey: baseProcedure
+    .input(
+      z.object({
+        id: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
+        id: opts.input.id,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  createApiKey: baseProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().max(1000).optional().default(''),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        name: opts.input.name,
+        description: opts.input.description ?? '',
+      });
+    }),
   restoreConfigVersion: baseProcedure
     .input(
       z.object({
@@ -162,6 +202,22 @@ export const appRouter = createTRPCRouter({
         currentUserEmail: opts.ctx.currentUserEmail,
       });
       return result;
+    }),
+  deleteApiKey: baseProcedure
+    .input(
+      z.object({
+        id: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      await opts.ctx.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
+        id: opts.input.id,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return {};
     }),
 });
 
