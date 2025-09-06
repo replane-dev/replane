@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
+import {ConfigVersionsTable} from '@/components/config-versions-table';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
@@ -55,39 +55,7 @@ export default function ConfigVersionsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         {!versions && <div>Config "{name}" not found.</div>}
         {versions && versions.length === 0 && <div>No versions yet.</div>}
-        {versions && versions.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Version</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Author</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {versions.map(v => {
-                const versionLink = `/app/configs/${encodeURIComponent(name)}/versions/${v.version}`;
-                return (
-                  <TableRow
-                    key={v.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    tabIndex={0}
-                    role="button"
-                    onClick={() => router.push(versionLink)}
-                  >
-                    <TableCell className="font-medium">{v.version}</TableCell>
-                    <TableCell>{new Date(v.createdAt).toLocaleString()}</TableCell>
-                    <TableCell className="max-w-[400px] truncate" title={v.description}>
-                      {v.description || '—'}
-                    </TableCell>
-                    <TableCell>{v.authorEmail ?? '—'}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
+  {versions && versions.length > 0 && <ConfigVersionsTable name={name} />}
       </div>
     </Fragment>
   );

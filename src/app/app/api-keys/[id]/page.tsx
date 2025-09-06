@@ -8,6 +8,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
@@ -50,33 +58,37 @@ export default function ApiKeyDetailPage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 max-w-2xl">
         {!apiKey && (
-          <div className="rounded border p-4 text-sm text-muted-foreground">API key not found.</div>
+          <Card>
+            <CardContent className="p-6 text-muted-foreground">API key not found.</CardContent>
+          </Card>
         )}
         {apiKey && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold">{apiKey.name || 'Untitled Key'}</h1>
-              <p className="text-sm text-muted-foreground">
+          <Card>
+            <CardHeader>
+              <CardTitle>{apiKey.name || 'Untitled Key'}</CardTitle>
+              <CardDescription>
                 Created {new Date(apiKey.createdAt).toLocaleString()}
-              </p>
-            </div>
-            <div className="grid gap-4">
-              <div>
-                <h2 className="text-sm font-medium mb-1">Description</h2>
-                <p className="text-sm whitespace-pre-wrap break-words">
-                  {apiKey.description || '—'}
-                </p>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4">
+                <div>
+                  <h2 className="text-sm font-medium mb-1">Description</h2>
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    {apiKey.description || '—'}
+                  </p>
+                </div>
+                <div>
+                  <h2 className="text-sm font-medium mb-1">Creator</h2>
+                  <p className="text-sm">{apiKey.creatorEmail || '—'}</p>
+                </div>
+                <div>
+                  <h2 className="text-sm font-medium mb-1">ID</h2>
+                  <p className="text-sm font-mono break-all">{apiKey.id}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-medium mb-1">Creator</h2>
-                <p className="text-sm">{apiKey.creatorEmail || '—'}</p>
-              </div>
-              <div>
-                <h2 className="text-sm font-medium mb-1">ID</h2>
-                <p className="text-sm font-mono break-all">{apiKey.id}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t">
+            </CardContent>
+            <CardFooter className="flex flex-col items-start gap-4">
               {!confirming && (
                 <button
                   type="button"
@@ -87,7 +99,7 @@ export default function ApiKeyDetailPage() {
                 </button>
               )}
               {confirming && (
-                <div className="space-y-3">
+                <div className="space-y-3 w-full">
                   <p className="text-sm font-medium text-foreground">
                     This action{' '}
                     <span className="font-semibold text-destructive">cannot be undone</span>. Are
@@ -120,8 +132,8 @@ export default function ApiKeyDetailPage() {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
         )}
       </div>
     </Fragment>

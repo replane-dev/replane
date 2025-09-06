@@ -8,8 +8,20 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import {Button} from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import {Textarea} from '@/components/ui/textarea';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import Link from 'next/link';
@@ -48,84 +60,86 @@ export default function NewApiKeyPage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 max-w-xl">
         {!createdToken && (
-          <form
-            className="space-y-4"
-            onSubmit={async e => {
-              e.preventDefault();
-              const result = await createMutation.mutateAsync({name, description});
-              setCreatedToken(result.apiKey.token);
-            }}
-          >
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Name</label>
-              <input
-                className="w-full rounded border px-3 py-2 text-sm bg-background"
-                value={name}
-                maxLength={200}
-                required
-                onChange={e => setName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Description (optional)</label>
-              <textarea
-                className="w-full rounded border px-3 py-2 text-sm bg-background resize-y min-h-[80px]"
-                value={description}
-                maxLength={1000}
-                onChange={e => setDescription(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={createMutation.isPending}
-                className="inline-flex items-center rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          <Card className="max-w-xl">
+            <CardHeader>
+              <CardTitle>Create API Key</CardTitle>
+              <CardDescription>Provide a name and optional description.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                className="space-y-4"
+                onSubmit={async e => {
+                  e.preventDefault();
+                  const result = await createMutation.mutateAsync({name, description});
+                  setCreatedToken(result.apiKey.token);
+                }}
               >
-                {createMutation.isPending ? 'Creating…' : 'Create API Key'}
-              </button>
-              <Link
-                href="/app/api-keys"
-                className="inline-flex items-center rounded border px-4 py-2 text-sm"
-              >
-                Cancel
-              </Link>
-            </div>
-          </form>
+                <div className="space-y-1">
+                  <Label htmlFor="api-key-name">Name</Label>
+                  <Input
+                    id="api-key-name"
+                    value={name}
+                    maxLength={200}
+                    required
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Production Key"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="api-key-desc">Description (optional)</Label>
+                  <Textarea
+                    id="api-key-desc"
+                    value={description}
+                    maxLength={1000}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="Used for server-to-server calls from ..."
+                    className="min-h-[100px]"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? 'Creating…' : 'Create API Key'}
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href="/app/api-keys">Cancel</Link>
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         )}
         {createdToken && (
-          <div className="space-y-4">
-            <div className="rounded border p-4 space-y-2">
-              <p className="text-sm font-medium">API Key Created</p>
-              <p className="text-xs text-muted-foreground">
+          <Card className="max-w-xl">
+            <CardHeader>
+              <CardTitle>API Key Created</CardTitle>
+              <CardDescription>
                 This is the only time the full key will be shown. Copy and store it securely.
-              </p>
-              <pre className="p-3 bg-muted rounded text-xs overflow-auto font-mono">
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <pre className="p-4 bg-muted rounded text-sm overflow-auto font-mono">
                 {createdToken}
               </pre>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(createdToken);
-                      toast.success('Copied to clipboard');
-                    } catch (e) {
-                      toast.error('Failed to copy');
-                    }
-                  }}
-                  className="inline-flex items-center rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-                >
-                  Copy
-                </button>
-                <Link
-                  href="/app/api-keys"
-                  className="inline-flex items-center rounded border px-3 py-1.5 text-xs"
-                >
-                  Done
-                </Link>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+            <CardFooter className="flex gap-2">
+              <Button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(createdToken);
+                    toast.success('Copied to clipboard');
+                  } catch (e) {
+                    toast.error('Failed to copy');
+                  }
+                }}
+              >
+                Copy
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/app/api-keys">Done</Link>
+              </Button>
+            </CardFooter>
+          </Card>
         )}
       </div>
     </Fragment>

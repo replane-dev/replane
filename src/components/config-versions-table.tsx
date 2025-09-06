@@ -1,6 +1,6 @@
 'use client';
 
-import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -14,7 +14,6 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
-import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
@@ -27,23 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
 
-interface ApiKeyRow {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string | Date;
-  creatorEmail: string | null;
-}
-
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
   const d = value instanceof Date ? value : new Date(String(value ?? ''));
-  if (Number.isNaN(d.getTime())) {
-    return {display: String(value ?? '')};
-  }
+  if (Number.isNaN(d.getTime())) return {display: String(value ?? '')};
   const display = new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -61,30 +49,41 @@ function humanizeId(id: string): string {
     .replace(/^\w/, c => c.toUpperCase());
 }
 
-// columns moved inside component to use router without violating hook rules
-
-export function ApiKeysTable() {
+export function ConfigVersionsTable({name}: {name: string}) {
   const router = useRouter();
-  const qc = useQueryClient();
   const trpc = useTRPC();
-  const deleteMutation = useMutation(
-    trpc.deleteApiKey.mutationOptions({
-      onSuccess: async () => {
-        const key = trpc.getApiKeyList.queryKey();
-        await qc.invalidateQueries({queryKey: key});
-      },
-    }),
-  );
   const {
-    data: {apiKeys},
-  } = useSuspenseQuery(trpc.getApiKeyList.queryOptions());
+    data: {versions},
+  } = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name}));
+  const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name}));
+  const currentConfigVersion = configData.config?.config.version as number | undefined;
+  const restoreMutation = useMutation(trpc.restoreConfigVersion.mutationOptions());
+  const tableData = React.useMemo(
+    () =>
+      (versions ?? []).map(v => ({
+        id: v.id,
+        version: v.version,
+        description: v.description ?? null,
+        createdAt: v.createdAt,
+        authorEmail: v.authorEmail ?? null,
+      })),
+    [versions],
+  );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const columns = React.useMemo<ColumnDef<ApiKeyRow>[]>(
+  const columns = React.useMemo<
+    ColumnDef<{
+      id: string;
+      version: number;
+      description: string | null;
+      createdAt: string | Date;
+      authorEmail: string | null;
+    }>[]
+  >(
     () => [
       {
         id: 'select',
@@ -113,21 +112,17 @@ export function ApiKeysTable() {
         enableHiding: false,
       },
       {
-        accessorKey: 'name',
-        header: 'API Key Name',
-        cell: ({row}) => <div>{row.getValue('name') || '—'}</div>,
-      },
-      {
-        accessorKey: 'description',
-        header: 'Description',
-        cell: ({row}) => {
-          const value = String(row.getValue('description') || '');
-          return (
-            <div className="max-w-[100px] truncate" title={value}>
-              {value || '—'}
-            </div>
-          );
-        },
+        accessorKey: 'version',
+        header: ({column}) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Version <ArrowUpDown />
+          </Button>
+        ),
+        cell: ({row}) => <div>v{row.getValue('version')}</div>,
+        sortingFn: 'alphanumeric',
       },
       {
         accessorKey: 'createdAt',
@@ -136,8 +131,7 @@ export function ApiKeysTable() {
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
-            Created At
-            <ArrowUpDown className="ml-1 h-4 w-4" />
+            Created At <ArrowUpDown />
           </Button>
         ),
         cell: ({row}) => {
@@ -150,19 +144,24 @@ export function ApiKeysTable() {
         },
       },
       {
-        accessorKey: 'creatorEmail',
-        header: 'Creator',
+        accessorKey: 'description',
+        header: 'Description',
         cell: ({row}) => (
-          <span className="truncate" title={String(row.getValue('creatorEmail') || '')}>
-            {row.getValue('creatorEmail') || '—'}
-          </span>
+          <div className="max-w-[200px] truncate" title={String(row.getValue('description') ?? '')}>
+            {row.getValue('description') || '—'}
+          </div>
         ),
+      },
+      {
+        accessorKey: 'authorEmail',
+        header: 'Author',
+        cell: ({row}) => <div>{row.getValue('authorEmail') || '—'}</div>,
       },
       {
         id: 'actions',
         enableHiding: false,
         cell: ({row}) => {
-          const apiKey = row.original;
+          const version = row.original;
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -177,44 +176,58 @@ export function ApiKeysTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(apiKey.name || '')}>
-                  Copy name
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/api-keys/${apiKey.id}`);
+                    router.push(
+                      `/app/configs/${encodeURIComponent(name)}/versions/${version.version}`,
+                    );
                   }}
                 >
-                  View details
+                  View
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-700"
-                  disabled={deleteMutation.isPending}
-                  onClick={async e => {
-                    e.stopPropagation();
-                    if (confirm(`Delete API key "${apiKey.name || ''}"? This cannot be undone.`)) {
-                      try {
-                        await deleteMutation.mutateAsync({id: apiKey.id});
-                      } catch {
-                        // handled globally
-                      }
+                {currentConfigVersion !== undefined && (
+                  <DropdownMenuItem
+                    disabled={
+                      restoreMutation.isPending ||
+                      currentConfigVersion !== configData.config?.config.version
                     }
-                  }}
-                >
-                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                </DropdownMenuItem>
+                    onClick={async e => {
+                      e.stopPropagation();
+                      if (
+                        !confirm(
+                          `Restore version v${version.version}? This will create a new version with the same contents (current v${currentConfigVersion}).`,
+                        )
+                      ) {
+                        return;
+                      }
+                      try {
+                        await restoreMutation.mutateAsync({
+                          name,
+                          versionToRestore: version.version,
+                          expectedCurrentVersion: currentConfigVersion,
+                        });
+                        router.push(`/app/configs/${encodeURIComponent(name)}`);
+                      } catch (e) {
+                        // eslint-disable-next-line no-alert
+                        alert((e as Error).message);
+                      }
+                    }}
+                  >
+                    {restoreMutation.isPending ? 'Restoring…' : 'Restore'}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [router, deleteMutation],
+    [name, router, currentConfigVersion, restoreMutation, configData],
   );
 
   const table = useReactTable({
-    data: apiKeys as ApiKeyRow[],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -224,12 +237,7 @@ export function ApiKeysTable() {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
+    state: {sorting, columnFilters, columnVisibility, rowSelection},
   });
 
   const isInteractive = (el: EventTarget | null) => {
@@ -240,25 +248,19 @@ export function ApiKeysTable() {
   };
 
   const handleRowClick = React.useCallback(
-    (e: React.MouseEvent, id: string) => {
+    (e: React.MouseEvent, versionNumber: number) => {
       if (e.defaultPrevented) return;
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
-      router.push(`/app/api-keys/${id}`);
+      router.push(`/app/configs/${encodeURIComponent(name)}/versions/${versionNumber}`);
     },
-    [router],
+    [router, name],
   );
 
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-4">
-        <Input
-          placeholder="Search API keys by name"
-          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-          onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className="max-w-md"
-        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -284,9 +286,6 @@ export function ApiKeysTable() {
               })}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button asChild>
-          <Link href="/app/api-keys/new">New API Key</Link>
-        </Button>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -309,7 +308,7 @@ export function ApiKeysTable() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  onClick={e => handleRowClick(e, row.original.id)}
+                  onClick={e => handleRowClick(e, row.original.version)}
                   className="cursor-pointer select-text"
                 >
                   {row.getVisibleCells().map(cell => (

@@ -1,5 +1,6 @@
 'use client';
 
+import {JsonEditor} from '@/components/json-editor';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,6 +9,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import {Button} from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
@@ -41,6 +51,18 @@ export default function ConfigVersionDetailsPage() {
     return {full};
   }, [version]);
 
+  const valueJson = useMemo(
+    () => (version ? JSON.stringify(version.value, null, 2) : ''),
+    [version],
+  );
+  const schemaJson = useMemo(
+    () =>
+      version && version.schema !== null && version.schema !== undefined
+        ? JSON.stringify(version.schema, null, 2)
+        : null,
+    [version],
+  );
+
   return (
     <Fragment>
       <header className="flex h-16 shrink-0 items-center gap-2">
@@ -68,29 +90,66 @@ export default function ConfigVersionDetailsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>{versionNumber}</BreadcrumbPage>
+                <BreadcrumbPage>v{versionNumber}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
       </header>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        {!version && <div>Version {versionNumber} not found.</div>}
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 max-w-4xl">
+        {!version && (
+          <Card>
+            <CardContent className="p-6">Version {versionNumber} not found.</CardContent>
+          </Card>
+        )}
         {version && (
-          <div className="space-y-4 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
-                <Calendar className="h-3 w-3" /> {meta?.full}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
-                <User className="h-3 w-3" /> {version.authorEmail ?? 'Unknown author'}
-              </span>
-            </div>
-            {currentConfigVersion !== undefined && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Version v{version.version}</CardTitle>
+              <CardDescription>
+                <div className="pt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
+                    <Calendar className="h-3 w-3" /> {meta?.full}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
+                    <User className="h-3 w-3" /> {version.authorEmail ?? 'Unknown author'}
+                  </span>
+                </div>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                <h2 className="font-semibold mb-2">Description</h2>
+                <p className="whitespace-pre-wrap text-sm">{version.description || '—'}</p>
+              </div>
+              <div>
+                <h2 className="font-semibold mb-2">Value</h2>
+                <JsonEditor
+                  id={`config-value-${version.version}`}
+                  aria-label="Config value JSON"
+                  value={valueJson}
+                  onChange={() => {}}
+                  readOnly
+                  height={300}
+                />
+              </div>
+              {schemaJson && (
+                <div>
+                  <h2 className="font-semibold mb-2">Schema</h2>
+                  <JsonEditor
+                    id={`config-schema-${version.version}`}
+                    aria-label="Config schema JSON"
+                    value={schemaJson}
+                    onChange={() => {}}
+                    readOnly
+                    height={260}
+                  />
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              {currentConfigVersion !== undefined && (
+                <Button
                   disabled={
                     restoreMutation.isPending ||
                     currentConfigVersion !== configData.config?.config.version
@@ -117,28 +176,10 @@ export default function ConfigVersionDetailsPage() {
                   }}
                 >
                   {restoreMutation.isPending ? 'Restoring…' : 'Restore this version'}
-                </button>
-              </div>
-            )}
-            <div>
-              <h2 className="font-semibold mb-2">Description</h2>
-              <p className="whitespace-pre-wrap text-sm">{version.description || '—'}</p>
-            </div>
-            <div>
-              <h2 className="font-semibold mb-2">Value</h2>
-              <pre className="rounded bg-muted p-3 text-xs overflow-auto">
-                {JSON.stringify(version.value, null, 2)}
-              </pre>
-            </div>
-            {version.schema !== null && version.schema !== undefined && (
-              <div>
-                <h2 className="font-semibold mb-2">Schema</h2>
-                <pre className="rounded bg-muted p-3 text-xs overflow-auto">
-                  {JSON.stringify(version.schema, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
         )}
       </div>
     </Fragment>

@@ -264,7 +264,7 @@ export function ConfigTable() {
     <div className="w-full">
       <div className="flex items-center py-4 gap-4">
         <Input
-          placeholder="Search"
+          placeholder="Search configs by name"
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
           className="max-w-md"
