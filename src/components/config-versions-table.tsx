@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
+import {toast} from 'sonner';
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
   const d = value instanceof Date ? value : new Date(String(value ?? ''));
@@ -207,7 +208,7 @@ export function ConfigVersionsTable({name}: {name: string}) {
                           versionToRestore: version.version,
                           expectedCurrentVersion: currentConfigVersion,
                         });
-                        router.push(`/app/configs/${encodeURIComponent(name)}`);
+                        toast.success(`Restored v${version.version} to new latest version`);
                       } catch (e) {
                         // eslint-disable-next-line no-alert
                         alert((e as Error).message);

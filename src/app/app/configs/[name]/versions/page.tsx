@@ -1,5 +1,6 @@
 'use client';
 
+import {ConfigVersionsTable} from '@/components/config-versions-table';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,7 +11,6 @@ import {
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import {ConfigVersionsTable} from '@/components/config-versions-table';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
@@ -55,7 +55,7 @@ export default function ConfigVersionsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         {!versions && <div>Config "{name}" not found.</div>}
         {versions && versions.length === 0 && <div>No versions yet.</div>}
-  {versions && versions.length > 0 && <ConfigVersionsTable name={name} />}
+        {versions && versions.length > 0 && <ConfigVersionsTable name={name} />}
       </div>
     </Fragment>
   );
