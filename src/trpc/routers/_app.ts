@@ -109,6 +109,22 @@ export const appRouter = createTRPCRouter({
       });
       return config;
     }),
+  getConfigVersionList: baseProcedure
+    .input(
+      z.object({
+        name: z.string(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const result = await opts.ctx.engine.useCases.getConfigVersionList(GLOBAL_CONTEXT, {
+        name: opts.input.name,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return result;
+    }),
 });
 
 export type AppRouter = typeof appRouter;

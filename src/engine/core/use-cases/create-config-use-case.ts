@@ -69,6 +69,7 @@ export function createCreateConfigUseCase(
       schema: req.schema,
       value: req.value,
       version: 1,
+      authorId: currentUser.id,
     });
 
     await tx.configUsers.create(

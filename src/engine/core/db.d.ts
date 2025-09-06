@@ -85,6 +85,7 @@ export interface ConfigVersions {
   schema: Json | null;
   value: Json;
   version: number;
+  author_id: number | null;
 }
 
 export interface Migrations {

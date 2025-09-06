@@ -11,7 +11,8 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {zodResolver} from '@hookform/resolvers/zod';
 import Ajv from 'ajv';
 import {format, formatDistanceToNow} from 'date-fns';
-import {CalendarDays, Clock3, FileCog} from 'lucide-react';
+import {CalendarDays, Clock3, FileCog, GitCommitVertical} from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
 import {z} from 'zod';
@@ -32,6 +33,8 @@ export interface ConfigFormProps {
   editorIdPrefix?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+  currentVersion?: number;
+  versionsLink?: string; // link to versions page
   onCancel: () => void;
   onDelete?: () => Promise<void> | void;
   onSubmit: (data: {
@@ -59,6 +62,8 @@ export function ConfigForm(props: ConfigFormProps) {
     editorIdPrefix,
     createdAt,
     updatedAt,
+    currentVersion,
+    versionsLink,
     onCancel,
     onDelete,
     onSubmit,
@@ -268,6 +273,25 @@ export function ConfigForm(props: ConfigFormProps) {
                   <div className="sm:col-span-9">
                     <span>{defaultName}</span>
                   </div>
+
+                  {typeof currentVersion === 'number' && (
+                    <>
+                      <div className="sm:col-span-3 inline-flex items-center gap-1.5">
+                        <GitCommitVertical className="h-3.5 w-3.5" /> Version
+                      </div>
+                      <div className="sm:col-span-9 flex items-center gap-2">
+                        <span>v{currentVersion}</span>
+                        {versionsLink && (
+                          <Link
+                            href={versionsLink}
+                            className="text-xs underline text-muted-foreground hover:text-foreground"
+                          >
+                            View previous versions
+                          </Link>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   {hasC && (
                     <>

@@ -145,6 +145,8 @@ export default function ConfigByNamePage() {
             editorIdPrefix={`edit-config-${name}`}
             createdAt={config.config.createdAt}
             updatedAt={config.config.updatedAt}
+            currentVersion={config.config.version}
+            versionsLink={`/app/configs/${encodeURIComponent(name)}/versions`}
             submitting={patchConfig.isPending}
             onCancel={() => router.push('/app/configs')}
             onDelete={async () => {

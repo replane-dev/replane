@@ -13,14 +13,25 @@ import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
+import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
+import assert from 'node:assert';
 import {Fragment} from 'react';
 
 export default function NewConfigPage() {
   const router = useRouter();
   const trpc = useTRPC();
   const createConfig = useMutation(trpc.createConfig.mutationOptions());
+  const {data: session, status} = useSession();
+
+  // While session is loading, avoid asserting (email would be undefined briefly)
+  if (status === 'loading') {
+    return null; // Could render a spinner / skeleton if desired
+  }
+
+  const userEmail = session?.user?.email;
+  assert(userEmail, 'Authenticated user email must be present');
 
   async function handleSubmit(data: {
     name: string;
@@ -71,7 +82,7 @@ export default function NewConfigPage() {
             defaultValue={''}
             defaultSchemaEnabled={false}
             defaultSchema={''}
-            defaultOwnerEmails={['example@email.com']}
+            defaultOwnerEmails={[userEmail!]}
             defaultEditorEmails={[]}
             defaultDescription={''}
             editorIdPrefix="new-config"

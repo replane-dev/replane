@@ -127,6 +127,18 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_audit_messages_created_at_id ON audit_messages (created_at DESC, id DESC);
     `,
   },
+  {
+    // Add author_id to config_versions to track who created each version
+    sql: /*sql*/ `
+      ALTER TABLE config_versions ADD COLUMN IF NOT EXISTS author_id INT NULL REFERENCES users(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_config_versions_author_id ON config_versions(author_id);
+      -- Backfill: set author for existing rows to config creator (best effort)
+      UPDATE config_versions cv
+      SET author_id = c.creator_id
+      FROM configs c
+      WHERE cv.config_id = c.id AND cv.author_id IS NULL;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger) {

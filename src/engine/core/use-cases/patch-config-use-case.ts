@@ -75,6 +75,7 @@ export function createPatchConfigUseCase(
       schema: nextSchema,
       value: nextValue,
       version: nextVersion,
+      authorId: (await tx.users.getByEmail(req.currentUserEmail))?.id ?? null,
     });
 
     if (req.members) {
