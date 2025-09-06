@@ -1,6 +1,7 @@
 'use client';
 
-import {BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles} from 'lucide-react';
+import {ChevronsUpDown, History, LogOut} from 'lucide-react';
+import {signOut, useSession} from 'next-auth/react';
 
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
 import {
@@ -14,16 +15,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string;
-    email: string;
-    avatar: string;
-  };
-}) {
+export function NavUser() {
   const {isMobile} = useSidebar();
+  const {data: session} = useSession();
+  const sessionUser = session?.user;
+  const user = {
+    name: sessionUser?.name || '—',
+    email: sessionUser?.email || '—',
+    avatar: (sessionUser as any)?.image || '/avatars/shadcn.jpg',
+  };
 
   return (
     <SidebarMenu>
@@ -66,27 +66,12 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
+                <History />
+                My activity
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => signOut({callbackUrl: '/'})} aria-label="Log out">
               <LogOut />
               Log out
             </DropdownMenuItem>

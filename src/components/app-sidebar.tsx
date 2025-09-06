@@ -1,7 +1,16 @@
 'use client';
 
 import {SiGithub} from '@icons-pack/react-simple-icons';
-import {BookOpen, Bot, Command, FileCog, Key, LifeBuoy, Settings2, SquareTerminal} from 'lucide-react';
+import {
+  BookOpen,
+  Bot,
+  Command,
+  FileCog,
+  Key,
+  LifeBuoy,
+  Settings2,
+  SquareTerminal,
+} from 'lucide-react';
 import * as React from 'react';
 
 import {NavMain} from '@/components/nav-main';
@@ -17,13 +26,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import Link from 'next/link';
 
 const data = {
-  user: {
-    name: 'shadcn',
-    email: 'm@example.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
   navMain: [
     {
       title: 'Playground',
@@ -146,7 +151,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#">
+              <Link href="/">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <Command className="size-4" />
                 </div>
@@ -154,7 +159,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                   <span className="truncate font-medium">ConfigMagic</span>
                   {/* <span className="truncate text-xs">Enterprise</span> */}
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -165,7 +170,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );
