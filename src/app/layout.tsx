@@ -30,7 +30,13 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <AuthSession>{children}</AuthSession>
-          <Toaster />
+          <Toaster
+            toastOptions={{
+              classNames: {
+                error: '!text-destructive ![&>svg]:text-destructive',
+              },
+            }}
+          />
         </body>
       </html>
     </TRPCReactProvider>
