@@ -1,5 +1,6 @@
 'use client';
 
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -13,6 +14,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
+import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
@@ -28,8 +30,14 @@ import {
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
-import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
-import Link from 'next/link';
+
+interface ApiKeyRow {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string | Date;
+  creatorEmail: string | null;
+}
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
   const d = value instanceof Date ? value : new Date(String(value ?? ''));
@@ -53,39 +61,21 @@ function humanizeId(id: string): string {
     .replace(/^\w/, c => c.toUpperCase());
 }
 
-// columns moved inside component; no hooks inside cells
+// columns moved inside component to use router without violating hook rules
 
-export function ConfigTable() {
+export function ApiKeysTable() {
   const router = useRouter();
+  const trpc = useTRPC();
+  const {
+    data: {apiKeys},
+  } = useSuspenseQuery(trpc.getApiKeyList.queryOptions());
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const trpc = useTRPC();
-  const qc = useQueryClient();
-  const del = useMutation(
-    trpc.deleteConfig.mutationOptions({
-      onSuccess: async () => {
-        const key = trpc.getConfigList.queryKey();
-        await qc.invalidateQueries({queryKey: key});
-      },
-    }),
-  );
-  const {
-    data: {configs},
-  } = useSuspenseQuery(trpc.getConfigList.queryOptions());
-
-  const columns = React.useMemo<
-    ColumnDef<{
-      name: string;
-      descriptionPreview?: string;
-      createdAt: string | Date;
-      updatedAt: string | Date;
-      myRole: string;
-      id: string;
-    }>[]
-  >(
+  const columns = React.useMemo<ColumnDef<ApiKeyRow>[]>(
     () => [
       {
         id: 'select',
@@ -115,20 +105,20 @@ export function ConfigTable() {
       },
       {
         accessorKey: 'name',
-        header: 'Config Name',
-        cell: ({row}) => <div>{row.getValue('name')}</div>,
+        header: 'API Key Name',
+        cell: ({row}) => <div>{row.getValue('name') || '—'}</div>,
       },
       {
-        accessorKey: 'descriptionPreview',
+        accessorKey: 'description',
         header: 'Description',
-        cell: ({row}) => (
-          <div
-            className="max-w-[100px] truncate"
-            title={String(row.getValue('descriptionPreview') ?? '')}
-          >
-            {row.getValue('descriptionPreview')}
-          </div>
-        ),
+        cell: ({row}) => {
+          const value = String(row.getValue('description') || '');
+          return (
+            <div className="max-w-[100px] truncate" title={value}>
+              {value || '—'}
+            </div>
+          );
+        },
       },
       {
         accessorKey: 'createdAt',
@@ -138,7 +128,7 @@ export function ConfigTable() {
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Created At
-            <ArrowUpDown />
+            <ArrowUpDown className="ml-1 h-4 w-4" />
           </Button>
         ),
         cell: ({row}) => {
@@ -151,30 +141,19 @@ export function ConfigTable() {
         },
       },
       {
-        accessorKey: 'updatedAt',
-        header: ({column}) => (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Updated At
-            <ArrowUpDown />
-          </Button>
+        accessorKey: 'creatorEmail',
+        header: 'Creator',
+        cell: ({row}) => (
+          <span className="truncate" title={String(row.getValue('creatorEmail') || '')}>
+            {row.getValue('creatorEmail') || '—'}
+          </span>
         ),
-        cell: ({row}) => {
-          const {display, dateTimeAttr, title} = formatDateTime(row.getValue('updatedAt'));
-          return (
-            <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap">
-              {display}
-            </time>
-          );
-        },
       },
       {
         id: 'actions',
         enableHiding: false,
         cell: ({row}) => {
-          const config = row.original;
+          const apiKey = row.original;
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -189,41 +168,28 @@ export function ConfigTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(config.name)}>
+                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(apiKey.name || '')}>
                   Copy name
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/configs/${config.name}`);
+                    router.push(`/app/api-keys/${apiKey.id}`);
                   }}
                 >
                   View details
                 </DropdownMenuItem>
-                {config.myRole === 'owner' && (
-                  <DropdownMenuItem
-                    className="text-red-600 focus:text-red-700"
-                    onClick={async e => {
-                      e.stopPropagation();
-                      if (confirm(`Delete config "${config.name}"? This cannot be undone.`)) {
-                        await del.mutateAsync({configId: config.id});
-                      }
-                    }}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [del],
+    [router],
   );
 
   const table = useReactTable({
-    data: configs,
+    data: apiKeys as ApiKeyRow[],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -249,13 +215,12 @@ export function ConfigTable() {
   };
 
   const handleRowClick = React.useCallback(
-    (e: React.MouseEvent, configName: string) => {
+    (e: React.MouseEvent, id: string) => {
       if (e.defaultPrevented) return;
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return; // allow text selection without navigation
-
-      router.push(`/app/configs/${encodeURIComponent(configName)}`);
+      if (selection && selection.toString().length > 0) return;
+      router.push(`/app/api-keys/${id}`);
     },
     [router],
   );
@@ -295,7 +260,7 @@ export function ConfigTable() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button asChild>
-          <Link href="/app/new-config">New Config</Link>
+          <Link href="/app/api-keys/new">New API Key</Link>
         </Button>
       </div>
       <div className="overflow-hidden rounded-md border">
@@ -303,15 +268,13 @@ export function ConfigTable() {
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(header => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map(header => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -321,7 +284,7 @@ export function ConfigTable() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  onClick={e => handleRowClick(e, row.original.name)}
+                  onClick={e => handleRowClick(e, row.original.id)}
                   className="cursor-pointer select-text"
                 >
                   {row.getVisibleCells().map(cell => (
