@@ -33,20 +33,7 @@ export default function ConfigByNamePage() {
 
   const defaultValue = useMemo(() => {
     if (!config) return '';
-    try {
-      return JSON.stringify(
-        typeof config.config.value === 'string'
-          ? JSON.parse(config.config.value)
-          : config.config.value,
-        null,
-        2,
-      );
-    } catch {
-      // if parsing fails, still show as string
-      return typeof config.config.value === 'string'
-        ? config.config.value
-        : String(config.config.value);
-    }
+    return JSON.stringify(config.config.value, null, 2);
   }, [config]);
 
   if (!config) {
