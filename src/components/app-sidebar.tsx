@@ -120,13 +120,13 @@ const data = {
   navSecondary: [
     {
       title: 'Support',
-      url: 'https://github.com/tilyupo/configmagic/issues',
+      url: 'https://github.com/tilyupo/replane/issues',
       icon: LifeBuoy,
       target: '_blank' as const,
     },
     {
       title: 'Github',
-      url: 'https://github.com/tilyupo/configmagic',
+      url: 'https://github.com/tilyupo/replane',
       icon: SiGithub,
       target: '_blank' as const,
     },
@@ -162,7 +162,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                   <Command className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">ConfigMagic</span>
+                  <span className="truncate font-medium">Replane</span>
                   {/* <span className="truncate text-xs">Enterprise</span> */}
                 </div>
               </Link>

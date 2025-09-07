@@ -1,11 +1,11 @@
 services:
   postgres:
     image: postgres:17
-    container_name: configmagic-db
+    container_name: replane-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: configmagic
+      POSTGRES_DB: replane
     ports:
       - '5432:5432'
     volumes:

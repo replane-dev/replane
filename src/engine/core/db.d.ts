@@ -46,10 +46,10 @@ export interface Accounts {
 export interface ApiTokens {
   created_at: Timestamp;
   creator_id: number;
-  id: string;
-  token_hash: string;
-  name: string;
   description: string;
+  id: string;
+  name: string;
+  token_hash: string;
 }
 
 export interface AuditMessages {
@@ -79,6 +79,7 @@ export interface ConfigUsers {
 }
 
 export interface ConfigVersions {
+  author_id: number | null;
   config_id: string;
   created_at: Timestamp;
   description: string;
@@ -87,7 +88,6 @@ export interface ConfigVersions {
   schema: Json | null;
   value: Json;
   version: number;
-  author_id: number | null;
 }
 
 export interface Migrations {

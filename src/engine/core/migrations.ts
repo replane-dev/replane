@@ -95,7 +95,9 @@ export const migrations: Migration[] = [
         id UUID PRIMARY KEY,
         creator_id INT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
         token_hash TEXT NOT NULL UNIQUE,
-        created_at TIMESTAMPTZ(3) NOT NULL
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL
       );
 
       CREATE INDEX idx_api_tokens_token_hash ON api_tokens(token_hash);
@@ -109,10 +111,12 @@ export const migrations: Migration[] = [
         description TEXT NOT NULL,
         value JSONB NOT NULL,
         schema JSONB NULL,
-        created_at TIMESTAMPTZ(3) NOT NULL
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        author_id INT NULL REFERENCES users(id) ON DELETE SET NULL
       );
 
       CREATE UNIQUE INDEX idx_config_versions_config_id_version ON config_versions(config_id, version);
+      CREATE INDEX idx_config_versions_author_id ON config_versions(author_id);
 
       CREATE TABLE audit_messages (
         id UUID PRIMARY KEY,
@@ -125,26 +129,6 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_audit_messages_user_id ON audit_messages (user_id);
       CREATE INDEX idx_audit_messages_config_id ON audit_messages (config_id);
       CREATE INDEX idx_audit_messages_created_at_id ON audit_messages (created_at DESC, id DESC);
-    `,
-  },
-  {
-    // Add author_id to config_versions to track who created each version
-    sql: /*sql*/ `
-      ALTER TABLE config_versions ADD COLUMN IF NOT EXISTS author_id INT NULL REFERENCES users(id) ON DELETE SET NULL;
-      CREATE INDEX IF NOT EXISTS idx_config_versions_author_id ON config_versions(author_id);
-      -- Backfill: set author for existing rows to config creator (best effort)
-      UPDATE config_versions cv
-      SET author_id = c.creator_id
-      FROM configs c
-      WHERE cv.config_id = c.id AND cv.author_id IS NULL;
-    `,
-  },
-  {
-    // Add name & description to api_tokens for better identification
-    sql: /*sql*/ `
-      ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '';
-      ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
-      -- No separate index needed now; queries primarily by creator or list all.
     `,
   },
 ];

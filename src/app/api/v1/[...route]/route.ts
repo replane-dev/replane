@@ -101,7 +101,7 @@ app.get('/openapi.json', c =>
   c.json(
     app.getOpenAPI31Document({
       openapi: '3.1.0',
-      info: {title: 'ConfigMagic API', version: '1.0.0'},
+      info: {title: 'Replane API', version: '1.0.0'},
     }),
   ),
 );
