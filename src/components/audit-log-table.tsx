@@ -73,8 +73,23 @@ interface AuditLogRow {
 export function AuditLogTable() {
   const trpc = useTRPC();
   const [filters, setFilters] = React.useState<FilterState>({authorEmails: '', configNames: ''});
+  // Raw input values (debounced before applying to filters state that drives the query)
+  const [authorEmailsInput, setAuthorEmailsInput] = React.useState('');
+  const [configNamesInput, setConfigNamesInput] = React.useState('');
   const [openFrom, setOpenFrom] = React.useState(false);
   const [openTo, setOpenTo] = React.useState(false);
+
+  // Debounce textual filter changes so we don't refetch on every keystroke
+  React.useEffect(() => {
+    const handle = setTimeout(() => {
+      setFilters(f => ({
+        ...f,
+        authorEmails: authorEmailsInput,
+        configNames: configNamesInput,
+      }));
+    }, 400); // 400ms debounce window
+    return () => clearTimeout(handle);
+  }, [authorEmailsInput, configNamesInput]);
 
   const authors = React.useMemo(
     () =>
@@ -234,6 +249,9 @@ export function AuditLogTable() {
     manualSorting: false, // client-side across loaded pages
   });
 
+  // Determine whether we're in the very first loading state (no data yet, initial fetch in flight)
+  const isInitialLoading = query.isLoading || (query.isFetching && messages.length === 0);
+
   const loadMoreRef = React.useCallback(
     (el: HTMLDivElement | null) => {
       if (!el) return;
@@ -257,14 +275,14 @@ export function AuditLogTable() {
       <div className="flex flex-wrap gap-4 py-4 items-end">
         <Input
           placeholder="Author emails (comma separated)"
-          value={filters.authorEmails}
-          onChange={e => setFilters(f => ({...f, authorEmails: e.target.value}))}
+          value={authorEmailsInput}
+          onChange={e => setAuthorEmailsInput(e.target.value)}
           className="max-w-xs"
         />
         <Input
           placeholder="Config names (comma separated)"
-          value={filters.configNames}
-          onChange={e => setFilters(f => ({...f, configNames: e.target.value}))}
+          value={configNamesInput}
+          onChange={e => setConfigNamesInput(e.target.value)}
           className="max-w-xs"
         />
         <Popover open={openFrom} onOpenChange={setOpenFrom}>
@@ -317,9 +335,6 @@ export function AuditLogTable() {
             />
           </PopoverContent>
         </Popover>
-        <Button variant="secondary" onClick={() => query.refetch()}>
-          Apply
-        </Button>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -367,7 +382,9 @@ export function AuditLogTable() {
                   ref={loadMoreRef}
                   className="flex justify-center py-4 text-sm text-muted-foreground"
                 >
-                  {query.isFetchingNextPage ? (
+                  {isInitialLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : query.isFetchingNextPage ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : query.hasNextPage ? (
                     'Scroll to load more…'
