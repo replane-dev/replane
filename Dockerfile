@@ -8,7 +8,7 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+  NEXT_TELEMETRY_DISABLED=1
 
 # 2) Dependencies (install all deps including dev for build)
 FROM base AS deps
@@ -37,7 +37,7 @@ RUN pnpm prune --prod
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+  NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_BUILD_SHA
 ENV NEXT_PUBLIC_BUILD_SHA=$NEXT_PUBLIC_BUILD_SHA
 

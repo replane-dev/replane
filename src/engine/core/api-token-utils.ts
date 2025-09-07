@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import {parse as uuidParse, stringify as uuidStringify} from 'uuid';
 
-export const API_TOKEN_PREFIX = 'cm_'; // distinct from previous 'cm_' usage
+export const API_TOKEN_PREFIX = 'rp_'; // distinct from previous 'cm_' usage
 
 // Basic canonical UUID (any version) validation regex.
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
