@@ -14,12 +14,11 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
-import {useParams, useRouter} from 'next/navigation';
+import {useParams} from 'next/navigation';
 import {Fragment} from 'react';
 
 export default function ConfigVersionsPage() {
   const {name: rawName} = useParams<{name: string}>();
-  const router = useRouter();
   const name = decodeURIComponent(rawName ?? '');
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name}));
@@ -53,7 +52,7 @@ export default function ConfigVersionsPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        {!versions && <div>Config "{name}" not found.</div>}
+        {!versions && <div>Config &quot;{name}&quot; not found.</div>}
         {versions && versions.length === 0 && <div>No versions yet.</div>}
         {versions && versions.length > 0 && <ConfigVersionsTable name={name} />}
       </div>

@@ -1,4 +1,4 @@
-import {authOptions} from '@/app/api/auth/[...nextauth]/route';
+import {authOptions} from '@/app/auth-options';
 import {normalizeEmail} from '@/engine/core/utils';
 import type {NormalizedEmail} from '@/engine/core/zod';
 import type {Engine} from '@/engine/engine';

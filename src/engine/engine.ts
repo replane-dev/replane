@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+
 import {Kysely, PostgresDialect} from 'kysely';
 import {LRUCache} from 'lru-cache';
 import {Pool} from 'pg';

@@ -57,7 +57,7 @@ function humanizePayload(payload: AuditMessagePayload): {action: string; details
   } else if (payload.type === 'config_members_changed') {
     return {action: 'Config Members Changed', details: `Config name '${payload.config.name}'`};
   } else {
-    let _never: never = payload;
+    const _never: never = payload;
     throw new Error(`Unhandled payload type: ${(payload as any).type}`);
   }
 }

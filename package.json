@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test": "dotenv -- vitest run",
     "test:watch": "dotenv -- vitest",
+    "release": "bumpp",
     "migrate": "pnpm run migrate:migrate && pnpm run migrate:codegen",
     "migrate:migrate": "dotenv -- tsx ./src/engine/scripts/migrate.ts",
     "migrate:codegen": "dotenv -- kysely-codegen --out-file ./src/engine/core/db.d.ts && prettier --write ./src/engine/core/db.d.ts && eslint ./src/engine/core/db.d.ts --fix"
@@ -94,6 +95,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.0.1",
+    "bumpp": "^10.2.3",
     "dotenv-cli": "^10.0.0",
     "editorconfig": "^3.0.1",
     "eslint": "^9",

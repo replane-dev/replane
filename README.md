@@ -119,3 +119,45 @@ This is pre‑1.0 software. Data model & endpoints may change. Don’t put missi
 ## License
 
 MIT
+
+## Docker Image
+
+A multi-arch (amd64/arm64) image is published to GitHub Container Registry on every push to `main` and on version tags (`v*.*.*`).
+
+Pull the latest image:
+
+```bash
+# authenticate (if private)
+echo $GITHUB_TOKEN | docker login ghcr.io -u <your-username> --password-stdin
+
+# pull
+docker pull ghcr.io/<org-or-user>/replane:latest
+```
+
+Run locally (remember to provide required env vars):
+
+```bash
+docker run --rm -p 3000:3000 \
+   -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/replane \
+   -e NEXTAUTH_URL=http://localhost:3000 \
+   -e NEXTAUTH_SECRET=changeme \
+   ghcr.io/<org-or-user>/replane:latest
+```
+
+Health endpoint: `GET /api/health` returns `{ "status": "ok" }`.
+
+Build locally for testing:
+
+```bash
+docker build -t replane:local ./replane
+```
+
+To release a versioned tag (publishes `vX.Y.Z` + `latest`):
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+---
+
+> Build arg: `NEXT_PUBLIC_BUILD_SHA` is injected automatically in CI.

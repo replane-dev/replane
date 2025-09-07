@@ -1,6 +1,6 @@
-import {authOptions} from '@/app/api/auth/[...nextauth]/route';
 import {SignOutButton} from '@/components/auth/sign-out-button';
 import {getServerSession} from 'next-auth';
+import {authOptions} from '../auth-options';
 
 export default async function ServerUserPage() {
   const session = await getServerSession(authOptions);
@@ -11,7 +11,13 @@ export default async function ServerUserPage() {
       {user ? (
         <div style={{marginTop: 12}}>
           {user.image && (
-            <img src={user.image} alt={user.name ?? 'User avatar'} width={64} height={64} style={{borderRadius: 8}} />
+            <img
+              src={user.image}
+              alt={user.name ?? 'User avatar'}
+              width={64}
+              height={64}
+              style={{borderRadius: 8}}
+            />
           )}
           <p>
             <strong>Name:</strong> {user.name ?? '—'}

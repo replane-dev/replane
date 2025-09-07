@@ -16,7 +16,6 @@ import {useMutation} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
-import assert from 'node:assert';
 import {Fragment} from 'react';
 
 export default function NewConfigPage() {
@@ -31,7 +30,7 @@ export default function NewConfigPage() {
   }
 
   const userEmail = session?.user?.email;
-  assert(userEmail, 'Authenticated user email must be present');
+  if (!userEmail) throw new Error('User email is required');
 
   async function handleSubmit(data: {
     name: string;

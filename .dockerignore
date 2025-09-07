@@ -1,0 +1,13 @@
+# Ignore unnecessary files for Docker context
+node_modules
+.next/cache
+.next/types
+dist
+coverage
+tests
+*.log
+.env*
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
