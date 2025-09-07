@@ -41,6 +41,22 @@ describe('createConfig', () => {
     } satisfies GetConfigResponse['config']);
   });
 
+  it('should allow letters (any case), numbers and hyphen in name', async () => {
+    const name = 'FeatureFlag-123';
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name,
+      value: {enabled: true},
+      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      description: 'Mixed case + digits + hyphen',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [],
+    });
+
+    const {config} = await fixture.trpc.getConfig({name});
+    expect(config?.config.name).toBe(name);
+  });
+
   it('should throw BadRequestError when config with this name already exists', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'dup_config',

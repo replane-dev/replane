@@ -13,12 +13,15 @@ export function createConfigId() {
 }
 
 export function ConfigName() {
-  return z
-    .string()
-    .regex(/^[a-z_]{1,100}$/)
-    .describe(
-      'A config name consisting of lowercase letters and underscores, 1-100 characters long',
-    );
+  return (
+    z
+      .string()
+      // Allow upper/lower letters, digits, underscore and hyphen
+      .regex(/^[A-Za-z0-9_-]{1,100}$/)
+      .describe(
+        'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
+      )
+  );
 }
 
 export function ConfigValue() {

@@ -16,7 +16,7 @@ describe('api keys', () => {
     });
 
     // Expect format: cm.<80 hex chars> (24 random bytes + 16 uuid bytes)
-    expect(result.apiKey.token).toMatch(/^cm\.[a-f0-9]{80}$/i);
+    expect(result.apiKey.token).toMatch(/^cm_[a-f0-9]{80}$/i);
     expect(result.apiKey.name).toBe('Primary Key');
     expect(result.apiKey.description).toBe('Main key');
 

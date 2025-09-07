@@ -153,8 +153,7 @@ export function ConfigForm(props: ConfigFormProps) {
       ? z.object({
           name: z
             .string()
-            .regex(/^[a-z_]{1,100}$/i, 'Use 1-100 letters/underscores')
-            .transform(s => s.toLowerCase()),
+            .regex(/^[A-Za-z0-9_-]{1,100}$/i, 'Use 1-100 letters, numbers, underscores or hyphens'),
           ...baseSchema,
         })
       : z.object({...baseSchema});
@@ -247,7 +246,7 @@ export function ConfigForm(props: ConfigFormProps) {
                 <FormLabel>Name</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="e.g. feature_flag"
+                    placeholder="e.g. FeatureFlag-1"
                     autoCapitalize="none"
                     autoComplete="off"
                     {...field}
