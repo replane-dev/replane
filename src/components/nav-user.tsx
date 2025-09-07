@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
+import Link from 'next/link';
 
 export function NavUser() {
   const {isMobile} = useSidebar();
@@ -65,9 +66,17 @@ export function NavUser() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <History />
-                My activity
+              <DropdownMenuItem asChild>
+                <Link
+                  href={
+                    user.email && user.email !== '—'
+                      ? `/app/audit-log?authors=${encodeURIComponent(user.email)}`
+                      : '/app/audit-log'
+                  }
+                >
+                  <History />
+                  My activity
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

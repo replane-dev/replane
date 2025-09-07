@@ -11,6 +11,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
+import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
 import {shouldNavigateOnRowClick} from '@/lib/table-row-interaction';
 import {cn} from '@/lib/utils';
 import {useTRPC} from '@/trpc/client';
@@ -29,36 +30,35 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
-interface FilterState {
+export interface FilterState {
   authorEmails: string;
   configNames: string;
   from?: Date;
   to?: Date;
 }
 
-function humanizePayload(payload: any): {action: string; details: string} {
+function humanizePayload(payload: AuditMessagePayload): {action: string; details: string} {
   if (!payload || typeof payload !== 'object') return {action: 'unknown', details: ''};
-  const type = payload.type ?? 'unknown';
-  switch (type) {
-    case 'config_created':
-      return {action: 'Config Created', details: payload.config?.name ?? ''};
-    case 'config_updated':
-      return {action: 'Config Updated', details: payload.after?.name ?? ''};
-    case 'config_deleted':
-      return {action: 'Config Deleted', details: payload.config?.name ?? ''};
-    case 'config_version_restored':
-      return {
-        action: 'Config Version Restored',
-        details: `${payload.after?.name} -> v${payload.restoredFromVersion}`,
-      };
-    case 'api_key_created':
-      return {action: 'API Key Created', details: payload.apiKey?.name ?? ''};
-    case 'api_key_deleted':
-      return {action: 'API Key Deleted', details: payload.apiKey?.name ?? ''};
-    case 'config_members_changed':
-      return {action: 'Config Members Changed', details: payload.config?.name ?? ''};
-    default:
-      return {action: String(type), details: ''};
+  if (payload.type === 'config_created') {
+    return {action: 'Config Created', details: `Config name '${payload.config.name}'`};
+  } else if (payload.type === 'config_updated') {
+    return {action: 'Config Updated', details: `Config name '${payload.after.name}'`};
+  } else if (payload.type === 'config_deleted') {
+    return {action: 'Config Deleted', details: `Config name '${payload.config.name}'`};
+  } else if (payload.type === 'config_version_restored') {
+    return {
+      action: 'Config Version Restored',
+      details: `Config name '${payload.after.name}' -> v${payload.restoredFromVersion}`,
+    };
+  } else if (payload.type === 'api_key_created') {
+    return {action: 'API Key Created', details: `API Key name '${payload.apiKey.name}'`};
+  } else if (payload.type === 'api_key_deleted') {
+    return {action: 'API Key Deleted', details: `API Key name '${payload.apiKey.name}'`};
+  } else if (payload.type === 'config_members_changed') {
+    return {action: 'Config Members Changed', details: `Config name '${payload.config.name}'`};
+  } else {
+    let _never: never = payload;
+    throw new Error(`Unhandled payload type: ${(payload as any).type}`);
   }
 }
 
@@ -72,27 +72,42 @@ interface AuditLogRow {
   rawPayload: any; // reserved for potential future expansion (popover etc.)
 }
 
-export function AuditLogTable() {
+export function AuditLogTable({
+  filters,
+  onFiltersChange,
+}: {
+  filters: FilterState;
+  onFiltersChange: (f: FilterState) => void;
+}) {
   const trpc = useTRPC();
   const router = useRouter();
-  const [filters, setFilters] = React.useState<FilterState>({authorEmails: '', configNames: ''});
-  // Raw input values (debounced before applying to filters state that drives the query)
-  const [authorEmailsInput, setAuthorEmailsInput] = React.useState('');
-  const [configNamesInput, setConfigNamesInput] = React.useState('');
+  // Local input state for debouncing textual filters
+  const [authorEmailsInput, setAuthorEmailsInput] = React.useState(filters.authorEmails);
+  const [configNamesInput, setConfigNamesInput] = React.useState(filters.configNames);
   const [openFrom, setOpenFrom] = React.useState(false);
   const [openTo, setOpenTo] = React.useState(false);
 
   // Debounce textual filter changes so we don't refetch on every keystroke
   React.useEffect(() => {
     const handle = setTimeout(() => {
-      setFilters(f => ({
-        ...f,
-        authorEmails: authorEmailsInput,
-        configNames: configNamesInput,
-      }));
+      if (authorEmailsInput !== filters.authorEmails || configNamesInput !== filters.configNames) {
+        onFiltersChange({
+          ...filters,
+          authorEmails: authorEmailsInput,
+          configNames: configNamesInput,
+        });
+      }
     }, 400); // 400ms debounce window
     return () => clearTimeout(handle);
-  }, [authorEmailsInput, configNamesInput]);
+  }, [authorEmailsInput, configNamesInput, filters, onFiltersChange]);
+
+  // Sync local inputs when external filters change (e.g., via URL updates)
+  React.useEffect(() => {
+    setAuthorEmailsInput(filters.authorEmails);
+  }, [filters.authorEmails]);
+  React.useEffect(() => {
+    setConfigNamesInput(filters.configNames);
+  }, [filters.configNames]);
 
   const authors = React.useMemo(
     () =>
@@ -187,16 +202,6 @@ export function AuditLogTable() {
         ),
       },
       {
-        accessorKey: 'userEmail',
-        header: 'Author',
-        cell: ({row}) => row.original.userEmail ?? '—',
-      },
-      {
-        accessorKey: 'configName',
-        header: 'Config',
-        cell: ({row}) => row.original.configName ?? '—',
-      },
-      {
         accessorKey: 'action',
         header: 'Action',
         cell: ({row}) => row.original.action,
@@ -209,6 +214,11 @@ export function AuditLogTable() {
             {row.original.details}
           </div>
         ),
+      },
+      {
+        accessorKey: 'userEmail',
+        header: 'Author',
+        cell: ({row}) => row.original.userEmail ?? '—',
       },
       {
         id: 'actions',
@@ -271,7 +281,8 @@ export function AuditLogTable() {
     [query],
   );
 
-  const applyDateRange = (partial: Partial<FilterState>) => setFilters(f => ({...f, ...partial}));
+  const applyDateRange = (partial: Partial<FilterState>) =>
+    onFiltersChange({...filters, ...partial});
 
   return (
     <div className="w-full">
