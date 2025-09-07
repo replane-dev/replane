@@ -115,3 +115,7 @@ If this direction interests you, star the repo to follow progress.
 ## Status & Expectations
 
 This is pre‑1.0 software. Data model & endpoints may change. Don’t put mission‑critical production traffic on it yet without reviewing the code and risks.
+
+## License
+
+MIT
