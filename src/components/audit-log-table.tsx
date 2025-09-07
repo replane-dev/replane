@@ -11,6 +11,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
+import {shouldNavigateOnRowClick} from '@/lib/table-row-interaction';
 import {cn} from '@/lib/utils';
 import {useTRPC} from '@/trpc/client';
 import {useInfiniteQuery} from '@tanstack/react-query';
@@ -25,6 +26,7 @@ import {
 import {format} from 'date-fns';
 import {ArrowUpDown, ChevronDown, Loader2, MoreHorizontal} from 'lucide-react';
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
 interface FilterState {
@@ -72,6 +74,7 @@ interface AuditLogRow {
 
 export function AuditLogTable() {
   const trpc = useTRPC();
+  const router = useRouter();
   const [filters, setFilters] = React.useState<FilterState>({authorEmails: '', configNames: ''});
   // Raw input values (debounced before applying to filters state that drives the query)
   const [authorEmailsInput, setAuthorEmailsInput] = React.useState('');
@@ -368,7 +371,14 @@ export function AuditLogTable() {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.map(row => (
-              <TableRow key={row.id}>
+              <TableRow
+                key={row.id}
+                onClick={e => {
+                  if (!shouldNavigateOnRowClick(e)) return;
+                  router.push(`/app/audit-log/${encodeURIComponent(row.original.id)}`);
+                }}
+                className="cursor-pointer hover:bg-muted/50 select-text"
+              >
                 {row.getVisibleCells().map(cell => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

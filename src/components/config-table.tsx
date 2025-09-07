@@ -1,5 +1,6 @@
 'use client';
 
+import {shouldNavigateOnRowClick} from '@/lib/table-row-interaction';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -30,6 +31,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/c
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
+import {toast} from 'sonner';
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
   const d = value instanceof Date ? value : new Date(String(value ?? ''));
@@ -189,7 +191,12 @@ export function ConfigTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(config.name)}>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(config.name);
+                    toast.success('Copied config name', {description: config.name});
+                  }}
+                >
                   Copy name
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -241,20 +248,9 @@ export function ConfigTable() {
     },
   });
 
-  const isInteractive = (el: EventTarget | null) => {
-    if (!(el instanceof Element)) return false;
-    return !!el.closest(
-      'button, a, [role="checkbox"], [role="menu"], input, select, textarea, [data-no-row-click]',
-    );
-  };
-
   const handleRowClick = React.useCallback(
     (e: React.MouseEvent, configName: string) => {
-      if (e.defaultPrevented) return;
-      if (isInteractive(e.target)) return;
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return; // allow text selection without navigation
-
+      if (!shouldNavigateOnRowClick(e)) return;
       router.push(`/app/configs/${encodeURIComponent(configName)}`);
     },
     [router],
