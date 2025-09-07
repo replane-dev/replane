@@ -219,6 +219,53 @@ export const appRouter = createTRPCRouter({
       });
       return {};
     }),
+  getAuditLog: baseProcedure
+    .input(
+      z.object({
+        from: z.date().optional(),
+        to: z.date().optional(),
+        authorEmails: z.array(z.string()).optional(),
+        configNames: z.array(z.string()).optional(),
+        limit: z.number().min(1).max(200).default(50),
+        cursor: z
+          .object({
+            createdAt: z.coerce.date(),
+            id: z.string().uuid(),
+          })
+          .nullish(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const {messages, nextCursor} = await opts.ctx.engine.useCases.getAuditLog(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        from: opts.input.from,
+        to: opts.input.to,
+        authorEmails: opts.input.authorEmails,
+        configNames: opts.input.configNames,
+        limit: opts.input.limit,
+        cursor: opts.input.cursor ?? undefined,
+      });
+      return {messages, nextCursor};
+    }),
+  getAuditLogMessage: baseProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const {message} = await opts.ctx.engine.useCases.getAuditLogMessage(GLOBAL_CONTEXT, {
+        id: opts.input.id,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return {message};
+    }),
 });
 
 export type AppRouter = typeof appRouter;

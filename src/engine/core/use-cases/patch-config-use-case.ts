@@ -142,7 +142,7 @@ export function createPatchConfigUseCase(
       await tx.auditMessages.create(baseMessage);
 
       if (membersDiff && membersDiff.added.length + membersDiff.removed.length > 0) {
-        const membersChanged: AuditMessage = {
+        await tx.auditMessages.create({
           id: createAuditMessageId(),
           createdAt: deps.dateProvider.now(),
           userId: currentUser.id,
@@ -163,8 +163,7 @@ export function createPatchConfigUseCase(
             added: membersDiff.added,
             removed: membersDiff.removed,
           },
-        } as any;
-        await tx.auditMessages.create(membersChanged);
+        });
       }
     }
 

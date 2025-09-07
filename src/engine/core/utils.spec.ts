@@ -160,7 +160,7 @@ describe('validateAgainstJsonSchema', () => {
       additionalProperties: false,
     } as const;
 
-    const res = validateAgainstJsonSchema({id: 'a1', count: 2}, schema as unknown as any);
+    const res = validateAgainstJsonSchema({id: 'a1', count: 2}, schema as any);
 
     expect(res.ok).toBe(true);
     if (res.ok) {
@@ -179,7 +179,7 @@ describe('validateAgainstJsonSchema', () => {
       additionalProperties: false,
     } as const;
 
-    const res = validateAgainstJsonSchema({count: 'nope'}, schema as unknown as any);
+    const res = validateAgainstJsonSchema({count: 'nope'}, schema as any);
 
     expect(res.ok).toBe(false);
     if (!res.ok) {

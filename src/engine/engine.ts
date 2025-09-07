@@ -20,6 +20,8 @@ import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-cas
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
+import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
+import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
@@ -118,6 +120,8 @@ export async function createEngine(options: EngineOptions) {
   const useCases = {
     getHealth: createGetHealthUseCase(),
     getConfigList: createGetConfigListUseCase({}),
+    getAuditLog: createGetAuditLogUseCase(),
+    getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),
     patchConfig: createPatchConfigUseCase({dateProvider}),
     getConfig: createGetConfigUseCase({}),

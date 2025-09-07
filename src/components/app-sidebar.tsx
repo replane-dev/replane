@@ -6,6 +6,7 @@ import {
   Bot,
   Command,
   FileCog,
+  History,
   Key,
   LifeBuoy,
   Settings2,
@@ -140,6 +141,11 @@ const data = {
       name: 'API keys',
       url: '/app/api-keys',
       icon: Key,
+    },
+    {
+      name: 'Audit log',
+      url: '/app/audit-log',
+      icon: History,
     },
   ],
 };

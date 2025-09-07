@@ -1,3 +1,4 @@
+import type {ConfigVersionRestoredAuditMessagePayload} from '@/engine/core/audit-message-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
@@ -78,15 +79,14 @@ describe('restore-config-version', () => {
       limit: 20,
       orderBy: 'created_at desc, id desc',
     });
-    const types = messages.map(m => (m as any).payload.type).sort();
+    const types = messages.map(m => m.payload.type).sort();
     expect(types).toEqual(['config_created', 'config_updated', 'config_version_restored']);
-    const restored = messages.find(
-      m => (m as any).payload.type === 'config_version_restored',
-    ) as any;
-    expect(restored.payload.restoredFromVersion).toBe(1);
+    const restored = messages.find(m => m.payload.type === 'config_version_restored')
+      ?.payload as ConfigVersionRestoredAuditMessagePayload;
+    expect(restored.restoredFromVersion).toBe(1);
     // before was version 2 with value {a:2}, after is version 3 with value {a:1}
-    expect(restored.payload.before.value).toEqual({a: 2});
-    expect(restored.payload.after.value).toEqual({a: 1});
-    expect(restored.payload.after.version).toBe(restored.payload.before.version + 1);
+    expect(restored.before.value).toEqual({a: 2});
+    expect(restored.after.value).toEqual({a: 1});
+    expect(restored.after.version).toBe(restored.before.version + 1);
   });
 });

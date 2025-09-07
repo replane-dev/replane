@@ -104,7 +104,7 @@ export class AuditMessageStore {
     configIds?: ConfigId[];
     limit: number;
     orderBy: 'created_at desc, id desc';
-    after?: {
+    startWith?: {
       createdAt: Date;
       id: AuditMessageId;
     };
@@ -130,18 +130,27 @@ export class AuditMessageStore {
       query = query.where('created_at', '<=', params.lte);
     }
 
-    if (params.after) {
-      const after = params.after;
+    if (params.startWith) {
+      const startWith = params.startWith;
       query = query.where(eb =>
         eb.or([
-          eb('created_at', '=', after.createdAt).and('id', '<', after.id),
-          eb('created_at', '<', after.createdAt),
+          eb('created_at', '=', startWith.createdAt).and('id', '<=', startWith.id),
+          eb('created_at', '<', startWith.createdAt),
         ]),
       );
     }
 
+    if (params.userIds && params.userIds.length > 0) {
+      query = query.where('user_id', 'in', params.userIds);
+    }
+
+    if (params.configIds && params.configIds.length > 0) {
+      query = query.where('config_id', 'in', params.configIds);
+    }
+
     return await query
       .selectAll()
+      .limit(params.limit)
       .execute()
       .then(x => x.map(toAuditMessage));
   }
@@ -159,6 +168,15 @@ export class AuditMessageStore {
         },
       ])
       .execute();
+  }
+
+  async getById(id: AuditMessageId): Promise<AuditMessage | undefined> {
+    const row = await this.db
+      .selectFrom('audit_messages')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
+    return row ? toAuditMessage(row) : undefined;
   }
 }
 

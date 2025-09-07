@@ -68,7 +68,7 @@ export class ConfigVersionStore {
       version: r.version,
       createdAt: r.created_at,
       description: r.description,
-      authorEmail: (r as any).author_email as string | null,
+      authorEmail: r.author_email,
     }));
   }
 

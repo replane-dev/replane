@@ -35,7 +35,7 @@ export function createGetConfigVersionListUseCase(
         version: v.version,
         createdAt: v.createdAt,
         description: v.description,
-        authorEmail: (v as any).authorEmail ?? null,
+        authorEmail: v.authorEmail,
       })),
     };
   };

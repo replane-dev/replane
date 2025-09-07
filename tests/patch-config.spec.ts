@@ -1,3 +1,7 @@
+import type {
+  ConfigMembersChangedAuditMessagePayload,
+  ConfigUpdatedAuditMessagePayload,
+} from '@/engine/core/audit-message-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
@@ -244,14 +248,15 @@ describe('patchConfig', () => {
       limit: 20,
       orderBy: 'created_at desc, id desc',
     });
-    const types = messages.map(m => (m as any).payload.type).sort();
+    const types = messages.map(m => m.payload.type).sort();
     expect(types).toEqual(['config_created', 'config_updated']);
-    const updated = messages.find(m => (m as any).payload.type === 'config_updated') as any;
-    expect(updated.payload.before.value).toEqual({a: 1});
-    expect(updated.payload.after.value).toEqual({a: 2});
-    expect(updated.payload.before.name).toBe('patch_audit');
-    expect(updated.payload.after.name).toBe('patch_audit');
-    expect(updated.payload.after.version).toBe(updated.payload.before.version + 1);
+    const updated = messages.find(m => m.payload.type === 'config_updated')
+      ?.payload as ConfigUpdatedAuditMessagePayload;
+    expect(updated.before.value).toEqual({a: 1});
+    expect(updated.after.value).toEqual({a: 2});
+    expect(updated.before.name).toBe('patch_audit');
+    expect(updated.after.name).toBe('patch_audit');
+    expect(updated.after.version).toBe(updated.before.version + 1);
   });
 
   it('creates audit message (config_members_changed) on membership edit', async () => {
@@ -282,16 +287,13 @@ describe('patchConfig', () => {
       limit: 20,
       orderBy: 'created_at desc, id desc',
     });
-    const types = messages.map(m => (m as any).payload.type).sort();
+    const types = messages.map(m => m.payload.type).sort();
     expect(types).toEqual(['config_created', 'config_members_changed', 'config_updated']);
-    const membersChanged = messages.find(
-      m => (m as any).payload.type === 'config_members_changed',
-    ) as any;
-    expect(membersChanged.payload.config.name).toBe('patch_members_audit');
+    const membersChanged = messages.find(m => m.payload.type === 'config_members_changed')
+      ?.payload as ConfigMembersChangedAuditMessagePayload;
+    expect(membersChanged.config.name).toBe('patch_members_audit');
     // Removed editor1, added editor2
-    expect(membersChanged.payload.added).toEqual([{email: 'editor2@example.com', role: 'editor'}]);
-    expect(membersChanged.payload.removed).toEqual([
-      {email: 'editor1@example.com', role: 'editor'},
-    ]);
+    expect(membersChanged.added).toEqual([{email: 'editor2@example.com', role: 'editor'}]);
+    expect(membersChanged.removed).toEqual([{email: 'editor1@example.com', role: 'editor'}]);
   });
 });
