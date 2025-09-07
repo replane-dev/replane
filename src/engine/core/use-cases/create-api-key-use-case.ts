@@ -1,6 +1,6 @@
-import argon2 from 'argon2';
-import crypto from 'node:crypto';
+import {buildRawApiToken} from '../api-token-utils';
 import {createAuditMessageId} from '../audit-message-store';
+import type {TokenHashingService} from '../token-hashing-service';
 import type {UseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';
@@ -21,29 +21,23 @@ export interface CreateApiKeyResponse {
   };
 }
 
-async function hashToken(token: string) {
-  return argon2.hash(token, {
-    type: argon2.argon2id,
-    memoryCost: 2 ** 16, // 64 MB
-    timeCost: 3,
-    parallelism: 1,
-  });
-}
-
-export function createCreateApiKeyUseCase(): UseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
+export function createCreateApiKeyUseCase(deps: {
+  tokenHasher: TokenHashingService;
+}): UseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
   return async (_ctx, tx, req) => {
     const user = await tx.users.getByEmail(req.currentUserEmail);
     if (!user) {
       throw new Error('User not found');
     }
 
-    const rawToken = `cm_${crypto.randomBytes(24).toString('hex')}`;
-    const tokenHash = await hashToken(rawToken);
+    const apiTokenId = createUuidV7();
+    // Embed apiTokenId into token for future extraction
+    const rawToken = buildRawApiToken(apiTokenId);
+    const tokenHash = await deps.tokenHasher.hash(rawToken);
     const now = new Date();
-    const id = createUuidV7();
 
     await tx.apiTokens.create({
-      id,
+      id: apiTokenId,
       creatorId: user.id,
       createdAt: now,
       tokenHash,
@@ -59,7 +53,7 @@ export function createCreateApiKeyUseCase(): UseCase<CreateApiKeyRequest, Create
       payload: {
         type: 'api_key_created',
         apiKey: {
-          id,
+          id: apiTokenId,
           name: req.name,
           description: req.description,
           createdAt: now,
@@ -69,7 +63,7 @@ export function createCreateApiKeyUseCase(): UseCase<CreateApiKeyRequest, Create
 
     return {
       apiKey: {
-        id,
+        id: apiTokenId,
         name: req.name,
         description: req.description,
         createdAt: now,

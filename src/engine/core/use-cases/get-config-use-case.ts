@@ -59,6 +59,3 @@ export function createGetConfigUseCase(
     };
   };
 }
-function normalizeEmail(currentUserEmail: any) {
-  throw new Error('Function not implemented.');
-}

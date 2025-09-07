@@ -1,6 +1,8 @@
 import {Kysely, PostgresDialect} from 'kysely';
+import {LRUCache} from 'lru-cache';
 import {Pool} from 'pg';
 import {ApiTokenStore} from './core/api-token-store';
+import {extractApiTokenId} from './core/api-token-utils';
 import {AuditMessageStore} from './core/audit-message-store';
 import {ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
@@ -13,6 +15,7 @@ import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
+import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
@@ -24,6 +27,7 @@ import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-me
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
+import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
 import {createGetConfigVersionUseCase} from './core/use-cases/get-config-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
@@ -111,11 +115,15 @@ type InferEngineUserCaseMap<T> = {
 
 type UseCaseMap = Record<string, UseCase<any, any>>;
 
+export interface ApiKeyInfo {}
+
 export async function createEngine(options: EngineOptions) {
   const logger = createLogger({level: options.logLevel});
   const {db, pool, freePool} = await prepareDb(GLOBAL_CONTEXT, logger, options);
 
   const dateProvider = options.dateProvider ?? new DefaultDateProvider();
+
+  const tokenHasher = createSha256TokenHashingService();
 
   const useCases = {
     getHealth: createGetHealthUseCase(),
@@ -128,11 +136,12 @@ export async function createEngine(options: EngineOptions) {
     deleteConfig: createDeleteConfigUseCase(),
     getConfigVersionList: createGetConfigVersionListUseCase({}),
     getConfigVersion: createGetConfigVersionUseCase({}),
+    getConfigValue: createGetConfigValueUseCase(),
     getApiKeyList: createGetApiKeyListUseCase(),
     getApiKey: createGetApiKeyUseCase(),
     deleteApiKey: createDeleteApiKeyUseCase(),
     restoreConfigVersion: createRestoreConfigVersionUseCase({dateProvider}),
-    createApiKey: createCreateApiKeyUseCase(),
+    createApiKey: createCreateApiKeyUseCase({tokenHasher}),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;
@@ -151,8 +160,36 @@ export async function createEngine(options: EngineOptions) {
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
+  const apiKeyCache = new LRUCache<string, ApiKeyInfo>({
+    max: 500,
+    ttl: 60_000, // 1 minute
+  });
+
+  async function verifyApiKey(token: string): Promise<ApiKeyInfo | null> {
+    const cached = apiKeyCache.get(token);
+    if (cached) return cached;
+
+    const tokenId = extractApiTokenId(token);
+    if (!tokenId) return null;
+
+    const row = await db
+      .selectFrom('api_tokens as t')
+      .select(['t.id as id', 't.token_hash as token_hash'])
+      .where('t.id', '=', tokenId)
+      .executeTakeFirst();
+    if (!row) return null;
+
+    const valid = await tokenHasher.verify(row.token_hash, token);
+    if (!valid) return null;
+
+    const info: ApiKeyInfo = {};
+    apiKeyCache.set(token, info);
+    return info;
+  }
+
   return {
     useCases: engineUseCases,
+    verifyApiKey,
     testing: {
       pool,
       auditMessages: new AuditMessageStore(db),

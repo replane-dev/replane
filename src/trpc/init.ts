@@ -1,8 +1,8 @@
 import {authOptions} from '@/app/api/auth/[...nextauth]/route';
-import {Lazy} from '@/engine/core/lazy';
 import {normalizeEmail} from '@/engine/core/utils';
 import type {NormalizedEmail} from '@/engine/core/zod';
-import {createEngine, type Engine} from '@/engine/engine';
+import type {Engine} from '@/engine/engine';
+import {getEngineSingleton} from '@/engine/engine-singleton';
 import {initTRPC} from '@trpc/server';
 import {getServerSession} from 'next-auth';
 import {cache} from 'react';
@@ -12,14 +12,6 @@ export interface TrpcContext {
   engine: Engine;
 }
 
-const engine = new Lazy(async () => {
-  return await createEngine({
-    databaseUrl: process.env.DATABASE_URL!,
-    logLevel: 'info',
-    dbSchema: 'public',
-  });
-});
-
 /**
  * @see: https://trpc.io/docs/server/context
  */
@@ -28,7 +20,7 @@ export const createTrpcContext = cache(async (): Promise<TrpcContext> => {
 
   return {
     currentUserEmail: session?.user?.email ? normalizeEmail(session.user.email) : undefined,
-    engine: await engine.get(),
+    engine: await getEngineSingleton(),
   };
 });
 
