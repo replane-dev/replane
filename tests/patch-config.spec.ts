@@ -220,4 +220,78 @@ describe('patchConfig', () => {
     expect(config?.config.schema).toBeNull();
     expect(config?.config.version).toBe(2);
   });
+
+  it('creates audit messages (config_created & config_updated)', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_audit',
+      value: {a: 1},
+      schema: {type: 'object', properties: {a: {type: 'number'}}},
+      description: 'audit',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+    });
+
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {a: 2}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 20,
+      orderBy: 'created_at desc, id desc',
+    });
+    const types = messages.map(m => (m as any).payload.type).sort();
+    expect(types).toEqual(['config_created', 'config_updated']);
+    const updated = messages.find(m => (m as any).payload.type === 'config_updated') as any;
+    expect(updated.payload.before.value).toEqual({a: 1});
+    expect(updated.payload.after.value).toEqual({a: 2});
+    expect(updated.payload.before.name).toBe('patch_audit');
+    expect(updated.payload.after.name).toBe('patch_audit');
+    expect(updated.payload.after.version).toBe(updated.payload.before.version + 1);
+  });
+
+  it('creates audit message (config_members_changed) on membership edit', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_members_audit',
+      value: 'v1',
+      schema: {type: 'string'},
+      description: 'members audit',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: ['editor1@example.com'],
+      ownerEmails: [CURRENT_USER_EMAIL],
+    });
+
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      members: {
+        newMembers: [
+          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: 'editor2@example.com', role: 'editor'},
+        ],
+      },
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 20,
+      orderBy: 'created_at desc, id desc',
+    });
+    const types = messages.map(m => (m as any).payload.type).sort();
+    expect(types).toEqual(['config_created', 'config_members_changed', 'config_updated']);
+    const membersChanged = messages.find(
+      m => (m as any).payload.type === 'config_members_changed',
+    ) as any;
+    expect(membersChanged.payload.config.name).toBe('patch_members_audit');
+    // Removed editor1, added editor2
+    expect(membersChanged.payload.added).toEqual([{email: 'editor2@example.com', role: 'editor'}]);
+    expect(membersChanged.payload.removed).toEqual([
+      {email: 'editor1@example.com', role: 'editor'},
+    ]);
+  });
 });

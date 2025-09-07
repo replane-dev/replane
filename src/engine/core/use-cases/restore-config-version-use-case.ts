@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import {createAuditMessageId} from '../audit-message-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
@@ -49,6 +50,8 @@ export function createRestoreConfigVersionUseCase(
     const nextVersion = config.version + 1;
     const now = deps.dateProvider.now();
 
+    const beforeConfig = config;
+
     await tx.configs.updateById({
       id: config.id,
       value: versionSnapshot.value,
@@ -68,6 +71,41 @@ export function createRestoreConfigVersionUseCase(
       value: versionSnapshot.value,
       version: nextVersion,
       authorId: currentUser.id,
+    });
+
+    const afterConfig = await tx.configs.getById(config.id);
+    assert(afterConfig, 'Config not found after update');
+    await tx.auditMessages.create({
+      id: createAuditMessageId(),
+      createdAt: now,
+      userId: currentUser.id,
+      configId: afterConfig.id,
+      payload: {
+        type: 'config_version_restored',
+        restoredFromVersion: versionSnapshot.version,
+        before: {
+          id: beforeConfig.id,
+          name: beforeConfig.name,
+          value: beforeConfig.value,
+          schema: beforeConfig.schema,
+          description: beforeConfig.description,
+          creatorId: beforeConfig.creatorId,
+          createdAt: beforeConfig.createdAt,
+          updatedAt: beforeConfig.updatedAt,
+          version: beforeConfig.version,
+        },
+        after: {
+          id: afterConfig.id,
+          name: afterConfig.name,
+          value: afterConfig.value,
+          schema: afterConfig.schema,
+          description: afterConfig.description,
+          creatorId: afterConfig.creatorId,
+          createdAt: afterConfig.createdAt,
+          updatedAt: afterConfig.updatedAt,
+          version: afterConfig.version,
+        },
+      },
     });
 
     return {newVersion: nextVersion};

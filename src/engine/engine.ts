@@ -1,6 +1,7 @@
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ApiTokenStore} from './core/api-token-store';
+import {AuditMessageStore} from './core/audit-message-store';
 import {ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
 import {ConfigVersionStore} from './core/config-version-store';
@@ -58,6 +59,7 @@ function toEngineUseCase<TReq, TRes>(
       const configUsers = new ConfigUserStore(dbTx);
       const configVersions = new ConfigVersionStore(dbTx);
       const apiTokens = new ApiTokenStore(dbTx);
+      const auditMessages = new AuditMessageStore(dbTx);
       const permissionService = new PermissionService(configUsers);
 
       const tx: UseCaseTransaction = {
@@ -67,6 +69,7 @@ function toEngineUseCase<TReq, TRes>(
         configVersions,
         permissionService,
         apiTokens,
+        auditMessages,
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -148,6 +151,7 @@ export async function createEngine(options: EngineOptions) {
     useCases: engineUseCases,
     testing: {
       pool,
+      auditMessages: new AuditMessageStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: () => freePool(),

@@ -49,4 +49,44 @@ describe('restore-config-version', () => {
     });
     expect(version3.version?.value).toEqual({a: 1});
   });
+
+  it('creates audit message (config_version_restored)', async () => {
+    await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'restore-audit',
+      description: 'initial',
+      value: {a: 1},
+      schema: null,
+      ownerEmails: [TEST_USER_EMAIL],
+      editorEmails: [],
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+    const v1 = await fx.trpc.getConfig({name: 'restore-audit'});
+    await fx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId: v1.config!.config.id,
+      prevVersion: v1.config!.config.version,
+      value: {newValue: {a: 2}},
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+    const v2 = await fx.trpc.getConfig({name: 'restore-audit'});
+    await fx.trpc.restoreConfigVersion({
+      name: 'restore-audit',
+      versionToRestore: 1,
+      expectedCurrentVersion: v2.config!.config.version,
+    });
+    const messages = await fx.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 20,
+      orderBy: 'created_at desc, id desc',
+    });
+    const types = messages.map(m => (m as any).payload.type).sort();
+    expect(types).toEqual(['config_created', 'config_updated', 'config_version_restored']);
+    const restored = messages.find(
+      m => (m as any).payload.type === 'config_version_restored',
+    ) as any;
+    expect(restored.payload.restoredFromVersion).toBe(1);
+    // before was version 2 with value {a:2}, after is version 3 with value {a:1}
+    expect(restored.payload.before.value).toEqual({a: 2});
+    expect(restored.payload.after.value).toEqual({a: 1});
+    expect(restored.payload.after.version).toBe(restored.payload.before.version + 1);
+  });
 });

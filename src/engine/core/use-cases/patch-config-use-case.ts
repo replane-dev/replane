@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import {createAuditMessageId, type AuditMessage} from '../audit-message-store';
 import type {ConfigId} from '../config-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
@@ -36,6 +37,9 @@ export function createPatchConfigUseCase(
       throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
     }
 
+    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    assert(currentUser, 'Current user not found');
+
     if (req.members || req.schema) {
       await tx.permissionService.ensureCanManageConfig(existingConfig.id, req.currentUserEmail);
     } else {
@@ -56,6 +60,8 @@ export function createPatchConfigUseCase(
       ? req.description.newDescription
       : existingConfig.description;
     const nextVersion = existingConfig.version + 1;
+
+    const beforeConfig = existingConfig;
 
     await tx.configs.updateById({
       id: existingConfig.id,
@@ -78,6 +84,10 @@ export function createPatchConfigUseCase(
       authorId: (await tx.users.getByEmail(req.currentUserEmail))?.id ?? null,
     });
 
+    let membersDiff: {
+      added: Array<{email: string; role: string}>;
+      removed: Array<{email: string; role: string}>;
+    } | null = null;
     if (req.members) {
       const existingConfigUsers = await tx.configUsers.getByConfigId(existingConfig.id);
       const {added, removed} = diffConfigMembers(
@@ -88,6 +98,73 @@ export function createPatchConfigUseCase(
       await tx.configUsers.create(existingConfig.id, added);
       for (const user of removed) {
         await tx.configUsers.delete(existingConfig.id, user.email);
+      }
+      membersDiff = {
+        added: added.map(a => ({email: a.email, role: a.role})),
+        removed: removed.map(r => ({email: r.email, role: r.role})),
+      };
+    }
+
+    const afterConfig = await tx.configs.getById(existingConfig.id);
+
+    if (beforeConfig && afterConfig) {
+      const baseMessage: AuditMessage = {
+        id: createAuditMessageId(),
+        createdAt: deps.dateProvider.now(),
+        userId: currentUser.id,
+        configId: afterConfig.id,
+        payload: {
+          type: 'config_updated',
+          before: {
+            id: beforeConfig.id,
+            name: beforeConfig.name,
+            value: beforeConfig.value,
+            schema: beforeConfig.schema,
+            description: beforeConfig.description,
+            creatorId: beforeConfig.creatorId,
+            createdAt: beforeConfig.createdAt,
+            updatedAt: beforeConfig.updatedAt,
+            version: beforeConfig.version,
+          },
+          after: {
+            id: afterConfig.id,
+            name: afterConfig.name,
+            value: afterConfig.value,
+            schema: afterConfig.schema,
+            description: afterConfig.description,
+            creatorId: afterConfig.creatorId,
+            createdAt: afterConfig.createdAt,
+            updatedAt: afterConfig.updatedAt,
+            version: afterConfig.version,
+          },
+        },
+      };
+      await tx.auditMessages.create(baseMessage);
+
+      if (membersDiff && membersDiff.added.length + membersDiff.removed.length > 0) {
+        const membersChanged: AuditMessage = {
+          id: createAuditMessageId(),
+          createdAt: deps.dateProvider.now(),
+          userId: currentUser.id,
+          configId: afterConfig.id,
+          payload: {
+            type: 'config_members_changed',
+            config: {
+              id: afterConfig.id,
+              name: afterConfig.name,
+              value: afterConfig.value,
+              schema: afterConfig.schema,
+              description: afterConfig.description,
+              creatorId: afterConfig.creatorId,
+              createdAt: afterConfig.createdAt,
+              updatedAt: afterConfig.updatedAt,
+              version: afterConfig.version,
+            },
+            added: membersDiff.added,
+            removed: membersDiff.removed,
+          },
+        } as any;
+        await tx.auditMessages.create(membersChanged);
       }
     }
 

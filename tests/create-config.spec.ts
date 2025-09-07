@@ -190,4 +190,35 @@ describe('createConfig', () => {
       myRole: 'editor',
     } satisfies GetConfigResponse['config']);
   });
+
+  it('creates audit message (config_created)', async () => {
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'audit_config_created',
+      value: 123,
+      schema: {type: 'number'},
+      description: 'audit test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [],
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 50,
+      orderBy: 'created_at desc, id desc',
+    });
+
+    expect(messages.length).toBe(1);
+    const payload: any = messages[0].payload;
+    expect(payload.type).toBe('config_created');
+    expect(payload.config.name).toBe('audit_config_created');
+    expect(payload.config.value).toBe(123);
+    expect(payload.config.version).toBe(1);
+    expect(payload.config.schema).toEqual({type: 'number'});
+    expect(payload.config.description).toBe('audit test');
+    // createdAt & updatedAt should be equal on creation
+    expect(new Date(payload.config.createdAt).toISOString()).toBe(
+      new Date(payload.config.updatedAt).toISOString(),
+    );
+  });
 });

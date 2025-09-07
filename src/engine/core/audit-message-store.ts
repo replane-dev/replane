@@ -1,5 +1,5 @@
 import type {Kysely, Selectable} from 'kysely';
-import type {Config, ConfigId} from './config-store';
+import type {ConfigId} from './config-store';
 import type {AuditMessages, DB, JsonValue} from './db';
 import {createUuidV7} from './uuid';
 
@@ -13,26 +13,76 @@ export interface BaseAuditMessagePayload<TType extends string> {
   type: TType;
 }
 
+export interface AuditMessagePayloadConfig {
+  id: ConfigId;
+  name: string;
+  value: unknown;
+  description: string;
+  schema: unknown;
+  creatorId: number;
+  createdAt: Date;
+  updatedAt: Date;
+  version: number;
+}
+
 export interface ConfigCreatedAuditMessagePayload
   extends BaseAuditMessagePayload<'config_created'> {
-  config: Config;
+  config: AuditMessagePayloadConfig;
 }
 
 export interface ConfigUpdatedAuditMessagePayload
   extends BaseAuditMessagePayload<'config_updated'> {
-  before: Config;
-  after: Config;
+  before: AuditMessagePayloadConfig;
+  after: AuditMessagePayloadConfig;
 }
 
 export interface ConfigDeletedAuditMessagePayload
   extends BaseAuditMessagePayload<'config_deleted'> {
-  config: Config;
+  config: AuditMessagePayloadConfig;
+}
+
+export interface ConfigVersionRestoredAuditMessagePayload
+  extends BaseAuditMessagePayload<'config_version_restored'> {
+  before: AuditMessagePayloadConfig;
+  restoredFromVersion: number;
+  after: AuditMessagePayloadConfig;
+}
+
+export interface ApiKeyCreatedAuditMessagePayload
+  extends BaseAuditMessagePayload<'api_key_created'> {
+  apiKey: {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: Date;
+  };
+}
+
+export interface ApiKeyDeletedAuditMessagePayload
+  extends BaseAuditMessagePayload<'api_key_deleted'> {
+  apiKey: {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: Date;
+  };
+}
+
+export interface ConfigMembersChangedAuditMessagePayload
+  extends BaseAuditMessagePayload<'config_members_changed'> {
+  config: AuditMessagePayloadConfig;
+  added: Array<{email: string; role: string}>;
+  removed: Array<{email: string; role: string}>;
 }
 
 export type AuditMessagePayload =
   | ConfigCreatedAuditMessagePayload
   | ConfigUpdatedAuditMessagePayload
-  | ConfigDeletedAuditMessagePayload;
+  | ConfigDeletedAuditMessagePayload
+  | ConfigVersionRestoredAuditMessagePayload
+  | ApiKeyCreatedAuditMessagePayload
+  | ApiKeyDeletedAuditMessagePayload
+  | ConfigMembersChangedAuditMessagePayload;
 
 export interface AuditMessage {
   id: AuditMessageId;

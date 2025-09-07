@@ -73,4 +73,32 @@ describe('deleteApiKey', () => {
       }),
     ).rejects.toBeInstanceOf(Error);
   });
+
+  it('creates audit messages (api_key_created & api_key_deleted)', async () => {
+    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      name: 'ToDeleteAudit',
+      description: '',
+    });
+    await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
+      id: created.apiKey.id,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 10,
+      orderBy: 'created_at desc, id desc',
+    });
+    const types = messages.map(m => (m as any).payload.type).sort();
+    expect(types).toEqual(['api_key_created', 'api_key_deleted']);
+    const byType: Record<string, any> = Object.fromEntries(
+      messages.map(m => [(m as any).payload.type, (m as any).payload]),
+    );
+    expect(byType.api_key_created.apiKey.id).toBe(created.apiKey.id);
+    expect(byType.api_key_deleted.apiKey.id).toBe(created.apiKey.id);
+    expect(byType.api_key_deleted.apiKey.name).toBe('ToDeleteAudit');
+    // deletion payload should not contain token
+    expect(byType.api_key_deleted.apiKey.token).toBeUndefined();
+  });
 });

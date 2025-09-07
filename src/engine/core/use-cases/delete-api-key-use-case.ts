@@ -1,3 +1,4 @@
+import {createAuditMessageId} from '../audit-message-store';
 import type {UseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -18,6 +19,21 @@ export function createDeleteApiKeyUseCase(): UseCase<DeleteApiKeyRequest, Delete
       throw new Error('Not allowed to delete this API key');
     }
     await tx.apiTokens.deleteById(token.id);
+    await tx.auditMessages.create({
+      id: createAuditMessageId(),
+      createdAt: new Date(),
+      userId: user.id,
+      configId: null,
+      payload: {
+        type: 'api_key_deleted',
+        apiKey: {
+          id: token.id,
+          name: token.name,
+          description: token.description,
+          createdAt: token.createdAt,
+        },
+      },
+    });
     return {};
   };
 }

@@ -142,4 +142,36 @@ describe('deleteConfig', () => {
     const {config} = await fixture.trpc.getConfig({name: 'cannot_delete_as_viewer'});
     expect(config).toBeDefined();
   });
+
+  it('creates audit messages (config_created & config_deleted)', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'delete_audit',
+      value: 'x',
+      schema: {type: 'string'},
+      description: 'audit',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
+    });
+
+    await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+      configId,
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 10,
+      orderBy: 'created_at desc, id desc',
+    });
+    const types = messages.map(m => (m as any).payload.type).sort();
+    expect(types).toEqual(['config_created', 'config_deleted']);
+    const byType: Record<string, any> = Object.fromEntries(
+      messages.map(m => [(m as any).payload.type, (m as any).payload]),
+    );
+    expect(byType.config_created.config.name).toBe('delete_audit');
+    expect(byType.config_deleted.config.name).toBe('delete_audit');
+    expect(byType.config_deleted.config.value).toBe('x');
+    expect(byType.config_deleted.config.version).toBe(1);
+  });
 });

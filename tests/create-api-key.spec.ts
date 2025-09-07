@@ -40,4 +40,26 @@ describe('createApiKey', () => {
     const anyWithToken = list.apiKeys.some(k => (k as any).token);
     expect(anyWithToken).toBe(false);
   });
+
+  it('creates audit message (api_key_created)', async () => {
+    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      name: 'Audit Key',
+      description: 'audit',
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 10,
+      orderBy: 'created_at desc, id desc',
+    });
+    expect(messages.length).toBe(1);
+    const payload: any = messages[0].payload;
+    expect(payload.type).toBe('api_key_created');
+    expect(payload.apiKey.id).toBe(created.apiKey.id);
+    expect(payload.apiKey.name).toBe('Audit Key');
+    expect(payload.apiKey.description).toBe('audit');
+    // token must not be present in stored payload
+    expect(payload.apiKey.token).toBeUndefined();
+  });
 });

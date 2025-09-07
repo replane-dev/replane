@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import {createAuditMessageId} from '../audit-message-store';
 import {createConfigId, type ConfigId} from '../config-store';
 import type {NewConfigUser} from '../config-user-store';
 import {createConfigVersionId} from '../config-version-store';
@@ -90,6 +91,31 @@ export function createCreateConfigUseCase(
           ),
         ),
     );
+
+    const fullConfig = await tx.configs.getById(configId);
+
+    assert(fullConfig, 'Just created config not found');
+
+    await tx.auditMessages.create({
+      id: createAuditMessageId(),
+      createdAt: deps.dateProvider.now(),
+      userId: currentUser.id,
+      configId: fullConfig.id,
+      payload: {
+        type: 'config_created',
+        config: {
+          id: fullConfig.id,
+          name: fullConfig.name,
+          value: fullConfig.value,
+          schema: fullConfig.schema,
+          description: fullConfig.description,
+          creatorId: fullConfig.creatorId,
+          createdAt: fullConfig.createdAt,
+          updatedAt: fullConfig.updatedAt,
+          version: fullConfig.version,
+        },
+      },
+    });
 
     return {
       configId,

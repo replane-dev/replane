@@ -1,5 +1,6 @@
 import argon2 from 'argon2';
 import crypto from 'node:crypto';
+import {createAuditMessageId} from '../audit-message-store';
 import type {UseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';
@@ -48,6 +49,22 @@ export function createCreateApiKeyUseCase(): UseCase<CreateApiKeyRequest, Create
       tokenHash,
       name: req.name,
       description: req.description,
+    });
+
+    await tx.auditMessages.create({
+      id: createAuditMessageId(),
+      createdAt: now,
+      userId: user.id,
+      configId: null,
+      payload: {
+        type: 'api_key_created',
+        apiKey: {
+          id,
+          name: req.name,
+          description: req.description,
+          createdAt: now,
+        },
+      },
     });
 
     return {
