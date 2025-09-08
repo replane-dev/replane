@@ -4,6 +4,7 @@ import {getDatabaseUrl} from '@/engine/engine-singleton';
 import PostgresAdapter from '@auth/pg-adapter';
 import {type AuthOptions} from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
+import OktaProvider from 'next-auth/providers/okta';
 
 const [pool, freePool] = getPgPool(getDatabaseUrl());
 
@@ -21,12 +22,31 @@ export const authOptions: AuthOptions = {
   secret: ensureDefined(process.env.NEXTAUTH_SECRET, 'NEXTAUTH_SECRET is not defined'),
   adapter: PostgresAdapter(pool),
   providers: [
-    GithubProvider({
-      clientId: ensureDefined(process.env.GITHUB_CLIENT_ID, 'GITHUB_CLIENT_ID is not defined'),
-      clientSecret: ensureDefined(
-        process.env.GITHUB_CLIENT_SECRET,
-        'GITHUB_CLIENT_SECRET is not defined',
-      ),
-    }),
-  ],
+    process.env.GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_SECRET
+      ? [
+          GithubProvider({
+            clientId: ensureDefined(
+              process.env.GITHUB_CLIENT_ID,
+              'GITHUB_CLIENT_ID is not defined',
+            ),
+            clientSecret: ensureDefined(
+              process.env.GITHUB_CLIENT_SECRET,
+              'GITHUB_CLIENT_SECRET is not defined',
+            ),
+          }),
+        ]
+      : [],
+    process.env.OKTA_CLIENT_ID || process.env.OKTA_CLIENT_SECRET || process.env.OKTA_ISSUER
+      ? [
+          OktaProvider({
+            clientId: ensureDefined(process.env.OKTA_CLIENT_ID, 'OKTA_CLIENT_ID is not defined'),
+            clientSecret: ensureDefined(
+              process.env.OKTA_CLIENT_SECRET,
+              'OKTA_CLIENT_SECRET is not defined',
+            ),
+            issuer: ensureDefined(process.env.OKTA_ISSUER, 'OKTA_ISSUER is not defined'),
+          }),
+        ]
+      : [],
+  ].flat(),
 };
