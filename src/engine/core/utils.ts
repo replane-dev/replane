@@ -4,6 +4,13 @@ import type {NormalizedEmail} from './zod';
 
 export type Brand<T, B> = T & {__brand: () => B | undefined};
 
+export function joinUndefined(...parts: (string | undefined)[]): undefined | string {
+  if (parts.some(p => p === undefined)) {
+    return undefined;
+  }
+  return parts.join('');
+}
+
 export function ensureDefined<T>(value: T | undefined, message: string): T {
   if (value === undefined || value === null) {
     throw new Error(message);

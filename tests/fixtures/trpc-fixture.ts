@@ -1,8 +1,9 @@
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
 import type {LogLevel} from '@/engine/core/logger';
-import {ensureDefined, normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail} from '@/engine/core/utils';
 import {createEngine, type Engine} from '@/engine/engine';
+import {getDatabaseUrl} from '@/engine/engine-singleton';
 import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
@@ -36,10 +37,7 @@ export class AppFixture {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
 
     const engine = await createEngine({
-      databaseUrl: ensureDefined(
-        process.env.DATABASE_URL,
-        'DATABASE_URL environment variable is required',
-      ),
+      databaseUrl: getDatabaseUrl(),
       dbSchema: `test_${Math.random().toString(36).substring(2, 15)}`,
       logLevel: this.options.logLevel ?? 'warn',
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),

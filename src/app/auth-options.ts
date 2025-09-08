@@ -1,12 +1,11 @@
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {ensureDefined} from '@/engine/core/utils';
+import {getDatabaseUrl} from '@/engine/engine-singleton';
 import PostgresAdapter from '@auth/pg-adapter';
 import {type AuthOptions} from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
 
-const [pool, freePool] = getPgPool(
-  ensureDefined(process.env.DATABASE_URL, 'DATABASE_URL is not defined'),
-);
+const [pool, freePool] = getPgPool(getDatabaseUrl());
 
 (['SIGINT', 'SIGTERM'] as const).forEach(signal => {
   process.on(signal, freePool);
