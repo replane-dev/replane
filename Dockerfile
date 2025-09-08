@@ -27,13 +27,6 @@ COPY . .
 COPY .env.example .env
 RUN pnpm build
 
-# 4) Prune to production dependencies only
-FROM base AS prune
-RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
-COPY --from=build /app/node_modules ./node_modules
-RUN pnpm prune --prod
-
 # 5) Runtime image
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -42,17 +35,15 @@ ENV NODE_ENV=production \
 ARG NEXT_PUBLIC_BUILD_SHA
 ENV NEXT_PUBLIC_BUILD_SHA=$NEXT_PUBLIC_BUILD_SHA
 
-# Create non-root user
-RUN addgroup -g 1001 nodejs && adduser -D -u 1001 nextjs -G nodejs
-
 # Copy production node_modules and build artifacts
-COPY --from=prune /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/next.config.ts ./next.config.ts
 
-USER nextjs
+RUN corepack enable
+
 EXPOSE 3000
 
 # Basic healthcheck (adjust if you change the endpoint)
