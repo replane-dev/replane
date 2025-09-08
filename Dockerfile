@@ -24,6 +24,7 @@ ENV NEXT_PUBLIC_BUILD_SHA=$NEXT_PUBLIC_BUILD_SHA
 COPY package.json pnpm-lock.yaml ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+COPY .env.example .env
 RUN pnpm build
 
 # 4) Prune to production dependencies only
