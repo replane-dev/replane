@@ -1,9 +1,14 @@
 import {AuthSession} from '@/components/auth-session';
 import {Toaster} from '@/components/ui/sonner';
 import {TRPCReactProvider} from '@/trpc/client';
+import {HydrateClient} from '@/trpc/server';
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
+import {Suspense} from 'react';
+import {ErrorBoundary} from 'react-error-boundary';
 import './globals.css';
+
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -38,7 +43,13 @@ export default function RootLayout({
     <TRPCReactProvider>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <AuthSession>{children}</AuthSession>
+          <AuthSession>
+            <HydrateClient>
+              <ErrorBoundary fallback={<div>Something went wrong</div>}>
+                <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+              </ErrorBoundary>
+            </HydrateClient>
+          </AuthSession>
           <Toaster
             toastOptions={{
               classNames: {
