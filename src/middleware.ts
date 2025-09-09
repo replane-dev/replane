@@ -6,7 +6,7 @@ setInterval(
     console.log('heartbeat', {ts: new Date().toISOString()});
   },
   5 * 60 * 1000,
-);
+).unref();
 
 // Custom middleware to return 200 {status:'ok'} for health check path
 export default withAuth(async function middleware(req) {
