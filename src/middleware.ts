@@ -3,18 +3,55 @@ import {NextResponse} from 'next/server';
 
 // Custom middleware to return 200 {status:'ok'} for health check path
 export default withAuth(async function middleware(req) {
+  // Basic request logging
+  const {pathname, search} = req.nextUrl;
+  const ua = req.headers.get('user-agent') || '';
+  const ip =
+    (req as any).ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined;
+  console.info(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      msg: 'middleware_request',
+      method: req.method,
+      pathname,
+      search,
+      ip,
+      ua,
+    }),
+  );
+
   const envPath = process.env.HEALTH_CHECK_PATH;
   if (envPath) {
     const normalized = envPath.startsWith('/') ? envPath : `/${envPath}`;
-    if (req.nextUrl.pathname === normalized) {
-      return new Response(JSON.stringify({status: 'ok'}), {
+    if (pathname === normalized) {
+      const res = new Response(JSON.stringify({status: 'ok'}), {
         status: 200,
         headers: {'content-type': 'application/json'},
       });
+      console.info(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          msg: 'middleware_healthcheck_ok',
+          method: req.method,
+          pathname,
+          status: 200,
+        }),
+      );
+      return res;
     }
   }
-  // For other paths, continue (auth handled by withAuth wrapper)
-  return NextResponse.next();
+
+  const res = NextResponse.next();
+  console.info(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      msg: 'middleware_response',
+      method: req.method,
+      pathname,
+      status: res.status,
+    }),
+  );
+  return res;
 }, {});
 
 export const config = {
