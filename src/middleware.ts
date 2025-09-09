@@ -1,15 +1,11 @@
 import {withAuth} from 'next-auth/middleware';
 import {NextResponse} from 'next/server';
 
-setInterval(
-  () => {
-    console.log('heartbeat', {ts: new Date().toISOString()});
-  },
-  5 * 60 * 1000,
-).unref();
+// Auth middleware instance for non-healthcheck routes
+const auth = withAuth({});
 
-// Custom middleware to return 200 {status:'ok'} for health check path
-export default withAuth(async function middleware(req) {
+// Custom middleware to return 200 {status:'ok'} for health check path and bypass auth
+export default async function middleware(req: any, event: any) {
   // Basic request logging
   const {pathname, search} = req.nextUrl;
   const ua = req.headers.get('user-agent') || '';
@@ -27,11 +23,11 @@ export default withAuth(async function middleware(req) {
     }),
   );
 
-  const envPath = process.env.HEALTH_CHECK_PATH;
+  const envPath = process.env.HEALTHCHECK_PATH;
   if (envPath) {
     const normalized = envPath.startsWith('/') ? envPath : `/${envPath}`;
     if (pathname === normalized) {
-      const res = new Response(JSON.stringify({status: 'ok'}), {
+      const res = new Response(JSON.stringify({}), {
         status: 200,
         headers: {'content-type': 'application/json'},
       });
@@ -48,28 +44,36 @@ export default withAuth(async function middleware(req) {
     }
   }
 
-  const res = NextResponse.next();
+  // Apply internal matcher logic: bypass auth for excluded paths
+  const isExcluded =
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next/static') ||
+    pathname.startsWith('/_next/image') ||
+    pathname === '/favicon.ico';
+  if (isExcluded) {
+    const res = NextResponse.next();
+    console.info(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        msg: 'middleware_passthrough',
+        method: req.method,
+        pathname,
+        status: res.status,
+      }),
+    );
+    return res;
+  }
+
+  // Delegate non-healthcheck routes to NextAuth's middleware
+  const res = await auth(req as any, event as any);
   console.info(
     JSON.stringify({
       ts: new Date().toISOString(),
       msg: 'middleware_response',
       method: req.method,
       pathname,
-      status: res.status,
+      status: res?.status ?? 200,
     }),
   );
   return res;
-}, {});
-
-export const config = {
-  matcher: [
-    /*
-     * Apply middleware to all paths except:
-     * - API routes (starting with /api)
-     * - Next.js static assets (starting with /_next/static)
-     * - Next.js image optimization files (starting with /_next/image)
-     * - The favicon file (/favicon.ico)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
-};
+}
