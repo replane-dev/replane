@@ -1,6 +1,13 @@
 import {withAuth} from 'next-auth/middleware';
 import {NextResponse} from 'next/server';
 
+setInterval(
+  () => {
+    console.log('heartbeat', {ts: new Date().toISOString()});
+  },
+  5 * 60 * 1000,
+);
+
 // Custom middleware to return 200 {status:'ok'} for health check path
 export default withAuth(async function middleware(req) {
   // Basic request logging
