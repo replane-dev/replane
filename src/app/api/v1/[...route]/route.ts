@@ -4,6 +4,7 @@ import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {createUuidV4} from '@/engine/core/uuid';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';
+import {cors} from 'hono/cors';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
 
@@ -32,6 +33,15 @@ const ConfigValueResponse = z
     value: z.unknown(),
   })
   .openapi('ConfigValueResponse');
+
+// CORS for all routes (allow from everywhere)
+app.use(
+  '*',
+  cors({
+    origin: '*',
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  }),
+);
 
 // Global Auth middleware (all routes) except openapi spec & hello for now.
 app.use('*', async (c, next) => {
@@ -122,6 +132,9 @@ export async function PATCH(req: NextRequest) {
   return handleRequest(req);
 }
 export async function DELETE(req: NextRequest) {
+  return handleRequest(req);
+}
+export async function OPTIONS(req: NextRequest) {
   return handleRequest(req);
 }
 
