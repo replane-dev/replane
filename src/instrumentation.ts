@@ -1,12 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {createLogger} from '@/engine/core/logger';
-import {migrate} from '@/engine/core/migrations';
-import {getDatabaseUrl} from '@/engine/engine-singleton';
-import {Pool} from 'pg';
 
 // This runs once per server process startup in Next.js.
 // We use it to ensure DB migrations are applied before the app starts handling requests.
 export async function register() {
+  if (process.env.NEXT_RUNTIME !== 'nodejs') {
+    throw new Error('Instrumentation: unsupported NEXT_RUNTIME ' + process.env.NEXT_RUNTIME);
+  }
+
+  const {migrate} = await import('@/engine/core/migrations');
+  const {getDatabaseUrl} = await import('@/engine/engine-singleton');
+  const {Pool} = await import('pg');
+
   const ctx = GLOBAL_CONTEXT;
   const logger = createLogger({level: 'info'});
   const databaseUrl = getDatabaseUrl();

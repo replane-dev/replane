@@ -1,4 +1,4 @@
-import assert from 'node:assert';
+import assert from 'assert';
 import {ClientBase} from 'pg';
 import type {Context} from './context';
 import type {Logger} from './logger';

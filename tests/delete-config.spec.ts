@@ -1,8 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
-import {describe} from 'node:test';
-import {expect, it} from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');

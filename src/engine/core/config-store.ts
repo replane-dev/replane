@@ -1,5 +1,5 @@
+import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
-import assert from 'node:assert';
 import {z} from 'zod';
 import type {Configs, DB, JsonValue} from './db';
 import {isValidJsonSchema} from './utils';

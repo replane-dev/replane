@@ -106,9 +106,6 @@ app.get('/openapi.json', c =>
   ),
 );
 
-// Use Node.js runtime (engine depends on Node APIs like pg & crypto)
-export const runtime = 'nodejs';
-
 export async function GET(req: NextRequest) {
   return handleRequest(req);
 }

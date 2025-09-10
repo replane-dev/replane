@@ -1,5 +1,5 @@
 import Ajv, {type ErrorObject, type JSONSchemaType} from 'ajv';
-import assert from 'node:assert';
+import assert from 'assert';
 import type {NormalizedEmail} from './zod';
 
 export type Brand<T, B> = T & {__brand: () => B | undefined};

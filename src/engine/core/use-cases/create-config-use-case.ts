@@ -1,4 +1,4 @@
-import assert from 'node:assert';
+import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {createConfigId, type ConfigId} from '../config-store';
 import type {NewConfigUser} from '../config-user-store';

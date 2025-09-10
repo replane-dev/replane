@@ -1,7 +1,10 @@
 {
-  "name": "web-starter",
+  "name": "replane",
   "version": "0.1.16",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack | pino-pretty",
     "build": "next build",
@@ -51,6 +54,7 @@
     "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
     "ajv": "^8.17.1",
+    "assert": "^2.1.0",
     "class-variance-authority": "^0.7.1",
     "client-only": "^0.0.1",
     "clsx": "^2.1.1",

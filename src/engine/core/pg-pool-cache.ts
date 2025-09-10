@@ -1,4 +1,4 @@
-import assert from 'node:assert';
+import assert from 'assert';
 import {Pool} from 'pg';
 
 const poolCache = new Map<string, Pool>();
