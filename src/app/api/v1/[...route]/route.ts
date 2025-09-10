@@ -4,7 +4,7 @@ import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {createUuidV4} from '@/engine/core/uuid';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';
-import {NextRequest} from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +24,6 @@ interface HonoEnv {
 
 // OpenAPI-enabled Hono app
 const app = new OpenAPIHono<HonoEnv>();
-
-// Public endpoint example (still can be protected if desired). We'll enforce auth globally below, but allowlist openapi & hello.
-app.get('/hello', c => c.json({message: 'Hello from Hono'}));
 
 // Schemas
 const ConfigValueResponse = z
@@ -90,12 +87,13 @@ app.openapi(
       const result = await engine.useCases.getConfigValue(c.get('context'), {
         name,
       });
+
       if (typeof result.value === 'undefined') return c.json({msg: 'Not found'}, 404);
-      return c.json({name, value: result.value}, 200);
+
+      return c.json(result.value, 200);
     } catch (err: unknown) {
       if (err instanceof BadRequestError) return c.json({msg: err.message}, 400);
       if (err instanceof ForbiddenError) return c.json({msg: 'Forbidden'}, 403);
-      console.error(err);
       return c.json({msg: 'Internal server error'}, 500);
     }
   },
@@ -127,7 +125,7 @@ export async function DELETE(req: NextRequest) {
   return handleRequest(req);
 }
 
-async function handleRequest(req: NextRequest): Promise<Response> {
+async function handleRequest(req: NextRequest): Promise<NextResponse> {
   // Reconstruct the path that Hono should see (strip prefix up to /api/v1)
   const url = new URL(req.url);
   const originalPath = url.pathname;
@@ -146,5 +144,9 @@ async function handleRequest(req: NextRequest): Promise<Response> {
     body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.blob(),
   });
 
-  return app.fetch(honoRequest);
+  const response = await app.fetch(honoRequest);
+  return new NextResponse(response.body, {
+    headers: response.headers,
+    status: response.status,
+  });
 }

@@ -1,13 +1,15 @@
 import {withAuth} from 'next-auth/middleware';
-import {NextResponse} from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 
 // Auth middleware instance for non-healthcheck routes
 const auth = withAuth({});
 
 // Custom middleware to return 200 {status:'ok'} for health check path and bypass auth
-export default async function middleware(req: any, event: any) {
+export default async function middleware(req: NextRequest, event: any) {
   // Basic request logging
   const {pathname, search} = req.nextUrl;
+  // Do not log query string for NextAuth routes
+  const safeSearch = pathname.startsWith('/api/auth/') ? '<REDACTED>' : search;
   const ua = req.headers.get('user-agent') || '';
   const ip =
     (req as any).ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined;
@@ -17,12 +19,19 @@ export default async function middleware(req: any, event: any) {
       msg: 'middleware_request',
       method: req.method,
       pathname,
-      search,
+      search: safeSearch,
       ip,
       ua,
     }),
   );
 
+  const res = await getResponse(req, event);
+
+  return res;
+}
+
+async function getResponse(req: NextRequest, event: any) {
+  const {pathname} = req.nextUrl;
   const envPath = process.env.HEALTHCHECK_PATH;
   if (envPath) {
     const normalized = envPath.startsWith('/') ? envPath : `/${envPath}`;

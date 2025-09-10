@@ -7,9 +7,9 @@ export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
 
 export function GET(req: Request, ctx: any) {
-	return NextAuth(getAuthOptions())(req, ctx);
+  return NextAuth(getAuthOptions())(req, ctx);
 }
 
 export function POST(req: Request, ctx: any) {
-	return NextAuth(getAuthOptions())(req, ctx);
+  return NextAuth(getAuthOptions())(req, ctx);
 }
