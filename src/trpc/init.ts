@@ -1,4 +1,4 @@
-import {authOptions} from '@/app/auth-options';
+import {getAuthOptions} from '@/app/auth-options';
 import {normalizeEmail} from '@/engine/core/utils';
 import type {NormalizedEmail} from '@/engine/core/zod';
 import type {Engine} from '@/engine/engine';
@@ -16,7 +16,7 @@ export interface TrpcContext {
  * @see: https://trpc.io/docs/server/context
  */
 export const createTrpcContext = cache(async (): Promise<TrpcContext> => {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
 
   return {
     currentUserEmail: session?.user?.email ? normalizeEmail(session.user.email) : undefined,

@@ -7,7 +7,6 @@ coverage
 tests
 *.log
 .env*
-!.env.example
 .git
 .gitignore
 Dockerfile
