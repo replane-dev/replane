@@ -1,6 +1,6 @@
 {
   "name": "replane",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "engines": {
     "node": ">=22.0.0"
