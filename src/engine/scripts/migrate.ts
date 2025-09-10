@@ -1,18 +1,13 @@
-import {Pool} from 'pg';
 import {type Context, GLOBAL_CONTEXT} from '../core/context';
 import {createLogger} from '../core/logger';
 import {migrate} from '../core/migrations';
+import {getPgPool} from '../core/pg-pool-cache';
 import {getDatabaseUrl} from '../engine-singleton';
 
 async function main(ctx: Context) {
   const logger = createLogger({level: 'info'});
 
-  const pool = new Pool({
-    connectionString: getDatabaseUrl(),
-    max: 50,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  });
+  const [pool, free] = getPgPool(getDatabaseUrl());
 
   try {
     const client = await pool.connect();
@@ -24,7 +19,7 @@ async function main(ctx: Context) {
     console.error('Migration failed:', error);
   } finally {
     logger.info(ctx, {msg: 'Migration finished.'});
-    pool.end();
+    free();
   }
 }
 

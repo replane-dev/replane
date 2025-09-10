@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev --turbopack | pino-pretty",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx server.ts",
     "lint": "next lint",
     "test": "dotenv -- vitest run",
     "test:watch": "dotenv -- vitest",
@@ -111,6 +111,7 @@
     "prettier-plugin-organize-imports": "^4.2.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.5",
+    "tsconfig-paths": "^4.2.0",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5",
     "vite-tsconfig-paths": "^5.1.4",
