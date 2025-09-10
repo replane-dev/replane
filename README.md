@@ -36,52 +36,9 @@ Non‑engineering teammates (product, operations, support) can safely change val
 - Node.js 22+ and pnpm (for running from source)
 - One OAuth provider for sign‑in (GitHub or Okta)
 
-## Quick start (local)
-
-1. Install deps
-
-```bash
-pnpm install
-```
-
-2. Start a local Postgres (via included compose)
-
-```bash
-docker compose up -d
-```
-
-3. Configure environment
-
-```bash
-cp .env.example .env
-# set NEXTAUTH_SECRET and your OAuth provider credentials
-```
-
-4. Run the app
-
-```bash
-pnpm dev
-```
-
-Open http://localhost:3000 → sign in with your provider → create a config → edit → restore a previous version → inspect audit log.
-
 ## Self‑hosting with Docker
 
-Use the published image (replace <org-or-user> if needed) or build locally.
-
-Run against an existing Postgres:
-
-```bash
-docker run --rm -p 3000:3000 \
-   -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/replane \
-   -e NEXTAUTH_URL=http://localhost:3000 \
-   -e NEXTAUTH_SECRET=change-me \
-   -e GITHUB_CLIENT_ID=... \
-   -e GITHUB_CLIENT_SECRET=... \
-   ghcr.io/<org-or-user>/replane:latest
-```
-
-Example docker‑compose.yml (app + db):
+Example docker‑compose.yml:
 
 ```yaml
 services:
@@ -93,11 +50,9 @@ services:
       POSTGRES_DB: replane
     volumes:
       - replane-db:/var/lib/postgresql/data
-    ports:
-      - '5432:5432'
 
   app:
-    image: ghcr.io/<org-or-user>/replane:latest
+    image: ghcr.io/tilyupo/replane:latest
     depends_on:
       - db
     environment:
@@ -113,6 +68,8 @@ services:
 volumes:
   replane-db:
 ```
+
+Open your browser at http://localhost:3000.
 
 Notes
 
@@ -130,44 +87,51 @@ Minimum required:
   - GitHub: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
   - Okta: OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_ISSUER
 
-Optional (local helpers):
-
-- FORCE_COLOR=1 – pretty test output
-
 See `.env.example` for a working template.
 
-## Running from source (production‑like)
+## JavaScript SDK
+
+Install:
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Prepare environment
-cp .env.example .env
-# set DATABASE_URL, NEXTAUTH_* and provider creds
-
-# Run migrations and generate DB types
-pnpm run migrate
-
-# Build and start
-pnpm build
-pnpm start
+# npm
+npm i replane-sdk
+# pnpm
+pnpm add replane-sdk
+# yarn
+yarn add replane-sdk
 ```
 
-## Upgrading
+Basic usage:
 
-- Docker: pull the new image and restart; migrations run automatically on boot.
-- Source: `git pull`, `pnpm install`, `pnpm run migrate`, `pnpm build`, `pnpm start`.
+```ts
+import {createReplaneClient} from 'replane-sdk';
+
+const client = createReplaneClient({
+  baseUrl: 'https://your-replane.example.com',
+  apiKey: 'YOUR_REPLANE_API_KEY',
+});
+
+// Fallback is returned on errors or if the config is missing
+const rules = await client.getConfig<{limit: number; enabled: boolean}>({
+  name: 'checkout_rules',
+  fallback: {limit: 100, enabled: false},
+});
+
+if (rules.enabled) {
+  // ...apply limit, etc.
+}
+```
+
+Notes
+
+- Create an API key in the Replane UI. It’s shown once; store it securely.
+- The client logs errors and returns the provided fallback if the request fails.
+- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn’t expose `fetch`.
 
 ## Backups
 
 All state is in Postgres. Use your standard backup/restore process for the database (e.g. `pg_dump`/`pg_restore`).
-
-## Development
-
-- Tests: `pnpm test`
-- Lint: `pnpm lint`
-- Local DB: `docker compose up -d` (uses `postgres:17` by default)
 
 ## Security notes
 
