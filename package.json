@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "next dev --turbopack | pino-pretty",
     "build": "next build",
-    "start": "tsx server.ts",
+    "start": "next start",
+    "start-self-hosted": "pnpm run migrate:migrate && pnpm start",
     "lint": "next lint",
     "test": "dotenv -- vitest run",
     "test:watch": "dotenv -- vitest",

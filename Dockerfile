@@ -18,4 +18,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Use package.json start script which runs the custom server (tsx server.ts)
-CMD ["pnpm", "start"]
+CMD ["pnpm", "start-self-hosted"]
