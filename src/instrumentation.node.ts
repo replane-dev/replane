@@ -28,7 +28,7 @@ export async function register() {
         await client.query(`CREATE SCHEMA IF NOT EXISTS ${dbSchema}`);
       }
       await client.query(`set search_path to ${dbSchema}`);
-      await migrate(ctx, client, logger);
+      await migrate(ctx, client, logger, dbSchema);
       logger.info(ctx, {msg: 'Instrumentation: migrations up to date.'});
     } finally {
       client.release();

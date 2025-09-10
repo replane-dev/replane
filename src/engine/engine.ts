@@ -244,7 +244,7 @@ async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
       await client.query(`CREATE SCHEMA IF NOT EXISTS ${options.dbSchema}`);
     }
     await client.query(`set search_path to ${options.dbSchema}`);
-    await migrate(ctx, client, logger);
+    await migrate(ctx, client, logger, options.dbSchema);
   } finally {
     client.release();
   }

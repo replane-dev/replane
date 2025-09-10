@@ -133,56 +133,64 @@ export const migrations: Migration[] = [
   },
 ];
 
-export async function migrate(ctx: Context, client: ClientBase, logger: Logger) {
-  await client.query(/*sql*/ `
-    CREATE TABLE IF NOT EXISTS migrations (
-      id INT PRIMARY KEY,
-      sql TEXT NOT NULL UNIQUE,
-      runAt TIMESTAMPTZ(3) NOT NULL
-    );
-  `);
-
-  const {rows: runMigrations} = await client.query<{id: number; sql: string}>(/*sql*/ `
-    SELECT id, sql FROM migrations ORDER BY id ASC
-  `);
-
-  logger.info(ctx, {msg: 'Run migrations count: ' + runMigrations.length});
-
-  assert(
-    runMigrations.length <= migrations.length,
-    `Unexpected number of run migrations: ${runMigrations.length} > ${migrations.length}`,
-  );
-
-  logger.info(ctx, {
-    msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length),
-  });
-
-  for (let i = 0; i < runMigrations.length; i++) {
-    assert(
-      runMigrations[i].sql === migrations[i].sql,
-      `Migration ${i} is out of sync: ${runMigrations[i].sql} !== ${migrations[i].sql}`,
-    );
-  }
-
-  for (let i = runMigrations.length; i < migrations.length; i++) {
-    logger.info(ctx, {msg: `Running migration ${i}: ${migrations[i].sql}`});
-    try {
-      await client.query('BEGIN');
-      const {rows: newMigration} = await client.query<{id: number}>(
-        /*sql*/ `
-          INSERT INTO migrations (id, sql, runAt)
-          VALUES ($1, $2, $3)
-          RETURNING id;
-        `,
-        [i + 1, migrations[i].sql, new Date()],
+export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
+  // Acquire an advisory lock to ensure only one migrator runs at a time for this DB session
+  await client.query(/*sql*/ `SELECT pg_advisory_lock(hashtext('migrations_${schema}'));`);
+  try {
+    await client.query(/*sql*/ `
+      CREATE TABLE IF NOT EXISTS migrations (
+        id INT PRIMARY KEY,
+        sql TEXT NOT NULL UNIQUE,
+        runAt TIMESTAMPTZ(3) NOT NULL
       );
-      await client.query(migrations[i].sql);
+    `);
 
-      assert(newMigration.length === 1, `Failed to insert migration ${i}`);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw new Error(`Failed to insert migration ${i}`, {cause: error});
+    const {rows: runMigrations} = await client.query<{id: number; sql: string}>(/*sql*/ `
+      SELECT id, sql FROM migrations ORDER BY id ASC
+    `);
+
+    logger.info(ctx, {msg: 'Run migrations count: ' + runMigrations.length});
+
+    assert(
+      runMigrations.length <= migrations.length,
+      `Unexpected number of run migrations: ${runMigrations.length} > ${migrations.length}`,
+    );
+
+    logger.info(ctx, {
+      msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length),
+    });
+
+    for (let i = 0; i < runMigrations.length; i++) {
+      assert(
+        runMigrations[i].sql === migrations[i].sql,
+        `Migration ${i} is out of sync: ${runMigrations[i].sql} !== ${migrations[i].sql}`,
+      );
     }
+
+    for (let i = runMigrations.length; i < migrations.length; i++) {
+      logger.info(ctx, {msg: `Running migration ${i}: ${migrations[i].sql}`});
+      try {
+        // Run each migration in its own SERIALIZABLE transaction
+        await client.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+        const {rows: newMigration} = await client.query<{id: number}>(
+          /*sql*/ `
+            INSERT INTO migrations (id, sql, runAt)
+            VALUES ($1, $2, $3)
+            RETURNING id;
+          `,
+          [i + 1, migrations[i].sql, new Date()],
+        );
+        await client.query(migrations[i].sql);
+
+        assert(newMigration.length === 1, `Failed to insert migration ${i}`);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw new Error(`Failed to insert migration ${i}`, {cause: error});
+      }
+    }
+  } finally {
+    // Always release the advisory lock even if an error occurs
+    await client.query(/*sql*/ `SELECT pg_advisory_unlock(hashtext('migrations'));`);
   }
 }

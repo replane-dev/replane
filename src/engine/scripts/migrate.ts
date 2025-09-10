@@ -17,7 +17,7 @@ async function main(ctx: Context) {
   try {
     const client = await pool.connect();
     logger.info(ctx, {msg: 'Starting migration...'});
-    await migrate(ctx, client, logger).finally(() => {
+    await migrate(ctx, client, logger, 'public').finally(() => {
       client.release();
     });
   } catch (error) {
