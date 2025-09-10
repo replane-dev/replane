@@ -124,7 +124,7 @@ const data = {
       target: '_blank' as const,
     },
     {
-      title: 'Github',
+      title: 'Replane',
       url: 'https://github.com/tilyupo/replane',
       icon: SiGithub,
       target: '_blank' as const,

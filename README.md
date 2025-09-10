@@ -2,162 +2,183 @@
 
 # Replane
 
-Manage live application configuration with confidence.
+Versioned, auditable application configuration. Self‑hosted.
 
 </div>
 
-> Early prototype. Expect breaking changes while we iterate quickly.
+Status: early but usable. Expect changes to schemas and endpoints before v1.0.
 
-## Why Replane?
+## What it does
 
-Modern products need fast, safe, observable config changes. Environment files, ad‑hoc admin UIs, and feature flag hacks break down as teams grow. Replane gives you a single place to:
+Replane is a small web app for managing JSON configs with:
 
-**Ship safely** – Validate every config change before it reaches production, and instantly roll back if something misbehaves.
+- Version history and instant rollback (append‑only snapshots)
+- Audit log for who changed what and when
+- Optional JSON Schema validation
+- Roles (owner/editor/viewer)
+- API keys (create/revoke) for programmatic access
 
-**Know the story** – A permanent audit trail answers: Who changed what? When? What did it look like before? Compliance & root‑cause questions stop being a fire drill.
+If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focused, auditable UI.
 
-**Collaborate without fear** – Roles (owner / editor / viewer) let product, platform, and SRE teams work together without accidental overwrites or silent drift.
+## Typical use cases
 
-**Recover instantly** – Point‑in‑time restore creates a fresh version from any previous snapshot. No manual diffing or guessing.
+- Feature toggles and parameterized settings (limits, thresholds)
+- Operational tuning without redeploys (cache TTLs, batch sizes)
+- Gradual rollouts (percentages or cohorts stored as config)
+- Incident mitigation (revert to a known‑good version quickly)
+- Shared platform/internal tool settings across multiple services
 
-**Prevent bad values** – Optional JSON Schema guardrails block malformed or out‑of‑range config before it can break a deploy.
+Non‑engineering teammates (product, operations, support) can safely change values in the UI when a JSON Schema is attached—invalid or out‑of‑range inputs are blocked before save.
 
-**Issue secure access** – Create & revoke API keys with one‑time token reveal. Stop passing long‑lived secrets informally.
+## Requirements
 
-**Eliminate “it worked on staging” mysteries** – One consistent, versioned source of truth instead of scattered environment variables and chat messages.
+- PostgreSQL (tested with 17; 14+ should work)
+- Node.js 22+ and pnpm (for running from source)
+- One OAuth provider for sign‑in (GitHub or Okta)
 
-## Core Benefits (Feature → Outcome)
+## Quick start (local)
 
-| Feature                           | Outcome / Benefit                            |
-| --------------------------------- | -------------------------------------------- |
-| Versioned configs                 | Instant rollback & historical context        |
-| Structured audit log              | Compliance, accountability, forensic clarity |
-| Role‑based access                 | Safe collaboration across teams              |
-| One‑click restore                 | Faster MTTR during incidents                 |
-| JSON Schema validation            | Fewer production outages from invalid data   |
-| Membership change logging         | Transparent governance & ownership clarity   |
-| API key lifecycle (create/delete) | Controlled programmatic access               |
-| Concurrency protection            | No silent last‑write‑wins bugs               |
-
-## Typical Use Cases
-
-1. Dynamic feature settings (limits, thresholds, toggles with structured payloads)
-2. Operational runtime tuning (cache TTLs, batching sizes) without redeploys
-3. Gradual rollout values (e.g. percentage ramps stored as config)
-4. Incident mitigation (quickly revert to a known good version)
-5. Internal tooling / platform settings shared across multiple services
-
-## Quick Start (Local Evaluation)
-
-1. Clone & install:
-   ```bash
-   pnpm install
-   ```
-2. Start the bundled database:
-   ```bash
-   docker compose up -d
-   ```
-3. Copy & tweak env:
-   ```bash
-   cp .env.example .env
-   ```
-4. Launch:
-   ```bash
-   pnpm dev
-   ```
-5. Open http://localhost:3000 and authenticate (GitHub OAuth dev app vars required).
-
-Create a config, change it, restore an older version, and inspect the audit log—this is the core product loop.
-
-## Mental Model
-
-Replane treats each config as a small timeline:
-
-1. You create it (version 1)
-2. Every edit appends a new immutable snapshot (version N)
-3. Restoring an older version just appends N+1 with the previous content (never destructive)
-4. All state transitions emit a human‑readable audit event
-
-## Workflow Example
-
-1. Product creates `checkout_rules` with a JSON schema preventing invalid states.
-2. An engineer adjusts a limit; validation passes; version advances.
-3. Incident occurs; on‑call restores version from earlier in the day (one click) – new version appears; dashboards recover.
-4. Security reviews audit log: clear record of change, author, before/after.
-
-## Roles (High Level)
-
-| Role   | What they can do                                                   |
-| ------ | ------------------------------------------------------------------ |
-| Viewer | Browse & read configs, see history                                 |
-| Editor | Everything a viewer can + change config content & restore versions |
-| Owner  | Full control incl. membership & deletion                           |
-
-## API Keys (Why You Care)
-
-Grant programmatic read/write access (future external consumption) without sharing user credentials. Keys are shown exactly once—encouraging secure storage habits.
-
-## Roadmap (User‑Facing Themes)
-
-- Namespaces / environments
-- Secret value masking & encryption
-- Diff visualization for version comparisons
-- Webhooks / outbound change events
-- Stronger token hashing & rotation policies
-- Bulk role administration
-
-## Contributing / Feedback
-
-Have a use case we missed? Open an issue: https://github.com/tilyupo/replane/issues
-
-If this direction interests you, star the repo to follow progress.
-
-## Status & Expectations
-
-This is pre‑1.0 software. Data model & endpoints may change. Don’t put mission‑critical production traffic on it yet without reviewing the code and risks.
-
-## License
-
-MIT
-
-## Docker Image
-
-A multi-arch (amd64/arm64) image is published to GitHub Container Registry on every push to `main` and on version tags (`v*.*.*`).
-
-Pull the latest image:
+1. Install deps
 
 ```bash
-# authenticate (if private)
-echo $GITHUB_TOKEN | docker login ghcr.io -u <your-username> --password-stdin
-
-# pull
-docker pull ghcr.io/<org-or-user>/replane:latest
+pnpm install
 ```
 
-Run locally (remember to provide required env vars):
+2. Start a local Postgres (via included compose)
+
+```bash
+docker compose up -d
+```
+
+3. Configure environment
+
+```bash
+cp .env.example .env
+# set NEXTAUTH_SECRET and your OAuth provider credentials
+```
+
+4. Run the app
+
+```bash
+pnpm dev
+```
+
+Open http://localhost:3000 → sign in with your provider → create a config → edit → restore a previous version → inspect audit log.
+
+## Self‑hosting with Docker
+
+Use the published image (replace <org-or-user> if needed) or build locally.
+
+Run against an existing Postgres:
 
 ```bash
 docker run --rm -p 3000:3000 \
    -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/replane \
    -e NEXTAUTH_URL=http://localhost:3000 \
-   -e NEXTAUTH_SECRET=changeme \
+   -e NEXTAUTH_SECRET=change-me \
+   -e GITHUB_CLIENT_ID=... \
+   -e GITHUB_CLIENT_SECRET=... \
    ghcr.io/<org-or-user>/replane:latest
 ```
 
-Health endpoint: `GET /api/health` returns `{ "status": "ok" }`.
+Example docker‑compose.yml (app + db):
 
-Build locally for testing:
+```yaml
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: replane
+    volumes:
+      - replane-db:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
 
-```bash
-docker build -t replane:local ./replane
+  app:
+    image: ghcr.io/<org-or-user>/replane:latest
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: change-me
+      # Pick one provider (GitHub example below)
+      GITHUB_CLIENT_ID: your-client-id
+      GITHUB_CLIENT_SECRET: your-client-secret
+    ports:
+      - '3000:3000'
+
+volumes:
+  replane-db:
 ```
 
-To release a versioned tag (publishes `vX.Y.Z` + `latest`):
+Notes
+
+- The container entrypoint runs DB migrations automatically before starting.
+- Health check: GET /api/health → `{ "status": "ok" }`.
+
+## Environment variables
+
+Minimum required:
+
+- DATABASE_URL – Postgres connection string
+- NEXTAUTH_URL – e.g. http://localhost:3000 or your external URL
+- NEXTAUTH_SECRET – long random string (used to sign sessions)
+- Authentication provider (choose one):
+  - GitHub: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+  - Okta: OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_ISSUER
+
+Optional (local helpers):
+
+- FORCE_COLOR=1 – pretty test output
+
+See `.env.example` for a working template.
+
+## Running from source (production‑like)
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+# Install dependencies
+pnpm install
+
+# Prepare environment
+cp .env.example .env
+# set DATABASE_URL, NEXTAUTH_* and provider creds
+
+# Run migrations and generate DB types
+pnpm run migrate
+
+# Build and start
+pnpm build
+pnpm start
 ```
 
----
+## Upgrading
 
-> Build arg: `NEXT_PUBLIC_BUILD_SHA` is injected automatically in CI.
+- Docker: pull the new image and restart; migrations run automatically on boot.
+- Source: `git pull`, `pnpm install`, `pnpm run migrate`, `pnpm build`, `pnpm start`.
+
+## Backups
+
+All state is in Postgres. Use your standard backup/restore process for the database (e.g. `pg_dump`/`pg_restore`).
+
+## Development
+
+- Tests: `pnpm test`
+- Lint: `pnpm lint`
+- Local DB: `docker compose up -d` (uses `postgres:17` by default)
+
+## Security notes
+
+- Always set a strong `NEXTAUTH_SECRET`.
+- Run behind HTTPS in production (via reverse proxy or platform LB).
+- Restrict database network access to the app only.
+
+## Related
+
+- JavaScript SDK lives in `/replane-javascript`.
+
+## License
+
+MIT
