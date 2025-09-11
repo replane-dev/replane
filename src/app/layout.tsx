@@ -1,4 +1,5 @@
 import {AuthSession} from '@/components/auth-session';
+import {DelayedFullscreenSpinner} from '@/components/delayed-fullscreen-spinner';
 import {Toaster} from '@/components/ui/sonner';
 import {TRPCReactProvider} from '@/trpc/client';
 import {HydrateClient} from '@/trpc/server';
@@ -46,7 +47,7 @@ export default function RootLayout({
           <AuthSession>
             <HydrateClient>
               <ErrorBoundary fallback={<div>Something went wrong</div>}>
-                <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+                <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>{children}</Suspense>
               </ErrorBoundary>
             </HydrateClient>
           </AuthSession>
