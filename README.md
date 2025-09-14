@@ -57,8 +57,8 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: change-me
+      BASE_URL: http://localhost:3000
+      SECRET_KEY_BASE: change-me
       # Pick one provider (GitHub example below)
       GITHUB_CLIENT_ID: your-client-id
       GITHUB_CLIENT_SECRET: your-client-secret
@@ -81,8 +81,8 @@ Notes
 Minimum required:
 
 - DATABASE_URL – Postgres connection string
-- NEXTAUTH_URL – e.g. http://localhost:3000 or your external URL
-- NEXTAUTH_SECRET – long random string (used to sign sessions)
+- BASE_URL – e.g. http://localhost:3000 or your external URL
+- SECRET_KEY_BASE – long random string (used to sign sessions)
 - Authentication provider (choose one):
   - GitHub: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
   - Okta: OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_ISSUER
@@ -135,13 +135,13 @@ All state is in Postgres. Use your standard backup/restore process for the datab
 
 ## Security notes
 
-- Always set a strong `NEXTAUTH_SECRET`.
+- Always set a strong `SECRET_KEY_BASE`.
 - Run behind HTTPS in production (via reverse proxy or platform LB).
 - Restrict database network access to the app only.
 
 ## Related
 
-- JavaScript SDK lives in `/replane-javascript`.
+- JavaScript SDK lives in https://github.com/tilyupo/replane-javascript.
 
 ## License
 
