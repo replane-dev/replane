@@ -13,11 +13,13 @@ describe('getApiKey', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'FetchMe',
       description: 'desc',
+      projectId: fixture.projectId,
     });
 
     const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     expect(single.apiKey).toBeTruthy();
@@ -32,6 +34,7 @@ describe('getApiKey', () => {
     const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
       id: '00000000-0000-0000-0000-000000000000',
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
     expect(single.apiKey).toBeNull();
   });
@@ -41,14 +44,17 @@ describe('getApiKey', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'DeleteThenFetch',
       description: '',
+      projectId: fixture.projectId,
     });
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
     const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
     expect(single.apiKey).toBeNull();
   });

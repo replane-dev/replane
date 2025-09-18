@@ -19,6 +19,7 @@ describe('deleteConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     const {configId: keepId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -29,15 +30,22 @@ describe('deleteConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     // Ensure both exist
     {
-      const {config} = await fixture.trpc.getConfig({name: 'config_to_delete'});
+      const {config} = await fixture.trpc.getConfig({
+        name: 'config_to_delete',
+        projectId: fixture.projectId,
+      });
       expect(config?.config.name).toBe('config_to_delete');
     }
     {
-      const {config} = await fixture.trpc.getConfig({name: 'config_to_keep'});
+      const {config} = await fixture.trpc.getConfig({
+        name: 'config_to_keep',
+        projectId: fixture.projectId,
+      });
       expect(config?.config.name).toBe('config_to_keep');
     }
 
@@ -49,18 +57,24 @@ describe('deleteConfig', () => {
 
     // Confirm deletion
     {
-      const {config} = await fixture.trpc.getConfig({name: 'config_to_delete'});
+      const {config} = await fixture.trpc.getConfig({
+        name: 'config_to_delete',
+        projectId: fixture.projectId,
+      });
       expect(config).toBeUndefined();
     }
 
     // Other config remains
     {
-      const {config} = await fixture.trpc.getConfig({name: 'config_to_keep'});
+      const {config} = await fixture.trpc.getConfig({
+        name: 'config_to_keep',
+        projectId: fixture.projectId,
+      });
       expect(config?.config.name).toBe('config_to_keep');
     }
 
     // And list reflects the single remaining config
-    const {configs} = await fixture.trpc.getConfigList();
+    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
     expect(configs.map(c => c.name)).toEqual(['config_to_keep']);
   });
 
@@ -82,6 +96,7 @@ describe('deleteConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
@@ -106,6 +121,13 @@ describe('deleteConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL],
       ownerEmails: ['other-owner@example.com'],
+      projectId: fixture.projectId,
+    });
+
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
     });
 
     await expect(
@@ -116,7 +138,10 @@ describe('deleteConfig', () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
 
     // Still exists
-    const {config} = await fixture.trpc.getConfig({name: 'cannot_delete_as_editor'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'cannot_delete_as_editor',
+      projectId: fixture.projectId,
+    });
     expect(config).toBeDefined();
   });
 
@@ -129,6 +154,13 @@ describe('deleteConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: ['other-owner@example.com'],
+      projectId: fixture.projectId,
+    });
+
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
     });
 
     await expect(
@@ -138,7 +170,10 @@ describe('deleteConfig', () => {
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
 
-    const {config} = await fixture.trpc.getConfig({name: 'cannot_delete_as_viewer'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'cannot_delete_as_viewer',
+      projectId: fixture.projectId,
+    });
     expect(config).toBeDefined();
   });
 
@@ -151,6 +186,7 @@ describe('deleteConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
@@ -162,9 +198,10 @@ describe('deleteConfig', () => {
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 10,
       orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toEqual(['config_created', 'config_deleted']);
+    expect(types).toEqual(['config_created', 'config_deleted', 'project_created']);
     const byType: Record<string, any> = Object.fromEntries(
       messages.map(m => [m.payload.type, m.payload]),
     );

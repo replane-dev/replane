@@ -15,8 +15,10 @@ describe('getAuditLog', () => {
   const fixture = useAppFixture({authEmail: TEST_USER_EMAIL});
 
   it('returns empty result when no messages', async () => {
-    const {messages, nextCursor} = await fixture.trpc.getAuditLog({});
-    expect(messages).toEqual([]);
+    const {messages, nextCursor} = await fixture.trpc.getAuditLog({
+      projectId: fixture.projectId,
+    });
+    expect(messages.length).toEqual(1); // project creation message
     expect(nextCursor).toBeNull();
   });
 
@@ -30,6 +32,7 @@ describe('getAuditLog', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
     advance(fixture, 10);
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -40,21 +43,36 @@ describe('getAuditLog', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const page1 = await fixture.trpc.getAuditLog({limit: 1});
+    const page1 = await fixture.trpc.getAuditLog({limit: 1, projectId: fixture.projectId});
     expect(page1.messages).toHaveLength(1);
     expect(page1.nextCursor).not.toBeNull();
-    expect(page1.messages[0].configName).toBe('cfg_b');
+    expect(page1.messages[0].payload.type).toBe('project_created');
 
-    const page2 = await fixture.trpc.getAuditLog({limit: 1, cursor: page1.nextCursor!});
+    const page2 = await fixture.trpc.getAuditLog({
+      limit: 1,
+      cursor: page1.nextCursor!,
+      projectId: fixture.projectId,
+    });
     expect(page2.messages).toHaveLength(1);
     // second page should have no further cursor
-    expect(page2.nextCursor).toBeNull();
-    expect(page2.messages[0].configName).toBe('cfg_a');
+    expect(page2.nextCursor).not.toBeNull();
+    expect(page2.messages[0].configName).toBe('cfg_b');
 
-    const allIds = [...page1.messages, ...page2.messages].map(m => m.id);
-    expect(new Set(allIds).size).toBe(2);
+    const page3 = await fixture.trpc.getAuditLog({
+      limit: 1,
+      cursor: page2.nextCursor!,
+      projectId: fixture.projectId,
+    });
+    expect(page3.messages).toHaveLength(1);
+    // third page should have no further cursor
+    expect(page3.nextCursor).toBeNull();
+    expect(page3.messages[0].configName).toBe('cfg_a');
+
+    const allIds = [...page1.messages, ...page2.messages, ...page3.messages].map(m => m.id);
+    expect(new Set(allIds).size).toBe(3);
   });
 
   it('filters by author email', async () => {
@@ -81,6 +99,7 @@ describe('getAuditLog', () => {
         type: 'api_key_created',
         apiKey: {id: 'x', name: 'k', description: '', createdAt: now},
       },
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -91,9 +110,13 @@ describe('getAuditLog', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {messages} = await fixture.trpc.getAuditLog({authorEmails: [otherEmail]});
+    const {messages} = await fixture.trpc.getAuditLog({
+      authorEmails: [otherEmail],
+      projectId: fixture.projectId,
+    });
     expect(messages).toHaveLength(1);
     expect(messages[0].userEmail).toBe(otherEmail);
   });
@@ -107,6 +130,7 @@ describe('getAuditLog', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'cfg_dont_filter_me',
@@ -116,9 +140,13 @@ describe('getAuditLog', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {messages} = await fixture.trpc.getAuditLog({configNames: ['cfg_filter_me']});
+    const {messages} = await fixture.trpc.getAuditLog({
+      configNames: ['cfg_filter_me'],
+      projectId: fixture.projectId,
+    });
     expect(messages.find(m => m.configName === 'cfg_filter_me')).toBeTruthy();
   });
 
@@ -131,11 +159,18 @@ describe('getAuditLog', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const res1 = await fixture.trpc.getAuditLog({authorEmails: ['missing@example.com']});
+    const res1 = await fixture.trpc.getAuditLog({
+      authorEmails: ['missing@example.com'],
+      projectId: fixture.projectId,
+    });
     expect(res1.messages).toHaveLength(0);
-    const res2 = await fixture.trpc.getAuditLog({configNames: ['no-such-config']});
+    const res2 = await fixture.trpc.getAuditLog({
+      configNames: ['no-such-config'],
+      projectId: fixture.projectId,
+    });
     expect(res2.messages).toHaveLength(0);
   });
 });

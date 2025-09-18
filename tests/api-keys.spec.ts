@@ -13,6 +13,7 @@ describe('api keys', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Primary Key',
       description: 'Main key',
+      projectId: fixture.projectId,
     });
 
     // Expect format: rp_<80 hex chars> (24 random bytes + 16 uuid bytes)
@@ -22,6 +23,7 @@ describe('api keys', () => {
 
     const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     expect(list.apiKeys).toHaveLength(1);
@@ -36,6 +38,7 @@ describe('api keys', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'First',
       description: '',
+      projectId: fixture.projectId,
     });
     // Advance time a bit for ordering
     fixture.setNow(new Date('2020-01-01T00:01:00Z'));
@@ -43,10 +46,12 @@ describe('api keys', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Second',
       description: 'second desc',
+      projectId: fixture.projectId,
     });
 
     const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     expect(list.apiKeys.map(k => k.name)).toEqual(['Second', 'First']);
@@ -55,6 +60,7 @@ describe('api keys', () => {
   it('can fetch a single key by id', async () => {
     const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
       name: 'FetchMe',
       description: 'desc',
     });
@@ -62,6 +68,7 @@ describe('api keys', () => {
     const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     expect(single.apiKey).toBeTruthy();
@@ -76,6 +83,7 @@ describe('api keys', () => {
     const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
       id: '00000000-0000-0000-0000-000000000000',
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
     expect(single.apiKey).toBeNull();
   });
@@ -83,6 +91,7 @@ describe('api keys', () => {
   it('creator can delete their key', async () => {
     const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
       name: 'DeleteMe',
       description: '',
     });
@@ -90,10 +99,12 @@ describe('api keys', () => {
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
     expect(list.apiKeys).toHaveLength(0);
   });
@@ -101,6 +112,7 @@ describe('api keys', () => {
   it('non-creator cannot delete key', async () => {
     const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
       name: 'ProtectMe',
       description: '',
     });
@@ -121,6 +133,7 @@ describe('api keys', () => {
       fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
         id: created.apiKey.id,
         currentUserEmail: otherEmail,
+        projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(Error);
   });

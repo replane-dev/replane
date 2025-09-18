@@ -10,7 +10,7 @@ describe('getConfigList', () => {
   const fixture = useAppFixture({authEmail: TEST_USER_EMAIL});
 
   it('should return empty list when there are no configs', async () => {
-    const {configs} = await fixture.trpc.getConfigList();
+    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
 
     expect(configs).toEqual([]);
   });
@@ -24,6 +24,7 @@ describe('getConfigList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'second-config',
@@ -33,9 +34,16 @@ describe('getConfigList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {configs} = await fixture.trpc.getConfigList();
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
 
     expect(configs).toEqual([
       {
@@ -46,6 +54,7 @@ describe('getConfigList', () => {
         descriptionPreview: 'The first config',
         myRole: 'viewer',
         version: 1,
+        projectId: fixture.projectId,
       },
       {
         id: expect.any(String),
@@ -55,6 +64,7 @@ describe('getConfigList', () => {
         descriptionPreview: 'The second config',
         myRole: 'viewer',
         version: 1,
+        projectId: fixture.projectId,
       },
     ] satisfies GetConfigListResponse['configs']);
     expect(configs.length).toBe(2);
@@ -70,6 +80,7 @@ describe('getConfigList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
     });
     // editor role
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -80,6 +91,7 @@ describe('getConfigList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL],
       ownerEmails: ['someone@example.com'],
+      projectId: fixture.projectId,
     });
     // viewer (no membership)
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -90,9 +102,16 @@ describe('getConfigList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: ['someoneelse@example.com'],
+      projectId: fixture.projectId,
     });
 
-    const {configs} = await fixture.trpc.getConfigList();
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
     // Should be ordered by name ascending
     expect(configs.map(c => c.name)).toEqual([
       'a_viewer_config',
@@ -117,9 +136,10 @@ describe('getConfigList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {configs} = await fixture.trpc.getConfigList();
+    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
     const found = configs.find(c => c.name === 'long_desc_config');
     expect(found).toBeDefined();
     expect(found!.descriptionPreview.length).toBe(100);

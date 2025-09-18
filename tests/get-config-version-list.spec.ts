@@ -17,10 +17,14 @@ describe('getConfigVersionList', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     // create version 2
-    const configV1 = await fixture.trpc.getConfig({name: 'versions-test'});
+    const configV1 = await fixture.trpc.getConfig({
+      name: 'versions-test',
+      projectId: fixture.projectId,
+    });
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
       configId: configV1.config!.config.id,
       prevVersion: configV1.config!.config.version,
@@ -30,7 +34,10 @@ describe('getConfigVersionList', () => {
     });
 
     // create version 3
-    const configV2 = await fixture.trpc.getConfig({name: 'versions-test'});
+    const configV2 = await fixture.trpc.getConfig({
+      name: 'versions-test',
+      projectId: fixture.projectId,
+    });
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
       configId: configV2.config!.config.id,
       prevVersion: configV2.config!.config.version,
@@ -39,7 +46,10 @@ describe('getConfigVersionList', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
-    const {versions} = await fixture.trpc.getConfigVersionList({name: 'versions-test'});
+    const {versions} = await fixture.trpc.getConfigVersionList({
+      name: 'versions-test',
+      projectId: fixture.projectId,
+    });
 
     expect(versions?.map(v => v.version)).toEqual([3, 2, 1]);
     expect(versions?.[0].description).toBe('third');
@@ -48,7 +58,10 @@ describe('getConfigVersionList', () => {
   });
 
   it('returns undefined when config not found', async () => {
-    const {versions} = await fixture.trpc.getConfigVersionList({name: 'nope'});
+    const {versions} = await fixture.trpc.getConfigVersionList({
+      name: 'nope',
+      projectId: fixture.projectId,
+    });
     expect(versions).toBeUndefined();
   });
 });

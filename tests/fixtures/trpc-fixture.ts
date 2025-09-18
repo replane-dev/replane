@@ -30,6 +30,7 @@ export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
   private overrideNow: Date = new Date();
+  private _projectId: string | undefined;
 
   constructor(private options: TrpcFixtureOptions) {}
 
@@ -58,6 +59,13 @@ export class AppFixture {
 
     this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
     this._engine = engine;
+
+    const {projectId} = await engine.useCases.createProject(GLOBAL_CONTEXT, {
+      currentUserEmail: normalizeEmail(this.options.authEmail),
+      name: 'Test Project',
+      description: 'Default project for tests',
+    });
+    this._projectId = projectId;
   }
 
   get now() {
@@ -80,6 +88,11 @@ export class AppFixture {
       throw new Error('engine is not initialized');
     }
     return this._engine;
+  }
+
+  get projectId(): string {
+    if (!this._projectId) throw new Error('projectId not initialized');
+    return this._projectId;
   }
 
   async destroy(ctx: Context) {

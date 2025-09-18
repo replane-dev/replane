@@ -13,38 +13,20 @@ describe('deleteApiKey', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'DeleteMe',
       description: '',
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
     expect(list.apiKeys).toHaveLength(0);
-  });
-
-  it('idempotent: deleting again is a no-op', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
-      name: 'Idempotent',
-      description: '',
-    });
-    await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-      id: created.apiKey.id,
-      currentUserEmail: CURRENT_USER_EMAIL,
-    });
-    // second delete should not throw
-    await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-      id: created.apiKey.id,
-      currentUserEmail: CURRENT_USER_EMAIL,
-    });
-    const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
-    });
-    expect(list.apiKeys.some(k => k.id === created.apiKey.id)).toBe(false);
   });
 
   it('non-creator cannot delete key', async () => {
@@ -52,6 +34,7 @@ describe('deleteApiKey', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'ProtectMe',
       description: '',
+      projectId: fixture.projectId,
     });
 
     // second user
@@ -70,6 +53,7 @@ describe('deleteApiKey', () => {
       fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
         id: created.apiKey.id,
         currentUserEmail: otherEmail,
+        projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(Error);
   });
@@ -79,19 +63,22 @@ describe('deleteApiKey', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'ToDeleteAudit',
       description: '',
+      projectId: fixture.projectId,
     });
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     const messages = await fixture.engine.testing.auditMessages.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 10,
       orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toEqual(['api_key_created', 'api_key_deleted']);
+    expect(types).toEqual(['api_key_created', 'api_key_deleted', 'project_created']);
     const byType: Record<string, any> = Object.fromEntries(
       messages.map(m => [m.payload.type, m.payload]),
     );

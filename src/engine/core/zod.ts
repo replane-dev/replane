@@ -41,6 +41,7 @@ export function ConfigInfo() {
     updatedAt: z.date(),
     myRole: z.enum(['owner', 'editor', 'viewer']),
     version: z.number(),
+    projectId: Uuid(),
   });
 }
 

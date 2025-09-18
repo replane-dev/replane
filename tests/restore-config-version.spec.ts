@@ -18,9 +18,10 @@ describe('restore-config-version', () => {
       ownerEmails: [TEST_USER_EMAIL],
       editorEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
+      projectId: fx.projectId,
     });
 
-    const configV1 = await fx.trpc.getConfig({name: 'restore-demo'});
+    const configV1 = await fx.trpc.getConfig({name: 'restore-demo', projectId: fx.projectId});
     const prevVersion = configV1.config!.config.version as number;
 
     await fx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -30,7 +31,7 @@ describe('restore-config-version', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
-    const configV2 = await fx.trpc.getConfig({name: 'restore-demo'});
+    const configV2 = await fx.trpc.getConfig({name: 'restore-demo', projectId: fx.projectId});
     expect(configV2.config!.config.version).toBe(prevVersion + 1);
     expect(configV2.config!.config.value).toEqual({a: 2});
 
@@ -38,15 +39,17 @@ describe('restore-config-version', () => {
       name: 'restore-demo',
       versionToRestore: 1,
       expectedCurrentVersion: configV2.config!.config.version,
+      projectId: fx.projectId,
     });
 
-    const configV3 = await fx.trpc.getConfig({name: 'restore-demo'});
+    const configV3 = await fx.trpc.getConfig({name: 'restore-demo', projectId: fx.projectId});
     expect(configV3.config!.config.version).toBe(configV2.config!.config.version + 1);
     expect(configV3.config!.config.value).toEqual({a: 1});
 
     const version3 = await fx.trpc.getConfigVersion({
       name: 'restore-demo',
       version: configV3.config!.config.version,
+      projectId: fx.projectId,
     });
     expect(version3.version?.value).toEqual({a: 1});
   });
@@ -60,27 +63,35 @@ describe('restore-config-version', () => {
       ownerEmails: [TEST_USER_EMAIL],
       editorEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
+      projectId: fx.projectId,
     });
-    const v1 = await fx.trpc.getConfig({name: 'restore-audit'});
+    const v1 = await fx.trpc.getConfig({name: 'restore-audit', projectId: fx.projectId});
     await fx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
       configId: v1.config!.config.id,
       prevVersion: v1.config!.config.version,
       value: {newValue: {a: 2}},
       currentUserEmail: TEST_USER_EMAIL,
     });
-    const v2 = await fx.trpc.getConfig({name: 'restore-audit'});
+    const v2 = await fx.trpc.getConfig({name: 'restore-audit', projectId: fx.projectId});
     await fx.trpc.restoreConfigVersion({
       name: 'restore-audit',
       versionToRestore: 1,
       expectedCurrentVersion: v2.config!.config.version,
+      projectId: fx.projectId,
     });
     const messages = await fx.engine.testing.auditMessages.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 20,
       orderBy: 'created_at desc, id desc',
+      projectId: fx.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toEqual(['config_created', 'config_updated', 'config_version_restored']);
+    expect(types).toEqual([
+      'config_created',
+      'config_updated',
+      'config_version_restored',
+      'project_created',
+    ]);
     const restored = messages.find(m => m.payload.type === 'config_version_restored')
       ?.payload as ConfigVersionRestoredAuditMessagePayload;
     expect(restored.restoredFromVersion).toBe(1);

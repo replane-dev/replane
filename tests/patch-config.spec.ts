@@ -27,6 +27,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
     // capture initial creation time before advancing time
@@ -42,7 +43,16 @@ describe('patchConfig', () => {
       prevVersion: 1,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'patch_basic'});
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_basic',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toEqual({
       config: {
@@ -55,6 +65,7 @@ describe('patchConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 2,
+        projectId: fixture.projectId,
       },
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [],
@@ -71,6 +82,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+      projectId: fixture.projectId,
     });
 
     fixture.setNow(new Date('2020-01-03T00:00:00Z'));
@@ -85,7 +97,10 @@ describe('patchConfig', () => {
       prevVersion: 1,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'patch_schema'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_schema',
+      projectId: fixture.projectId,
+    });
     expect(config?.config.version).toBe(2);
     expect(config?.config.value).toEqual({count: 2, extra: 'ok'});
     expect(config?.config.schema).toEqual({
@@ -103,6 +118,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+      projectId: fixture.projectId,
     });
 
     await expect(
@@ -125,6 +141,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
     await expect(
@@ -146,6 +163,13 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
     });
 
     await expect(
@@ -167,6 +191,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [OTHER_EDITOR_EMAIL],
       ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     // Remove OTHER_EDITOR_EMAIL, add NEW_EDITOR_EMAIL
@@ -182,7 +207,10 @@ describe('patchConfig', () => {
       prevVersion: 1,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'patch_members_success'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_members_success',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toEqual({
       config: {
@@ -195,6 +223,7 @@ describe('patchConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 2,
+        projectId: fixture.projectId,
       },
       editorEmails: [NEW_EDITOR_EMAIL],
       ownerEmails: [CURRENT_USER_EMAIL],
@@ -211,6 +240,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -220,7 +250,10 @@ describe('patchConfig', () => {
       prevVersion: 1,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'patch_remove_schema'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_remove_schema',
+      projectId: fixture.projectId,
+    });
     expect(config?.config.schema).toBeNull();
     expect(config?.config.version).toBe(2);
   });
@@ -234,6 +267,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -247,9 +281,10 @@ describe('patchConfig', () => {
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 20,
       orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toEqual(['config_created', 'config_updated']);
+    expect(types).toEqual(['config_created', 'config_updated', 'project_created']);
     const updated = messages.find(m => m.payload.type === 'config_updated')
       ?.payload as ConfigUpdatedAuditMessagePayload;
     expect(updated.before.value).toEqual({a: 1});
@@ -268,6 +303,7 @@ describe('patchConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: ['editor1@example.com'],
       ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -286,9 +322,15 @@ describe('patchConfig', () => {
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 20,
       orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toEqual(['config_created', 'config_members_changed', 'config_updated']);
+    expect(types).toEqual([
+      'config_created',
+      'config_members_changed',
+      'config_updated',
+      'project_created',
+    ]);
     const membersChanged = messages.find(m => m.payload.type === 'config_members_changed')
       ?.payload as ConfigMembersChangedAuditMessagePayload;
     expect(membersChanged.config.name).toBe('patch_members_audit');

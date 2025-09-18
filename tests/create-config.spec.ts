@@ -19,9 +19,19 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'new_config'});
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'new_config',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toEqual({
       config: {
@@ -34,6 +44,7 @@ describe('createConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 1,
+        projectId: fixture.projectId,
       },
       editorEmails: [],
       ownerEmails: [],
@@ -51,9 +62,10 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {config} = await fixture.trpc.getConfig({name});
+    const {config} = await fixture.trpc.getConfig({name, projectId: fixture.projectId});
     expect(config?.config.name).toBe(name);
   });
 
@@ -66,6 +78,7 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
     await expect(
@@ -77,10 +90,20 @@ describe('createConfig', () => {
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [],
         ownerEmails: [],
+        projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
 
-    const {config} = await fixture.trpc.getConfig({name: 'dup_config'});
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'dup_config',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toEqual({
       config: {
@@ -93,6 +116,7 @@ describe('createConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 1,
+        projectId: fixture.projectId,
       },
       editorEmails: [],
       ownerEmails: [],
@@ -109,9 +133,19 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'no_schema_config'});
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'no_schema_config',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toEqual({
       config: {
@@ -124,6 +158,7 @@ describe('createConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 1,
+        projectId: fixture.projectId,
       },
       editorEmails: [],
       ownerEmails: [],
@@ -141,6 +176,7 @@ describe('createConfig', () => {
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [],
         ownerEmails: [],
+        projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
@@ -154,9 +190,13 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: ['editor1@example.com', 'editor2@example.com'],
       ownerEmails: [CURRENT_USER_EMAIL, 'owner2@example.com'],
+      projectId: fixture.projectId,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'config_with_members_owner'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'config_with_members_owner',
+      projectId: fixture.projectId,
+    });
     expect(config).toBeDefined();
     // Structural checks (excluding ownerEmails order)
     expect(config).toEqual({
@@ -170,6 +210,7 @@ describe('createConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 1,
+        projectId: fixture.projectId,
       },
       editorEmails: ['editor1@example.com', 'editor2@example.com'].map(normalizeEmail),
       ownerEmails: [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
@@ -186,9 +227,19 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: ['other-owner@example.com'],
+      projectId: fixture.projectId,
     });
 
-    const {config} = await fixture.trpc.getConfig({name: 'config_with_editor_role'});
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'config_with_editor_role',
+      projectId: fixture.projectId,
+    });
     expect(config).toEqual({
       config: {
         name: 'config_with_editor_role',
@@ -200,6 +251,7 @@ describe('createConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 1,
+        projectId: fixture.projectId,
       },
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [normalizeEmail('other-owner@example.com')],
@@ -216,16 +268,18 @@ describe('createConfig', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
 
     const messages = await fixture.engine.testing.auditMessages.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 50,
       orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
     });
 
-    expect(messages.length).toBe(1);
-    const payload: any = messages[0].payload;
+    expect(messages.length).toBe(2); // including project_created
+    const payload: any = messages[1].payload;
     expect(payload.type).toBe('config_created');
     expect(payload.config.name).toBe('audit_config_created');
     expect(payload.config.value).toBe(123);

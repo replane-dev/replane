@@ -18,8 +18,18 @@ describe('getConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: [],
+      projectId: fixture.projectId,
     });
-    const {config} = await fixture.trpc.getConfig({name: 'test-config'});
+
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+    const {config} = await fixture.trpc.getConfig({
+      name: 'test-config',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toEqual({
       config: {
@@ -32,6 +42,7 @@ describe('getConfig', () => {
         creatorId: TEST_USER_ID,
         id: expect.any(String),
         version: 1,
+        projectId: fixture.projectId,
       },
       editorEmails: [],
       myRole: 'viewer',
@@ -40,7 +51,10 @@ describe('getConfig', () => {
   });
 
   it('should return undefined if config does not exist', async () => {
-    const {config} = await fixture.trpc.getConfig({name: 'non-existent-config'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'non-existent-config',
+      projectId: fixture.projectId,
+    });
 
     expect(config).toBeUndefined();
   });
@@ -54,8 +68,12 @@ describe('getConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: ['editor@example.com'],
       ownerEmails: [TEST_USER_EMAIL, 'owner2@example.com'],
+      projectId: fixture.projectId,
     });
-    const {config} = await fixture.trpc.getConfig({name: 'owner-role-config'});
+    const {config} = await fixture.trpc.getConfig({
+      name: 'owner-role-config',
+      projectId: fixture.projectId,
+    });
     expect(config?.myRole).toBe('owner');
     expect(config?.ownerEmails.sort()).toEqual(
       [
@@ -75,8 +93,18 @@ describe('getConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL],
       ownerEmails: ['another-owner@example.com'],
+      projectId: fixture.projectId,
     });
-    const {config} = await fixture.trpc.getConfig({name: 'editor-role-config'});
+
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+    const {config} = await fixture.trpc.getConfig({
+      name: 'editor-role-config',
+      projectId: fixture.projectId,
+    });
     expect(config?.myRole).toBe('editor');
     expect(config?.editorEmails).toContain(TEST_USER_EMAIL);
   });
@@ -90,8 +118,18 @@ describe('getConfig', () => {
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       ownerEmails: ['different-owner@example.com'],
+      projectId: fixture.projectId,
     });
-    const {config} = await fixture.trpc.getConfig({name: 'viewer-role-config'});
+
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      currentUserEmail: TEST_USER_EMAIL,
+      id: fixture.projectId,
+      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+    });
+    const {config} = await fixture.trpc.getConfig({
+      name: 'viewer-role-config',
+      projectId: fixture.projectId,
+    });
     expect(config?.myRole).toBe('viewer');
   });
 });
