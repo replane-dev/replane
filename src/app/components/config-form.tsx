@@ -358,7 +358,7 @@ export function ConfigForm(props: ConfigFormProps) {
               </FormControl>
               {!canEditDescription && (
                 <FormDescription>
-                  You don't have permission to edit the description.
+                  You don&apos;t have permission to edit the description.
                 </FormDescription>
               )}
               <FormMessage />

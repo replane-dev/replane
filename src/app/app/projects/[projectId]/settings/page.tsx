@@ -219,8 +219,8 @@ export default function ProjectSettingsPage() {
           </div>
           {!canManageMembers && (
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> You don't have permission to manage members. Only owners
-              can make changes.
+              <Lock className="h-3 w-3" /> You don&apos;t have permission to manage members. Only
+              owners can make changes.
             </p>
           )}
         </div>
