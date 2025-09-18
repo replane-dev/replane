@@ -52,7 +52,7 @@ services:
       - replane-db:/var/lib/postgresql/data
 
   app:
-    image: ghcr.io/tilyupo/replane:latest
+    image: ghcr.io/replane-dev/replane:latest
     depends_on:
       - db
     environment:
@@ -163,7 +163,7 @@ All state is in Postgres. Use your standard backup/restore process for the datab
 
 ## Related
 
-- JavaScript SDK lives in https://github.com/tilyupo/replane-javascript.
+- JavaScript SDK lives in https://github.com/replane-dev/replane-javascript.
 
 ## License
 

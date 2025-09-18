@@ -62,7 +62,7 @@ export function ErrorFallback({error, resetErrorBoundary}: ErrorFallbackProps) {
         '```',
       ].join('\n');
 
-      const base = 'https://github.com/tilyupo/replane/issues/new';
+      const base = 'https://github.com/replane-dev/replane/issues/new';
       const params = new URLSearchParams({
         title,
         body,
@@ -70,7 +70,7 @@ export function ErrorFallback({error, resetErrorBoundary}: ErrorFallbackProps) {
       });
       return `${base}?${params.toString()}`;
     } catch {
-      return 'https://github.com/tilyupo/replane/issues/new/choose';
+      return 'https://github.com/replane-dev/replane/issues/new/choose';
     }
   }, [error]);
 

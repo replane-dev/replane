@@ -17,13 +17,13 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     navSecondary: [
       {
         title: 'Support',
-        url: 'https://github.com/tilyupo/replane/issues',
+        url: 'https://github.com/replane-dev/replane/issues',
         icon: LifeBuoy,
         target: '_blank' as const,
       },
       {
         title: 'Replane',
-        url: 'https://github.com/tilyupo/replane',
+        url: 'https://github.com/replane-dev/replane',
         icon: SiGithub,
         target: '_blank' as const,
       },
