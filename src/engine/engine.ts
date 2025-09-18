@@ -219,6 +219,7 @@ export async function createEngine(options: EngineOptions) {
     testing: {
       pool,
       auditMessages: new AuditMessageStore(db),
+      projects: new ProjectStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: () => freePool(),

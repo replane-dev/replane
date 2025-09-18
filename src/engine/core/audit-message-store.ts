@@ -155,7 +155,7 @@ export class AuditMessageStore {
     configIds?: ConfigId[];
     limit: number;
     orderBy: 'created_at desc, id desc';
-    projectId: string;
+    projectId?: string;
     startWith?: {
       createdAt: Date;
       id: AuditMessageId;
@@ -163,9 +163,12 @@ export class AuditMessageStore {
   }): Promise<AuditMessage[]> {
     let query = this.db
       .selectFrom('audit_messages')
-      .where('project_id', '=', params.projectId)
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc');
+
+    if (params.projectId) {
+      query = query.where('project_id', '=', params.projectId);
+    }
 
     if (params.gt) {
       query = query.where('created_at', '>', params.gt);
