@@ -50,7 +50,7 @@ export function createPatchConfigUseCase(
     const nextValue = req.value ? req.value.newValue : existingConfig.value;
     const nextSchema = req.schema ? req.schema.newSchema : existingConfig.schema;
     if (nextSchema !== null) {
-      const result = validateAgainstJsonSchema(nextValue, nextSchema as any);
+      const result = validateAgainstJsonSchema(nextValue, nextSchema);
       if (!result.ok) {
         throw new BadRequestError(
           `Config value does not match schema: ${result.errors.join('; ')}`,

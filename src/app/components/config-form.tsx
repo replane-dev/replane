@@ -78,7 +78,7 @@ export function ConfigForm(props: ConfigFormProps) {
   } = props;
 
   // Normalize role, tolerate common typo "editor"
-  const role: 'viewer' | 'owner' | 'editor' = rawRole === 'editor' ? 'editor' : (rawRole as any);
+  const role: 'viewer' | 'owner' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
 
   // Permissions (apply strictly in edit mode; new mode is always editable)
   const isEdit = mode === 'edit';
@@ -214,7 +214,7 @@ export function ConfigForm(props: ConfigFormProps) {
     }
 
     await onSubmit({
-      name: (values as any).name ?? defaultName,
+      name: values.name ?? defaultName,
       value: payloadValue,
       schema: values.schemaEnabled ? parsedSchema : null,
       description: values.description ?? '',

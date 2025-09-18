@@ -172,7 +172,7 @@ export class ProjectStore {
       .selectFrom('projects')
       .select(eb => eb.fn.countAll<number>().as('cnt'))
       .executeTakeFirst();
-    return row ? (row as any).cnt : 0;
+    return row ? row.cnt : 0;
   }
 }
 

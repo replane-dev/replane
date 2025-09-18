@@ -143,7 +143,7 @@ export function isValidJsonSchema(schema: unknown): boolean {
   if (schema === null) return true;
   if (!(typeof schema === 'object' || typeof schema === 'boolean')) return false;
   try {
-    return __ajv.validateSchema(schema as any) as boolean;
+    return __ajv.validateSchema(schema) as boolean;
   } catch {
     return false;
   }

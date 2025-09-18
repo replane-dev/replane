@@ -67,7 +67,7 @@ describe('deleteConfig', () => {
   it('should throw BadRequestError when config does not exist', async () => {
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        configId: '00000000-0000-0000-0000-000000000000' as any, // non-existent id
+        configId: '00000000-0000-0000-0000-000000000000', // non-existent id
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -163,10 +163,10 @@ describe('deleteConfig', () => {
       limit: 10,
       orderBy: 'created_at desc, id desc',
     });
-    const types = messages.map(m => (m as any).payload.type).sort();
+    const types = messages.map(m => m.payload.type).sort();
     expect(types).toEqual(['config_created', 'config_deleted']);
     const byType: Record<string, any> = Object.fromEntries(
-      messages.map(m => [(m as any).payload.type, (m as any).payload]),
+      messages.map(m => [m.payload.type, m.payload]),
     );
     expect(byType.config_created.config.name).toBe('delete_audit');
     expect(byType.config_deleted.config.name).toBe('delete_audit');

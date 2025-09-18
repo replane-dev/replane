@@ -64,8 +64,8 @@ function humanizePayload(payload: AuditMessagePayload): {action: string; details
       details: `Name '${payload.before.name}' → '${payload.after.name}'`,
     };
   } else if (payload.type === 'project_members_changed') {
-    const added = (payload as any).added?.length ?? 0;
-    const removed = (payload as any).removed?.length ?? 0;
+    const added = payload.added?.length ?? 0;
+    const removed = payload.removed?.length ?? 0;
     const parts: string[] = [];
     if (added) parts.push(`+${added}`);
     if (removed) parts.push(`-${removed}`);
@@ -74,7 +74,7 @@ function humanizePayload(payload: AuditMessagePayload): {action: string; details
     return {action: 'Project Deleted', details: `Project name '${payload.project.name}'`};
   } else {
     const _never: never = payload;
-    throw new Error(`Unhandled payload type: ${(payload as any).type}`);
+    throw new Error(`Unhandled payload type: ${JSON.stringify(payload)}`);
   }
 }
 

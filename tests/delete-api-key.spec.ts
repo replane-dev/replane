@@ -90,10 +90,10 @@ describe('deleteApiKey', () => {
       limit: 10,
       orderBy: 'created_at desc, id desc',
     });
-    const types = messages.map(m => (m as any).payload.type).sort();
+    const types = messages.map(m => m.payload.type).sort();
     expect(types).toEqual(['api_key_created', 'api_key_deleted']);
     const byType: Record<string, any> = Object.fromEntries(
-      messages.map(m => [(m as any).payload.type, (m as any).payload]),
+      messages.map(m => [m.payload.type, m.payload]),
     );
     expect(byType.api_key_created.apiKey.id).toBe(created.apiKey.id);
     expect(byType.api_key_deleted.apiKey.id).toBe(created.apiKey.id);

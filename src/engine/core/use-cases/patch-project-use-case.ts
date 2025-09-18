@@ -75,7 +75,7 @@ export function createPatchProjectUseCase(): UseCase<PatchProjectRequest, PatchP
       await tx.permissionService.ensureCanManageProjectUsers(req.id, req.currentUserEmail);
 
       const prevUsers = await tx.projectUsers.getByProjectId(req.id);
-      const prev = prevUsers.map(u => ({email: u.user_email_normalized, role: u.role as any}));
+      const prev = prevUsers.map(u => ({email: u.user_email_normalized, role: u.role}));
       const next = req.members.users.map(u => ({email: u.email.toLowerCase(), role: u.role}));
 
       if (next.filter(u => u.role === 'owner').length === 0) {
@@ -108,7 +108,7 @@ export function createPatchProjectUseCase(): UseCase<PatchProjectRequest, PatchP
             type: 'project_members_changed',
             added,
             removed,
-          } as any,
+          },
         });
       }
     }

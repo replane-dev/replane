@@ -12,7 +12,7 @@ function refreshJsonDiagnostics(monaco: typeof Monaco) {
   const schemas = Array.from(jsonSchemaRegistry.entries()).map(([path, entry]) => ({
     uri: entry.uri,
     fileMatch: [path],
-    schema: entry.schema as any,
+    schema: entry.schema,
   }));
   monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
     validate: true,

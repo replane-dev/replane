@@ -150,7 +150,7 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
 
   const honoRequest = new Request(honoUrl, {
     method: req.method,
-    headers: req.headers as any,
+    headers: req.headers,
     body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.blob(),
   });
 

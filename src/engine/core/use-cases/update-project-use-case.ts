@@ -66,7 +66,7 @@ export function createUpdateProjectUseCase(): UseCase<UpdateProjectRequest, Upda
           createdAt: existing.createdAt,
           updatedAt: now,
         },
-      } as any,
+      },
     });
 
     return {ok: true};
