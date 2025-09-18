@@ -2,6 +2,7 @@ import type {UseCase} from '../use-case';
 
 export interface GetConfigValueRequest {
   name: string;
+  projectId: string;
 }
 
 export interface GetConfigValueResponse {
@@ -13,7 +14,7 @@ export function createGetConfigValueUseCase(): UseCase<
   GetConfigValueResponse
 > {
   return async (_ctx, tx, req) => {
-    const config = await tx.configs.getByName(req.name);
+    const config = await tx.configs.getByName({projectId: req.projectId, name: req.name});
     if (!config) return {value: undefined};
     // (Optional future: enforce permissions)
     return {value: config.value};

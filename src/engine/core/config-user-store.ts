@@ -5,8 +5,11 @@ import {normalizeEmail} from './utils';
 export type ConfigUserRole = 'owner' | 'editor' | 'viewer';
 
 export interface NewConfigUser {
+  configId: string;
   email: string;
   role: ConfigUserRole;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export class ConfigUserStore {
@@ -29,17 +32,19 @@ export class ConfigUserStore {
       .execute();
   }
 
-  async create(configId: string, configUsers: NewConfigUser[]) {
+  async create(configUsers: NewConfigUser[]) {
     if (configUsers.length === 0) {
       return;
     }
     await this.db
       .insertInto('config_users')
       .values(
-        configUsers.map(({email, role}) => ({
-          config_id: configId,
-          user_email_normalized: normalizeEmail(email),
-          role,
+        configUsers.map(x => ({
+          config_id: x.configId,
+          user_email_normalized: normalizeEmail(x.email),
+          role: x.role,
+          created_at: x.createdAt,
+          updated_at: x.updatedAt,
         })),
       )
       .execute();

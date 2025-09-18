@@ -17,6 +17,7 @@ import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Button} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {
@@ -52,11 +53,12 @@ function humanizeId(id: string): string {
 
 export function ConfigVersionsTable({name}: {name: string}) {
   const router = useRouter();
+  const projectId = useProjectId();
   const trpc = useTRPC();
   const {
     data: {versions},
-  } = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name}));
-  const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name}));
+  } = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name, projectId}));
+  const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const currentConfigVersion = configData.config?.config.version as number | undefined;
   const restoreMutation = useMutation(trpc.restoreConfigVersion.mutationOptions());
   const tableData = React.useMemo(
@@ -181,7 +183,7 @@ export function ConfigVersionsTable({name}: {name: string}) {
                   onClick={e => {
                     e.stopPropagation();
                     router.push(
-                      `/app/configs/${encodeURIComponent(name)}/versions/${version.version}`,
+                      `/app/projects/${projectId}/configs/${encodeURIComponent(name)}/versions/${version.version}`,
                     );
                   }}
                 >
@@ -254,9 +256,11 @@ export function ConfigVersionsTable({name}: {name: string}) {
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
-      router.push(`/app/configs/${encodeURIComponent(name)}/versions/${versionNumber}`);
+      router.push(
+        `/app/projects/${projectId}/configs/${encodeURIComponent(name)}/versions/${versionNumber}`,
+      );
     },
-    [router, name],
+    [router, name, projectId],
   );
 
   return (

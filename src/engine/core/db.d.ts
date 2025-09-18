@@ -26,6 +26,8 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
+export type ProjectUserRole = 'admin' | 'owner';
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Accounts {
@@ -49,6 +51,7 @@ export interface ApiTokens {
   description: string;
   id: string;
   name: string;
+  project_id: string;
   token_hash: string;
 }
 
@@ -57,6 +60,7 @@ export interface AuditMessages {
   created_at: Timestamp;
   id: string;
   payload: Json;
+  project_id: string | null;
   user_id: number | null;
 }
 
@@ -66,6 +70,7 @@ export interface Configs {
   description: string;
   id: string;
   name: string;
+  project_id: string;
   schema: Json | null;
   updated_at: Timestamp;
   value: Json;
@@ -74,7 +79,9 @@ export interface Configs {
 
 export interface ConfigUsers {
   config_id: string;
+  created_at: Timestamp;
   role: ConfigUserRole;
+  updated_at: Timestamp;
   user_email_normalized: string;
 }
 
@@ -94,6 +101,22 @@ export interface Migrations {
   id: number;
   runat: Timestamp;
   sql: string;
+}
+
+export interface Projects {
+  created_at: Timestamp;
+  description: string;
+  id: string;
+  name: string;
+  updated_at: Timestamp;
+}
+
+export interface ProjectUsers {
+  created_at: Timestamp;
+  project_id: string;
+  role: ProjectUserRole;
+  updated_at: Timestamp;
+  user_email_normalized: string;
 }
 
 export interface Sessions {
@@ -125,6 +148,8 @@ export interface DB {
   config_versions: ConfigVersions;
   configs: Configs;
   migrations: Migrations;
+  project_users: ProjectUsers;
+  projects: Projects;
   sessions: Sessions;
   users: Users;
   verification_token: VerificationToken;

@@ -1,186 +1,63 @@
 'use client';
 
 import {SiGithub} from '@icons-pack/react-simple-icons';
-import {
-  BookOpen,
-  Bot,
-  FileCog,
-  History,
-  Key,
-  LifeBuoy,
-  Settings2,
-  SquareTerminal,
-} from 'lucide-react';
+import {FileCog, History, Key, LifeBuoy, Settings} from 'lucide-react';
 import * as React from 'react';
 
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {NavMain} from '@/components/nav-main';
-import {NavProjects} from '@/components/nav-projects';
 import {NavSecondary} from '@/components/nav-secondary';
 import {NavUser} from '@/components/nav-user';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import Link from 'next/link';
-
-const data = {
-  navMain: [
-    {
-      title: 'Playground',
-      url: '#',
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: 'History',
-          url: '#',
-        },
-        {
-          title: 'Starred',
-          url: '#',
-        },
-        {
-          title: 'Settings',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: 'Models',
-      url: '#',
-      icon: Bot,
-      items: [
-        {
-          title: 'Genesis',
-          url: '#',
-        },
-        {
-          title: 'Explorer',
-          url: '#',
-        },
-        {
-          title: 'Quantum',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: 'Documentation',
-      url: '#',
-      icon: BookOpen,
-      items: [
-        {
-          title: 'Introduction',
-          url: '#',
-        },
-        {
-          title: 'Get Started',
-          url: '#',
-        },
-        {
-          title: 'Tutorials',
-          url: '#',
-        },
-        {
-          title: 'Changelog',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: 'Settings',
-      url: '#',
-      icon: Settings2,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-        {
-          title: 'Team',
-          url: '#',
-        },
-        {
-          title: 'Billing',
-          url: '#',
-        },
-        {
-          title: 'Limits',
-          url: '#',
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: 'Support',
-      url: 'https://github.com/tilyupo/replane/issues',
-      icon: LifeBuoy,
-      target: '_blank' as const,
-    },
-    {
-      title: 'Replane',
-      url: 'https://github.com/tilyupo/replane',
-      icon: SiGithub,
-      target: '_blank' as const,
-    },
-  ],
-  projects: [
-    {
-      name: 'Configs',
-      url: '/app/configs',
-      icon: FileCog,
-    },
-    {
-      name: 'API keys',
-      url: '/app/api-keys',
-      icon: Key,
-    },
-    {
-      name: 'Audit log',
-      url: '/app/audit-log',
-      icon: History,
-    },
-  ],
-};
+import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader} from '@/components/ui/sidebar';
+import {ProjectSwitcher} from './project-switcher';
 
 export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
+  const projectId = useProjectId();
+  const data = {
+    navSecondary: [
+      {
+        title: 'Support',
+        url: 'https://github.com/tilyupo/replane/issues',
+        icon: LifeBuoy,
+        target: '_blank' as const,
+      },
+      {
+        title: 'Replane',
+        url: 'https://github.com/tilyupo/replane',
+        icon: SiGithub,
+        target: '_blank' as const,
+      },
+    ],
+    navMain: [
+      {
+        name: 'Configs',
+        url: `/app/projects/${projectId}/configs`,
+        icon: FileCog,
+      },
+      {
+        name: 'API keys',
+        url: `/app/projects/${projectId}/api-keys`,
+        icon: Key,
+      },
+      {
+        name: 'Audit log',
+        url: `/app/projects/${projectId}/audit-log`,
+        icon: History,
+      },
+      {
+        name: 'Settings',
+        url: `/app/projects/${projectId}/settings`,
+        icon: Settings,
+      },
+    ],
+  };
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href="/">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="size-5"
-                  >
-                    <path d="M11.644 1.59a.75.75 0 0 1 .712 0l9.75 5.25a.75.75 0 0 1 0 1.32l-9.75 5.25a.75.75 0 0 1-.712 0l-9.75-5.25a.75.75 0 0 1 0-1.32l9.75-5.25Z" />
-                    <path d="m3.265 10.602 7.668 4.129a2.25 2.25 0 0 0 2.134 0l7.668-4.13 1.37.739a.75.75 0 0 1 0 1.32l-9.75 5.25a.75.75 0 0 1-.71 0l-9.75-5.25a.75.75 0 0 1 0-1.32l1.37-.738Z" />
-                    <path d="m10.933 19.231-7.668-4.13-1.37.739a.75.75 0 0 0 0 1.32l9.75 5.25c.221.12.489.12.71 0l9.75-5.25a.75.75 0 0 0 0-1.32l-1.37-.738-7.668 4.13a2.25 2.25 0 0 1-2.134-.001Z" />
-                  </svg>
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Replane</span>
-                  {/* <span className="truncate text-xs">Enterprise</span> */}
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <ProjectSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        {false && <NavMain items={data.navMain} />}
-        <NavProjects projects={data.projects} />
+        <NavMain items={data.navMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

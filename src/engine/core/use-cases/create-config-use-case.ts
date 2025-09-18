@@ -17,6 +17,7 @@ export interface CreateConfigRequest {
   currentUserEmail: NormalizedEmail;
   editorEmails: string[];
   ownerEmails: string[];
+  projectId: string;
 }
 
 export interface CreateConfigResponse {
@@ -31,6 +32,7 @@ export function createCreateConfigUseCase(
   deps: CreateConfigUseCaseDeps,
 ): UseCase<CreateConfigRequest, CreateConfigResponse> {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanCreateConfig(req.projectId, req.currentUserEmail);
     const existingConfig = await tx.configs.getByName(req.name);
     if (existingConfig) {
       throw new BadRequestError('Config with this name already exists');
@@ -52,6 +54,7 @@ export function createCreateConfigUseCase(
     await tx.configs.create({
       id: configId,
       name: req.name,
+      projectId: req.projectId,
       value: req.value,
       schema: req.schema,
       description: req.description,
@@ -74,12 +77,14 @@ export function createCreateConfigUseCase(
     });
 
     await tx.configUsers.create(
-      configId,
       req.editorEmails
         .map(
           (email): NewConfigUser => ({
             email,
             role: 'editor',
+            configId,
+            createdAt: deps.dateProvider.now(),
+            updatedAt: deps.dateProvider.now(),
           }),
         )
         .concat(
@@ -87,6 +92,9 @@ export function createCreateConfigUseCase(
             (email): NewConfigUser => ({
               email,
               role: 'owner',
+              configId,
+              createdAt: deps.dateProvider.now(),
+              updatedAt: deps.dateProvider.now(),
             }),
           ),
         ),
@@ -99,12 +107,14 @@ export function createCreateConfigUseCase(
     await tx.auditMessages.create({
       id: createAuditMessageId(),
       createdAt: deps.dateProvider.now(),
+      projectId: fullConfig.projectId,
       userId: currentUser.id,
       configId: fullConfig.id,
       payload: {
         type: 'config_created',
         config: {
           id: fullConfig.id,
+          projectId: fullConfig.projectId,
           name: fullConfig.name,
           value: fullConfig.value,
           schema: fullConfig.schema,

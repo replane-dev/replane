@@ -56,6 +56,22 @@ function humanizePayload(payload: AuditMessagePayload): {action: string; details
     return {action: 'API Key Deleted', details: `API Key name '${payload.apiKey.name}'`};
   } else if (payload.type === 'config_members_changed') {
     return {action: 'Config Members Changed', details: `Config name '${payload.config.name}'`};
+  } else if (payload.type === 'project_created') {
+    return {action: 'Project Created', details: `Project name '${payload.project.name}'`};
+  } else if (payload.type === 'project_updated') {
+    return {
+      action: 'Project Updated',
+      details: `Name '${payload.before.name}' → '${payload.after.name}'`,
+    };
+  } else if (payload.type === 'project_members_changed') {
+    const added = (payload as any).added?.length ?? 0;
+    const removed = (payload as any).removed?.length ?? 0;
+    const parts: string[] = [];
+    if (added) parts.push(`+${added}`);
+    if (removed) parts.push(`-${removed}`);
+    return {action: 'Project Members Changed', details: parts.join(' ') || 'No changes'};
+  } else if (payload.type === 'project_deleted') {
+    return {action: 'Project Deleted', details: `Project name '${payload.project.name}'`};
   } else {
     const _never: never = payload;
     throw new Error(`Unhandled payload type: ${(payload as any).type}`);
@@ -75,8 +91,10 @@ interface AuditLogRow {
 export function AuditLogTable({
   filters,
   onFiltersChange,
+  projectId,
 }: {
   filters: FilterState;
+  projectId: string;
   onFiltersChange: (f: FilterState) => void;
 }) {
   const trpc = useTRPC();
@@ -148,7 +166,11 @@ export function AuditLogTable({
     initialPageParam: undefined as {createdAt: Date; id: string} | undefined,
     queryFn: async ({pageParam}) => {
       const cursor = pageParam as {createdAt: Date; id: string} | undefined;
-      const opts = trpc.getAuditLog.queryOptions({...baseInput, cursor: cursor ?? undefined});
+      const opts = trpc.getAuditLog.queryOptions({
+        ...baseInput,
+        projectId,
+        cursor: cursor ?? undefined,
+      });
       const result: PageResult = await (opts.queryFn as any)({
         queryKey: opts.queryKey,
         signal: undefined,
@@ -241,7 +263,9 @@ export function AuditLogTable({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href={`/app/audit-log/${encodeURIComponent(r.id)}`}>View</Link>
+                  <Link href={`/app/projects/${projectId}/audit-log/${encodeURIComponent(r.id)}`}>
+                    View
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -386,7 +410,9 @@ export function AuditLogTable({
                 key={row.id}
                 onClick={e => {
                   if (!shouldNavigateOnRowClick(e)) return;
-                  router.push(`/app/audit-log/${encodeURIComponent(row.original.id)}`);
+                  router.push(
+                    `/app/projects/${projectId}/audit-log/${encodeURIComponent(row.original.id)}`,
+                  );
                 }}
                 className="cursor-pointer hover:bg-muted/50 select-text"
               >

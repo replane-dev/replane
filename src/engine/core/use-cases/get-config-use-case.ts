@@ -1,10 +1,12 @@
 import {Config} from '../config-store';
+import {combineConfigAndProjectRoles} from '../role-utils';
 import type {UseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetConfigRequest {
   name: string;
   currentUserEmail: NormalizedEmail;
+  projectId: string;
 }
 
 export interface ConfigDetails {
@@ -24,12 +26,23 @@ export function createGetConfigUseCase(
   deps: GetConfigUseCasesDeps,
 ): UseCase<GetConfigRequest, GetConfigResponse> {
   return async (ctx, tx, req) => {
-    const config = await tx.configs.getByName(req.name);
+    const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
+      projectId: req.projectId,
+      userEmail: req.currentUserEmail,
+    });
+
+    const config = await tx.configs.getByName({
+      name: req.name,
+      projectId: req.projectId,
+    });
     if (!config) {
       return {config: undefined};
     }
 
     const configUsers = await tx.configUsers.getByConfigId(config.id);
+
+    const myConfigRole =
+      configUsers.find(cu => cu.user_email_normalized === req.currentUserEmail)?.role ?? 'viewer';
 
     return {
       config: {
@@ -37,6 +50,7 @@ export function createGetConfigUseCase(
           id: config.id,
           name: config.name,
           value: config.value,
+          projectId: config.projectId,
           description: config.description,
           schema: config.schema,
           creatorId: config.creatorId,
@@ -52,9 +66,9 @@ export function createGetConfigUseCase(
           .filter(cu => cu.role === 'owner')
           .map(cu => cu.user_email_normalized)
           .sort(),
-        myRole:
-          configUsers.find(cu => cu.user_email_normalized === req.currentUserEmail)?.role ??
-          'viewer',
+        myRole: myProjectRole
+          ? combineConfigAndProjectRoles(myProjectRole.role, myConfigRole)
+          : myConfigRole,
       },
     };
   };

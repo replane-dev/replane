@@ -9,6 +9,7 @@ export interface CreateApiKeyRequest {
   currentUserEmail: NormalizedEmail;
   name: string;
   description: string;
+  projectId: string;
 }
 
 export interface CreateApiKeyResponse {
@@ -25,6 +26,7 @@ export function createCreateApiKeyUseCase(deps: {
   tokenHasher: TokenHashingService;
 }): UseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
   return async (_ctx, tx, req) => {
+    await tx.permissionService.ensureCanManageApiKeys(req.projectId, req.currentUserEmail);
     const user = await tx.users.getByEmail(req.currentUserEmail);
     if (!user) {
       throw new Error('User not found');
@@ -41,6 +43,7 @@ export function createCreateApiKeyUseCase(deps: {
       creatorId: user.id,
       createdAt: now,
       tokenHash,
+      projectId: req.projectId,
       name: req.name,
       description: req.description,
     });
@@ -49,6 +52,7 @@ export function createCreateApiKeyUseCase(deps: {
       id: createAuditMessageId(),
       createdAt: now,
       userId: user.id,
+      projectId: req.projectId,
       configId: null,
       payload: {
         type: 'api_key_created',

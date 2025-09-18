@@ -18,6 +18,7 @@ import {Calendar, FileText, User} from 'lucide-react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
+import {useProjectId} from '../../utils';
 
 export default function AuditLogMessagePage() {
   const {id} = useParams<{id: string}>();
@@ -36,6 +37,7 @@ export default function AuditLogMessagePage() {
     () => (message ? JSON.stringify(message.payload, null, 2) : ''),
     [message],
   );
+  const projectId = useProjectId();
 
   return (
     <Fragment>
@@ -47,7 +49,7 @@ export default function AuditLogMessagePage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/audit-log">Audit Log</Link>
+                  <Link href={`/app/projects/${projectId}/audit-log`}>Audit Log</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />

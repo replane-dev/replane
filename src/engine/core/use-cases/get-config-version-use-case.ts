@@ -5,6 +5,7 @@ export interface GetConfigVersionRequest {
   name: string;
   version: number;
   currentUserEmail: NormalizedEmail;
+  projectId: string;
 }
 
 export interface GetConfigVersionResponse {
@@ -27,7 +28,7 @@ export function createGetConfigVersionUseCase(
   _deps: GetConfigVersionUseCasesDeps,
 ): UseCase<GetConfigVersionRequest, GetConfigVersionResponse> {
   return async (_ctx, tx, req) => {
-    const config = await tx.configs.getByName(req.name);
+    const config = await tx.configs.getByName({name: req.name, projectId: req.projectId});
     if (!config) return {version: undefined};
 
     await tx.permissionService.ensureCanEditConfig(config.id, req.currentUserEmail);

@@ -80,11 +80,13 @@ export function createRestoreConfigVersionUseCase(
       createdAt: now,
       userId: currentUser.id,
       configId: afterConfig.id,
+      projectId: afterConfig.projectId,
       payload: {
         type: 'config_version_restored',
         restoredFromVersion: versionSnapshot.version,
         before: {
           id: beforeConfig.id,
+          projectId: beforeConfig.projectId,
           name: beforeConfig.name,
           value: beforeConfig.value,
           schema: beforeConfig.schema,
@@ -96,6 +98,7 @@ export function createRestoreConfigVersionUseCase(
         },
         after: {
           id: afterConfig.id,
+          projectId: afterConfig.projectId,
           name: afterConfig.name,
           value: afterConfig.value,
           schema: afterConfig.schema,

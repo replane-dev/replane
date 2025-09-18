@@ -4,6 +4,7 @@ import type {NormalizedEmail} from '../zod';
 export interface GetApiKeyRequest {
   id: string;
   currentUserEmail: NormalizedEmail;
+  projectId: string;
 }
 
 export interface GetApiKeyResponse {
@@ -18,7 +19,7 @@ export interface GetApiKeyResponse {
 
 export function createGetApiKeyUseCase(): UseCase<GetApiKeyRequest, GetApiKeyResponse> {
   return async (_ctx, tx, req) => {
-    const token = await tx.apiTokens.getById(req.id);
+    const token = await tx.apiTokens.getById({apiKeyId: req.id, projectId: req.projectId});
     if (!token) return {apiKey: null};
     return {
       apiKey: {

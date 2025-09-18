@@ -4,6 +4,7 @@ import type {ConfigId} from '../config-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {diffMembers} from '../member-diff';
 import type {UseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import type {ConfigMember, NormalizedEmail} from '../zod';
@@ -90,12 +91,20 @@ export function createPatchConfigUseCase(
     } | null = null;
     if (req.members) {
       const existingConfigUsers = await tx.configUsers.getByConfigId(existingConfig.id);
-      const {added, removed} = diffConfigMembers(
+      const {added, removed} = diffMembers(
         existingConfigUsers.map(u => ({email: u.user_email_normalized, role: u.role})),
         req.members.newMembers,
       );
 
-      await tx.configUsers.create(existingConfig.id, added);
+      await tx.configUsers.create(
+        added.map(x => ({
+          configId: existingConfig.id,
+          email: x.email,
+          role: x.role,
+          createdAt: deps.dateProvider.now(),
+          updatedAt: deps.dateProvider.now(),
+        })),
+      );
       for (const user of removed) {
         await tx.configUsers.delete(existingConfig.id, user.email);
       }
@@ -112,11 +121,13 @@ export function createPatchConfigUseCase(
         id: createAuditMessageId(),
         createdAt: deps.dateProvider.now(),
         userId: currentUser.id,
+        projectId: afterConfig.projectId,
         configId: afterConfig.id,
         payload: {
           type: 'config_updated',
           before: {
             id: beforeConfig.id,
+            projectId: beforeConfig.projectId,
             name: beforeConfig.name,
             value: beforeConfig.value,
             schema: beforeConfig.schema,
@@ -128,6 +139,7 @@ export function createPatchConfigUseCase(
           },
           after: {
             id: afterConfig.id,
+            projectId: afterConfig.projectId,
             name: afterConfig.name,
             value: afterConfig.value,
             schema: afterConfig.schema,
@@ -144,6 +156,7 @@ export function createPatchConfigUseCase(
       if (membersDiff && membersDiff.added.length + membersDiff.removed.length > 0) {
         await tx.auditMessages.create({
           id: createAuditMessageId(),
+          projectId: afterConfig.projectId,
           createdAt: deps.dateProvider.now(),
           userId: currentUser.id,
           configId: afterConfig.id,
@@ -151,6 +164,7 @@ export function createPatchConfigUseCase(
             type: 'config_members_changed',
             config: {
               id: afterConfig.id,
+              projectId: afterConfig.projectId,
               name: afterConfig.name,
               value: afterConfig.value,
               schema: afterConfig.schema,
@@ -169,25 +183,4 @@ export function createPatchConfigUseCase(
 
     return {};
   };
-}
-
-export function diffConfigMembers(
-  existingMembers: Array<ConfigMember>,
-  newMembers: Array<ConfigMember>,
-) {
-  // email can contain only one @, so we use it twice for a separator
-  const SEPARATOR = '@@';
-
-  assert(existingMembers.every(x => !x.email.includes(SEPARATOR) && !x.role.includes(SEPARATOR)));
-  assert(newMembers.every(x => !x.email.includes(SEPARATOR) && !x.role.includes(SEPARATOR)));
-
-  const toMemberId = (member: ConfigMember) => `${member.role}${SEPARATOR}${member.email}`;
-
-  const existingEmails = new Set(existingMembers.map(toMemberId));
-  const newEmails = new Set(newMembers.map(toMemberId));
-
-  const added = newMembers.filter(u => !existingEmails.has(toMemberId(u)));
-  const removed = existingMembers.filter(u => !newEmails.has(toMemberId(u)));
-
-  return {added, removed};
 }

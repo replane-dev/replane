@@ -4,6 +4,7 @@ import type {NormalizedEmail} from '../zod';
 export interface GetConfigVersionListRequest {
   name: string;
   currentUserEmail: NormalizedEmail;
+  projectId: string;
 }
 
 export interface GetConfigVersionListResponse {
@@ -24,7 +25,10 @@ export function createGetConfigVersionListUseCase(
   _deps: GetConfigVersionListUseCasesDeps,
 ): UseCase<GetConfigVersionListRequest, GetConfigVersionListResponse> {
   return async (_ctx, tx, req) => {
-    const config = await tx.configs.getByName(req.name);
+    const config = await tx.configs.getByName({
+      name: req.name,
+      projectId: req.projectId,
+    });
     if (!config) {
       return {versions: undefined};
     }

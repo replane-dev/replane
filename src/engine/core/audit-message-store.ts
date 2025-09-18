@@ -17,6 +17,7 @@ export interface AuditMessagePayloadConfig {
   id: ConfigId;
   name: string;
   value: unknown;
+  projectId: string;
   description: string;
   schema: unknown;
   creatorId: number;
@@ -75,6 +76,51 @@ export interface ConfigMembersChangedAuditMessagePayload
   removed: Array<{email: string; role: string}>;
 }
 
+export interface ProjectCreatedAuditMessagePayload
+  extends BaseAuditMessagePayload<'project_created'> {
+  project: {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: Date;
+  };
+}
+
+export interface ProjectUpdatedAuditMessagePayload
+  extends BaseAuditMessagePayload<'project_updated'> {
+  before: {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  after: {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
+export interface ProjectMembersChangedAuditMessagePayload
+  extends BaseAuditMessagePayload<'project_members_changed'> {
+  added: Array<{email: string; role: string}>;
+  removed: Array<{email: string; role: string}>;
+}
+
+export interface ProjectDeletedAuditMessagePayload
+  extends BaseAuditMessagePayload<'project_deleted'> {
+  project: {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
 export type AuditMessagePayload =
   | ConfigCreatedAuditMessagePayload
   | ConfigUpdatedAuditMessagePayload
@@ -82,7 +128,11 @@ export type AuditMessagePayload =
   | ConfigVersionRestoredAuditMessagePayload
   | ApiKeyCreatedAuditMessagePayload
   | ApiKeyDeletedAuditMessagePayload
-  | ConfigMembersChangedAuditMessagePayload;
+  | ConfigMembersChangedAuditMessagePayload
+  | ProjectCreatedAuditMessagePayload
+  | ProjectUpdatedAuditMessagePayload
+  | ProjectMembersChangedAuditMessagePayload
+  | ProjectDeletedAuditMessagePayload;
 
 export interface AuditMessage {
   id: AuditMessageId;
@@ -90,6 +140,7 @@ export interface AuditMessage {
   configId: ConfigId | null;
   payload: AuditMessagePayload;
   createdAt: Date;
+  projectId: string | null;
 }
 
 export class AuditMessageStore {
@@ -104,6 +155,7 @@ export class AuditMessageStore {
     configIds?: ConfigId[];
     limit: number;
     orderBy: 'created_at desc, id desc';
+    projectId: string;
     startWith?: {
       createdAt: Date;
       id: AuditMessageId;
@@ -111,6 +163,7 @@ export class AuditMessageStore {
   }): Promise<AuditMessage[]> {
     let query = this.db
       .selectFrom('audit_messages')
+      .where('project_id', '=', params.projectId)
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc');
 
@@ -165,6 +218,7 @@ export class AuditMessageStore {
           config_id: message.configId,
           payload: message.payload as unknown as JsonValue,
           user_id: message.userId,
+          project_id: message.projectId,
         },
       ])
       .execute();
@@ -187,5 +241,6 @@ function toAuditMessage(message: Selectable<AuditMessages>): AuditMessage {
     id: message.id,
     payload: message.payload as unknown as AuditMessagePayload,
     userId: message.user_id,
+    projectId: message.project_id,
   };
 }

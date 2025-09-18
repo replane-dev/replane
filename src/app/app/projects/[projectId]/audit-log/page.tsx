@@ -12,6 +12,7 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useRouter, useSearchParams} from 'next/navigation';
 import * as React from 'react';
 import {Fragment} from 'react';
+import {useProjectId} from '../utils';
 
 export default function AuditLogPage() {
   const searchParams = useSearchParams();
@@ -38,7 +39,7 @@ export default function AuditLogPage() {
       if (f.from) params.set('from', f.from.toISOString().slice(0, 10));
       if (f.to) params.set('to', f.to.toISOString().slice(0, 10));
       const qs = params.toString();
-      router.replace(`/app/audit-log${qs ? `?${qs}` : ''}`);
+      router.replace(`/app/projects/${projectId}/audit-log${qs ? `?${qs}` : ''}`);
     },
     [router],
   );
@@ -50,6 +51,8 @@ export default function AuditLogPage() {
     },
     [updateQueryString],
   );
+
+  const projectId = useProjectId();
 
   return (
     <Fragment>
@@ -67,7 +70,11 @@ export default function AuditLogPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <AuditLogTable filters={filters} onFiltersChange={handleFiltersChange} />
+        <AuditLogTable
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          projectId={projectId}
+        />
       </div>
     </Fragment>
   );

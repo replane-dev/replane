@@ -16,12 +16,14 @@ import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
 import {Fragment} from 'react';
+import {useProjectId} from '../../../utils';
 
 export default function ConfigVersionsPage() {
   const {name: rawName} = useParams<{name: string}>();
   const name = decodeURIComponent(rawName ?? '');
   const trpc = useTRPC();
-  const {data} = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name}));
+  const projectId = useProjectId();
+  const {data} = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name, projectId}));
   const versions = data.versions;
 
   return (
@@ -34,13 +36,15 @@ export default function ConfigVersionsPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/configs">Configs</Link>
+                  <Link href={`/app/projects/${projectId}/configs`}>Configs</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/configs/${encodeURIComponent(name)}`}>{name}</Link>
+                  <Link href={`/app/projects/${projectId}/configs/${encodeURIComponent(name)}`}>
+                    {name}
+                  </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />

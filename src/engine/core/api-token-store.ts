@@ -9,12 +9,13 @@ export interface ApiTokenRow {
   name: string;
   description: string;
   creatorEmail?: string | null;
+  projectId: string;
 }
 
 export class ApiTokenStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async list() {
+  async list(params: {projectId: string}) {
     const rows = await this.db
       .selectFrom('api_tokens as t')
       .leftJoin('users as u', 'u.id', 't.creator_id')
@@ -27,6 +28,7 @@ export class ApiTokenStore {
         't.description as description',
         'u.email as creator_email',
       ])
+      .where('t.project_id', '=', params.projectId)
       .orderBy('t.created_at', 'desc')
       .execute();
     return rows.map(r => ({
@@ -40,28 +42,30 @@ export class ApiTokenStore {
     }));
   }
 
-  async create(token: {
+  async create(key: {
     id: string;
     creatorId: number;
     createdAt: Date;
     tokenHash: string;
     name: string;
     description: string;
+    projectId: string;
   }) {
     await this.db
       .insertInto('api_tokens')
       .values({
-        id: token.id,
-        creator_id: token.creatorId,
-        created_at: token.createdAt,
-        token_hash: token.tokenHash,
-        name: token.name,
-        description: token.description,
+        id: key.id,
+        creator_id: key.creatorId,
+        created_at: key.createdAt,
+        token_hash: key.tokenHash,
+        name: key.name,
+        description: key.description,
+        project_id: key.projectId,
       })
       .execute();
   }
 
-  async getById(id: string) {
+  async getById(params: {apiKeyId: string; projectId: string}) {
     const row = await this.db
       .selectFrom('api_tokens as t')
       .leftJoin('users as u', 'u.id', 't.creator_id')
@@ -73,8 +77,10 @@ export class ApiTokenStore {
         't.name as name',
         't.description as description',
         'u.email as creator_email',
+        't.project_id as project_id',
       ])
-      .where('t.id', '=', id)
+      .where('t.id', '=', params.apiKeyId)
+      .where('t.project_id', '=', params.projectId)
       .executeTakeFirst();
     if (!row) return null;
     return {
@@ -85,6 +91,7 @@ export class ApiTokenStore {
       name: row.name,
       description: row.description,
       creatorEmail: row.creator_email ?? null,
+      projectId: row.project_id,
     } satisfies ApiTokenRow;
   }
 

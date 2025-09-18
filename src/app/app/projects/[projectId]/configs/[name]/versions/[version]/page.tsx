@@ -26,16 +26,18 @@ import {Calendar, User} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
+import {useProjectId} from '../../../../utils';
 
 export default function ConfigVersionDetailsPage() {
+  const projectId = useProjectId();
   const {name: rawName, version: rawVersion} = useParams<{name: string; version: string}>();
   const name = decodeURIComponent(rawName ?? '');
   const versionNumber = Number(rawVersion);
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(
-    trpc.getConfigVersion.queryOptions({name, version: versionNumber}),
+    trpc.getConfigVersion.queryOptions({name, version: versionNumber, projectId}),
   );
-  const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name}));
+  const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const currentConfigVersion = configData.config?.config.version as number | undefined;
   const restoreMutation = useMutation(trpc.restoreConfigVersion.mutationOptions());
   const router = useRouter();
@@ -73,19 +75,25 @@ export default function ConfigVersionDetailsPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/configs">Configs</Link>
+                  <Link href={`/app/projects/${projectId}/configs`}>Configs</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/configs/${encodeURIComponent(name)}`}>{name}</Link>
+                  <Link href={`/app/projects/${projectId}/configs/${encodeURIComponent(name)}`}>
+                    {name}
+                  </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/configs/${encodeURIComponent(name)}/versions`}>Versions</Link>
+                  <Link
+                    href={`/app/projects/${projectId}/configs/${encodeURIComponent(name)}/versions`}
+                  >
+                    Versions
+                  </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -168,7 +176,7 @@ export default function ConfigVersionDetailsPage() {
                         versionToRestore: version.version,
                         expectedCurrentVersion: currentConfigVersion,
                       });
-                      router.push(`/app/configs/${encodeURIComponent(name)}`);
+                      router.push(`/app/projects/${projectId}/configs/${encodeURIComponent(name)}`);
                     } catch (e) {
                       // eslint-disable-next-line no-alert
                       alert((e as Error).message);

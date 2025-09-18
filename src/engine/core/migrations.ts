@@ -131,6 +131,96 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_audit_messages_created_at_id ON audit_messages (created_at DESC, id DESC);
     `,
   },
+  {
+    // add projects
+    sql: /*sql*/ `
+      CREATE TABLE projects (
+        id UUID PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      INSERT INTO projects (id, name, description, created_at, updated_at)
+      SELECT gen_random_uuid(), 'Default', 'Default project', NOW(), NOW()
+      WHERE NOT EXISTS (SELECT 1 FROM projects);
+
+      ALTER TABLE configs
+      ADD COLUMN project_id UUID NULL REFERENCES projects(id) ON DELETE CASCADE;
+
+      UPDATE configs
+      SET project_id = (SELECT id FROM projects ORDER BY created_at ASC LIMIT 1)
+      WHERE project_id IS NULL;
+
+      ALTER TABLE configs
+      ALTER COLUMN project_id SET NOT NULL;
+
+      CREATE INDEX idx_configs_project_id ON configs(project_id);
+
+      ALTER TABLE api_tokens
+      ADD COLUMN project_id UUID NULL REFERENCES projects(id) ON DELETE CASCADE;
+
+      UPDATE api_tokens
+      SET project_id = (SELECT id FROM projects ORDER BY created_at ASC LIMIT 1)
+      WHERE project_id IS NULL;
+
+      ALTER TABLE api_tokens
+      ALTER COLUMN project_id SET NOT NULL;
+
+      CREATE INDEX idx_api_tokens_project_id ON api_tokens(project_id);
+
+      ALTER TABLE audit_messages
+      ADD COLUMN project_id UUID NULL REFERENCES projects(id) ON DELETE CASCADE;
+
+      UPDATE audit_messages
+      SET project_id = (SELECT id FROM projects ORDER BY created_at ASC LIMIT 1)
+      WHERE project_id IS NULL;
+
+      ALTER TABLE audit_messages
+      ALTER COLUMN project_id SET NOT NULL;
+
+      CREATE INDEX idx_audit_messages_project_id ON audit_messages(project_id);
+
+      CREATE TYPE project_user_role AS ENUM (
+        'owner', -- can manage the project, users, configs, and api tokens
+        'admin' -- can manage configs and api tokens
+      );
+
+      CREATE TABLE project_users (
+        project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_email_normalized VARCHAR(255) NOT NULL,
+        role project_user_role NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL,
+        PRIMARY KEY (project_id, user_email_normalized)
+      );
+
+      CREATE INDEX idx_project_users_user_email_normalized ON project_users(user_email_normalized);
+      CREATE INDEX idx_project_users_project_id ON project_users(project_id);
+
+      INSERT INTO project_users (project_id, user_email_normalized, role, created_at, updated_at)
+      SELECT (SELECT id FROM projects LIMIT 1), LOWER(u.email), 'owner', NOW(), NOW()
+      FROM users u
+      WHERE u.email IS NOT NULL;
+
+      ALTER TABLE config_users ADD COLUMN created_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW();
+      ALTER TABLE config_users ADD COLUMN updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW();
+      ALTER TABLE config_users ALTER COLUMN created_at DROP DEFAULT;
+      ALTER TABLE config_users ALTER COLUMN updated_at DROP DEFAULT;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      ALTER TABLE audit_messages
+      DROP CONSTRAINT IF EXISTS audit_messages_project_id_fkey,
+      ADD CONSTRAINT audit_messages_project_id_fkey
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL;
+
+      ALTER TABLE audit_messages
+      ALTER COLUMN project_id DROP NOT NULL;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
@@ -191,6 +281,6 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
     }
   } finally {
     // Always release the advisory lock even if an error occurs
-    await client.query(/*sql*/ `SELECT pg_advisory_unlock(hashtext('migrations'));`);
+    await client.query(/*sql*/ `SELECT pg_advisory_unlock(hashtext('migrations_${schema}'));`);
   }
 }

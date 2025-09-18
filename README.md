@@ -87,6 +87,10 @@ Minimum required:
   - GitHub: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
   - Okta: OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_ISSUER
 
+Optional:
+
+- ORGANIZATION_NAME – display name shown in the UI (e.g. sidebar project switcher). If not set, the label is omitted.
+
 See `.env.example` for a working template.
 
 ## JavaScript SDK

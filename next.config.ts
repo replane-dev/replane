@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
       permanent: false,
     },
     {
-      source: '/app',
-      destination: '/app/configs',
+      source: '/app/projects',
+      destination: '/app',
       permanent: false,
     },
   ],

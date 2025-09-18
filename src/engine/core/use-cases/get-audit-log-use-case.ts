@@ -10,6 +10,7 @@ export interface GetAuditLogRequest {
   configNames?: string[];
   limit: number; // page size
   cursor?: {createdAt: Date; id: string};
+  projectId: string;
 }
 
 export interface GetAuditLogResponse {
@@ -37,7 +38,9 @@ export function createGetAuditLogUseCase(): UseCase<GetAuditLogRequest, GetAudit
 
     let configIds: string[] | undefined = undefined;
     if (req.configNames && req.configNames.length > 0) {
-      const configs = await Promise.all(req.configNames.map(n => tx.configs.getByName(n)));
+      const configs = await Promise.all(
+        req.configNames.map(n => tx.configs.getByName({projectId: req.projectId, name: n})),
+      );
       configIds = configs.filter(Boolean).map(c => c!.id);
       if (configIds.length === 0) {
         return {messages: [], nextCursor: null};
@@ -53,6 +56,7 @@ export function createGetAuditLogUseCase(): UseCase<GetAuditLogRequest, GetAudit
       startWith: req.cursor,
       userIds,
       configIds,
+      projectId: req.projectId,
     });
 
     const slice = messages.slice(0, req.limit);

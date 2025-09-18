@@ -17,6 +17,7 @@ import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Button} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {
@@ -63,6 +64,7 @@ export function ConfigTable() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const projectId = useProjectId();
 
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -74,9 +76,10 @@ export function ConfigTable() {
       },
     }),
   );
+
   const {
     data: {configs},
-  } = useSuspenseQuery(trpc.getConfigList.queryOptions());
+  } = useSuspenseQuery(trpc.getConfigList.queryOptions({projectId}));
 
   const columns = React.useMemo<
     ColumnDef<{
@@ -202,7 +205,7 @@ export function ConfigTable() {
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/configs/${config.name}`);
+                    router.push(`/app/projects/${projectId}/configs/${config.name}`);
                   }}
                 >
                   View details
@@ -251,7 +254,7 @@ export function ConfigTable() {
   const handleRowClick = React.useCallback(
     (e: React.MouseEvent, configName: string) => {
       if (!shouldNavigateOnRowClick(e)) return;
-      router.push(`/app/configs/${encodeURIComponent(configName)}`);
+      router.push(`/app/projects/${projectId}/configs/${encodeURIComponent(configName)}`);
     },
     [router],
   );
@@ -291,7 +294,7 @@ export function ConfigTable() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button asChild>
-          <Link href="/app/new-config">New Config</Link>
+          <Link href={`/app/projects/${projectId}/new-config`}>New Config</Link>
         </Button>
       </div>
       <div className="overflow-hidden rounded-md border">

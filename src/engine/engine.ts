@@ -17,12 +17,16 @@ import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
+import {ProjectStore} from './core/project-store';
+import {ProjectUserStore} from './core/project-user-store';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
+import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
+import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
@@ -33,8 +37,14 @@ import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
 import {createGetConfigVersionUseCase} from './core/use-cases/get-config-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
+import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
+import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
+import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
+import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
+import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
+import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {UserStore} from './core/user-store';
 
 export interface EngineOptions {
@@ -68,7 +78,9 @@ function toEngineUseCase<TReq, TRes>(
       const configVersions = new ConfigVersionStore(dbTx);
       const apiTokens = new ApiTokenStore(dbTx);
       const auditMessages = new AuditMessageStore(dbTx);
-      const permissionService = new PermissionService(configUsers);
+      const projectUsers = new ProjectUserStore(dbTx);
+      const projects = new ProjectStore(dbTx);
+      const permissionService = new PermissionService(configUsers, projectUsers, configs);
 
       const tx: UseCaseTransaction = {
         configs,
@@ -78,6 +90,8 @@ function toEngineUseCase<TReq, TRes>(
         permissionService,
         apiTokens,
         auditMessages,
+        projectUsers,
+        projects,
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -117,7 +131,9 @@ type InferEngineUserCaseMap<T> = {
 
 type UseCaseMap = Record<string, UseCase<any, any>>;
 
-export interface ApiKeyInfo {}
+export interface ApiKeyInfo {
+  projectId: string;
+}
 
 export async function createEngine(options: EngineOptions) {
   const logger = createLogger({level: options.logLevel});
@@ -142,6 +158,14 @@ export async function createEngine(options: EngineOptions) {
     getApiKeyList: createGetApiKeyListUseCase(),
     getApiKey: createGetApiKeyUseCase(),
     deleteApiKey: createDeleteApiKeyUseCase(),
+    getProjectList: createGetProjectListUseCase(),
+    getProject: createGetProjectUseCase(),
+    createProject: createCreateProjectUseCase(),
+    deleteProject: createDeleteProjectUseCase(),
+    updateProject: createUpdateProjectUseCase(),
+    patchProject: createPatchProjectUseCase(),
+    getProjectUsers: createGetProjectUsersUseCase(),
+    updateProjectUsers: createUpdateProjectUsersUseCase(),
     restoreConfigVersion: createRestoreConfigVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
   } satisfies UseCaseMap;
@@ -176,7 +200,7 @@ export async function createEngine(options: EngineOptions) {
 
     const row = await db
       .selectFrom('api_tokens as t')
-      .select(['t.id as id', 't.token_hash as token_hash'])
+      .select(['t.id as id', 't.token_hash as token_hash', 't.project_id'])
       .where('t.id', '=', tokenId)
       .executeTakeFirst();
     if (!row) return null;
@@ -184,7 +208,7 @@ export async function createEngine(options: EngineOptions) {
     const valid = await tokenHasher.verify(row.token_hash, token);
     if (!valid) return null;
 
-    const info: ApiKeyInfo = {};
+    const info: ApiKeyInfo = {projectId: row.project_id};
     apiKeyCache.set(token, info);
     return info;
   }

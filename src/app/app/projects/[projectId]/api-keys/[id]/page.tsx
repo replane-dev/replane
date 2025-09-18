@@ -24,13 +24,15 @@ import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useState} from 'react';
 import {toast} from 'sonner';
+import {useProjectId} from '../../utils';
 
 export default function ApiKeyDetailPage() {
   const params = useParams<{id: string}>();
   const id = params.id;
   const trpc = useTRPC();
   const router = useRouter();
-  const {data} = useSuspenseQuery(trpc.getApiKey.queryOptions({id}));
+  const projectId = useProjectId();
+  const {data} = useSuspenseQuery(trpc.getApiKey.queryOptions({id, projectId}));
   const deleteMutation = useMutation(trpc.deleteApiKey.mutationOptions());
   const apiKey = data.apiKey;
   const [confirming, setConfirming] = useState(false);
@@ -45,7 +47,7 @@ export default function ApiKeyDetailPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/api-keys">API Keys</Link>
+                  <Link href={`/app/projects/${projectId}/api-keys`}>API Keys</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -113,7 +115,7 @@ export default function ApiKeyDetailPage() {
                         try {
                           await deleteMutation.mutateAsync({id});
                           toast.success('API key deleted');
-                          router.push('/app/api-keys');
+                          router.push(`/app/projects/${projectId}/api-keys`);
                         } catch (e) {
                           toast.error('Failed to delete');
                         }

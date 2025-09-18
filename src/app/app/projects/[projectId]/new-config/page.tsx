@@ -17,12 +17,14 @@ import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import {Fragment} from 'react';
+import {useProjectId} from '../utils';
 
 export default function NewConfigPage() {
   const router = useRouter();
   const trpc = useTRPC();
   const createConfig = useMutation(trpc.createConfig.mutationOptions());
   const {data: session, status} = useSession();
+  const projectId = useProjectId();
 
   // While session is loading, avoid asserting (email would be undefined briefly)
   if (status === 'loading') {
@@ -47,8 +49,9 @@ export default function NewConfigPage() {
       description: data.description ?? '',
       editorEmails: data.editorEmails,
       ownerEmails: data.ownerEmails,
+      projectId,
     });
-    router.push('/app/configs');
+    router.push(`/app/projects/${projectId}/configs`);
   }
 
   return (
@@ -61,7 +64,7 @@ export default function NewConfigPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/configs">Configs</Link>
+                  <Link href={`/app/projects/${projectId}/configs`}>Configs</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -86,7 +89,7 @@ export default function NewConfigPage() {
             defaultDescription={''}
             editorIdPrefix="new-config"
             submitting={createConfig.isPending}
-            onCancel={() => router.push('/app/configs')}
+            onCancel={() => router.push(`/app/projects/${projectId}/configs`)}
             onSubmit={handleSubmit}
           />
         </div>

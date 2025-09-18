@@ -3,6 +3,7 @@
 import {ChevronsUpDown, History, LogOut} from 'lucide-react';
 import {signOut, useSession} from 'next-auth/react';
 
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ export function NavUser() {
   const {isMobile} = useSidebar();
   const {data: session} = useSession();
   const sessionUser = session?.user;
+  const projectId = useProjectId();
   const user = {
     name: sessionUser?.name || '—',
     email: sessionUser?.email || '—',
@@ -70,8 +72,8 @@ export function NavUser() {
                 <Link
                   href={
                     user.email && user.email !== '—'
-                      ? `/app/audit-log?authors=${encodeURIComponent(user.email)}`
-                      : '/app/audit-log'
+                      ? `/app/projects/${projectId}/audit-log?authors=${encodeURIComponent(user.email)}`
+                      : `/app/projects/${projectId}/audit-log`
                   }
                 >
                   <History />

@@ -1,5 +1,6 @@
 import {AppSidebar} from '@/components/app-sidebar';
 import {SidebarInset, SidebarProvider} from '@/components/ui/sidebar';
+import {ProjectProvider} from '@/contexts/project-context';
 
 export default function AppLayout({
   children,
@@ -8,8 +9,10 @@ export default function AppLayout({
 }>) {
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>{children}</SidebarInset>
+      <ProjectProvider>
+        <AppSidebar />
+        <SidebarInset>{children}</SidebarInset>
+      </ProjectProvider>
     </SidebarProvider>
   );
 }

@@ -2,7 +2,15 @@
 
 import {JsonEditor} from '@/components/json-editor';
 import {Button} from '@/components/ui/button';
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Switch} from '@/components/ui/switch';
@@ -348,10 +356,60 @@ export function ConfigForm(props: ConfigFormProps) {
                   {...field}
                 />
               </FormControl>
+              {!canEditDescription && (
+                <FormDescription>
+                  You don't have permission to edit the description.
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
         />
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="ownersInput"
+            render={({field}) => (
+              <FormItem>
+                <FormLabel>Owners (emails)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    rows={6}
+                    placeholder="one email per line"
+                    readOnly={!canEditOwnersEditors}
+                    {...field}
+                  />
+                </FormControl>
+                {!canEditOwnersEditors && (
+                  <FormDescription>Only owners can modify owners.</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="editorsInput"
+            render={({field}) => (
+              <FormItem>
+                <FormLabel>Editors (emails)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    rows={6}
+                    placeholder="one email per line"
+                    readOnly={!canEditOwnersEditors}
+                    {...field}
+                  />
+                </FormControl>
+                {!canEditOwnersEditors && (
+                  <FormDescription>Only owners can modify editors.</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -370,6 +428,11 @@ export function ConfigForm(props: ConfigFormProps) {
                   readOnly={!canEditValue}
                 />
               </FormControl>
+              {!canEditValue && (
+                <FormDescription>
+                  You are in view-only mode and cannot modify the value.
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -393,47 +456,12 @@ export function ConfigForm(props: ConfigFormProps) {
                 >
                   Enforce schema
                 </Label>
+                {!canEditSchema && (
+                  <span className="text-xs text-muted-foreground">
+                    Only owners can change schema enforcement.
+                  </span>
+                )}
               </>
-            )}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="ownersInput"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Owners (emails)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    rows={6}
-                    placeholder="one email per line"
-                    readOnly={!canEditOwnersEditors}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="editorsInput"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Editors (emails)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    rows={6}
-                    placeholder="one email per line"
-                    readOnly={!canEditOwnersEditors}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
             )}
           />
         </div>
@@ -455,6 +483,9 @@ export function ConfigForm(props: ConfigFormProps) {
                     readOnly={!canEditSchema}
                   />
                 </FormControl>
+                {!canEditSchema && (
+                  <FormDescription>You do not have permission to edit the schema.</FormDescription>
+                )}
                 <FormMessage />
               </FormItem>
             )}

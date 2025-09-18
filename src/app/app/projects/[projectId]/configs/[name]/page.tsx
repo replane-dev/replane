@@ -17,6 +17,7 @@ import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
+import {useProject, useProjectId} from '../../utils';
 
 // No props needed in a Client Component; use useParams() instead.
 
@@ -25,9 +26,11 @@ export default function ConfigByNamePage() {
   const {name: nameParam} = useParams<{name: string}>();
   const name = decodeURIComponent(nameParam ?? '');
   const trpc = useTRPC();
-  const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name}));
+  const projectId = useProjectId();
+  const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
   const deleteConfig = useMutation(trpc.deleteConfig.mutationOptions());
+  const project = useProject();
 
   const config = data.config;
 
@@ -47,7 +50,18 @@ export default function ConfigByNamePage() {
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink asChild>
-                    <Link href="/app/configs">Configs</Link>
+                    <Link href="/app/projects">Projects</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink asChild>
+                    <Link href={`/app/projects/${project.id}`}>{project.name}</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink asChild>
+                    <Link href={`/app/projects/${project.id}/configs`}>Configs</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
@@ -93,7 +107,7 @@ export default function ConfigByNamePage() {
             }
           : undefined,
     });
-    router.push('/app/configs');
+    router.push(`/app/projects/${projectId}/configs`);
   }
 
   return (
@@ -106,7 +120,7 @@ export default function ConfigByNamePage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/configs">Configs</Link>
+                  <Link href={`/app/projects/${project.id}/configs`}>Configs</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -121,7 +135,7 @@ export default function ConfigByNamePage() {
         <div className="max-w-3xl space-y-6">
           <ConfigForm
             mode="edit"
-            role={config.myRole}
+            role={'viewer'}
             defaultName={name}
             defaultValue={defaultValue}
             defaultSchemaEnabled={!!config.config?.schema}
@@ -135,13 +149,13 @@ export default function ConfigByNamePage() {
             createdAt={config.config.createdAt}
             updatedAt={config.config.updatedAt}
             currentVersion={config.config.version}
-            versionsLink={`/app/configs/${encodeURIComponent(name)}/versions`}
+            versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
             submitting={patchConfig.isPending}
-            onCancel={() => router.push('/app/configs')}
+            onCancel={() => router.push(`/app/projects/${project.id}/configs`)}
             onDelete={async () => {
               if (confirm(`Delete config "${name}"? This cannot be undone.`)) {
                 await deleteConfig.mutateAsync({configId: config.config.id});
-                router.push('/app/configs');
+                router.push(`/app/projects/${project.id}/configs`);
               }
             }}
             onSubmit={handleSubmit}

@@ -32,10 +32,12 @@ export function createDeleteConfigUseCase(): UseCase<DeleteConfigRequest, Delete
       createdAt: new Date(),
       userId: currentUser.id,
       configId: null,
+      projectId: existingConfig.projectId,
       payload: {
         type: 'config_deleted',
         config: {
           id: existingConfig.id,
+          projectId: existingConfig.projectId,
           name: existingConfig.name,
           value: existingConfig.value,
           schema: existingConfig.schema,

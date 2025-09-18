@@ -60,6 +60,7 @@ export function Config() {
     updatedAt: z.date(),
     creatorId: z.number(),
     version: z.number(),
+    projectId: z.string(),
   });
 }
 
@@ -68,7 +69,10 @@ export interface Config extends z.infer<ReturnType<typeof Config>> {}
 export class ConfigStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getAll(params: {currentUserEmail: NormalizedEmail}): Promise<ConfigInfo[]> {
+  async getAll(params: {
+    currentUserEmail: NormalizedEmail;
+    projectId: string;
+  }): Promise<ConfigInfo[]> {
     const configsQuery = this.db
       .selectFrom('configs')
       .orderBy('configs.name')
@@ -80,6 +84,7 @@ export class ConfigStore {
           ]),
         ),
       )
+      .where('configs.project_id', '=', params.projectId)
       .select([
         'configs.created_at',
         'configs.id',
@@ -91,6 +96,7 @@ export class ConfigStore {
         'configs.creator_id',
         'config_users.role as myRole',
         'configs.version',
+        'configs.project_id',
       ]);
 
     const configs = await configsQuery.execute();
@@ -103,14 +109,16 @@ export class ConfigStore {
       myRole: c.myRole ?? 'viewer',
       version: c.version,
       id: c.id,
+      projectId: c.project_id,
     }));
   }
 
-  async getByName(name: string): Promise<Config | undefined> {
+  async getByName(params: {projectId: string; name: string}): Promise<Config | undefined> {
     const result = await this.db
       .selectFrom('configs')
       .selectAll()
-      .where('name', '=', name)
+      .where('name', '=', params.name)
+      .where('project_id', '=', params.projectId)
       .executeTakeFirst();
     if (result) {
       return mapConfig(result);
@@ -147,6 +155,7 @@ export class ConfigStore {
           ? ({value: config.schema} as unknown as JsonValue)
           : (null as JsonValue),
         version: 1,
+        project_id: config.projectId,
       })
       .execute();
   }
@@ -193,6 +202,7 @@ function mapConfig(config: Selectable<Configs>): Config {
     createdAt: config.created_at,
     updatedAt: config.updated_at,
     version: config.version,
+    projectId: config.project_id,
   };
 }
 

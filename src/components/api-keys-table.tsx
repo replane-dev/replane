@@ -63,7 +63,7 @@ function humanizeId(id: string): string {
 
 // columns moved inside component to use router without violating hook rules
 
-export function ApiKeysTable() {
+export function ApiKeysTable({projectId}: {projectId: string}) {
   const router = useRouter();
   const qc = useQueryClient();
   const trpc = useTRPC();
@@ -75,9 +75,10 @@ export function ApiKeysTable() {
       },
     }),
   );
+
   const {
     data: {apiKeys},
-  } = useSuspenseQuery(trpc.getApiKeyList.queryOptions());
+  } = useSuspenseQuery(trpc.getApiKeyList.queryOptions({projectId}));
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -183,7 +184,7 @@ export function ApiKeysTable() {
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/api-keys/${apiKey.id}`);
+                    router.push(`/app/projects/${projectId}/api-keys/${apiKey.id}`);
                   }}
                 >
                   View details
@@ -245,7 +246,7 @@ export function ApiKeysTable() {
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
-      router.push(`/app/api-keys/${id}`);
+      router.push(`/app/projects/${projectId}/api-keys/${id}`);
     },
     [router],
   );
@@ -285,7 +286,7 @@ export function ApiKeysTable() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button asChild>
-          <Link href="/app/api-keys/new">New API Key</Link>
+          <Link href={`/app/projects/${projectId}/api-keys/new`}>New API Key</Link>
         </Button>
       </div>
       <div className="overflow-hidden rounded-md border">

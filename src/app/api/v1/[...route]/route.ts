@@ -20,13 +20,12 @@ async function getEngine() {
 interface HonoEnv {
   Variables: {
     context: Context;
+    projectId: string;
   };
 }
 
-// OpenAPI-enabled Hono app
 const app = new OpenAPIHono<HonoEnv>();
 
-// Schemas
 const ConfigValueResponse = z
   .object({
     name: ConfigName(),
@@ -34,7 +33,6 @@ const ConfigValueResponse = z
   })
   .openapi('ConfigValueResponse');
 
-// CORS for all routes (allow from everywhere)
 app.use(
   '*',
   cors({
@@ -43,12 +41,11 @@ app.use(
   }),
 );
 
-// Global Auth middleware (all routes) except openapi spec & hello for now.
 app.use('*', async (c, next) => {
   c.set('context', {traceId: createUuidV4()});
 
   const path = new URL(c.req.url).pathname;
-  if (path.endsWith('/openapi.json') || path === '/hello') {
+  if (path.endsWith('/openapi.json')) {
     return next();
   }
   const authHeader = c.req.header('authorization');
@@ -61,6 +58,7 @@ app.use('*', async (c, next) => {
     const engine = await getEngine();
     const verified = await engine.verifyApiKey(token);
     if (!verified) return c.json({msg: 'Invalid API key'}, 401);
+    c.set('projectId', verified.projectId);
     await next();
   } catch (e) {
     console.error(e);
@@ -68,7 +66,6 @@ app.use('*', async (c, next) => {
   }
 });
 
-// Route: GET /configs/:name/value (requires API key)
 app.openapi(
   {
     method: 'get',
@@ -96,6 +93,7 @@ app.openapi(
       const engine = await getEngine();
       const result = await engine.useCases.getConfigValue(c.get('context'), {
         name,
+        projectId: c.get('projectId'),
       });
 
       if (typeof result.value === 'undefined') return c.json({msg: 'Not found'}, 404);
@@ -109,7 +107,6 @@ app.openapi(
   },
 );
 
-// OpenAPI JSON spec (optional exposure)
 app.get('/openapi.json', c =>
   c.json(
     app.getOpenAPI31Document({

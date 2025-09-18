@@ -9,9 +9,11 @@ import {
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import {useParams} from 'next/navigation';
 import {Fragment} from 'react';
 
 export default function ApiKeysPage() {
+  const {projectId} = useParams<{projectId: string}>();
   return (
     <Fragment>
       <header className="flex h-16 shrink-0 items-center gap-2">
@@ -28,7 +30,7 @@ export default function ApiKeysPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <ApiKeysTable />
+        <ApiKeysTable projectId={projectId} />
       </div>
     </Fragment>
   );

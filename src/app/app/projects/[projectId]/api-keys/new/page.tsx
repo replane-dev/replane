@@ -25,13 +25,13 @@ import {Textarea} from '@/components/ui/textarea';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import Link from 'next/link';
-import {useRouter} from 'next/navigation';
 import {Fragment, useState} from 'react';
 import {toast} from 'sonner';
+import {useProjectId} from '../../utils';
 
 export default function NewApiKeyPage() {
   const trpc = useTRPC();
-  const router = useRouter();
+  const projectId = useProjectId();
   const createMutation = useMutation(trpc.createApiKey.mutationOptions());
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -47,7 +47,7 @@ export default function NewApiKeyPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href="/app/api-keys">API Keys</Link>
+                  <Link href={`/app/projects/${projectId}/api-keys`}>API Keys</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -70,7 +70,11 @@ export default function NewApiKeyPage() {
                 className="space-y-4"
                 onSubmit={async e => {
                   e.preventDefault();
-                  const result = await createMutation.mutateAsync({name, description});
+                  const result = await createMutation.mutateAsync({
+                    name,
+                    description,
+                    projectId,
+                  });
                   setCreatedToken(result.apiKey.token);
                 }}
               >
@@ -101,7 +105,7 @@ export default function NewApiKeyPage() {
                     {createMutation.isPending ? 'Creating…' : 'Create API Key'}
                   </Button>
                   <Button asChild variant="outline">
-                    <Link href="/app/api-keys">Cancel</Link>
+                    <Link href={`/app/projects/${projectId}/api-keys`}>Cancel</Link>
                   </Button>
                 </div>
               </form>
@@ -136,7 +140,7 @@ export default function NewApiKeyPage() {
                 Copy
               </Button>
               <Button asChild variant="outline">
-                <Link href="/app/api-keys">Done</Link>
+                <Link href={`/app/projects/${projectId}/api-keys`}>Done</Link>
               </Button>
             </CardFooter>
           </Card>

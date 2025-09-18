@@ -1,4 +1,5 @@
 import {createAuditMessageId} from '../audit-message-store';
+import {BadRequestError} from '../errors';
 import type {UseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -12,7 +13,12 @@ export interface DeleteApiKeyResponse {}
 export function createDeleteApiKeyUseCase(): UseCase<DeleteApiKeyRequest, DeleteApiKeyResponse> {
   return async (_ctx, tx, req) => {
     const token = await tx.apiTokens.getById(req.id);
-    if (!token) return {};
+    if (!token) {
+      throw new BadRequestError('API key not found');
+    }
+
+    await tx.permissionService.ensureCanManageApiKeys(token.projectId, req.currentUserEmail);
+
     // Only allow creator to delete for now
     const user = await tx.users.getByEmail(req.currentUserEmail);
     if (!user || user.id !== token.creatorId) {
@@ -22,6 +28,7 @@ export function createDeleteApiKeyUseCase(): UseCase<DeleteApiKeyRequest, Delete
     await tx.auditMessages.create({
       id: createAuditMessageId(),
       createdAt: new Date(),
+      projectId: token.projectId,
       userId: user.id,
       configId: null,
       payload: {
