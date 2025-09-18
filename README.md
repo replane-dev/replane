@@ -112,18 +112,36 @@ Basic usage:
 import {createReplaneClient} from 'replane-sdk';
 
 const client = createReplaneClient({
-  baseUrl: 'https://your-replane.example.com',
-  apiKey: 'YOUR_REPLANE_API_KEY',
+  apiKey: process.env.REPLANE_API_KEY!,
+  baseUrl: 'https://api.my-replane-host.com',
 });
 
-// Fallback is returned on errors or if the config is missing
-const rules = await client.getConfig<{limit: number; enabled: boolean}>({
-  name: 'checkout_rules',
-  fallback: {limit: 100, enabled: false},
+// One-off fetch
+const featureFlag = await client.getConfigValue<boolean>({
+  name: 'new-onboarding',
+  fallback: false,
 });
 
-if (rules.enabled) {
-  // ...apply limit, etc.
+// Typed example
+interface PasswordRequirements {
+  minLength: number;
+  requireSymbol: boolean;
+}
+
+const passwordRequirements = await client.getConfigValue<PasswordRequirements>({
+  name: 'password-requirements',
+  fallback: {minLength: 8, requireSymbol: false},
+});
+
+// Watching a config
+const billingEnabled = await client.watchConfigValue<boolean>({
+  name: 'billing-enabled',
+  fallback: false,
+});
+
+// Later, read the latest value
+if (billingEnabled.get()) {
+  console.log('Billing enabled!');
 }
 ```
 
