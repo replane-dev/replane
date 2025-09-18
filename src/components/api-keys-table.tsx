@@ -196,7 +196,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
                     e.stopPropagation();
                     if (confirm(`Delete API key "${apiKey.name || ''}"? This cannot be undone.`)) {
                       try {
-                        await deleteMutation.mutateAsync({id: apiKey.id});
+                        await deleteMutation.mutateAsync({id: apiKey.id, projectId});
                       } catch {
                         // handled globally
                       }

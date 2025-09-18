@@ -11,6 +11,7 @@ export interface RestoreConfigVersionRequest {
   versionToRestore: number;
   expectedCurrentVersion: number;
   currentUserEmail: NormalizedEmail;
+  projectId: string;
 }
 
 export interface RestoreConfigVersionResponse {
@@ -25,7 +26,10 @@ export function createRestoreConfigVersionUseCase(
   deps: RestoreConfigVersionUseCaseDeps,
 ): UseCase<RestoreConfigVersionRequest, RestoreConfigVersionResponse> {
   return async (_ctx, tx, req) => {
-    const config = await tx.configs.getByName(req.name);
+    const config = await tx.configs.getByName({
+      name: req.name,
+      projectId: req.projectId,
+    });
     if (!config) {
       throw new BadRequestError('Config does not exist');
     }

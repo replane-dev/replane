@@ -33,7 +33,10 @@ export function createCreateConfigUseCase(
 ): UseCase<CreateConfigRequest, CreateConfigResponse> {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanCreateConfig(req.projectId, req.currentUserEmail);
-    const existingConfig = await tx.configs.getByName(req.name);
+    const existingConfig = await tx.configs.getByName({
+      name: req.name,
+      projectId: req.projectId,
+    });
     if (existingConfig) {
       throw new BadRequestError('Config with this name already exists');
     }

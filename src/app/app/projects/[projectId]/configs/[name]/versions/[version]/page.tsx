@@ -175,6 +175,7 @@ export default function ConfigVersionDetailsPage() {
                         name,
                         versionToRestore: version.version,
                         expectedCurrentVersion: currentConfigVersion,
+                        projectId,
                       });
                       router.push(`/app/projects/${projectId}/configs/${encodeURIComponent(name)}`);
                     } catch (e) {

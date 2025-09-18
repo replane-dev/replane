@@ -113,7 +113,7 @@ export default function ApiKeyDetailPage() {
                       disabled={deleteMutation.isPending}
                       onClick={async () => {
                         try {
-                          await deleteMutation.mutateAsync({id});
+                          await deleteMutation.mutateAsync({id, projectId});
                           toast.success('API key deleted');
                           router.push(`/app/projects/${projectId}/api-keys`);
                         } catch (e) {

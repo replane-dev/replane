@@ -209,6 +209,7 @@ export function ConfigVersionsTable({name}: {name: string}) {
                           name,
                           versionToRestore: version.version,
                           expectedCurrentVersion: currentConfigVersion,
+                          projectId,
                         });
                         toast.success(`Restored v${version.version} to new latest version`);
                       } catch (e) {

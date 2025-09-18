@@ -350,6 +350,7 @@ export const appRouter = createTRPCRouter({
         name: z.string(),
         versionToRestore: z.number(),
         expectedCurrentVersion: z.number(),
+        projectId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -361,6 +362,7 @@ export const appRouter = createTRPCRouter({
         versionToRestore: opts.input.versionToRestore,
         expectedCurrentVersion: opts.input.expectedCurrentVersion,
         currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
       });
       return result;
     }),
@@ -368,6 +370,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         id: Uuid(),
+        projectId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -377,6 +380,7 @@ export const appRouter = createTRPCRouter({
       await opts.ctx.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
         id: opts.input.id,
         currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
       });
       return {};
     }),

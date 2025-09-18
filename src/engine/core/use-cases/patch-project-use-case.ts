@@ -21,7 +21,10 @@ export interface PatchProjectResponse {}
 
 export function createPatchProjectUseCase(): UseCase<PatchProjectRequest, PatchProjectResponse> {
   return async (ctx, tx, req) => {
-    const existing = await tx.projects.getById(req.id);
+    const existing = await tx.projects.getById({
+      currentUserEmail: req.currentUserEmail,
+      id: req.id,
+    });
     if (!existing) throw new BadRequestError('Project not found');
 
     const now = new Date();

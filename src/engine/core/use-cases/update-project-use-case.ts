@@ -17,7 +17,10 @@ export interface UpdateProjectResponse {
 
 export function createUpdateProjectUseCase(): UseCase<UpdateProjectRequest, UpdateProjectResponse> {
   return async (ctx, tx, req) => {
-    const existing = await tx.projects.getById(req.id);
+    const existing = await tx.projects.getById({
+      currentUserEmail: req.currentUserEmail,
+      id: req.id,
+    });
     if (!existing) throw new BadRequestError('Project not found');
 
     // Only owner or admin can manage project

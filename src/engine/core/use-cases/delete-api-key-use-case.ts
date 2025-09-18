@@ -5,6 +5,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface DeleteApiKeyRequest {
   id: string;
+  projectId: string;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -12,7 +13,10 @@ export interface DeleteApiKeyResponse {}
 
 export function createDeleteApiKeyUseCase(): UseCase<DeleteApiKeyRequest, DeleteApiKeyResponse> {
   return async (_ctx, tx, req) => {
-    const token = await tx.apiTokens.getById(req.id);
+    const token = await tx.apiTokens.getById({
+      apiKeyId: req.id,
+      projectId: req.projectId,
+    });
     if (!token) {
       throw new BadRequestError('API key not found');
     }
