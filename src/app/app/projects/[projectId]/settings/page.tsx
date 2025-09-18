@@ -22,7 +22,7 @@ import {
 import {Textarea} from '@/components/ui/textarea';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {Lock, Plus, Trash2} from 'lucide-react';
+import {Info, Lock, Plus, Trash2} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {toast} from 'sonner';
@@ -154,6 +154,9 @@ export default function ProjectSettingsPage() {
 
       <section>
         <h2 className="mb-4 text-xl font-semibold">Members</h2>
+        <div className="mb-4">
+          <RoleLegend />
+        </div>
         <div className="space-y-3">
           {users.map((u, idx) => (
             <div key={idx} className="flex flex-wrap items-center gap-2">
@@ -214,16 +217,12 @@ export default function ProjectSettingsPage() {
               {savingUsers ? 'Saving…' : 'Save members'}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-            {canManageMembers ? (
-              <>Only owners can manage members. At least one owner is required.</>
-            ) : (
-              <>
-                <Lock className="h-3 w-3" /> You don't have permission to manage members. Only
-                owners can make changes.
-              </>
-            )}
-          </p>
+          {!canManageMembers && (
+            <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" /> You don't have permission to manage members. Only owners
+              can make changes.
+            </p>
+          )}
         </div>
       </section>
 
@@ -314,6 +313,26 @@ function DeleteProjectForm({
           {isSubmitting ? 'Deleting…' : 'Delete project'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function RoleLegend() {
+  return (
+    <div className="rounded-md border bg-card/40 p-3 text-xs space-y-2">
+      <div className="font-medium flex items-center gap-1">
+        <Info className="h-3.5 w-3.5" /> Roles
+      </div>
+      <ul className="list-disc pl-4 space-y-1">
+        <li>
+          <span className="font-semibold">Owner</span>: Full access. Can edit project details,
+          manage members, delete project, and manage all configs.
+        </li>
+        <li>
+          <span className="font-semibold">Admin</span>: Can edit project details and configs but
+          cannot manage members or delete the project.
+        </li>
+      </ul>
     </div>
   );
 }
