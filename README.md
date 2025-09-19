@@ -117,10 +117,11 @@ const client = createReplaneClient({
 });
 
 // One-off fetch
-const featureFlag = await client.getConfigValue<boolean>({
-  name: 'new-onboarding',
-  fallback: false,
-});
+
+const featureFlag = await client
+  .getConfigValue<boolean>('new-onboarding')
+  // Ignore errors and use `false` if config is missing or fetch fails
+  .catch(() => false);
 
 // Typed example
 interface PasswordRequirements {
@@ -128,28 +129,30 @@ interface PasswordRequirements {
   requireSymbol: boolean;
 }
 
-const passwordRequirements = await client.getConfigValue<PasswordRequirements>({
-  name: 'password-requirements',
-  fallback: {minLength: 8, requireSymbol: false},
-});
+const passwordRequirements = await client
+  .getConfigValue<PasswordRequirements>('password-requirements')
+  .catch(() => ({minLength: 8, requireSymbol: false}));
 
-// Watching a config
-const billingEnabled = await client.watchConfigValue<boolean>({
-  name: 'billing-enabled',
-  fallback: false,
-});
+// Watching a config (initial fetch must succeed)
+const billingEnabled = await client.watchConfigValue<boolean>('billing-enabled');
 
 // Later, read the latest value
 if (billingEnabled.get()) {
   console.log('Billing enabled!');
 }
+
+// When done, clean up resources
+billingEnabled.close();
+
+// Or, if you don't need the client anymore
+client.close();
 ```
 
 Notes
 
 - Create an API key in the Replane UI. It’s shown once; store it securely.
 - The client logs errors and returns the provided fallback if the request fails.
-- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn’t expose `fetch`.
+- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn’t expose `fetch`.\
 
 ## Backups
 
