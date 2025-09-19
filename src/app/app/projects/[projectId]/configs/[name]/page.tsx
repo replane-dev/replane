@@ -135,7 +135,7 @@ export default function ConfigByNamePage() {
         <div className="max-w-3xl space-y-6">
           <ConfigForm
             mode="edit"
-            role={'viewer'}
+            role={config.myRole}
             defaultName={name}
             defaultValue={defaultValue}
             defaultSchemaEnabled={!!config.config?.schema}
