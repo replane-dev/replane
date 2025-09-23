@@ -196,7 +196,6 @@ export async function createEngine(options: EngineOptions) {
   }
 
   const transactionalUseCases = {
-    getHealth: createGetHealthUseCase(),
     getConfigList: createGetConfigListUseCase({}),
     getAuditLog: createGetAuditLogUseCase(),
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
@@ -242,6 +241,7 @@ export async function createEngine(options: EngineOptions) {
     useCases: {
       ...engineUseCases,
       getConfigValue: createGetConfigValueUseCase({configsReplica}),
+      getHealth: createGetHealthUseCase(),
     },
     verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
     testing: {
