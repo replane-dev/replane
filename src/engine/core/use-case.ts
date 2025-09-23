@@ -14,6 +14,7 @@ export interface UseCase<TRequest, TResponse> {
 }
 
 export interface UseCaseTransaction {
+  scheduleOptimisticEffect(effect: () => Promise<void>): void;
   configs: ConfigStore;
   users: UserStore;
   configUsers: ConfigUserStore;

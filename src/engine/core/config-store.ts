@@ -71,6 +71,7 @@ export interface Config extends z.infer<ReturnType<typeof Config>> {}
 export class ConfigStore {
   constructor(
     private readonly db: Kysely<DB>,
+    private readonly scheduleOptimisticEffect: (effect: () => Promise<void>) => void,
     private readonly listener: Listener,
   ) {}
 
@@ -199,7 +200,7 @@ export class ConfigStore {
       })
       .execute();
 
-    await this.notifyConfigChange({configId: config.id});
+    this.notifyConfigChange({configId: config.id});
   }
 
   async updateById(params: {
@@ -221,19 +222,22 @@ export class ConfigStore {
         updated_at: params.updatedAt,
         version: params.version,
       })
+      .where('id', '=', params.id)
       .execute();
 
-    await this.notifyConfigChange({configId: params.id});
+    this.notifyConfigChange({configId: params.id});
   }
 
   async deleteById(id: string): Promise<void> {
     await this.db.deleteFrom('configs').where('id', '=', id).execute();
 
-    await this.notifyConfigChange({configId: id});
+    this.notifyConfigChange({configId: id});
   }
 
-  private async notifyConfigChange(payload: ConfigChangePayload): Promise<void> {
-    await this.listener.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify(payload));
+  private notifyConfigChange(payload: ConfigChangePayload): void {
+    this.scheduleOptimisticEffect(async () => {
+      await this.listener.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify(payload));
+    });
   }
 }
 

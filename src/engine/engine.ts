@@ -76,8 +76,13 @@ function toEngineUseCase<TReq, TRes>(
 ): LibUseCase<TReq, TRes> {
   return async (ctx: Context, req: TReq) => {
     for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
+      const optimisticEffects: Array<() => Promise<void>> = [];
+      function scheduleOptimisticEffect(effect: () => Promise<void>) {
+        optimisticEffects.push(effect);
+      }
+
       const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
-      const configs = new ConfigStore(dbTx, options.listener);
+      const configs = new ConfigStore(dbTx, scheduleOptimisticEffect, options.listener);
       const users = new UserStore(dbTx);
       const configUsers = new ConfigUserStore(dbTx);
       const configVersions = new ConfigVersionStore(dbTx);
@@ -88,6 +93,7 @@ function toEngineUseCase<TReq, TRes>(
       const permissionService = new PermissionService(configUsers, projectUsers, configs);
 
       const tx: UseCaseTransaction = {
+        scheduleOptimisticEffect,
         configs,
         users,
         configUsers,
@@ -101,6 +107,9 @@ function toEngineUseCase<TReq, TRes>(
       try {
         const result = await useCase(ctx, tx, req);
         await dbTx.commit().execute();
+
+        void Promise.all(optimisticEffects.map(effect => effect()));
+
         return result;
       } catch (error) {
         await dbTx.rollback().execute();
@@ -161,7 +170,11 @@ export async function createEngine(options: EngineOptions) {
 
   const configsReplica = new ConfigsReplica({
     pool,
-    configs: new ConfigStore(db, pgListener),
+    configs: new ConfigStore(
+      db,
+      /* no transaction, so run immediately */ effect => effect(),
+      pgListener,
+    ),
     logger,
     createListener: onNotification =>
       new PgListener<ConfigChangePayload>({

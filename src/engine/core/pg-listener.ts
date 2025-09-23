@@ -148,6 +148,7 @@ export class PgListener<T = unknown> implements Listener<T> {
 
   /** Optional helper to send NOTIFY via the shared pool. */
   async notify(channel: string, payload?: string): Promise<void> {
+    console.log('[dbg] notify', {channel, payload});
     if (payload == null) {
       await this.pool.query(`NOTIFY ${quoteIdent(channel)}`);
     } else {
@@ -209,6 +210,7 @@ export class PgListener<T = unknown> implements Listener<T> {
 
         // Subscribe to all current channels
         for (const ch of this.channels) {
+          console.log('[dbg] LISTEN', quoteIdent(ch));
           await client.query(`LISTEN ${quoteIdent(ch)}`);
         }
 
@@ -244,6 +246,7 @@ export class PgListener<T = unknown> implements Listener<T> {
     payload?: string | undefined;
     processId: number;
   }) => {
+    console.log('[dbg] notification', msg);
     try {
       const raw = msg.payload;
       let parsed: any = raw;

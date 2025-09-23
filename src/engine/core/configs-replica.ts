@@ -62,6 +62,7 @@ export class ConfigsReplica implements Service {
       if (msg.channel === CONFIGS_CHANGES_CHANNEL) {
         const {configId} = msg.payload;
         if (configId) {
+          console.log('[dbg] received config change notification', {configId});
           this.changesConfigIds.push(configId);
           this.worker.wakeup();
         }
@@ -102,7 +103,9 @@ export class ConfigsReplica implements Service {
   }
 
   private async processEvents() {
+    console.log('[dbg] processEvents', {changesConfigIds: this.changesConfigIds});
     if (this.fullRefreshRequested) {
+      console.log('[dbg] doing full refresh of configs');
       this.fullRefreshRequested = false;
       this.changesConfigIds = [];
       await this.refreshAllConfigs();
@@ -111,8 +114,10 @@ export class ConfigsReplica implements Service {
 
     if (this.changesConfigIds.length > 0) {
       const configId = this.changesConfigIds.shift()!;
+      console.log('[dbg] processing config change', {configId});
       const config = await this.options.configs.getReplicaConfig(configId);
       if (config) {
+        console.log('[dbg] received config', config);
         this.configsByKey.set(toConfigKey(config.projectId, config.name), {
           id: configId,
           ...config,
