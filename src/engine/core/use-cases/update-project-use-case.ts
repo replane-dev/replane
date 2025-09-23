@@ -1,7 +1,7 @@
 import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError, ForbiddenError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectRequest {
@@ -15,7 +15,10 @@ export interface UpdateProjectResponse {
   ok: true;
 }
 
-export function createUpdateProjectUseCase(): UseCase<UpdateProjectRequest, UpdateProjectResponse> {
+export function createUpdateProjectUseCase(): TransactionalUseCase<
+  UpdateProjectRequest,
+  UpdateProjectResponse
+> {
   return async (ctx, tx, req) => {
     const existing = await tx.projects.getById({
       currentUserEmail: req.currentUserEmail,

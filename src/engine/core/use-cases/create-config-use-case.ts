@@ -5,7 +5,7 @@ import type {NewConfigUser} from '../config-user-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
@@ -30,7 +30,7 @@ export interface CreateConfigUseCaseDeps {
 
 export function createCreateConfigUseCase(
   deps: CreateConfigUseCaseDeps,
-): UseCase<CreateConfigRequest, CreateConfigResponse> {
+): TransactionalUseCase<CreateConfigRequest, CreateConfigResponse> {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanCreateConfig(req.projectId, req.currentUserEmail);
     const existingConfig = await tx.configs.getByName({

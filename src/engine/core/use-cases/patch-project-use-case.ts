@@ -2,7 +2,7 @@ import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError} from '../errors';
 import {diffMembers} from '../member-diff';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface PatchProjectRequest {
@@ -19,7 +19,10 @@ export interface PatchProjectRequest {
 
 export interface PatchProjectResponse {}
 
-export function createPatchProjectUseCase(): UseCase<PatchProjectRequest, PatchProjectResponse> {
+export function createPatchProjectUseCase(): TransactionalUseCase<
+  PatchProjectRequest,
+  PatchProjectResponse
+> {
   return async (ctx, tx, req) => {
     const existing = await tx.projects.getById({
       currentUserEmail: req.currentUserEmail,

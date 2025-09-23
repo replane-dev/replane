@@ -1,4 +1,4 @@
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetProjectRequest {
@@ -17,7 +17,10 @@ export interface GetProjectResponse {
   } | null;
 }
 
-export function createGetProjectUseCase(): UseCase<GetProjectRequest, GetProjectResponse> {
+export function createGetProjectUseCase(): TransactionalUseCase<
+  GetProjectRequest,
+  GetProjectResponse
+> {
   return async (_ctx, tx, req) => {
     const project = await tx.projects.getById({
       id: req.id,

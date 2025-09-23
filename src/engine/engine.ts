@@ -24,7 +24,7 @@ import {ProjectStore} from './core/project-store';
 import {ProjectUserStore} from './core/project-user-store';
 import type {Service} from './core/service';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
-import type {UseCase, UseCaseTransaction} from './core/use-case';
+import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
@@ -59,21 +59,17 @@ export interface EngineOptions {
   onConflictRetriesCount?: number;
 }
 
-interface ToEngineUseCaseOptions {
+interface ToUseCaseOptions {
   onConflictRetriesCount: number;
   listener: Listener;
 }
 
-export interface LibUseCase<TRequest, TResponse> {
-  (ctx: Context, request: TRequest): Promise<TResponse>;
-}
-
-function toEngineUseCase<TReq, TRes>(
+function toUseCase<TReq, TRes>(
   db: Kysely<DB>,
   logger: Logger,
-  useCase: UseCase<TReq, TRes>,
-  options: ToEngineUseCaseOptions,
-): LibUseCase<TReq, TRes> {
+  useCase: TransactionalUseCase<TReq, TRes>,
+  options: ToUseCaseOptions,
+): UseCase<TReq, TRes> {
   return async (ctx: Context, req: TReq) => {
     for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
       const optimisticEffects: Array<() => Promise<void>> = [];
@@ -140,10 +136,12 @@ function toEngineUseCase<TReq, TRes>(
 }
 
 type InferEngineUserCaseMap<T> = {
-  [K in keyof T]: T[K] extends UseCase<infer Req, infer Res> ? LibUseCase<Req, Res> : never;
+  [K in keyof T]: T[K] extends TransactionalUseCase<infer Req, infer Res>
+    ? UseCase<Req, Res>
+    : never;
 };
 
-type UseCaseMap = Record<string, UseCase<any, any>>;
+type UseCaseMap = Record<string, TransactionalUseCase<any, any>>;
 
 export interface ApiKeyInfo {
   projectId: string;
@@ -195,7 +193,7 @@ export async function createEngine(options: EngineOptions) {
     await service.start(GLOBAL_CONTEXT);
   }
 
-  const useCases = {
+  const transactionalUseCases = {
     getHealth: createGetHealthUseCase(),
     getConfigList: createGetConfigListUseCase({}),
     getAuditLog: createGetAuditLogUseCase(),
@@ -206,7 +204,6 @@ export async function createEngine(options: EngineOptions) {
     deleteConfig: createDeleteConfigUseCase(),
     getConfigVersionList: createGetConfigVersionListUseCase({}),
     getConfigVersion: createGetConfigVersionUseCase({}),
-    getConfigValue: createGetConfigValueUseCase({configsReplica}),
     getApiKeyList: createGetApiKeyListUseCase(),
     getApiKey: createGetApiKeyUseCase(),
     deleteApiKey: createDeleteApiKeyUseCase(),
@@ -222,25 +219,28 @@ export async function createEngine(options: EngineOptions) {
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
   } satisfies UseCaseMap;
 
-  const engineUseCases = {} as InferEngineUserCaseMap<typeof useCases>;
+  const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;
 
-  const useCaseOptions: ToEngineUseCaseOptions = {
+  const useCaseOptions: ToUseCaseOptions = {
     onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
     listener: pgListener,
   };
 
-  for (const name of Object.keys(useCases) as Array<keyof typeof engineUseCases>) {
-    engineUseCases[name] = toEngineUseCase(
+  for (const name of Object.keys(transactionalUseCases) as Array<keyof typeof engineUseCases>) {
+    engineUseCases[name] = toUseCase(
       db,
       logger,
-      (useCases as UseCaseMap)[name],
+      (transactionalUseCases as UseCaseMap)[name],
       useCaseOptions,
     );
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
   return {
-    useCases: engineUseCases,
+    useCases: {
+      ...engineUseCases,
+      getConfigValue: createGetConfigValueUseCase({configsReplica}),
+    },
     verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
     testing: {
       pool,
@@ -278,10 +278,10 @@ async function dropDb(
 }
 
 function addUseCaseLogging(
-  useCase: LibUseCase<any, any>,
+  useCase: UseCase<any, any>,
   useCaseName: string,
   logger: Logger,
-): LibUseCase<any, any> {
+): UseCase<any, any> {
   return async (ctx, request): Promise<any> => {
     try {
       logger.info(ctx, {msg: `Running use case: ${useCaseName}...`});

@@ -9,8 +9,12 @@ import type {ProjectStore} from './project-store';
 import type {ProjectUserStore} from './project-user-store';
 import type {UserStore} from './user-store';
 
-export interface UseCase<TRequest, TResponse> {
+export interface TransactionalUseCase<TRequest, TResponse> {
   (ctx: Context, tx: UseCaseTransaction, request: TRequest): Promise<TResponse>;
+}
+
+export interface UseCase<TRequest, TResponse> {
+  (ctx: Context, request: TRequest): Promise<TResponse>;
 }
 
 export interface UseCaseTransaction {

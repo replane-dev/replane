@@ -1,4 +1,4 @@
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetApiKeyListRequest {
@@ -16,7 +16,10 @@ export interface GetApiKeyListResponse {
   }>;
 }
 
-export function createGetApiKeyListUseCase(): UseCase<GetApiKeyListRequest, GetApiKeyListResponse> {
+export function createGetApiKeyListUseCase(): TransactionalUseCase<
+  GetApiKeyListRequest,
+  GetApiKeyListResponse
+> {
   return async (_ctx, tx, _req) => {
     const tokens = await tx.apiTokens.list({projectId: _req.projectId});
     return {

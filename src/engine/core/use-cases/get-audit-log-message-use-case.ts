@@ -1,5 +1,5 @@
 import type {AuditMessageId} from '../audit-message-store';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetAuditLogMessageRequest {
@@ -19,7 +19,7 @@ export interface GetAuditLogMessageResponse {
     | undefined;
 }
 
-export function createGetAuditLogMessageUseCase(): UseCase<
+export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
   GetAuditLogMessageRequest,
   GetAuditLogMessageResponse
 > {

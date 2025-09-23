@@ -3,7 +3,7 @@ import {createAuditMessageId} from '../audit-message-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface RestoreConfigVersionRequest {
@@ -24,7 +24,7 @@ export interface RestoreConfigVersionUseCaseDeps {
 
 export function createRestoreConfigVersionUseCase(
   deps: RestoreConfigVersionUseCaseDeps,
-): UseCase<RestoreConfigVersionRequest, RestoreConfigVersionResponse> {
+): TransactionalUseCase<RestoreConfigVersionRequest, RestoreConfigVersionResponse> {
   return async (_ctx, tx, req) => {
     const config = await tx.configs.getByName({
       name: req.name,

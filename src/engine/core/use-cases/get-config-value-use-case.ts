@@ -17,7 +17,7 @@ export interface GetConfigValueUseCaseDeps {
 export function createGetConfigValueUseCase(
   deps: GetConfigValueUseCaseDeps,
 ): UseCase<GetConfigValueRequest, GetConfigValueResponse> {
-  return async (_ctx, tx, req) => {
+  return async (_ctx, req) => {
     const configValue = await deps.configsReplica.getConfigValue({
       projectId: req.projectId,
       name: req.name,

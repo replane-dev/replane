@@ -7,7 +7,7 @@ import type {Service} from './service';
 import type {TokenHashingService} from './token-hashing-service';
 
 export class ApiTokenService implements Service {
-  private apiKeyCache = new LRUCache<string, ApiKeyInfo>({
+  private apiKeyCache = new LRUCache<string, Promise<ApiKeyInfo | null>>({
     max: 500,
     ttl: 60_000, // 1 minute
   });
@@ -24,23 +24,26 @@ export class ApiTokenService implements Service {
 
   async verifyApiKey(token: string): Promise<ApiKeyInfo | null> {
     const cached = this.apiKeyCache.get(token);
-    if (cached) return cached;
+    if (cached) return await cached;
 
-    const tokenId = extractApiTokenId(token);
-    if (!tokenId) return null;
+    const result = (async (): Promise<ApiKeyInfo | null> => {
+      const tokenId = extractApiTokenId(token);
+      if (!tokenId) return null;
 
-    const row = await this.db
-      .selectFrom('api_tokens as t')
-      .select(['t.id as id', 't.token_hash as token_hash', 't.project_id'])
-      .where('t.id', '=', tokenId)
-      .executeTakeFirst();
-    if (!row) return null;
+      const row = await this.db
+        .selectFrom('api_tokens as t')
+        .select(['t.id as id', 't.token_hash as token_hash', 't.project_id'])
+        .where('t.id', '=', tokenId)
+        .executeTakeFirst();
+      if (!row) return null;
 
-    const valid = await this.tokenHasher.verify(row.token_hash, token);
-    if (!valid) return null;
+      const valid = await this.tokenHasher.verify(row.token_hash, token);
+      if (!valid) return null;
 
-    const info: ApiKeyInfo = {projectId: row.project_id};
-    this.apiKeyCache.set(token, info);
-    return info;
+      return {projectId: row.project_id};
+    })();
+
+    this.apiKeyCache.set(token, result);
+    return await result;
   }
 }

@@ -1,7 +1,7 @@
 import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface DeleteProjectRequest {
@@ -12,7 +12,10 @@ export interface DeleteProjectRequest {
 
 export interface DeleteProjectResponse {}
 
-export function createDeleteProjectUseCase(): UseCase<DeleteProjectRequest, DeleteProjectResponse> {
+export function createDeleteProjectUseCase(): TransactionalUseCase<
+  DeleteProjectRequest,
+  DeleteProjectResponse
+> {
   return async (_ctx, tx, req) => {
     const project = await tx.projects.getById({
       id: req.id,

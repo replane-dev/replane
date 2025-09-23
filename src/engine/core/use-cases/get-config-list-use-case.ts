@@ -1,5 +1,5 @@
 import {combineConfigAndProjectRoles} from '../role-utils';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {ConfigInfo, NormalizedEmail} from '../zod';
 
 export interface GetConfigListRequest {
@@ -15,7 +15,7 @@ export interface GetConfigListUseCasesDeps {}
 
 export function createGetConfigListUseCase(
   deps: GetConfigListUseCasesDeps,
-): UseCase<GetConfigListRequest, GetConfigListResponse> {
+): TransactionalUseCase<GetConfigListRequest, GetConfigListResponse> {
   return async (ctx, tx, req) => {
     const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
       projectId: req.projectId,

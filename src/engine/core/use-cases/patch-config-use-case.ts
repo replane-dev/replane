@@ -5,7 +5,7 @@ import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import {diffMembers} from '../member-diff';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import type {ConfigMember, NormalizedEmail} from '../zod';
 
@@ -27,7 +27,7 @@ export interface PatchConfigUseCaseDeps {
 
 export function createPatchConfigUseCase(
   deps: PatchConfigUseCaseDeps,
-): UseCase<PatchConfigRequest, PatchConfigResponse> {
+): TransactionalUseCase<PatchConfigRequest, PatchConfigResponse> {
   return async (ctx, tx, req) => {
     const existingConfig = await tx.configs.getById(req.configId);
     if (!existingConfig) {

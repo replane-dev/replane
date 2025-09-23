@@ -2,7 +2,7 @@ import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import type {ConfigId} from '../config-store';
 import {BadRequestError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface DeleteConfigRequest {
@@ -12,7 +12,10 @@ export interface DeleteConfigRequest {
 
 export interface DeleteConfigResponse {}
 
-export function createDeleteConfigUseCase(): UseCase<DeleteConfigRequest, DeleteConfigResponse> {
+export function createDeleteConfigUseCase(): TransactionalUseCase<
+  DeleteConfigRequest,
+  DeleteConfigResponse
+> {
   return async (ctx, tx, req) => {
     const existingConfig = await tx.configs.getById(req.configId);
     if (!existingConfig) {

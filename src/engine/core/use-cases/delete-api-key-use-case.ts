@@ -1,6 +1,6 @@
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface DeleteApiKeyRequest {
@@ -11,7 +11,10 @@ export interface DeleteApiKeyRequest {
 
 export interface DeleteApiKeyResponse {}
 
-export function createDeleteApiKeyUseCase(): UseCase<DeleteApiKeyRequest, DeleteApiKeyResponse> {
+export function createDeleteApiKeyUseCase(): TransactionalUseCase<
+  DeleteApiKeyRequest,
+  DeleteApiKeyResponse
+> {
   return async (_ctx, tx, req) => {
     const token = await tx.apiTokens.getById({
       apiKeyId: req.id,

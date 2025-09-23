@@ -1,4 +1,4 @@
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetProjectListRequest {
@@ -16,7 +16,7 @@ export interface GetProjectListResponse {
   }>;
 }
 
-export function createGetProjectListUseCase(): UseCase<
+export function createGetProjectListUseCase(): TransactionalUseCase<
   GetProjectListRequest,
   GetProjectListResponse
 > {

@@ -1,5 +1,5 @@
 import type {AuditMessage} from '../audit-message-store';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetAuditLogRequest {
@@ -24,7 +24,10 @@ export interface GetAuditLogResponse {
   nextCursor: {createdAt: Date; id: string} | null;
 }
 
-export function createGetAuditLogUseCase(): UseCase<GetAuditLogRequest, GetAuditLogResponse> {
+export function createGetAuditLogUseCase(): TransactionalUseCase<
+  GetAuditLogRequest,
+  GetAuditLogResponse
+> {
   return async (_ctx, tx, req) => {
     let userIds: number[] | undefined = undefined;
     if (req.authorEmails && req.authorEmails.length > 0) {

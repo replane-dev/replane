@@ -1,4 +1,4 @@
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetConfigVersionListRequest {
@@ -23,7 +23,7 @@ export interface GetConfigVersionListUseCasesDeps {}
 
 export function createGetConfigVersionListUseCase(
   _deps: GetConfigVersionListUseCasesDeps,
-): UseCase<GetConfigVersionListRequest, GetConfigVersionListResponse> {
+): TransactionalUseCase<GetConfigVersionListRequest, GetConfigVersionListResponse> {
   return async (_ctx, tx, req) => {
     const config = await tx.configs.getByName({
       name: req.name,

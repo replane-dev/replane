@@ -1,7 +1,7 @@
 import {buildRawApiToken} from '../api-token-utils';
 import {createAuditMessageId} from '../audit-message-store';
 import type {TokenHashingService} from '../token-hashing-service';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';
 
@@ -24,7 +24,7 @@ export interface CreateApiKeyResponse {
 
 export function createCreateApiKeyUseCase(deps: {
   tokenHasher: TokenHashingService;
-}): UseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
+}): TransactionalUseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
   return async (_ctx, tx, req) => {
     await tx.permissionService.ensureCanManageApiKeys(req.projectId, req.currentUserEmail);
     const user = await tx.users.getByEmail(req.currentUserEmail);

@@ -1,7 +1,7 @@
 import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError} from '../errors';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectUsersRequest {
@@ -14,7 +14,7 @@ export interface UpdateProjectUsersResponse {
   ok: true;
 }
 
-export function createUpdateProjectUsersUseCase(): UseCase<
+export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
   UpdateProjectUsersRequest,
   UpdateProjectUsersResponse
 > {

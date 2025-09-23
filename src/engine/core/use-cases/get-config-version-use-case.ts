@@ -1,4 +1,4 @@
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetConfigVersionRequest {
@@ -26,7 +26,7 @@ export interface GetConfigVersionUseCasesDeps {}
 
 export function createGetConfigVersionUseCase(
   _deps: GetConfigVersionUseCasesDeps,
-): UseCase<GetConfigVersionRequest, GetConfigVersionResponse> {
+): TransactionalUseCase<GetConfigVersionRequest, GetConfigVersionResponse> {
   return async (_ctx, tx, req) => {
     const config = await tx.configs.getByName({name: req.name, projectId: req.projectId});
     if (!config) return {version: undefined};

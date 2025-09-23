@@ -2,7 +2,7 @@ import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError} from '../errors';
 import {createProjectId} from '../project-store';
-import type {UseCase} from '../use-case';
+import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectRequest {
@@ -15,7 +15,10 @@ export interface CreateProjectResponse {
   projectId: string;
 }
 
-export function createCreateProjectUseCase(): UseCase<CreateProjectRequest, CreateProjectResponse> {
+export function createCreateProjectUseCase(): TransactionalUseCase<
+  CreateProjectRequest,
+  CreateProjectResponse
+> {
   return async (ctx, tx, req) => {
     const now = new Date();
 

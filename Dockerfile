@@ -16,5 +16,7 @@ RUN pnpm build
 ENV PORT=3000
 EXPOSE 3000
 
+ENV NODE_OPTIONS="--enable-source-maps"
+
 # Use package.json start script which runs the custom server (tsx server.ts)
 CMD ["pnpm", "start-self-hosted"]
