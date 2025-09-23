@@ -1,3 +1,4 @@
+import type {ConfigsReplica} from '../configs-replica';
 import type {UseCase} from '../use-case';
 
 export interface GetConfigValueRequest {
@@ -9,14 +10,18 @@ export interface GetConfigValueResponse {
   value: unknown | undefined; // undefined when config not found
 }
 
-export function createGetConfigValueUseCase(): UseCase<
-  GetConfigValueRequest,
-  GetConfigValueResponse
-> {
+export interface GetConfigValueUseCaseDeps {
+  configsReplica: ConfigsReplica;
+}
+
+export function createGetConfigValueUseCase(
+  deps: GetConfigValueUseCaseDeps,
+): UseCase<GetConfigValueRequest, GetConfigValueResponse> {
   return async (_ctx, tx, req) => {
-    const config = await tx.configs.getByName({projectId: req.projectId, name: req.name});
-    if (!config) return {value: undefined};
-    // (Optional future: enforce permissions)
-    return {value: config.value};
+    const configValue = await deps.configsReplica.getConfigValue({
+      projectId: req.projectId,
+      name: req.name,
+    });
+    return {value: configValue};
   };
 }

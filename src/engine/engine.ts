@@ -1,24 +1,28 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
 import {Kysely, PostgresDialect} from 'kysely';
-import {LRUCache} from 'lru-cache';
 import {Pool} from 'pg';
+import {ApiTokenService} from './core/api-token-cache';
 import {ApiTokenStore} from './core/api-token-store';
-import {extractApiTokenId} from './core/api-token-utils';
 import {AuditMessageStore} from './core/audit-message-store';
-import {ConfigStore} from './core/config-store';
+import {type ConfigChangePayload, ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
 import {ConfigVersionStore} from './core/config-version-store';
+import {ConfigsReplica} from './core/configs-replica';
+import {CONFIGS_CHANGES_CHANNEL} from './core/constants';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
 import {ConflictError} from './core/errors';
+import type {Listener} from './core/listener';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
+import {PgListener} from './core/pg-listener';
 import {getPgPool} from './core/pg-pool-cache';
 import {ProjectStore} from './core/project-store';
 import {ProjectUserStore} from './core/project-user-store';
+import type {Service} from './core/service';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {UseCase, UseCaseTransaction} from './core/use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
@@ -57,6 +61,7 @@ export interface EngineOptions {
 
 interface ToEngineUseCaseOptions {
   onConflictRetriesCount: number;
+  listener: Listener;
 }
 
 export interface LibUseCase<TRequest, TResponse> {
@@ -72,7 +77,7 @@ function toEngineUseCase<TReq, TRes>(
   return async (ctx: Context, req: TReq) => {
     for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
       const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
-      const configs = new ConfigStore(dbTx);
+      const configs = new ConfigStore(dbTx, options.listener);
       const users = new UserStore(dbTx);
       const configUsers = new ConfigUserStore(dbTx);
       const configVersions = new ConfigVersionStore(dbTx);
@@ -143,6 +148,40 @@ export async function createEngine(options: EngineOptions) {
 
   const tokenHasher = createSha256TokenHashingService();
 
+  const apiTokenService = new ApiTokenService(db, tokenHasher);
+  // Shared listener/publisher instance for config changes
+  const pgListener = new PgListener({
+    pool,
+    channels: [CONFIGS_CHANGES_CHANNEL],
+    parsePayload: true,
+    onNotification: () => {},
+    logger,
+    applicationName: 'replane-engine',
+  });
+
+  const configsReplica = new ConfigsReplica({
+    pool,
+    configs: new ConfigStore(db, pgListener),
+    logger,
+    createListener: onNotification =>
+      new PgListener<ConfigChangePayload>({
+        pool: pool!,
+        channels: [CONFIGS_CHANGES_CHANNEL],
+        parsePayload: true,
+        onNotification,
+        onError: error => {
+          logger.error(GLOBAL_CONTEXT, {msg: 'ConfigsReplica listener error', error});
+        },
+      }),
+  });
+
+  const services: Service[] = [apiTokenService, configsReplica];
+
+  for (const service of services) {
+    logger.info(GLOBAL_CONTEXT, {msg: `Starting service: ${service.name}...`});
+    await service.start(GLOBAL_CONTEXT);
+  }
+
   const useCases = {
     getHealth: createGetHealthUseCase(),
     getConfigList: createGetConfigListUseCase({}),
@@ -154,7 +193,7 @@ export async function createEngine(options: EngineOptions) {
     deleteConfig: createDeleteConfigUseCase(),
     getConfigVersionList: createGetConfigVersionListUseCase({}),
     getConfigVersion: createGetConfigVersionUseCase({}),
-    getConfigValue: createGetConfigValueUseCase(),
+    getConfigValue: createGetConfigValueUseCase({configsReplica}),
     getApiKeyList: createGetApiKeyListUseCase(),
     getApiKey: createGetApiKeyUseCase(),
     deleteApiKey: createDeleteApiKeyUseCase(),
@@ -174,6 +213,7 @@ export async function createEngine(options: EngineOptions) {
 
   const useCaseOptions: ToEngineUseCaseOptions = {
     onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
+    listener: pgListener,
   };
 
   for (const name of Object.keys(useCases) as Array<keyof typeof engineUseCases>) {
@@ -186,43 +226,23 @@ export async function createEngine(options: EngineOptions) {
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
-  const apiKeyCache = new LRUCache<string, ApiKeyInfo>({
-    max: 500,
-    ttl: 60_000, // 1 minute
-  });
-
-  async function verifyApiKey(token: string): Promise<ApiKeyInfo | null> {
-    const cached = apiKeyCache.get(token);
-    if (cached) return cached;
-
-    const tokenId = extractApiTokenId(token);
-    if (!tokenId) return null;
-
-    const row = await db
-      .selectFrom('api_tokens as t')
-      .select(['t.id as id', 't.token_hash as token_hash', 't.project_id'])
-      .where('t.id', '=', tokenId)
-      .executeTakeFirst();
-    if (!row) return null;
-
-    const valid = await tokenHasher.verify(row.token_hash, token);
-    if (!valid) return null;
-
-    const info: ApiKeyInfo = {projectId: row.project_id};
-    apiKeyCache.set(token, info);
-    return info;
-  }
-
   return {
     useCases: engineUseCases,
-    verifyApiKey,
+    verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
     testing: {
       pool,
+      dbSchema: options.dbSchema,
       auditMessages: new AuditMessageStore(db),
       projects: new ProjectStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
-    destroy: () => freePool(),
+    destroy: async () => {
+      freePool();
+      for (const service of services) {
+        logger.info(GLOBAL_CONTEXT, {msg: `Stopping service: ${service.name}...`});
+        await service.stop(GLOBAL_CONTEXT);
+      }
+    },
   };
 }
 
@@ -263,12 +283,16 @@ function addUseCaseLogging(
 async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
   const [pool, freePool] = getPgPool(options.databaseUrl);
 
+  pool.on('connect', async client => {
+    if (options.dbSchema !== 'public') {
+      await client.query(
+        `CREATE SCHEMA IF NOT EXISTS ${options.dbSchema}; SET search_path TO ${options.dbSchema}`,
+      );
+    }
+  });
+
   const client = await pool.connect();
   try {
-    if (options.dbSchema !== 'public') {
-      await client.query(`CREATE SCHEMA IF NOT EXISTS ${options.dbSchema}`);
-    }
-    await client.query(`set search_path to ${options.dbSchema}`);
     await migrate(ctx, client, logger, options.dbSchema);
   } finally {
     client.release();

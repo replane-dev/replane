@@ -1,7 +1,9 @@
 import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
+import {CONFIGS_CHANGES_CHANNEL} from './constants';
 import type {Configs, DB, JsonValue} from './db';
+import type {Listener} from './listener';
 import {isValidJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {ConfigInfo, Uuid, type NormalizedEmail} from './zod';
@@ -67,7 +69,45 @@ export function Config() {
 export interface Config extends z.infer<ReturnType<typeof Config>> {}
 
 export class ConfigStore {
-  constructor(private readonly db: Kysely<DB>) {}
+  constructor(
+    private readonly db: Kysely<DB>,
+    private readonly listener: Listener,
+  ) {}
+
+  async getReplicaDump(): Promise<
+    Array<{id: string; name: string; projectId: string; value: any; version: number}>
+  > {
+    const rows = await this.db
+      .selectFrom('configs')
+      .select(['id', 'name', 'value', 'version', 'project_id'])
+      .execute();
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      value: fromJsonb(row.value),
+      version: row.version,
+      projectId: row.project_id,
+    }));
+  }
+
+  async getReplicaConfig(
+    configId: string,
+  ): Promise<{name: string; projectId: string; value: any; version: number} | null> {
+    const row = await this.db
+      .selectFrom('configs')
+      .select(['name', 'value', 'version', 'project_id'])
+      .where('id', '=', configId)
+      .executeTakeFirst();
+    if (!row) {
+      return null;
+    }
+    return {
+      name: row.name,
+      value: fromJsonb(row.value),
+      version: row.version,
+      projectId: row.project_id,
+    };
+  }
 
   async getAll(params: {
     currentUserEmail: NormalizedEmail;
@@ -158,6 +198,8 @@ export class ConfigStore {
         project_id: config.projectId,
       })
       .execute();
+
+    await this.notifyConfigChange({configId: config.id});
   }
 
   async updateById(params: {
@@ -180,15 +222,23 @@ export class ConfigStore {
         version: params.version,
       })
       .execute();
-  }
 
-  async delete(name: string): Promise<void> {
-    await this.db.deleteFrom('configs').where('name', '=', name).execute();
+    await this.notifyConfigChange({configId: params.id});
   }
 
   async deleteById(id: string): Promise<void> {
     await this.db.deleteFrom('configs').where('id', '=', id).execute();
+
+    await this.notifyConfigChange({configId: id});
   }
+
+  private async notifyConfigChange(payload: ConfigChangePayload): Promise<void> {
+    await this.listener.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify(payload));
+  }
+}
+
+export interface ConfigChangePayload {
+  configId: string;
 }
 
 function mapConfig(config: Selectable<Configs>): Config {
