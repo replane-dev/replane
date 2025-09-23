@@ -128,6 +128,8 @@ function toUseCase<TReq, TRes>(
         } else {
           throw error;
         }
+      } finally {
+        dbTx.destroy();
       }
     }
 
