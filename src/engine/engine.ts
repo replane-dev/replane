@@ -2,7 +2,7 @@
 
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
-import {ApiTokenService} from './core/api-token-cache';
+import {ApiTokenService} from './core/api-token-service';
 import {ApiTokenStore} from './core/api-token-store';
 import {AuditMessageStore} from './core/audit-message-store';
 import {type ConfigChangePayload, ConfigStore} from './core/config-store';

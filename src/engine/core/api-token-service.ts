@@ -12,7 +12,7 @@ export class ApiTokenService implements Service {
     ttl: 60_000, // 1 minute
   });
 
-  readonly name = 'ApiTokenCache';
+  readonly name = 'ApiTokenService';
 
   constructor(
     private readonly db: Kysely<DB>,
