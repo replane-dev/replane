@@ -1,120 +1,13 @@
-import {ConfigName} from '@/engine/core/config-store';
-import {type Context} from '@/engine/core/context';
-import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
-import {createUuidV4} from '@/engine/core/uuid';
-import {getEngineSingleton} from '@/engine/engine-singleton';
-import {OpenAPIHono} from '@hono/zod-openapi';
-import {cors} from 'hono/cors';
+// this file exists only for local development, in production we use hono directly in server.ts
+// to avoid the overhead of Next.js API routes
+
+import {honoApi} from '@/api';
 import {NextRequest, NextResponse} from 'next/server';
-import {z} from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
-
-async function getEngine() {
-  return getEngineSingleton();
-}
-
-interface HonoEnv {
-  Variables: {
-    context: Context;
-    projectId: string;
-  };
-}
-
-const app = new OpenAPIHono<HonoEnv>();
-
-const ConfigValueResponse = z
-  .object({
-    name: ConfigName(),
-    value: z.unknown(),
-  })
-  .openapi('ConfigValueResponse');
-
-app.use(
-  '*',
-  cors({
-    origin: '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  }),
-);
-
-app.use('*', async (c, next) => {
-  c.set('context', {traceId: createUuidV4()});
-
-  const path = new URL(c.req.url).pathname;
-  if (path.endsWith('/openapi.json')) {
-    return next();
-  }
-  const authHeader = c.req.header('authorization');
-  const bearer = authHeader?.toLowerCase().startsWith('bearer ')
-    ? authHeader.slice(7).trim()
-    : undefined;
-  const token = bearer;
-  if (!token) return c.json({msg: 'Missing API key'}, 401);
-  try {
-    const engine = await getEngine();
-    const verified = await engine.verifyApiKey(token);
-    if (!verified) return c.json({msg: 'Invalid API key'}, 401);
-    c.set('projectId', verified.projectId);
-    await next();
-  } catch (e) {
-    console.error(e);
-    return c.json({msg: 'Auth failure'}, 500);
-  }
-});
-
-app.openapi(
-  {
-    method: 'get',
-    path: '/configs/{name}/value',
-    request: {
-      params: z.object({name: ConfigName()}),
-    },
-    responses: {
-      200: {
-        description: 'Config value (if found)',
-        content: {
-          'application/json': {
-            schema: ConfigValueResponse,
-          },
-        },
-      },
-      404: {description: 'Config not found'},
-      400: {description: 'Bad request'},
-      403: {description: 'Forbidden'},
-    },
-  },
-  async c => {
-    const {name} = c.req.valid('param');
-    try {
-      const engine = await getEngine();
-      const result = await engine.useCases.getConfigValue(c.get('context'), {
-        name,
-        projectId: c.get('projectId'),
-      });
-
-      if (typeof result.value === 'undefined') return c.json({msg: 'Not found'}, 404);
-
-      return c.json(result.value, 200);
-    } catch (err: unknown) {
-      if (err instanceof BadRequestError) return c.json({msg: err.message}, 400);
-      if (err instanceof ForbiddenError) return c.json({msg: 'Forbidden'}, 403);
-      return c.json({msg: 'Internal server error'}, 500);
-    }
-  },
-);
-
-app.get('/openapi.json', c =>
-  c.json(
-    app.getOpenAPI31Document({
-      openapi: '3.1.0',
-      info: {title: 'Replane API', version: '1.0.0'},
-    }),
-  ),
-);
 
 export async function GET(req: NextRequest) {
   return handleRequest(req);
@@ -154,7 +47,7 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
     body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.blob(),
   });
 
-  const response = await app.fetch(honoRequest);
+  const response = await honoApi.fetch(honoRequest);
   return new NextResponse(response.body, {
     headers: response.headers,
     status: response.status,
