@@ -104,45 +104,61 @@ honoApi.openapi(
 honoApi.get('/events', async c => {
   const projectId = c.get('projectId');
   const context = c.get('context');
-
   const engine = await getEngine();
-  const events = engine.useCases.getProjectEvents(context, {projectId});
 
-  // Set SSE headers
-  c.header('Content-Type', 'text/event-stream');
-  c.header('Cache-Control', 'no-cache');
-  c.header('Connection', 'keep-alive');
+  const headers = {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  };
 
-  // Create a readable stream for SSE
-  const stream = new ReadableStream({
+  const abortController = new AbortController();
+  const onAbort = () => abortController.abort();
+  c.req.raw.signal.addEventListener('abort', onAbort);
+
+  const events = engine.useCases.getProjectEvents(context, {
+    projectId,
+    abortSignal: abortController.signal,
+  });
+
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let errored = false;
+      // heartbeat to keep proxies from closing the connection due to inactivity
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`));
+        } catch {}
+      }, 15000);
+
       try {
         for await (const event of events) {
-          // Format as SSE message
           const data = JSON.stringify(event);
-          const message = `data: ${data}\n\n`;
-          controller.enqueue(new TextEncoder().encode(message));
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
         }
-      } catch (error) {
-        console.error('SSE stream error:', error);
-        controller.error(error);
+      } catch (err) {
+        errored = true;
+        console.error('SSE stream error:', err);
+        controller.error(err);
       } finally {
-        controller.close();
+        clearInterval(heartbeat);
+        c.req.raw.signal.removeEventListener('abort', onAbort);
+        if (!errored) {
+          try {
+            controller.close();
+          } catch {}
+        }
       }
     },
-    cancel() {
-      // Cleanup happens automatically via the async iterator's finally block
-      console.log('SSE connection closed by client');
+    async cancel() {
+      abortController.abort();
+      c.req.raw.signal.removeEventListener('abort', onAbort);
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+  return new Response(stream, {headers});
 });
 
 honoApi.get('/openapi.json', c =>

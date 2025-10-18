@@ -5,6 +5,7 @@ import type {Observable} from '../observable';
 
 export interface GetProjectEventsRequest {
   projectId: string;
+  abortSignal?: AbortSignal;
 }
 
 export interface ProjectEvent {
@@ -40,14 +41,24 @@ export function createGetProjectEventsUseCase(
       },
     });
 
+    let isCleanedUp = false;
+    const cleanUp = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
+
+      unsubscribe();
+      channel.close();
+      request.abortSignal?.removeEventListener('abort', cleanUp);
+    };
+
+    request.abortSignal?.addEventListener('abort', cleanUp);
+
     try {
       for await (const event of channel) {
         yield event;
       }
     } finally {
-      // Cleanup: unsubscribe when the async iterator is disposed
-      unsubscribe();
-      channel.close();
+      cleanUp();
     }
   };
 }
