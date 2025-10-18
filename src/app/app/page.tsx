@@ -14,7 +14,9 @@ export default function AppPage() {
   React.useEffect(() => {
     if (data.projects.length === 0) return; // should not happen, backend guarantees at least one project
 
-    router.replace(`/app/projects/${data.projects[0]!.id}/configs`);
+    const projectId = data.projects.find(p => !p.isExample)?.id ?? data.projects[0]!.id;
+
+    router.replace(`/app/projects/${projectId}/configs`);
   }, [data.projects, router]);
 
   return null;

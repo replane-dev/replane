@@ -107,6 +107,7 @@ export interface Projects {
   created_at: Timestamp;
   description: string;
   id: string;
+  is_example: Generated<boolean>;
   name: string;
   updated_at: Timestamp;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import {ConfigForm} from '@/app/components/config-form';
+import {ConfigForm} from '@/components/config-form';
 import {
   Breadcrumb,
   BreadcrumbItem,

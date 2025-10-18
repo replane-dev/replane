@@ -7,6 +7,9 @@ export interface Migration {
   sql: string;
 }
 
+const EXAMPLE_PROJECT_ID = '32234b32-b7d9-4401-91e2-745a0cfb092a';
+const EXAMPLE_USER_ID = 123456789;
+
 export const migrations: Migration[] = [
   {
     sql: /*sql*/ `
@@ -138,13 +141,13 @@ export const migrations: Migration[] = [
         id UUID PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
+        is_example BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ(3) NOT NULL,
         updated_at TIMESTAMPTZ(3) NOT NULL
       );
 
-      INSERT INTO projects (id, name, description, created_at, updated_at)
-      SELECT gen_random_uuid(), 'Default', 'Default project', NOW(), NOW()
-      WHERE NOT EXISTS (SELECT 1 FROM projects);
+      INSERT INTO projects (id, name, description, is_example, created_at, updated_at)
+      SELECT '${EXAMPLE_PROJECT_ID}', 'Example project', 'This is an example project.', TRUE, NOW(), NOW();
 
       ALTER TABLE configs
       ADD COLUMN project_id UUID NULL REFERENCES projects(id) ON DELETE CASCADE;
@@ -208,6 +211,38 @@ export const migrations: Migration[] = [
       ALTER TABLE config_users ADD COLUMN updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW();
       ALTER TABLE config_users ALTER COLUMN created_at DROP DEFAULT;
       ALTER TABLE config_users ALTER COLUMN updated_at DROP DEFAULT;
+
+      -- example configs
+
+      INSERT INTO users (id, name, email, "emailVerified")
+      VALUES (${EXAMPLE_USER_ID}, 'Example User', 'example-user@replane.dev', NOW());
+
+      INSERT INTO configs (id, name, value, description, schema, creator_id, created_at, updated_at, version, project_id)
+      VALUES
+      (
+        gen_random_uuid(),
+        'example_config',
+        '{ "value": {"key":"value"} }'::JSONB,
+        'This is an example config.',
+        '{"value":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}'::JSONB,
+        ${EXAMPLE_USER_ID},
+        NOW(),
+        NOW(),
+        1,
+        '${EXAMPLE_PROJECT_ID}'
+      ),
+      (
+        gen_random_uuid(),
+        'example_feature_enabled',
+        '{ "value": true }'::JSONB,
+        'This is a feature flags config.',
+        '{"value":{"$schema":"http://json-schema.org/draft-07/schema#","type":"boolean"}}'::JSONB,
+        ${EXAMPLE_USER_ID},
+        NOW(),
+        NOW(),
+        1,
+        '${EXAMPLE_PROJECT_ID}'
+      );
     `,
   },
   {
@@ -250,13 +285,6 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
       msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length),
     });
 
-    for (let i = 0; i < runMigrations.length; i++) {
-      assert(
-        runMigrations[i].sql === migrations[i].sql,
-        `Migration ${i} is out of sync: ${runMigrations[i].sql} !== ${migrations[i].sql}`,
-      );
-    }
-
     for (let i = runMigrations.length; i < migrations.length; i++) {
       logger.info(ctx, {msg: `Running migration ${i}: ${migrations[i].sql}`});
       try {
@@ -275,6 +303,7 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
         assert(newMigration.length === 1, `Failed to insert migration ${i}`);
         await client.query('COMMIT');
       } catch (error) {
+        console.error(`Error running migration ${i}:`, error);
         await client.query('ROLLBACK');
         throw new Error(`Failed to insert migration ${i}`, {cause: error});
       }

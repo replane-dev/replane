@@ -7,6 +7,7 @@ import React from 'react';
 export interface ProjectSummary {
   id: string;
   name: string;
+  isExample: boolean;
   myRole: 'owner' | 'admin' | undefined;
 }
 
@@ -21,7 +22,8 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
   const projectsQuery = trpc.getProjectList.queryOptions();
   const {data} = useSuspenseQuery({...projectsQuery});
   const projects: ProjectSummary[] = React.useMemo(
-    () => data.projects.map(p => ({id: p.id, name: p.name, myRole: p.myRole})),
+    () =>
+      data.projects.map(p => ({id: p.id, name: p.name, myRole: p.myRole, isExample: p.isExample})),
     [data.projects],
   );
 

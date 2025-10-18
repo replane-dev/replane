@@ -29,6 +29,7 @@ export function Project() {
     description: ProjectDescription(),
     createdAt: z.date(),
     updatedAt: z.date(),
+    isExample: z.boolean(),
   });
 }
 
@@ -40,6 +41,7 @@ export interface ProjectInfo {
   descriptionPreview: string;
   createdAt: Date;
   updatedAt: Date;
+  isExample: boolean;
   // role in the project if the current user is a member (owner | admin)
   myRole?: 'owner' | 'admin';
 }
@@ -65,6 +67,7 @@ export class ProjectStore {
         'projects.name',
         'projects.description',
         'projects.updated_at',
+        'projects.is_example',
         'project_users.role as myRole',
       ]);
 
@@ -76,6 +79,7 @@ export class ProjectStore {
       descriptionPreview: p.description.substring(0, 100),
       createdAt: p.created_at,
       updatedAt: p.updated_at,
+      isExample: p.is_example,
       myRole: p.myRole ?? undefined,
     }));
   }
@@ -114,6 +118,7 @@ export class ProjectStore {
         'projects.name',
         'projects.description',
         'projects.updated_at',
+        'projects.is_example',
         'project_users.role as myRole',
       ]);
 
@@ -183,5 +188,6 @@ function mapProject(project: Selectable<Projects>): Project {
     description: project.description,
     createdAt: project.created_at,
     updatedAt: project.updated_at,
+    isExample: project.is_example,
   };
 }

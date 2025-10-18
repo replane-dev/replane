@@ -13,6 +13,7 @@ export interface GetProjectListResponse {
     createdAt: Date;
     updatedAt: Date;
     myRole?: 'owner' | 'admin';
+    isExample: boolean;
   }>;
 }
 
@@ -30,6 +31,7 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         myRole: p.myRole,
+        isExample: p.isExample,
       })),
     };
   };
