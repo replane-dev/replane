@@ -1,10 +1,11 @@
-import {afterEach, beforeEach, describe, expect, it} from 'vitest';
+import type {EventBusClient} from '@/engine/core/event-bus';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import type {ConfigChangePayload} from '../src/engine/core/config-store';
-import {ConfigsReplica} from '../src/engine/core/configs-replica';
-import {CONFIGS_CHANGES_CHANNEL} from '../src/engine/core/constants';
-import {InMemoryListener} from '../src/engine/core/in-memory-listener';
+import {type ConfigReplicaEvent, ConfigsReplica} from '../src/engine/core/configs-replica';
+import {InMemoryEventBus} from '../src/engine/core/in-memory-event-bus';
 import type {Logger} from '../src/engine/core/logger';
 import {createLogger} from '../src/engine/core/logger';
+import {Subject} from '../src/engine/core/subject';
 
 function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
@@ -35,28 +36,22 @@ describe('ConfigsReplica with InMemoryListener', () => {
         if (cfgId !== id) return null;
         return {name, projectId, value: currentValue, version: 1};
       },
-    } as any;
+    };
 
     // capture the in-memory listener to emit notifications
-    let mem: InMemoryListener<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigChangePayload> | null = null;
 
     const replica = new ConfigsReplica({
       pool: {} as any,
-      configs,
+      configs: configs as any,
       logger,
-      // Inject a listener factory mirroring PgListener constructor semantics
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // @ts-ignore accessing private signature for test
-      createListener: (onNotification: any) => {
-        mem = new InMemoryListener<ConfigChangePayload>({
-          channels: [CONFIGS_CHANGES_CHANNEL],
-          onNotification,
-          parsePayload: true,
+      createEventBusClient: (onNotification: any) => {
+        mem = new InMemoryEventBus<ConfigChangePayload>({
           logger: console,
-        });
+        }).createClient(onNotification);
         return mem!;
       },
-    } as any);
+    });
 
     await replica.start();
 
@@ -64,11 +59,10 @@ describe('ConfigsReplica with InMemoryListener', () => {
     // give worker a tick to process
     await sleep(10);
     expect(replica.getConfigValue<{on: boolean}>({projectId, name})).toEqual({on: false});
-
     // simulate an update notification
     currentValue = {on: true};
-    await mem!.start(); // ensure started (replica.start() calls start on listener too)
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: id}));
+
+    await mem!.notify({configId: id});
     await sleep(10);
     expect(replica.getConfigValue<{on: boolean}>({projectId, name})).toEqual({on: true});
 
@@ -89,26 +83,22 @@ describe('ConfigsReplica with InMemoryListener', () => {
         if (cfgId !== id) return null;
         return exists ? {name, projectId, value: 1, version: 1} : null;
       },
-    } as any;
+    };
 
-    let mem: InMemoryListener<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigChangePayload> | null = null;
 
     const replica = new ConfigsReplica({
       pool: {} as any,
-      configs,
+      configs: configs as any,
       logger,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // @ts-ignore accessing private signature for test
-      createListener: (onNotification: any) => {
-        mem = new InMemoryListener<ConfigChangePayload>({
-          channels: [CONFIGS_CHANGES_CHANNEL],
-          onNotification,
-          parsePayload: true,
+
+      createEventBusClient: (onNotification: any) => {
+        mem = new InMemoryEventBus<ConfigChangePayload>({
           logger: console,
-        });
+        }).createClient(onNotification);
         return mem!;
       },
-    } as any);
+    });
 
     await replica.start();
     await sleep(10);
@@ -116,7 +106,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
     // now delete and notify
     exists = false;
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: id}));
+    await mem!.notify({configId: id});
     await sleep(10);
     expect(replica.getConfigValue<number>({projectId, name})).toBeUndefined();
 
@@ -140,33 +130,29 @@ describe('ConfigsReplica with InMemoryListener', () => {
           return {name: b.name, projectId: b.projectId, value: valueB, version: b.version};
         return null;
       },
-    } as any;
+    };
 
-    let mem: InMemoryListener<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigChangePayload> | null = null;
     const replica = new ConfigsReplica({
       pool: {} as any,
-      configs,
+      configs: configs as any,
       logger,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // @ts-ignore accessing private signature for test
-      createListener: (onNotification: any) => {
-        mem = new InMemoryListener<ConfigChangePayload>({
-          channels: [CONFIGS_CHANGES_CHANNEL],
-          onNotification,
-          parsePayload: true,
+
+      createEventBusClient: (onNotification: any) => {
+        mem = new InMemoryEventBus<ConfigChangePayload>({
           logger: console,
-        });
+        }).createClient(onNotification);
         return mem!;
       },
-    } as any);
+    });
 
     await replica.start();
     await sleep(10);
     expect(replica.getConfigValue<number>({projectId: a.projectId, name: a.name})).toBeUndefined();
     expect(replica.getConfigValue<number>({projectId: b.projectId, name: b.name})).toBeUndefined();
 
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: a.id}));
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: b.id}));
+    await mem!.notify({configId: a.id});
+    await mem!.notify({configId: b.id});
     await sleep(20);
 
     expect(replica.getConfigValue<number>({projectId: a.projectId, name: a.name})).toBe(10);
@@ -175,8 +161,8 @@ describe('ConfigsReplica with InMemoryListener', () => {
     // update values and notify again
     valueA = 11;
     valueB = 22;
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: b.id}));
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: a.id}));
+    await mem!.notify({configId: b.id});
+    await mem!.notify({configId: a.id});
     await sleep(20);
 
     expect(replica.getConfigValue<number>({projectId: a.projectId, name: a.name})).toBe(11);
@@ -185,11 +171,13 @@ describe('ConfigsReplica with InMemoryListener', () => {
     await replica.stop();
   });
 
-  it('ignores notifications on unknown channels', async () => {
-    const id = 'cfg-x';
-    const projectId = 'p';
-    const name = 'X';
-    let val: any = 1;
+  it('publishes events to subject on config changes', async () => {
+    const id = 'cfg-events';
+    const projectId = 'proj-events';
+    const name = 'eventsConfig';
+    let currentValue: any = {enabled: false};
+    let currentVersion = 1;
+    let exists = true;
 
     const configs = {
       async getReplicaDump() {
@@ -197,44 +185,185 @@ describe('ConfigsReplica with InMemoryListener', () => {
       },
       async getReplicaConfig(cfgId: string) {
         if (cfgId !== id) return null;
-        return {name, projectId, value: val, version: 1};
+        if (!exists) return null;
+        return {name, projectId, value: currentValue, version: currentVersion};
       },
-    } as any;
+    };
 
-    let mem: InMemoryListener<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    const eventsSubject = new Subject<ConfigReplicaEvent>();
+    const eventsSpy = vi.fn();
+
+    eventsSubject.subscribe({
+      next: eventsSpy,
+      error: vi.fn(),
+      complete: vi.fn(),
+    });
+
     const replica = new ConfigsReplica({
       pool: {} as any,
-      configs,
+      configs: configs as any,
       logger,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // @ts-ignore accessing private signature for test
-      createListener: (onNotification: any) => {
-        mem = new InMemoryListener<ConfigChangePayload>({
-          channels: [CONFIGS_CHANGES_CHANNEL],
-          onNotification,
-          parsePayload: true,
+      eventsSubject,
+
+      createEventBusClient: (onNotification: any) => {
+        mem = new InMemoryEventBus<ConfigChangePayload>({
           logger: console,
-        });
+        }).createClient(onNotification);
         return mem!;
       },
-    } as any);
+    });
 
     await replica.start();
     await sleep(10);
-    expect(replica.getConfigValue<number>({projectId, name})).toBeUndefined();
 
-    await mem!.notify('unknown_channel', JSON.stringify({configId: id}));
+    // Notify about new config - should trigger 'created' event
+    await mem!.notify({configId: id});
     await sleep(10);
-    expect(replica.getConfigValue<number>({projectId, name})).toBeUndefined();
 
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: id}));
+    expect(eventsSpy).toHaveBeenCalledTimes(1);
+    expect(eventsSpy).toHaveBeenCalledWith({
+      type: 'created',
+      config: {
+        id,
+        name,
+        projectId,
+        value: {enabled: false},
+        version: 1,
+      },
+    });
+
+    // Update config - should trigger 'updated' event
+    currentValue = {enabled: true};
+    currentVersion = 2;
+    await mem!.notify({configId: id});
     await sleep(10);
+
+    expect(eventsSpy).toHaveBeenCalledTimes(2);
+    expect(eventsSpy).toHaveBeenCalledWith({
+      type: 'updated',
+      config: {
+        id,
+        name,
+        projectId,
+        value: {enabled: true},
+        version: 2,
+      },
+    });
+
+    // Delete config - should trigger 'deleted' event
+    exists = false;
+    await mem!.notify({configId: id});
+    await sleep(10);
+
+    expect(eventsSpy).toHaveBeenCalledTimes(3);
+    expect(eventsSpy).toHaveBeenCalledWith({
+      type: 'deleted',
+      config: {
+        id,
+        name,
+        projectId,
+        value: {enabled: true},
+        version: 2,
+      },
+    });
+
+    await replica.stop();
+  });
+
+  it('does not publish events when subject is not provided', async () => {
+    const id = 'cfg-no-subject';
+    const projectId = 'proj-no-subject';
+    const name = 'noSubjectConfig';
+
+    const configs = {
+      async getReplicaDump() {
+        return [];
+      },
+      async getReplicaConfig(cfgId: string) {
+        if (cfgId !== id) return null;
+        return {name, projectId, value: 1, version: 1};
+      },
+    };
+
+    let mem: EventBusClient<ConfigChangePayload> | null = null;
+
+    const replica = new ConfigsReplica({
+      pool: {} as any,
+      configs: configs as any,
+      logger,
+      // No eventsSubject provided
+
+      createEventBusClient: (onNotification: any) => {
+        mem = new InMemoryEventBus<ConfigChangePayload>({
+          logger: console,
+        }).createClient(onNotification);
+        return mem!;
+      },
+    });
+
+    await replica.start();
+    await sleep(10);
+
+    // Should not throw even without subject
+    await mem!.notify({configId: id});
+    await sleep(10);
+
     expect(replica.getConfigValue<number>({projectId, name})).toBe(1);
 
-    val = 2;
-    await mem!.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify({configId: id}));
+    await replica.stop();
+  });
+
+  it('publishes created events during initial full refresh', async () => {
+    const config1 = {id: 'cfg-1', name: 'config1', projectId: 'proj', version: 1, value: 'v1'};
+    const config2 = {id: 'cfg-2', name: 'config2', projectId: 'proj', version: 1, value: 'v2'};
+
+    const configs = {
+      async getReplicaDump() {
+        return [config1, config2];
+      },
+      async getReplicaConfig(cfgId: string) {
+        return null;
+      },
+    };
+
+    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    const eventsSubject = new Subject<ConfigReplicaEvent>();
+    const eventsSpy = vi.fn();
+
+    eventsSubject.subscribe({
+      next: eventsSpy,
+      error: vi.fn(),
+      complete: vi.fn(),
+    });
+
+    const replica = new ConfigsReplica({
+      pool: {} as any,
+      configs: configs as any,
+      logger,
+      eventsSubject,
+
+      createEventBusClient: (onNotification: any) => {
+        mem = new InMemoryEventBus<ConfigChangePayload>({
+          logger: console,
+        }).createClient(onNotification);
+        return mem!;
+      },
+    });
+
+    await replica.start();
     await sleep(10);
-    expect(replica.getConfigValue<number>({projectId, name})).toBe(2);
+
+    // Initial full refresh should trigger 2 'created' events
+    expect(eventsSpy).toHaveBeenCalledTimes(2);
+    expect(eventsSpy).toHaveBeenCalledWith({
+      type: 'created',
+      config: config1,
+    });
+    expect(eventsSpy).toHaveBeenCalledWith({
+      type: 'created',
+      config: config2,
+    });
 
     await replica.stop();
   });

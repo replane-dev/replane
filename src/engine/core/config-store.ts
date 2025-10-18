@@ -1,8 +1,7 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
-import {CONFIGS_CHANGES_CHANNEL} from './constants';
 import type {Configs, DB} from './db';
-import type {Listener} from './listener';
+import type {EventBusClient} from './event-bus';
 import {fromJsonb, toJsonb} from './store-utils';
 import {isValidJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
@@ -72,7 +71,7 @@ export class ConfigStore {
   constructor(
     private readonly db: Kysely<DB>,
     private readonly scheduleOptimisticEffect: (effect: () => Promise<void>) => void,
-    private readonly listener: Listener,
+    private readonly eventBusClient: EventBusClient<ConfigChangePayload>,
   ) {}
 
   async getReplicaDump(): Promise<
@@ -232,7 +231,7 @@ export class ConfigStore {
 
   private notifyConfigChange(payload: ConfigChangePayload): void {
     this.scheduleOptimisticEffect(async () => {
-      await this.listener.notify(CONFIGS_CHANGES_CHANNEL, JSON.stringify(payload));
+      await this.eventBusClient.notify(payload);
     });
   }
 }

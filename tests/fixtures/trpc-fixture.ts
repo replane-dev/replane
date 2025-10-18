@@ -1,5 +1,7 @@
+import {type ConfigChangePayload} from '@/engine/core/config-store';
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
+import {InMemoryEventBus} from '@/engine/core/in-memory-event-bus';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createEngine, type Engine} from '@/engine/engine';
@@ -37,12 +39,15 @@ export class AppFixture {
   async init() {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
 
+    const eventBus = new InMemoryEventBus<ConfigChangePayload>({});
+
     const engine = await createEngine({
       databaseUrl: getDatabaseUrl(),
       dbSchema: `test_${Math.random().toString(36).substring(2, 15)}`,
       logLevel: this.options.logLevel ?? 'warn',
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
+      createEventBusClient: onNotification => eventBus.createClient(onNotification),
     });
 
     const connection = await engine.testing.pool.connect();

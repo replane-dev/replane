@@ -75,6 +75,7 @@ export function createRestoreConfigVersionUseCase(
       value: versionSnapshot.value,
       version: nextVersion,
       authorId: currentUser.id,
+      proposalId: null,
     });
 
     const afterConfig = await tx.configs.getById(config.id);

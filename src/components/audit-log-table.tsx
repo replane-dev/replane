@@ -12,6 +12,7 @@ import {Input} from '@/components/ui/input';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
+import {assertNever} from '@/engine/core/utils';
 import {shouldNavigateOnRowClick} from '@/lib/table-row-interaction';
 import {cn} from '@/lib/utils';
 import {useTRPC} from '@/trpc/client';
@@ -72,9 +73,23 @@ function humanizePayload(payload: AuditMessagePayload): {action: string; details
     return {action: 'Project Members Changed', details: parts.join(' ') || 'No changes'};
   } else if (payload.type === 'project_deleted') {
     return {action: 'Project Deleted', details: `Project name '${payload.project.name}'`};
+  } else if (payload.type === 'config_proposal_approved') {
+    return {
+      action: 'Config Proposal Approved',
+      details: `Proposal ID '${payload.proposalId}'`,
+    };
+  } else if (payload.type === 'config_proposal_rejected') {
+    return {
+      action: 'Config Proposal Rejected',
+      details: `Proposal ID '${payload.proposalId}'`,
+    };
+  } else if (payload.type === 'config_proposal_created') {
+    return {
+      action: 'Config Proposal Created',
+      details: `Proposal ID '${payload.proposalId}'`,
+    };
   } else {
-    const _never: never = payload;
-    throw new Error(`Unhandled payload type: ${JSON.stringify(payload)}`);
+    assertNever(payload, `Unhandled payload type: ${JSON.stringify(payload)}`);
   }
 }
 

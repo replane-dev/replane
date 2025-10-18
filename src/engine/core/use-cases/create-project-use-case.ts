@@ -36,6 +36,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       description: req.description,
       createdAt: now,
       updatedAt: now,
+      isExample: false,
     });
 
     await tx.projectUsers.create([

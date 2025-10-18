@@ -1,10 +1,11 @@
-// PgListener.ts
+// PgEventBusClient.ts
+import assert from 'assert';
 import type {Pool, PoolClient} from 'pg';
-import type {Listener} from './listener';
+import type {EventBusClient} from './event-bus';
 
 export type Log = Pick<Console, 'debug' | 'info' | 'warn' | 'error'>;
 
-export interface BackoffOptions {
+export interface PgEventBusClientBackoffOptions {
   /** Initial delay before first retry (ms). Default 500. */
   initialDelayMs?: number;
   /** Max backoff delay (ms). Default 30_000. */
@@ -15,7 +16,7 @@ export interface BackoffOptions {
   jitter?: number;
 }
 
-export interface HealthcheckOptions {
+export interface PgEventBusClientHealthcheckOptions {
   /** Run a healthcheck every N ms on the *listener* connection. Default 30_000. */
   intervalMs?: number;
   /** Abort the healthcheck query after this many ms via SET LOCAL statement_timeout. Default 5_000. */
@@ -24,46 +25,38 @@ export interface HealthcheckOptions {
   query?: string;
 }
 
-export type NotificationHandler<T> = (msg: {
-  channel: string;
-  payload: T;
-  rawPayload: string | undefined;
-  processId: number;
-}) => void | Promise<void>;
+export type PgEventBusClientNotificationHandler<T> = (event: T) => void;
 
-export interface PgListenerOptions<T = unknown> {
+export interface PgEventBusClientOptions<T = unknown> {
   pool: Pool;
-  /** One or more channels to LISTEN. You can add/remove later via methods too. */
-  channels: string[] | Set<string>;
+  /** Which PG channel to use for messaging. */
+  channel: string;
   /** Called for every NOTIFY. */
-  onNotification: NotificationHandler<T>;
-  /** If true, JSON.parse(payload). If function, use it to parse. Else pass through string. */
-  parsePayload?: boolean | ((payload: string) => T);
+  onNotification: PgEventBusClientNotificationHandler<T>;
   /** Optional hooks and behavior. */
   onReconnect?: (info: {attempt: number; delayMs: number; cause?: Error}) => void;
   onError?: (err: Error) => void;
-  healthcheck?: HealthcheckOptions;
-  backoff?: BackoffOptions;
+  healthcheck?: PgEventBusClientHealthcheckOptions;
+  backoff?: PgEventBusClientBackoffOptions;
   logger?: Log;
   /** Optional app name to set on the session for observability. */
   applicationName?: string;
 }
 
 /** Robust LISTEN/NOTIFY manager using a shared pg.Pool. */
-export class PgListener<T = unknown> implements Listener<T> {
+export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
   private readonly pool: Pool;
-  private readonly parsePayload: PgListenerOptions<T>['parsePayload'];
-  private readonly onNotification: NotificationHandler<T>;
-  private readonly onReconnect?: PgListenerOptions<T>['onReconnect'];
-  private readonly onError?: PgListenerOptions<T>['onError'];
+  private readonly onNotification: PgEventBusClientNotificationHandler<T>;
+  private readonly onReconnect?: PgEventBusClientOptions<T>['onReconnect'];
+  private readonly onError?: PgEventBusClientOptions<T>['onError'];
   private readonly log: Log;
   private readonly appName?: string;
 
-  private readonly hc: Required<HealthcheckOptions>;
-  private readonly bo: Required<BackoffOptions>;
+  private readonly hc: Required<PgEventBusClientHealthcheckOptions>;
+  private readonly bo: Required<PgEventBusClientBackoffOptions>;
 
   private client: PoolClient | null = null;
-  private channels = new Set<string>();
+  private channel: string;
   private started = false;
   private stopping = false;
 
@@ -71,18 +64,15 @@ export class PgListener<T = unknown> implements Listener<T> {
   private connectAttempt = 0;
   private connectPromise: Promise<void> | null = null;
 
-  constructor(opts: PgListenerOptions<T>) {
+  constructor(opts: PgEventBusClientOptions<T>) {
     this.pool = opts.pool;
-    this.parsePayload = opts.parsePayload;
     this.onNotification = opts.onNotification;
     this.onReconnect = opts.onReconnect;
     this.onError = opts.onError;
     this.log = opts.logger ?? console;
     this.appName = opts.applicationName;
 
-    for (const c of opts.channels instanceof Set ? opts.channels : new Set(opts.channels)) {
-      this.channels.add(c);
-    }
+    this.channel = opts.channel;
 
     const hc = opts.healthcheck ?? {};
     this.hc = {
@@ -110,7 +100,7 @@ export class PgListener<T = unknown> implements Listener<T> {
     // periodic health check on the listener session
     this.healthTimer = setInterval(() => {
       void this.healthCheck().catch(err => {
-        this.log.warn('[PgListener] healthcheck failed:', err?.message);
+        this.log.warn('[PgEventBusClient] healthcheck failed:', err?.message);
         this.onError?.(err);
         void this.restart('healthcheck-failed', err);
       });
@@ -130,30 +120,12 @@ export class PgListener<T = unknown> implements Listener<T> {
     this.started = false;
   }
 
-  /** Add a channel and subscribe immediately if connected. */
-  async addChannel(channel: string): Promise<void> {
-    this.channels.add(channel);
-    if (this.client) {
-      await this.safeQuery(this.client, `LISTEN ${quoteIdent(channel)}`);
-    }
-  }
-
-  /** Remove a channel and UNLISTEN it immediately if connected. */
-  async removeChannel(channel: string): Promise<void> {
-    this.channels.delete(channel);
-    if (this.client) {
-      await this.safeQuery(this.client, `UNLISTEN ${quoteIdent(channel)}`);
-    }
-  }
-
   /** Optional helper to send NOTIFY via the shared pool. */
-  async notify(channel: string, payload?: string): Promise<void> {
-    if (payload == null) {
-      await this.pool.query(`NOTIFY ${quoteIdent(channel)}`);
-    } else {
-      // Use literal to avoid SQL injection; payload is a string literal, not an identifier.
-      await this.pool.query(`NOTIFY ${quoteIdent(channel)}, ${quoteLiteral(payload)}`);
-    }
+  async notify(payload: T): Promise<void> {
+    // Use literal to avoid SQL injection; payload is a string literal, not an identifier.
+    await this.pool.query(
+      `NOTIFY ${quoteIdent(this.channel)}, ${quoteLiteral(JSON.stringify(payload))}`,
+    );
   }
 
   /** Current status snapshot. */
@@ -186,7 +158,7 @@ export class PgListener<T = unknown> implements Listener<T> {
         delay = backoffDelay(this.connectAttempt, this.bo);
         this.onReconnect?.({attempt: this.connectAttempt, delayMs: delay});
         this.log.warn(
-          `[PgListener] reconnecting (attempt #${this.connectAttempt}) in ${delay}ms; reason: ${reason}`,
+          `[PgEventBusClient] reconnecting (attempt #${this.connectAttempt}) in ${delay}ms; reason: ${reason}`,
         );
         await sleep(delay);
       }
@@ -207,17 +179,12 @@ export class PgListener<T = unknown> implements Listener<T> {
         client.on('error', this.handleClientError);
         client.on('end', this.handleClientEnd);
 
-        // Subscribe to all current channels
-        for (const ch of this.channels) {
-          await client.query(`LISTEN ${quoteIdent(ch)}`);
-        }
+        // Subscribe to the current channel
+        await client.query(`LISTEN ${quoteIdent(this.channel)}`);
 
         this.client = client;
         this.connectAttempt = 0; // reset backoff
-        this.log.info(
-          '[PgListener] listening on',
-          [...this.channels].map(c => `"${c}"`).join(', '),
-        );
+        this.log.info('[PgEventBusClient] listening on', this.channel);
       } catch (err) {
         // If anything failed, detach handlers and drop the session
         client.removeListener('notification', this.handleNotification);
@@ -244,28 +211,20 @@ export class PgListener<T = unknown> implements Listener<T> {
     payload?: string | undefined;
     processId: number;
   }) => {
+    assert(this.channel === msg.channel, 'Received notification on unexpected channel');
+
+    if (msg.payload == null) {
+      this.log.error('[PgEventBusClient] received NOTIFY with null payload');
+      this.onError?.(new Error('Received NOTIFY with null payload'));
+      return;
+    }
+
     try {
-      const raw = msg.payload;
-      let parsed: any = raw;
-
-      if (raw != null) {
-        if (this.parsePayload === true) {
-          parsed = JSON.parse(raw);
-        } else if (typeof this.parsePayload === 'function') {
-          parsed = this.parsePayload(raw);
-        }
-      }
-
-      await this.onNotification({
-        channel: msg.channel,
-        rawPayload: raw,
-        payload: parsed as T,
-        processId: msg.processId,
-      });
+      this.onNotification(JSON.parse(msg.payload) as T);
     } catch (err: any) {
       // Don’t kill the listener on user handler errors; just surface them.
       this.log.error(
-        '[PgListener] onNotification handler error:',
+        '[PgEventBusClient] onNotification handler error:',
         err?.stack || err?.message || err,
       );
       this.onError?.(err);
@@ -274,13 +233,13 @@ export class PgListener<T = unknown> implements Listener<T> {
 
   private handleClientError = (err: Error) => {
     // Most client errors are non-recoverable for that session; restart.
-    this.log.warn('[PgListener] client error:', err.message);
+    this.log.warn('[PgEventBusClient] client error:', err.message);
     this.onError?.(err);
     void this.restart('client-error', err);
   };
 
   private handleClientEnd = () => {
-    this.log.warn('[PgListener] client ended');
+    this.log.warn('[PgEventBusClient] client ended');
     void this.restart('client-ended');
   };
 
@@ -340,7 +299,7 @@ export class PgListener<T = unknown> implements Listener<T> {
     try {
       await client.query(sql);
     } catch (err) {
-      this.log.warn('[PgListener] query failed:', sql, (err as Error).message);
+      this.log.warn('[PgEventBusClient] query failed:', sql, (err as Error).message);
       throw err;
     }
   }
@@ -352,7 +311,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms));
 }
 
-function backoffDelay(attempt: number, bo: Required<BackoffOptions>): number {
+function backoffDelay(attempt: number, bo: Required<PgEventBusClientBackoffOptions>): number {
   const base = Math.min(bo.maxDelayMs, bo.initialDelayMs * Math.pow(bo.multiplier, attempt - 1));
   const jitterRange = base * bo.jitter;
   // full jitter within ±jitterRange

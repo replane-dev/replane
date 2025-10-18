@@ -10,21 +10,24 @@ import {ConfigService} from './core/config-service';
 import {type ConfigChangePayload, ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
 import {ConfigVersionStore} from './core/config-version-store';
-import {ConfigsReplica} from './core/configs-replica';
-import {CONFIGS_CHANGES_CHANNEL} from './core/constants';
+import {type ConfigReplicaEvent, ConfigsReplica} from './core/configs-replica';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
 import {ConflictError} from './core/errors';
-import type {Listener} from './core/listener';
+import type {EventBusClient} from './core/event-bus';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
-import {PgListener} from './core/pg-listener';
+import {
+  PgEventBusClient,
+  type PgEventBusClientNotificationHandler,
+} from './core/pg-event-bus-client';
 import {getPgPool} from './core/pg-pool-cache';
 import {ProjectStore} from './core/project-store';
 import {ProjectUserStore} from './core/project-user-store';
 import type {Service} from './core/service';
+import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
@@ -46,6 +49,7 @@ import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
 import {createGetConfigVersionUseCase} from './core/use-cases/get-config-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
+import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
 import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
@@ -63,11 +67,14 @@ export interface EngineOptions {
   dbSchema: string;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
+  createEventBusClient?: (
+    onNotification: PgEventBusClientNotificationHandler<ConfigChangePayload>,
+  ) => EventBusClient<ConfigChangePayload>;
 }
 
 interface ToUseCaseOptions {
   onConflictRetriesCount: number;
-  listener: Listener;
+  listener: EventBusClient<ConfigChangePayload>;
   dateProvider: DateProvider;
 }
 
@@ -175,34 +182,37 @@ export async function createEngine(options: EngineOptions) {
   const tokenHasher = createSha256TokenHashingService();
 
   const apiTokenService = new ApiTokenService(db, tokenHasher);
-  // Shared listener/publisher instance for config changes
-  const pgListener = new PgListener({
-    pool,
-    channels: [CONFIGS_CHANGES_CHANNEL],
-    parsePayload: true,
-    onNotification: () => {},
-    logger,
-    applicationName: 'replane-engine',
-  });
+
+  const createEventBusClient = options.createEventBusClient
+    ? (_name: string, onNotification: (event: ConfigChangePayload) => void) =>
+        options.createEventBusClient!(onNotification)
+    : (name: string, onNotification: (event: ConfigChangePayload) => void) =>
+        new PgEventBusClient<ConfigChangePayload>({
+          pool,
+          channel: 'replane_events',
+          onNotification,
+          logger,
+          applicationName: 'replane-engine',
+          onError: error => {
+            logger.error(GLOBAL_CONTEXT, {msg: `${name} Listener error`, error});
+          },
+        });
+
+  // Shared listener/publisher instance to publish config changes
+  const eventBusClient = createEventBusClient('ConfigChanges', () => {});
+
+  const configEventsSubject = new Subject<ConfigReplicaEvent>();
 
   const configsReplica = new ConfigsReplica({
     pool,
     configs: new ConfigStore(
       db,
       /* no transaction, so run immediately */ effect => effect(),
-      pgListener,
+      eventBusClient,
     ),
     logger,
-    createListener: onNotification =>
-      new PgListener<ConfigChangePayload>({
-        pool: pool!,
-        channels: [CONFIGS_CHANGES_CHANNEL],
-        parsePayload: true,
-        onNotification,
-        onError: error => {
-          logger.error(GLOBAL_CONTEXT, {msg: 'ConfigsReplica listener error', error});
-        },
-      }),
+    eventsSubject: configEventsSubject,
+    createEventBusClient: onNotification => createEventBusClient('ConfigReplica', onNotification),
   });
 
   const services: Service[] = [apiTokenService, configsReplica];
@@ -245,7 +255,7 @@ export async function createEngine(options: EngineOptions) {
 
   const useCaseOptions: ToUseCaseOptions = {
     onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
-    listener: pgListener,
+    listener: eventBusClient,
     dateProvider,
   };
 
@@ -264,6 +274,9 @@ export async function createEngine(options: EngineOptions) {
       ...engineUseCases,
       getConfigValue: createGetConfigValueUseCase({configsReplica}),
       getHealth: createGetHealthUseCase(),
+      getProjectEvents: createGetProjectEventsUseCase({
+        configEventsObservable: configEventsSubject,
+      }),
     },
     verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
     testing: {

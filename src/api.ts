@@ -101,6 +101,50 @@ honoApi.openapi(
   },
 );
 
+honoApi.get('/events', async c => {
+  const projectId = c.get('projectId');
+  const context = c.get('context');
+
+  const engine = await getEngine();
+  const events = engine.useCases.getProjectEvents(context, {projectId});
+
+  // Set SSE headers
+  c.header('Content-Type', 'text/event-stream');
+  c.header('Cache-Control', 'no-cache');
+  c.header('Connection', 'keep-alive');
+
+  // Create a readable stream for SSE
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const event of events) {
+          // Format as SSE message
+          const data = JSON.stringify(event);
+          const message = `data: ${data}\n\n`;
+          controller.enqueue(new TextEncoder().encode(message));
+        }
+      } catch (error) {
+        console.error('SSE stream error:', error);
+        controller.error(error);
+      } finally {
+        controller.close();
+      }
+    },
+    cancel() {
+      // Cleanup happens automatically via the async iterator's finally block
+      console.log('SSE connection closed by client');
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+});
+
 honoApi.get('/openapi.json', c =>
   c.json(
     honoApi.getOpenAPI31Document({
