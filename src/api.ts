@@ -108,8 +108,9 @@ honoApi.get('/events', async c => {
 
   const headers = {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
   };
 
   const abortController = new AbortController();
@@ -134,6 +135,8 @@ honoApi.get('/events', async c => {
       }, 15000);
 
       try {
+        controller.enqueue(encoder.encode(`: connected\n\n`));
+
         for await (const event of events) {
           const data = JSON.stringify(event);
           controller.enqueue(encoder.encode(`data: ${data}\n\n`));

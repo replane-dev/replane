@@ -17,6 +17,7 @@ export interface GetProjectEventsUseCaseDeps {
   configEventsObservable: Observable<ConfigReplicaEvent>;
 }
 
+// todo: avoid unbounded queue growth in Channel if consumer is slow
 export function createGetProjectEventsUseCase(
   deps: GetProjectEventsUseCaseDeps,
 ): (ctx: Context, request: GetProjectEventsRequest) => AsyncIterable<ProjectEvent> {
@@ -37,7 +38,7 @@ export function createGetProjectEventsUseCase(
         channel.throw(err);
       },
       complete: () => {
-        channel.close();
+        cleanUp();
       },
     });
 
