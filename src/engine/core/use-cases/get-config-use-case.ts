@@ -9,11 +9,20 @@ export interface GetConfigRequest {
   projectId: string;
 }
 
+export interface PendingProposalSummary {
+  id: string;
+  proposerId: number | null;
+  proposerEmail: string | null;
+  createdAt: Date;
+  baseConfigVersion: number;
+}
+
 export interface ConfigDetails {
   config: Config;
   editorEmails: string[];
   ownerEmails: string[];
   myRole: 'owner' | 'editor' | 'viewer';
+  pendingProposals: PendingProposalSummary[];
 }
 
 export interface GetConfigResponse {
@@ -44,6 +53,11 @@ export function createGetConfigUseCase(
     const myConfigRole =
       configUsers.find(cu => cu.user_email_normalized === req.currentUserEmail)?.role ?? 'viewer';
 
+    // Get pending proposals with proposer emails
+    const pendingProposals = await tx.configProposals.getPendingProposalsWithProposerEmails({
+      configId: config.id,
+    });
+
     return {
       config: {
         config: {
@@ -69,6 +83,7 @@ export function createGetConfigUseCase(
         myRole: myProjectRole
           ? combineConfigAndProjectRoles(myProjectRole.role, myConfigRole)
           : myConfigRole,
+        pendingProposals,
       },
     };
   };

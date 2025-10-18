@@ -1,12 +1,13 @@
 import type {
   ConfigMembersChangedAuditMessagePayload,
+  ConfigProposalRejectedAuditMessagePayload,
   ConfigUpdatedAuditMessagePayload,
 } from '@/engine/core/audit-message-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
 import {normalizeEmail} from '@/engine/core/utils';
-import {describe, expect, it} from 'vitest';
+import {assert, describe, expect, it} from 'vitest';
 import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
@@ -70,6 +71,7 @@ describe('patchConfig', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [],
       myRole: 'editor',
+      pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
@@ -228,6 +230,7 @@ describe('patchConfig', () => {
       editorEmails: [NEW_EDITOR_EMAIL],
       ownerEmails: [CURRENT_USER_EMAIL],
       myRole: 'owner',
+      pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
@@ -337,5 +340,363 @@ describe('patchConfig', () => {
     // Removed editor1, added editor2
     expect(membersChanged.added).toEqual([{email: 'editor2@example.com', role: 'editor'}]);
     expect(membersChanged.removed).toEqual([{email: 'editor1@example.com', role: 'editor'}]);
+  });
+
+  it('should reject all pending proposals', async () => {
+    // Create a config
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'proposal_test_config',
+      value: {count: 1},
+      schema: {type: 'object', properties: {count: {type: 'number'}}},
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create three proposals
+    const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        configId,
+        proposedValue: {newValue: {count: 2}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        configId,
+        proposedValue: {newValue: {count: 3}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        configId,
+        proposedValue: {newValue: {count: 4}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    // Verify all proposals are pending
+    const pendingBefore = await fixture.engine.testing.configProposals.getPendingProposals({
+      configId,
+    });
+    expect(pendingBefore).toHaveLength(3);
+
+    // Approve proposal 2 by patching the config with its proposalId
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {count: 3}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Verify proposals 1, 2, and 3 are rejected
+    const rejectedProposal1 = await fixture.engine.testing.configProposals.getById(proposal1Id);
+    assert(rejectedProposal1, 'Proposal 1 should exist');
+    expect(rejectedProposal1.approvedAt).toBeNull();
+    expect(rejectedProposal1.rejectedAt).not.toBeNull();
+    expect(rejectedProposal1.reviewerId).toBe(TEST_USER_ID);
+    expect(rejectedProposal1.rejectedInFavorOfProposalId).toBe(null);
+
+    const rejectedProposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
+    assert(rejectedProposal2, 'Proposal 2 should exist');
+    expect(rejectedProposal2.approvedAt).toBeNull();
+    expect(rejectedProposal2.rejectedAt).not.toBeNull();
+    expect(rejectedProposal2.reviewerId).toBe(TEST_USER_ID);
+    expect(rejectedProposal2.rejectedInFavorOfProposalId).toBe(null);
+
+    const rejectedProposal3 = await fixture.engine.testing.configProposals.getById(proposal3Id);
+    assert(rejectedProposal3, 'Proposal 3 should exist');
+    expect(rejectedProposal3.approvedAt).toBeNull();
+    expect(rejectedProposal3.rejectedAt).not.toBeNull();
+    expect(rejectedProposal3.reviewerId).toBe(TEST_USER_ID);
+    expect(rejectedProposal3.rejectedInFavorOfProposalId).toBe(null);
+
+    // Verify no pending proposals remain
+    const pendingAfter = await fixture.engine.testing.configProposals.getPendingProposals({
+      configId,
+    });
+    expect(pendingAfter).toHaveLength(0);
+  });
+  it('should reject all pending proposals when patching normally', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'normal_patch_config',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create a proposal
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedValue: {newValue: {x: 2}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Patch without proposalId - should reject the pending proposal
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {x: 5}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'normal_patch_config',
+      projectId: fixture.projectId,
+    });
+
+    expect(config?.config.value).toEqual({x: 5});
+    expect(config?.config.version).toBe(2);
+
+    // Verify the proposal is now rejected
+    const rejectedProposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    assert(rejectedProposal, 'Proposal should exist');
+    expect(rejectedProposal.approvedAt).toBeNull();
+    expect(rejectedProposal.rejectedAt).not.toBeNull();
+    expect(rejectedProposal.reviewerId).toBe(TEST_USER_ID);
+
+    // Verify no pending proposals remain
+    const pendingProposals = await fixture.engine.testing.configProposals.getPendingProposals({
+      configId,
+    });
+    expect(pendingProposals).toHaveLength(0);
+  });
+
+  it('should create audit messages for rejected proposals', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'audit_proposal_rejection',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create three proposals
+    const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        configId,
+        proposedValue: {newValue: {x: 2}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        configId,
+        proposedValue: {newValue: {x: 3}},
+        proposedDescription: {newDescription: 'Updated'},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        configId,
+        proposedSchema: {newSchema: {type: 'object', properties: {y: {type: 'number'}}}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    // Get audit messages before patch
+    const auditMessagesBefore = await fixture.engine.testing.auditMessages.list({
+      lte: fixture.now,
+      limit: 100,
+      orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
+    });
+    const beforeCount = auditMessagesBefore.length;
+
+    // Patch config without proposalId - should reject all proposals
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {x: 10}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Get audit messages after patch
+    const auditMessagesAfter = await fixture.engine.testing.auditMessages.list({
+      lte: fixture.now,
+      limit: 100,
+      orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
+    });
+
+    // Should have 3 rejection audit messages + 1 config_updated message
+    expect(auditMessagesAfter.length).toBe(beforeCount + 4);
+
+    // Find rejection audit messages
+    const rejectionMessages = auditMessagesAfter.filter(
+      msg => msg.payload.type === 'config_proposal_rejected',
+    ) as Array<{
+      payload: ConfigProposalRejectedAuditMessagePayload;
+      userId: number | null;
+      configId: string | null;
+    }>;
+
+    expect(rejectionMessages).toHaveLength(3);
+
+    // Verify proposal 1 rejection message
+    const rejection1 = rejectionMessages.find(msg => msg.payload.proposalId === proposal1Id);
+    expect(rejection1).toBeDefined();
+    expect(rejection1?.payload.configId).toBe(configId);
+    expect(rejection1?.payload.rejectedInFavorOfProposalId).toBeUndefined();
+    expect(rejection1?.payload.proposedValue).toEqual({newValue: {x: 2}});
+    expect(rejection1?.payload.proposedDescription).toBeUndefined();
+    expect(rejection1?.payload.proposedSchema).toBeUndefined();
+    expect(rejection1?.userId).toBe(TEST_USER_ID);
+    expect(rejection1?.configId).toBe(configId);
+
+    // Verify proposal 2 rejection message
+    const rejection2 = rejectionMessages.find(msg => msg.payload.proposalId === proposal2Id);
+    expect(rejection2).toBeDefined();
+    expect(rejection2?.payload.configId).toBe(configId);
+    expect(rejection2?.payload.rejectedInFavorOfProposalId).toBeUndefined();
+    expect(rejection2?.payload.proposedValue).toEqual({newValue: {x: 3}});
+    expect(rejection2?.payload.proposedDescription).toBe('Updated');
+    expect(rejection2?.payload.proposedSchema).toBeUndefined();
+    expect(rejection2?.userId).toBe(TEST_USER_ID);
+
+    // Verify proposal 3 rejection message
+    const rejection3 = rejectionMessages.find(msg => msg.payload.proposalId === proposal3Id);
+    expect(rejection3).toBeDefined();
+    expect(rejection3?.payload.configId).toBe(configId);
+    expect(rejection3?.payload.rejectedInFavorOfProposalId).toBeUndefined();
+    expect(rejection3?.payload.proposedValue).toBeUndefined();
+    expect(rejection3?.payload.proposedDescription).toBeUndefined();
+    expect(rejection3?.payload.proposedSchema).toEqual({
+      newSchema: {type: 'object', properties: {y: {type: 'number'}}},
+    });
+    expect(rejection3?.userId).toBe(TEST_USER_ID);
+  });
+
+  it('should throw BadRequestError when patching with user in multiple roles', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_duplicate_user',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const duplicateEmail = 'duplicate@example.com';
+
+    // Try to patch with user in both editor and owner roles
+    await expect(
+      fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+        configId,
+        members: {
+          newMembers: [
+            {email: duplicateEmail, role: 'editor'},
+            {email: duplicateEmail, role: 'owner'},
+            {email: 'other@example.com', role: 'editor'},
+          ],
+        },
+        currentUserEmail: CURRENT_USER_EMAIL,
+        prevVersion: 1,
+      }),
+    ).rejects.toThrow(BadRequestError);
+
+    // Verify config was not updated
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_duplicate_user',
+      projectId: fixture.projectId,
+    });
+    expect(config?.config.version).toBe(1);
+  });
+
+  it('should throw BadRequestError for duplicate users in members (case insensitive)', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_case_insensitive_duplicate',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Try to patch with user in both roles (different case)
+    await expect(
+      fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+        configId,
+        members: {
+          newMembers: [
+            {email: 'User@Example.com', role: 'editor'},
+            {email: 'user@example.com', role: 'owner'},
+          ],
+        },
+        currentUserEmail: CURRENT_USER_EMAIL,
+        prevVersion: 1,
+      }),
+    ).rejects.toThrow(BadRequestError);
+
+    // Verify config was not updated
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_case_insensitive_duplicate',
+      projectId: fixture.projectId,
+    });
+    expect(config?.config.version).toBe(1);
+  });
+
+  it('should successfully patch with unique members', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_unique_members',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Patch with unique members
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      members: {
+        newMembers: [
+          {email: 'editor1@example.com', role: 'editor'},
+          {email: 'editor2@example.com', role: 'editor'},
+          {email: 'owner1@example.com', role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'owner'},
+        ],
+      },
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Verify config was updated
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_unique_members',
+      projectId: fixture.projectId,
+    });
+    expect(config?.config.version).toBe(2);
+    expect(config?.editorEmails).toContain(normalizeEmail('editor1@example.com'));
+    expect(config?.editorEmails).toContain(normalizeEmail('editor2@example.com'));
+    expect(config?.ownerEmails).toContain(normalizeEmail('owner1@example.com'));
+    expect(config?.ownerEmails).toContain(CURRENT_USER_EMAIL);
   });
 });

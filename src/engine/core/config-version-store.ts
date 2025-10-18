@@ -1,5 +1,6 @@
 import type {Kysely} from 'kysely';
 import type {JsonValue} from 'next-auth/adapters';
+import type {ConfigProposalId} from './config-proposal-store';
 import type {ConfigId} from './config-store';
 import type {DB} from './db';
 import {createUuidV7} from './uuid';
@@ -23,6 +24,7 @@ export interface ConfigVersion extends ConfigLike {
   configId: ConfigId;
   createdAt: Date;
   authorId: number | null;
+  proposalId: ConfigProposalId | null;
 }
 
 export class ConfigVersionStore {
@@ -44,6 +46,7 @@ export class ConfigVersionStore {
             : (null as JsonValue),
           value: {value: configVersion.value} as JsonValue,
           author_id: configVersion.authorId,
+          proposal_id: configVersion.proposalId,
         },
       ])
       .execute();
@@ -59,6 +62,7 @@ export class ConfigVersionStore {
         'config_versions.created_at as created_at',
         'config_versions.description as description',
         'users.email as author_email',
+        'config_versions.proposal_id as proposal_id',
       ])
       .where('config_versions.config_id', '=', configId)
       .orderBy('config_versions.version', 'desc')
@@ -69,6 +73,7 @@ export class ConfigVersionStore {
       createdAt: r.created_at,
       description: r.description,
       authorEmail: r.author_email,
+      proposalId: r.proposal_id as ConfigProposalId | null,
     }));
   }
 
@@ -84,6 +89,7 @@ export class ConfigVersionStore {
         value: unknown;
         schema: unknown;
         authorEmail: string | null;
+        proposalId: ConfigProposalId | null;
       }
     | undefined
   > {
@@ -98,6 +104,7 @@ export class ConfigVersionStore {
         'config_versions.value as value',
         'config_versions.schema as schema',
         'users.email as author_email',
+        'config_versions.proposal_id as proposal_id',
       ])
       .where('config_versions.config_id', '=', configId)
       .where('config_versions.version', '=', version)
@@ -121,6 +128,7 @@ export class ConfigVersionStore {
       value: extractJsonWrapper(row.value),
       schema: row.schema === null ? null : extractJsonWrapper(row.schema),
       authorEmail: (row as unknown as {author_email: string | null}).author_email,
+      proposalId: (row as unknown as {proposal_id: ConfigProposalId | null}).proposal_id,
     };
   }
 }

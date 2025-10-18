@@ -64,6 +64,21 @@ export interface AuditMessages {
   user_id: number | null;
 }
 
+export interface ConfigProposals {
+  approved_at: Timestamp | null;
+  base_config_version: number;
+  config_id: string;
+  created_at: Timestamp;
+  id: string;
+  proposed_description: string | null;
+  proposed_schema: Json | null;
+  proposed_value: Json | null;
+  proposer_id: number | null;
+  rejected_at: Timestamp | null;
+  rejected_in_favor_of_proposal_id: string | null;
+  reviewer_id: number | null;
+}
+
 export interface Configs {
   created_at: Timestamp;
   creator_id: number;
@@ -92,6 +107,7 @@ export interface ConfigVersions {
   description: string;
   id: string;
   name: string;
+  proposal_id: string | null;
   schema: Json | null;
   value: Json;
   version: number;
@@ -145,6 +161,7 @@ export interface DB {
   accounts: Accounts;
   api_tokens: ApiTokens;
   audit_messages: AuditMessages;
+  config_proposals: ConfigProposals;
   config_users: ConfigUsers;
   config_versions: ConfigVersions;
   configs: Configs;

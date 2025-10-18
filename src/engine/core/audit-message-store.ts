@@ -121,6 +121,34 @@ export interface ProjectDeletedAuditMessagePayload
   };
 }
 
+export interface ConfigProposalCreatedAuditMessagePayload
+  extends BaseAuditMessagePayload<'config_proposal_created'> {
+  proposalId: string;
+  configId: string;
+  proposedValue?: {newValue: unknown};
+  proposedDescription?: string;
+  proposedSchema?: {newSchema: unknown};
+}
+
+export interface ConfigProposalRejectedAuditMessagePayload
+  extends BaseAuditMessagePayload<'config_proposal_rejected'> {
+  proposalId: string;
+  configId: string;
+  rejectedInFavorOfProposalId?: string;
+  proposedValue?: {newValue: unknown};
+  proposedDescription?: string;
+  proposedSchema?: {newSchema: unknown};
+}
+
+export interface ConfigProposalApprovedAuditMessagePayload
+  extends BaseAuditMessagePayload<'config_proposal_approved'> {
+  proposalId: string;
+  configId: string;
+  proposedValue?: {newValue: unknown};
+  proposedDescription?: string;
+  proposedSchema?: {newSchema: unknown};
+}
+
 export type AuditMessagePayload =
   | ConfigCreatedAuditMessagePayload
   | ConfigUpdatedAuditMessagePayload
@@ -132,7 +160,10 @@ export type AuditMessagePayload =
   | ProjectCreatedAuditMessagePayload
   | ProjectUpdatedAuditMessagePayload
   | ProjectMembersChangedAuditMessagePayload
-  | ProjectDeletedAuditMessagePayload;
+  | ProjectDeletedAuditMessagePayload
+  | ConfigProposalCreatedAuditMessagePayload
+  | ConfigProposalRejectedAuditMessagePayload
+  | ConfigProposalApprovedAuditMessagePayload;
 
 export interface AuditMessage {
   id: AuditMessageId;

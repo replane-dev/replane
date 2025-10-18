@@ -1,9 +1,9 @@
-import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import {CONFIGS_CHANGES_CHANNEL} from './constants';
-import type {Configs, DB, JsonValue} from './db';
+import type {Configs, DB} from './db';
 import type {Listener} from './listener';
+import {fromJsonb, toJsonb} from './store-utils';
 import {isValidJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {ConfigInfo, Uuid, type NormalizedEmail} from './zod';
@@ -191,10 +191,8 @@ export class ConfigStore {
         name: config.name,
         description: config.description,
         creator_id: config.creatorId,
-        value: {value: config.value} as JsonValue,
-        schema: config.schema
-          ? ({value: config.schema} as unknown as JsonValue)
-          : (null as JsonValue),
+        value: toJsonb(config.value),
+        schema: config.schema ? toJsonb(config.schema) : null,
         version: 1,
         project_id: config.projectId,
       })
@@ -214,11 +212,9 @@ export class ConfigStore {
     await this.db
       .updateTable('configs')
       .set({
-        value: {value: params.value} as JsonValue,
+        value: toJsonb(params.value),
         description: params.description,
-        schema: params.schema
-          ? ({value: params.schema} as unknown as JsonValue)
-          : (null as JsonValue),
+        schema: params.schema ? toJsonb(params.schema) : null,
         updated_at: params.updatedAt,
         version: params.version,
       })
@@ -258,12 +254,4 @@ function mapConfig(config: Selectable<Configs>): Config {
     version: config.version,
     projectId: config.project_id,
   };
-}
-
-function fromJsonb<T>(jsonb: JsonValue | null): T | null {
-  if (jsonb === null) {
-    return null;
-  }
-  assert(typeof jsonb === 'object' && jsonb !== null && 'value' in jsonb);
-  return jsonb.value as T;
 }

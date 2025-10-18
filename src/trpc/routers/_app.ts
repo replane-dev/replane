@@ -451,6 +451,79 @@ export const appRouter = createTRPCRouter({
       });
       return {message};
     }),
+  createConfigProposal: baseProcedure
+    .input(
+      z.object({
+        configId: Uuid(),
+        proposedValue: z.object({newValue: ConfigValue()}).optional(),
+        proposedDescription: z.object({newDescription: ConfigDescription()}).optional(),
+        proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const {configProposalId} = await opts.ctx.engine.useCases.createConfigProposal(
+        GLOBAL_CONTEXT,
+        {
+          configId: opts.input.configId,
+          proposedValue: opts.input.proposedValue,
+          proposedDescription: opts.input.proposedDescription,
+          proposedSchema: opts.input.proposedSchema,
+          currentUserEmail: opts.ctx.currentUserEmail,
+        },
+      );
+      return {configProposalId};
+    }),
+  approveConfigProposal: baseProcedure
+    .input(
+      z.object({
+        proposalId: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      await opts.ctx.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        proposalId: opts.input.proposalId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return {};
+    }),
+  rejectConfigProposal: baseProcedure
+    .input(
+      z.object({
+        proposalId: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      await opts.ctx.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+        proposalId: opts.input.proposalId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return {};
+    }),
+  getConfigProposal: baseProcedure
+    .input(
+      z.object({
+        proposalId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const {proposal} = await opts.ctx.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+        proposalId: opts.input.proposalId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return {proposal};
+    }),
 });
 
 export type AppRouter = typeof appRouter;

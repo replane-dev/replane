@@ -33,6 +33,14 @@ export function createCreateConfigUseCase(
 ): TransactionalUseCase<CreateConfigRequest, CreateConfigResponse> {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanCreateConfig(req.projectId, req.currentUserEmail);
+
+    // Validate no user appears with multiple roles
+    const allMembers = [
+      ...req.editorEmails.map(email => ({email, role: 'editor' as const})),
+      ...req.ownerEmails.map(email => ({email, role: 'owner' as const})),
+    ];
+    tx.configService.ensureUniqueMembers(allMembers);
+
     const existingConfig = await tx.configs.getByName({
       name: req.name,
       projectId: req.projectId,
@@ -77,6 +85,7 @@ export function createCreateConfigUseCase(
       value: req.value,
       version: 1,
       authorId: currentUser.id,
+      proposalId: null,
     });
 
     await tx.configUsers.create(

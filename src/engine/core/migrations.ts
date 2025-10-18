@@ -256,6 +256,38 @@ export const migrations: Migration[] = [
       ALTER COLUMN project_id DROP NOT NULL;
     `,
   },
+  {
+    sql: /*sql*/ `
+      CREATE TABLE config_proposals (
+        id UUID PRIMARY KEY,
+        config_id UUID NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        base_config_version INT NOT NULL,
+        proposer_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        rejected_at TIMESTAMPTZ(3) NULL,
+        approved_at TIMESTAMPTZ(3) NULL,
+        reviewer_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+        rejected_in_favor_of_proposal_id UUID NULL REFERENCES config_proposals(id) ON DELETE SET NULL,
+        proposed_value JSONB NULL,
+        proposed_description TEXT NULL,
+        proposed_schema JSONB NULL
+      );
+
+      CREATE INDEX idx_config_proposals_config_id ON config_proposals(config_id, base_config_version);
+      CREATE INDEX idx_config_proposals_proposer_id ON config_proposals(proposer_id);
+      CREATE INDEX idx_config_proposals_reviewer_id ON config_proposals(reviewer_id);
+      CREATE INDEX idx_config_proposals_rejected_in_favor_of_proposal_id ON config_proposals(rejected_in_favor_of_proposal_id);
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- add proposal_id to config_versions
+      ALTER TABLE config_versions
+      ADD COLUMN proposal_id UUID NULL REFERENCES config_proposals(id) ON DELETE SET NULL;
+
+      CREATE INDEX idx_config_versions_proposal_id ON config_versions(proposal_id);
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

@@ -5,6 +5,8 @@ import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
 import {ApiTokenStore} from './core/api-token-store';
 import {AuditMessageStore} from './core/audit-message-store';
+import {ConfigProposalStore} from './core/config-proposal-store';
+import {ConfigService} from './core/config-service';
 import {type ConfigChangePayload, ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
 import {ConfigVersionStore} from './core/config-version-store';
@@ -25,7 +27,9 @@ import {ProjectUserStore} from './core/project-user-store';
 import type {Service} from './core/service';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
+import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
+import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
@@ -36,6 +40,7 @@ import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
+import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
@@ -46,6 +51,7 @@ import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
+import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
 import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
 import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
@@ -62,6 +68,7 @@ export interface EngineOptions {
 interface ToUseCaseOptions {
   onConflictRetriesCount: number;
   listener: Listener;
+  dateProvider: DateProvider;
 }
 
 function toUseCase<TReq, TRes>(
@@ -79,6 +86,7 @@ function toUseCase<TReq, TRes>(
 
       const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
       const configs = new ConfigStore(dbTx, scheduleOptimisticEffect, options.listener);
+      const configProposals = new ConfigProposalStore(dbTx);
       const users = new UserStore(dbTx);
       const configUsers = new ConfigUserStore(dbTx);
       const configVersions = new ConfigVersionStore(dbTx);
@@ -87,10 +95,21 @@ function toUseCase<TReq, TRes>(
       const projectUsers = new ProjectUserStore(dbTx);
       const projects = new ProjectStore(dbTx);
       const permissionService = new PermissionService(configUsers, projectUsers, configs);
+      const configService = new ConfigService(
+        configs,
+        configProposals,
+        configUsers,
+        configVersions,
+        permissionService,
+        auditMessages,
+        options.dateProvider,
+      );
 
       const tx: UseCaseTransaction = {
         scheduleOptimisticEffect,
         configs,
+        configProposals,
+        configService,
         users,
         configUsers,
         configVersions,
@@ -198,6 +217,10 @@ export async function createEngine(options: EngineOptions) {
     getAuditLog: createGetAuditLogUseCase(),
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),
+    createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
+    approveConfigProposal: createApproveConfigProposalUseCase({dateProvider}),
+    rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
+    getConfigProposal: createGetConfigProposalUseCase({}),
     patchConfig: createPatchConfigUseCase({dateProvider}),
     getConfig: createGetConfigUseCase({}),
     deleteConfig: createDeleteConfigUseCase(),
@@ -223,6 +246,7 @@ export async function createEngine(options: EngineOptions) {
   const useCaseOptions: ToUseCaseOptions = {
     onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
     listener: pgListener,
+    dateProvider,
   };
 
   for (const name of Object.keys(transactionalUseCases) as Array<keyof typeof engineUseCases>) {
@@ -247,6 +271,7 @@ export async function createEngine(options: EngineOptions) {
       dbSchema: options.dbSchema,
       auditMessages: new AuditMessageStore(db),
       projects: new ProjectStore(db),
+      configProposals: new ConfigProposalStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: async () => {

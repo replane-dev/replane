@@ -1,6 +1,8 @@
 import type {ApiTokenStore} from './api-token-store';
 import type {AuditMessageStore} from './audit-message-store';
-import {ConfigStore} from './config-store';
+import type {ConfigProposalStore} from './config-proposal-store';
+import type {ConfigService} from './config-service';
+import type {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import type {ConfigVersionStore} from './config-version-store';
 import type {Context} from './context';
@@ -20,6 +22,8 @@ export interface UseCase<TRequest, TResponse> {
 export interface UseCaseTransaction {
   scheduleOptimisticEffect(effect: () => Promise<void>): void;
   configs: ConfigStore;
+  configProposals: ConfigProposalStore;
+  configService: ConfigService;
   users: UserStore;
   configUsers: ConfigUserStore;
   configVersions: ConfigVersionStore;

@@ -49,6 +49,7 @@ describe('createConfig', () => {
       editorEmails: [],
       ownerEmails: [],
       myRole: 'viewer',
+      pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
@@ -120,6 +121,7 @@ describe('createConfig', () => {
       },
       editorEmails: [],
       ownerEmails: [],
+      pendingProposals: [],
       myRole: 'viewer',
     } satisfies GetConfigResponse['config']);
   });
@@ -163,6 +165,7 @@ describe('createConfig', () => {
       editorEmails: [],
       ownerEmails: [],
       myRole: 'viewer',
+      pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
@@ -215,6 +218,7 @@ describe('createConfig', () => {
       editorEmails: ['editor1@example.com', 'editor2@example.com'].map(normalizeEmail),
       ownerEmails: [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
       myRole: 'owner',
+      pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
@@ -256,6 +260,7 @@ describe('createConfig', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       ownerEmails: [normalizeEmail('other-owner@example.com')],
       myRole: 'editor',
+      pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
@@ -290,5 +295,52 @@ describe('createConfig', () => {
     expect(new Date(payload.config.createdAt).toISOString()).toBe(
       new Date(payload.config.updatedAt).toISOString(),
     );
+  });
+
+  it('should throw BadRequestError when user is in both editors and owners', async () => {
+    const duplicateEmail = 'duplicate@example.com';
+
+    await expect(
+      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'duplicate_user_config',
+        value: {x: 1},
+        schema: null,
+        description: 'Test duplicate user',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [duplicateEmail, 'editor@example.com'],
+        ownerEmails: [duplicateEmail, 'owner@example.com'],
+        projectId: fixture.projectId,
+      }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it('should throw BadRequestError for duplicate users (case insensitive)', async () => {
+    await expect(
+      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'case_insensitive_duplicate',
+        value: {x: 1},
+        schema: null,
+        description: 'Test case insensitive duplicate',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: ['User@Example.com'],
+        ownerEmails: ['user@example.com'],
+        projectId: fixture.projectId,
+      }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it('should throw BadRequestError for duplicate users in the same role', async () => {
+    await expect(
+      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'case_insensitive_duplicate',
+        value: {x: 1},
+        schema: null,
+        description: 'Test case insensitive duplicate',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: ['User@Example.com', 'User@Example.com'],
+        ownerEmails: [],
+        projectId: fixture.projectId,
+      }),
+    ).rejects.toThrow(BadRequestError);
   });
 });
