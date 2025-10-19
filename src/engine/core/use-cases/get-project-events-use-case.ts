@@ -11,6 +11,7 @@ export interface GetProjectEventsRequest {
 export interface ProjectEvent {
   type: 'created' | 'updated' | 'deleted';
   configId: string;
+  configName: string;
 }
 
 export interface GetProjectEventsUseCaseDeps {
@@ -31,6 +32,7 @@ export function createGetProjectEventsUseCase(
           channel.push({
             type: event.type,
             configId: event.config.id,
+            configName: event.config.name,
           });
         }
       },
