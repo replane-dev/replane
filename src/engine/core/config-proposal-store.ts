@@ -76,6 +76,102 @@ export class ConfigProposalStore {
     }));
   }
 
+  async listFiltered(params: {
+    projectId: string;
+    configIds?: string[];
+    proposalIds?: string[];
+    statuses?: Array<'pending' | 'approved' | 'rejected'>;
+    createdAtGte?: Date;
+    createdAtLt?: Date;
+    approvedAtGte?: Date;
+    approvedAtLt?: Date;
+    rejectedAtGte?: Date;
+    rejectedAtLt?: Date;
+  }): Promise<
+    Array<
+      ConfigProposalInfo & {
+        configName: string;
+        proposerEmail: string | null;
+        reviewerEmail: string | null;
+      }
+    >
+  > {
+    let qb = this.db
+      .selectFrom('config_proposals')
+      .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
+      .leftJoin('users as proposer', 'proposer.id', 'config_proposals.proposer_id')
+      .leftJoin('users as reviewer', 'reviewer.id', 'config_proposals.reviewer_id')
+      .select(({ref}) => [
+        'config_proposals.id',
+        'config_proposals.config_id',
+        'config_proposals.proposer_id',
+        'config_proposals.created_at',
+        'config_proposals.rejected_at',
+        'config_proposals.approved_at',
+        'config_proposals.reviewer_id',
+        'config_proposals.rejected_in_favor_of_proposal_id',
+        'config_proposals.base_config_version',
+        ref('configs.name').as('config_name'),
+        ref('proposer.email').as('proposer_email'),
+        ref('reviewer.email').as('reviewer_email'),
+      ])
+      .where('configs.project_id', '=', params.projectId);
+
+    if (params.configIds && params.configIds.length > 0) {
+      qb = qb.where('config_proposals.config_id', 'in', params.configIds);
+    }
+    if (params.proposalIds && params.proposalIds.length > 0) {
+      qb = qb.where('config_proposals.id', 'in', params.proposalIds);
+    }
+    if (params.statuses && params.statuses.length > 0) {
+      qb = qb.where(eb =>
+        eb.or(
+          params.statuses!.map(status => {
+            if (status === 'pending') {
+              return eb.and([
+                eb('config_proposals.approved_at', 'is', null),
+                eb('config_proposals.rejected_at', 'is', null),
+              ]);
+            } else if (status === 'approved') {
+              return eb('config_proposals.approved_at', 'is not', null);
+            } else {
+              return eb('config_proposals.rejected_at', 'is not', null);
+            }
+          }),
+        ),
+      );
+    }
+    if (params.createdAtGte)
+      qb = qb.where('config_proposals.created_at', '>=', params.createdAtGte);
+    if (params.createdAtLt) qb = qb.where('config_proposals.created_at', '<', params.createdAtLt);
+    if (params.approvedAtGte)
+      qb = qb.where('config_proposals.approved_at', '>=', params.approvedAtGte);
+    if (params.approvedAtLt)
+      qb = qb.where('config_proposals.approved_at', '<', params.approvedAtLt);
+    if (params.rejectedAtGte)
+      qb = qb.where('config_proposals.rejected_at', '>=', params.rejectedAtGte);
+    if (params.rejectedAtLt)
+      qb = qb.where('config_proposals.rejected_at', '<', params.rejectedAtLt);
+
+    const rows = await qb.orderBy('config_proposals.created_at', 'desc').execute();
+
+    return rows.map(r => ({
+      id: r.id,
+      configId: r.config_id,
+      proposerId: r.proposer_id,
+      createdAt: r.created_at,
+      rejectedAt: r.rejected_at,
+      approvedAt: r.approved_at,
+      reviewerId: r.reviewer_id,
+      rejectedInFavorOfProposalId: r.rejected_in_favor_of_proposal_id,
+      baseConfigVersion: r.base_config_version,
+      status: r.approved_at ? 'approved' : r.rejected_at ? 'rejected' : ('pending' as const),
+      configName: r.config_name!,
+      proposerEmail: r.proposer_email ?? null,
+      reviewerEmail: r.reviewer_email ?? null,
+    }));
+  }
+
   async getById(id: string): Promise<ConfigProposal | undefined> {
     const result = await this.db
       .selectFrom('config_proposals')

@@ -8,7 +8,10 @@ import {InMemoryEventBus} from '../src/engine/core/in-memory-event-bus';
 import type {Logger} from '../src/engine/core/logger';
 import {createLogger} from '../src/engine/core/logger';
 import {Subject} from '../src/engine/core/subject';
-import {createGetProjectEventsUseCase} from '../src/engine/core/use-cases/get-project-events-use-case';
+import {
+  createGetProjectEventsUseCase,
+  type ProjectEvent,
+} from '../src/engine/core/use-cases/get-project-events-use-case';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test-user@example.com');
@@ -64,7 +67,8 @@ describe('getProjectEvents Integration', () => {
     expect(result.value).toEqual({
       type: 'created',
       configId,
-    });
+      configName: 'feature-flag',
+    } satisfies ProjectEvent);
 
     await iterator.return?.();
   });
@@ -89,8 +93,9 @@ describe('getProjectEvents Integration', () => {
     const createdResult = await iterator.next();
     expect(createdResult.value).toEqual({
       type: 'created',
+      configName: 'feature-flag',
       configId,
-    });
+    } satisfies ProjectEvent);
 
     // Update the config
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -105,8 +110,9 @@ describe('getProjectEvents Integration', () => {
     expect(result.done).toBe(false);
     expect(result.value).toEqual({
       type: 'updated',
+      configName: 'feature-flag',
       configId,
-    });
+    } satisfies ProjectEvent);
 
     await iterator.return?.();
   });
@@ -131,8 +137,9 @@ describe('getProjectEvents Integration', () => {
     const createdResult = await iterator.next();
     expect(createdResult.value).toEqual({
       type: 'created',
+      configName: 'feature-flag',
       configId,
-    });
+    } satisfies ProjectEvent);
 
     // Delete the config
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
@@ -145,8 +152,9 @@ describe('getProjectEvents Integration', () => {
     expect(result.done).toBe(false);
     expect(result.value).toEqual({
       type: 'deleted',
+      configName: 'feature-flag',
       configId,
-    });
+    } satisfies ProjectEvent);
 
     await iterator.return?.();
   });
@@ -201,8 +209,9 @@ describe('getProjectEvents Integration', () => {
       expect(result.done).toBe(false);
       expect(result.value).toEqual({
         type: 'created',
+        configName: 'target-flag',
         configId,
-      });
+      } satisfies ProjectEvent);
 
       await iterator.return?.();
     } finally {
@@ -247,14 +256,16 @@ describe('getProjectEvents Integration', () => {
     expect(result1.done).toBe(false);
     expect(result1.value).toEqual({
       type: 'created',
+      configName: 'shared-flag',
       configId,
-    });
+    } satisfies ProjectEvent);
 
     expect(result2.done).toBe(false);
     expect(result2.value).toEqual({
       type: 'created',
+      configName: 'shared-flag',
       configId,
-    });
+    } satisfies ProjectEvent);
 
     await iterator1.return?.();
     await iterator2.return?.();
@@ -410,10 +421,10 @@ describe('GetProjectEvents Integration', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configId: 'cfg-1'},
-      {type: 'created', configId: 'cfg-2'},
-      {type: 'updated', configId: 'cfg-1'},
-    ]);
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config2', configId: 'cfg-2'},
+      {type: 'updated', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
 
     await replica.stop();
   });
@@ -485,7 +496,9 @@ describe('GetProjectEvents Integration', () => {
     await consumePromise;
 
     // Should only receive event for project1
-    expect(receivedEvents).toEqual([{type: 'created', configId: 'cfg-1'}]);
+    expect(receivedEvents).toEqual([
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
 
     await replica.stop();
   });
@@ -545,7 +558,11 @@ describe('GetProjectEvents Integration', () => {
 
     // Should have received the created event from initial load
     expect(receivedEvents.length).toBeGreaterThanOrEqual(1);
-    expect(receivedEvents[0]).toEqual({type: 'created', configId: 'cfg-1'});
+    expect(receivedEvents[0]).toEqual({
+      type: 'created',
+      configName: 'config1',
+      configId: 'cfg-1',
+    } satisfies ProjectEvent);
 
     // Now delete the config
     currentConfigs = [];
@@ -555,9 +572,9 @@ describe('GetProjectEvents Integration', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configId: 'cfg-1'},
-      {type: 'deleted', configId: 'cfg-1'},
-    ]);
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'deleted', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
 
     await replica.stop();
   });
@@ -638,8 +655,12 @@ describe('GetProjectEvents Integration', () => {
     await Promise.all([consume1, consume2]);
 
     // Each consumer should only receive events for their project
-    expect(events1).toEqual([{type: 'created', configId: 'cfg-1'}]);
-    expect(events2).toEqual([{type: 'created', configId: 'cfg-2'}]);
+    expect(events1).toEqual([
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
+    expect(events2).toEqual([
+      {type: 'created', configName: 'config2', configId: 'cfg-2'},
+    ] satisfies ProjectEvent[]);
 
     await replica.stop();
   });
@@ -702,9 +723,9 @@ describe('GetProjectEvents Integration', () => {
 
     // Should receive created events for both configs from initial load
     expect(receivedEvents).toEqual([
-      {type: 'created', configId: 'cfg-1'},
-      {type: 'created', configId: 'cfg-2'},
-    ]);
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config2', configId: 'cfg-2'},
+    ] satisfies ProjectEvent[]);
 
     await replica.stop();
   });
@@ -775,7 +796,11 @@ describe('GetProjectEvents Integration', () => {
     // Should receive all 10 events in order
     expect(receivedEvents.length).toBe(10);
     for (let i = 1; i <= 10; i++) {
-      expect(receivedEvents[i - 1]).toEqual({type: 'created', configId: `cfg-${i}`});
+      expect(receivedEvents[i - 1]).toEqual({
+        type: 'created',
+        configId: `cfg-${i}`,
+        configName: `config${i}`,
+      } satisfies ProjectEvent);
     }
 
     await replica.stop();

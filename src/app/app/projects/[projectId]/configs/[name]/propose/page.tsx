@@ -9,29 +9,22 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import type {ConfigUserRole} from '@/engine/core/db';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {formatDistanceToNow} from 'date-fns';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
-import {useProject, useProjectId} from '../../utils';
+import {useProject} from '../../../utils';
 
-// No props needed in a Client Component; use useParams() instead.
-
-export default function ConfigByNamePage() {
+export default function ProposeConfigChangesPage() {
   const router = useRouter();
   const {name: nameParam} = useParams<{name: string}>();
   const name = decodeURIComponent(nameParam ?? '');
   const trpc = useTRPC();
-  const projectId = useProjectId();
-  const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
-  const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
-  const deleteConfig = useMutation(trpc.deleteConfig.mutationOptions());
+  const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId: useProject().id}));
+  const createProposal = useMutation(trpc.createConfigProposal.mutationOptions());
   const project = useProject();
 
   const config = data.config;
@@ -89,27 +82,39 @@ export default function ConfigByNamePage() {
     ownerEmails: string[];
     editorEmails: string[];
   }) {
-    if (!config) {
-      throw new Error('unreachable: we do not render form when config is undefined');
+    if (!config) throw new Error('Config not loaded');
+
+    // Compute diffs vs current config and only send changed fields
+    const proposedValue =
+      JSON.stringify(data.value) !== JSON.stringify(config.config.value)
+        ? {newValue: data.value}
+        : undefined;
+
+    const proposedDescription =
+      (data.description ?? '') !== (config.config.description ?? '')
+        ? {newDescription: data.description ?? ''}
+        : undefined;
+
+    const currentSchema = config.config.schema ?? null;
+    const proposedSchema =
+      JSON.stringify(data.schema ?? null) !== JSON.stringify(currentSchema)
+        ? {newSchema: data.schema}
+        : undefined;
+
+    if (!proposedValue && !proposedDescription && !proposedSchema) {
+      // Nothing to propose
+      alert('No changes detected. Update a field to create a proposal.');
+      return;
     }
 
-    await patchConfig.mutateAsync({
-      configId: config?.config.id,
-      prevVersion: config?.config.version,
-      value: {newValue: data.value},
-      schema: config?.myRole === 'owner' ? {newSchema: data.schema} : undefined,
-      description: {newDescription: data.description},
-      members:
-        config?.myRole === 'owner'
-          ? {
-              newMembers: [
-                ...data.ownerEmails.map(email => ({email, role: 'owner' as ConfigUserRole})),
-                ...data.editorEmails.map(email => ({email, role: 'editor' as ConfigUserRole})),
-              ],
-            }
-          : undefined,
+    await createProposal.mutateAsync({
+      configId: config.config.id,
+      proposedValue,
+      proposedDescription,
+      proposedSchema,
     });
-    router.push(`/app/projects/${projectId}/configs`);
+
+    router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}`);
   }
 
   return (
@@ -127,7 +132,7 @@ export default function ConfigByNamePage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>{name}</BreadcrumbPage>
+                <BreadcrumbPage>Propose changes · {name}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -135,57 +140,8 @@ export default function ConfigByNamePage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-3xl space-y-6">
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              {config.pendingProposals.length > 0
-                ? `${config.pendingProposals.length} pending proposal${config.pendingProposals.length > 1 ? 's' : ''}`
-                : 'No pending proposals'}
-            </div>
-            <Button asChild variant="outline">
-              <Link
-                href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
-              >
-                View proposals
-              </Link>
-            </Button>
-            <Button asChild className="ml-auto" variant="secondary">
-              <Link
-                href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/propose`}
-              >
-                Propose changes
-              </Link>
-            </Button>
-          </div>
-
-          {config.pendingProposals.length > 0 && (
-            <div className="rounded-lg border bg-card/50 p-3">
-              <div className="text-sm font-medium mb-2">Pending proposals</div>
-              <ul className="space-y-2">
-                {config.pendingProposals.map(p => (
-                  <li key={p.id} className="flex items-center justify-between text-sm">
-                    <div className="flex flex-col">
-                      <span>
-                        By {p.proposerEmail ?? 'Unknown'} · based on version {p.baseConfigVersion}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {formatDistanceToNow(new Date(p.createdAt), {addSuffix: true})}
-                      </span>
-                    </div>
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${p.id}`}
-                      >
-                        Review
-                      </Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           <ConfigForm
-            mode="edit"
+            mode="proposal"
             role={config.myRole}
             defaultName={name}
             defaultValue={defaultValue}
@@ -196,19 +152,15 @@ export default function ConfigByNamePage() {
             defaultDescription={config.config?.description ?? ''}
             defaultOwnerEmails={config.ownerEmails}
             defaultEditorEmails={config.editorEmails}
-            editorIdPrefix={`edit-config-${name}`}
+            editorIdPrefix={`propose-config-${name}`}
             createdAt={config.config.createdAt}
             updatedAt={config.config.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
-            submitting={patchConfig.isPending}
-            onCancel={() => router.push(`/app/projects/${project.id}/configs`)}
-            onDelete={async () => {
-              if (confirm(`Delete config "${name}"? This cannot be undone.`)) {
-                await deleteConfig.mutateAsync({configId: config.config.id});
-                router.push(`/app/projects/${project.id}/configs`);
-              }
-            }}
+            submitting={createProposal.isPending}
+            onCancel={() =>
+              router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}`)
+            }
             onSubmit={handleSubmit}
           />
         </div>

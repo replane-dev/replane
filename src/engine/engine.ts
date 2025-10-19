@@ -43,6 +43,7 @@ import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
+import {createGetConfigProposalListUseCase} from './core/use-cases/get-config-proposal-list-use-case';
 import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
@@ -231,6 +232,7 @@ export async function createEngine(options: EngineOptions) {
     approveConfigProposal: createApproveConfigProposalUseCase({dateProvider}),
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
     getConfigProposal: createGetConfigProposalUseCase({}),
+    getConfigProposalList: createGetConfigProposalListUseCase(),
     patchConfig: createPatchConfigUseCase({dateProvider}),
     getConfig: createGetConfigUseCase({}),
     deleteConfig: createDeleteConfigUseCase(),

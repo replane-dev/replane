@@ -524,6 +524,40 @@ export const appRouter = createTRPCRouter({
       });
       return {proposal};
     }),
+  getConfigProposalList: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+        configIds: z.array(Uuid()).optional(),
+        proposalIds: z.array(Uuid()).optional(),
+        statuses: z.array(z.enum(['pending', 'approved', 'rejected'])).optional(),
+        createdAtGte: z.coerce.date().optional(),
+        createdAtLt: z.coerce.date().optional(),
+        approvedAtGte: z.coerce.date().optional(),
+        approvedAtLt: z.coerce.date().optional(),
+        rejectedAtGte: z.coerce.date().optional(),
+        rejectedAtLt: z.coerce.date().optional(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const {proposals} = await opts.ctx.engine.useCases.getConfigProposalList(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
+        configIds: opts.input.configIds,
+        proposalIds: opts.input.proposalIds,
+        statuses: opts.input.statuses,
+        createdAtGte: opts.input.createdAtGte,
+        createdAtLt: opts.input.createdAtLt,
+        approvedAtGte: opts.input.approvedAtGte,
+        approvedAtLt: opts.input.approvedAtLt,
+        rejectedAtGte: opts.input.rejectedAtGte,
+        rejectedAtLt: opts.input.rejectedAtLt,
+      });
+      return {proposals};
+    }),
 });
 
 export type AppRouter = typeof appRouter;

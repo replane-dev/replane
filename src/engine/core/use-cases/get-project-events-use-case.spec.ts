@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import type {ConfigReplicaEvent} from '../configs-replica';
 import {GLOBAL_CONTEXT} from '../context';
 import {Subject} from '../subject';
-import {createGetProjectEventsUseCase} from './get-project-events-use-case';
+import {createGetProjectEventsUseCase, type ProjectEvent} from './get-project-events-use-case';
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -58,9 +58,9 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configId: 'cfg-1'},
-      {type: 'updated', configId: 'cfg-1'},
-    ]);
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'updated', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
   });
 
   it('should filter out events from other projects', async () => {
@@ -110,7 +110,9 @@ describe('GetProjectEventsUseCase', () => {
 
     await consumePromise;
 
-    expect(receivedEvents).toEqual([{type: 'created', configId: 'cfg-1'}]);
+    expect(receivedEvents).toEqual([
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
   });
 
   it('should yield all event types', async () => {
@@ -170,10 +172,10 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configId: 'cfg-1'},
-      {type: 'updated', configId: 'cfg-1'},
-      {type: 'deleted', configId: 'cfg-1'},
-    ]);
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'updated', configName: 'config1', configId: 'cfg-1'},
+      {type: 'deleted', configName: 'config1', configId: 'cfg-1'},
+    ] satisfies ProjectEvent[]);
   });
 
   it('should unsubscribe when iterator is disposed', async () => {
@@ -269,12 +271,12 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configId: 'cfg-1'},
-      {type: 'created', configId: 'cfg-2'},
-      {type: 'created', configId: 'cfg-3'},
-      {type: 'created', configId: 'cfg-4'},
-      {type: 'created', configId: 'cfg-5'},
-    ]);
+      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config2', configId: 'cfg-2'},
+      {type: 'created', configName: 'config3', configId: 'cfg-3'},
+      {type: 'created', configName: 'config4', configId: 'cfg-4'},
+      {type: 'created', configName: 'config5', configId: 'cfg-5'},
+    ] satisfies ProjectEvent[]);
   });
 
   it('should handle events queued before iteration starts', async () => {
@@ -304,7 +306,11 @@ describe('GetProjectEventsUseCase', () => {
 
     const result = await iteratorPromise;
 
-    expect(result.value).toEqual({type: 'created', configId: 'cfg-1'});
+    expect(result.value).toEqual({
+      type: 'created',
+      configName: 'config1',
+      configId: 'cfg-1',
+    } satisfies ProjectEvent);
     expect(result.done).toBe(false);
 
     // Cleanup

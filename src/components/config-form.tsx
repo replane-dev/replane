@@ -25,7 +25,7 @@ import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
 import {z} from 'zod';
 
-type Mode = 'new' | 'edit';
+type Mode = 'new' | 'edit' | 'proposal';
 
 export interface ConfigFormProps {
   mode: Mode;
@@ -80,13 +80,18 @@ export function ConfigForm(props: ConfigFormProps) {
   // Normalize role, tolerate common typo "editor"
   const role: 'viewer' | 'owner' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
 
-  // Permissions (apply strictly in edit mode; new mode is always editable)
+  // Permissions
+  // - new: fully editable
+  // - edit: respect role-based restrictions
+  // - proposal: allow proposing value/description/schema regardless of role, but never allow owners/editors edits
   const isEdit = mode === 'edit';
-  const canEditDescription = !isEdit || role !== 'viewer';
-  const canEditValue = !isEdit || role !== 'viewer';
-  const canEditSchema = !isEdit || role === 'owner';
-  const canEditOwnersEditors = !isEdit || role === 'owner';
-  const canSubmit = !isEdit || role !== 'viewer';
+  const isProposal = mode === 'proposal';
+  const canEditDescription = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
+  const canEditValue = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
+  const canEditSchema = mode === 'new' ? true : isProposal ? true : role === 'owner';
+  const canEditOwnersEditors = mode === 'new' ? true : isProposal ? false : role === 'owner';
+  const canSubmit = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
+  const showOwnersEditors = mode !== 'proposal';
 
   const ajv = React.useMemo(
     () => new Ajv({allErrors: true, strict: false, allowUnionTypes: true}),
@@ -365,51 +370,53 @@ export function ConfigForm(props: ConfigFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="ownersInput"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Owners (emails)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    rows={6}
-                    placeholder="one email per line"
-                    readOnly={!canEditOwnersEditors}
-                    {...field}
-                  />
-                </FormControl>
-                {!canEditOwnersEditors && (
-                  <FormDescription>Only owners can modify owners.</FormDescription>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {showOwnersEditors && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="ownersInput"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Owners (emails)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={6}
+                      placeholder="one email per line"
+                      readOnly={!canEditOwnersEditors}
+                      {...field}
+                    />
+                  </FormControl>
+                  {mode !== 'new' && !canEditOwnersEditors && (
+                    <FormDescription>Only owners can modify owners.</FormDescription>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="editorsInput"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Editors (emails)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    rows={6}
-                    placeholder="one email per line"
-                    readOnly={!canEditOwnersEditors}
-                    {...field}
-                  />
-                </FormControl>
-                {!canEditOwnersEditors && (
-                  <FormDescription>Only owners can modify editors.</FormDescription>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="editorsInput"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Editors (emails)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={6}
+                      placeholder="one email per line"
+                      readOnly={!canEditOwnersEditors}
+                      {...field}
+                    />
+                  </FormControl>
+                  {mode !== 'new' && !canEditOwnersEditors && (
+                    <FormDescription>Only owners can modify editors.</FormDescription>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         <FormField
           control={form.control}
@@ -497,15 +504,19 @@ export function ConfigForm(props: ConfigFormProps) {
             {submitting
               ? mode === 'new'
                 ? 'Creating…'
-                : 'Saving…'
+                : mode === 'proposal'
+                  ? 'Creating…'
+                  : 'Saving…'
               : mode === 'new'
                 ? 'Create Config'
-                : 'Save Changes'}
+                : mode === 'proposal'
+                  ? 'Create Proposal'
+                  : 'Save Changes'}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          {onDelete && role === 'owner' && (
+          {mode !== 'proposal' && onDelete && role === 'owner' && (
             <div className="ml-auto">
               <Button variant="destructive" onClick={onDelete}>
                 Delete
