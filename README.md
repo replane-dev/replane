@@ -13,6 +13,7 @@ Status: early but usable. Expect changes to schemas and endpoints before v1.0.
 Replane is a small web app for managing JSON configs with:
 
 - Version history and instant rollback (append‑only snapshots)
+- Realtime updates via Server-Sent Events (SSE)
 - Audit log for who changed what and when
 - Optional JSON Schema validation
 - Roles (owner/editor/viewer)
@@ -133,10 +134,10 @@ const passwordRequirements = await client
   .getConfigValue<PasswordRequirements>('password-requirements')
   .catch(() => ({minLength: 8, requireSymbol: false}));
 
-// Watching a config (initial fetch must succeed)
+// Watching a config with realtime updates via SSE (initial fetch must succeed)
 const billingEnabled = await client.watchConfigValue<boolean>('billing-enabled');
 
-// Later, read the latest value
+// Later, read the latest value (automatically updated in realtime)
 if (billingEnabled.get()) {
   console.log('Billing enabled!');
 }
