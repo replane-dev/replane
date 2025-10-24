@@ -22,10 +22,14 @@ export const getDatabaseUrl = () =>
 
 // Shared singleton so TRPC and Hono reuse the same engine instance per process.
 export const engineLazy = new Lazy(async () => {
+  const requireProposals = ['1', 'true', 'yes', 'on'].includes(
+    (process.env.REQUIRE_PROPOSALS ?? '').trim().toLowerCase(),
+  );
   return await createEngine({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
+    requireProposals,
   });
 });
 

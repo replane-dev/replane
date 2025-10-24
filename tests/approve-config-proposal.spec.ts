@@ -368,7 +368,7 @@ describe('approveConfigProposal', () => {
         proposalId: configProposalId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('should throw error if proposal was already rejected', async () => {
@@ -413,7 +413,7 @@ describe('approveConfigProposal', () => {
         proposalId: proposal1Id,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('should throw error if user does not have edit permission', async () => {
@@ -535,7 +535,7 @@ describe('approveConfigProposal', () => {
         proposalId: configProposalId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toThrow(ForbiddenError);
 
     // Verify the proposal is still pending
     const proposals = await fixture.engine.testing.configProposals.getPendingProposals({configId});
@@ -696,6 +696,46 @@ describe('approveConfigProposal', () => {
     expect(approvalMessage?.payload.proposedSchema).toEqual({newSchema});
     expect(approvalMessage?.payload.proposedValue).toBeUndefined();
     expect(approvalMessage?.payload.proposedDescription).toBeUndefined();
+  });
+
+  it('should approve a deletion proposal and delete the config (owner required)', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'approve_delete_proposal',
+      value: {x: 1},
+      schema: null,
+      description: 'To be deleted',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedDelete: true,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Non-owner (CURRENT_USER) cannot approve deletion
+    await expect(
+      fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        proposalId: configProposalId,
+        currentUserEmail: CURRENT_USER_EMAIL,
+      }),
+    ).rejects.toThrow(ForbiddenError);
+
+    // Owner (OTHER_USER) can approve deletion
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // Config should be deleted
+    const {config} = await fixture.trpc.getConfig({
+      name: 'approve_delete_proposal',
+      projectId: fixture.projectId,
+    });
+    expect(config).toBeUndefined();
   });
 
   it('should throw error if non-editor tries to approve proposal with value change', async () => {

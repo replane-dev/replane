@@ -119,7 +119,40 @@ export default function ReviewConfigProposalPage() {
             </div>
           </div>
 
-          {config ? (
+          {/* Who can approve */}
+          <div className="rounded-lg border bg-card/50 p-3 text-sm">
+            <div className="font-medium mb-2">Who can approve</div>
+            <p className="mb-2">
+              {proposal.approverRole === 'owners'
+                ? 'Only config owners can approve this proposal.'
+                : 'Config owners and editors can approve this proposal.'}
+            </p>
+            <p className="mb-2 text-muted-foreground">{proposal.approverReason}</p>
+            {proposal.approverEmails.length > 0 ? (
+              <ul className="list-disc pl-5 space-y-1">
+                {proposal.approverEmails.map(email => (
+                  <li key={email} className="break-all">
+                    {email}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-muted-foreground">
+                No eligible approvers found for this config.
+              </div>
+            )}
+          </div>
+
+          {proposal.proposedDelete ? (
+            <div className="rounded-lg border bg-destructive/10 p-4 text-sm">
+              <div className="font-medium mb-1">Deletion proposal</div>
+              <p>
+                This proposal requests to permanently delete the config
+                <span className="font-semibold"> {proposal.configName}</span>. If approved, the
+                config will be removed, and this action cannot be undone.
+              </p>
+            </div>
+          ) : config ? (
             <ConfigProposalDiff
               current={{
                 value: config.config.value,
@@ -134,7 +167,7 @@ export default function ReviewConfigProposalPage() {
             />
           ) : (
             <div className="rounded-lg border bg-card/50 p-3 text-sm">
-              Current config not found. It may have been renamed or removed.
+              Current config not found. It may have been removed.
             </div>
           )}
 
@@ -144,12 +177,21 @@ export default function ReviewConfigProposalPage() {
                 disabled={approve.isPending || reject.isPending}
                 onClick={async () => {
                   await approve.mutateAsync({proposalId: proposal.id});
-                  router.push(
-                    `/app/projects/${project.id}/configs/${encodeURIComponent(proposal.configName)}`,
-                  );
+
+                  if (proposal.proposedDelete) {
+                    router.push(`/app/projects/${project.id}/configs`);
+                  } else {
+                    router.push(
+                      `/app/projects/${project.id}/configs/${encodeURIComponent(proposal.configName)}`,
+                    );
+                  }
                 }}
               >
-                {approve.isPending ? 'Approving…' : 'Approve'}
+                {approve.isPending
+                  ? 'Approving…'
+                  : proposal.proposedDelete
+                    ? 'Approve deletion'
+                    : 'Approve'}
               </Button>
               <Button
                 variant="destructive"

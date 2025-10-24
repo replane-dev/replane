@@ -45,6 +45,7 @@ describe('createConfigProposal', () => {
       reviewerId: null,
       rejectedInFavorOfProposalId: null,
       baseConfigVersion: 1,
+      proposedDelete: false,
       proposedValue: {newValue: {flag: false}},
       proposedDescription: null,
       proposedSchema: null,
@@ -131,6 +132,32 @@ describe('createConfigProposal', () => {
       newSchema: {type: 'object', properties: {x: {type: 'number'}, y: {type: 'number'}}},
     });
     expect(proposal?.proposedDescription).toBe('Updated config');
+  });
+
+  it('should create a deletion proposal', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'deletion_proposal_config',
+      value: {x: 1},
+      schema: {type: 'object', properties: {x: {type: 'number'}}},
+      description: 'To be deleted',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedDelete: true,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    expect(proposal).toBeDefined();
+    expect(proposal?.proposedDelete).toBe(true);
+    expect(proposal?.proposedValue).toBeNull();
+    expect(proposal?.proposedDescription).toBeNull();
+    expect(proposal?.proposedSchema).toBeNull();
   });
 
   it('should validate new value against new schema when both are proposed', async () => {

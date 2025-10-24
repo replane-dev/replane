@@ -17,6 +17,7 @@ import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useDeleteOrProposeConfig} from '@/app/app/projects/[projectId]/configs/useDeleteOrPropose';
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Button} from '@/components/ui/button';
 import {
@@ -29,7 +30,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
-import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
 import {toast} from 'sonner';
 
@@ -66,15 +67,7 @@ export function ConfigTable() {
   const projectId = useProjectId();
 
   const trpc = useTRPC();
-  const qc = useQueryClient();
-  const del = useMutation(
-    trpc.deleteConfig.mutationOptions({
-      onSuccess: async () => {
-        const key = trpc.getConfigList.queryKey();
-        await qc.invalidateQueries({queryKey: key});
-      },
-    }),
-  );
+  const deleteOrPropose = useDeleteOrProposeConfig();
 
   const {
     data: {configs},
@@ -88,6 +81,7 @@ export function ConfigTable() {
       updatedAt: string | Date;
       myRole: string;
       id: string;
+      version: number;
     }>[]
   >(
     () => [
@@ -183,26 +177,30 @@ export function ConfigTable() {
                 >
                   View details
                 </DropdownMenuItem>
-                {config.myRole === 'owner' && (
-                  <DropdownMenuItem
-                    className="text-red-600 focus:text-red-700"
-                    onClick={async e => {
-                      e.stopPropagation();
-                      if (confirm(`Delete config "${config.name}"? This cannot be undone.`)) {
-                        await del.mutateAsync({configId: config.id});
-                      }
-                    }}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  className="text-red-600 focus:text-red-700"
+                  onClick={async e => {
+                    e.stopPropagation();
+                    await deleteOrPropose({
+                      configId: config.id,
+                      configName: config.name,
+                      myRole: config.myRole,
+                      onAfterPropose: proposalId =>
+                        router.push(
+                          `/app/projects/${projectId}/configs/${encodeURIComponent(config.name)}/proposals/${proposalId}`,
+                        ),
+                    });
+                  }}
+                >
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [del],
+    [deleteOrPropose],
   );
 
   const table = useReactTable({

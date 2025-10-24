@@ -66,6 +66,7 @@ export interface EngineOptions {
   logLevel: LogLevel;
   databaseUrl: string;
   dbSchema: string;
+  requireProposals: boolean;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
   createEventBusClient?: (
@@ -233,9 +234,12 @@ export async function createEngine(options: EngineOptions) {
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
-    patchConfig: createPatchConfigUseCase({dateProvider}),
+    patchConfig: createPatchConfigUseCase({
+      dateProvider,
+      requireProposals: options.requireProposals,
+    }),
     getConfig: createGetConfigUseCase({}),
-    deleteConfig: createDeleteConfigUseCase(),
+    deleteConfig: createDeleteConfigUseCase({requireProposals: options.requireProposals}),
     getConfigVersionList: createGetConfigVersionListUseCase({}),
     getConfigVersion: createGetConfigVersionUseCase({}),
     getApiKeyList: createGetApiKeyListUseCase(),

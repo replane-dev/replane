@@ -288,6 +288,13 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_config_versions_proposal_id ON config_versions(proposal_id);
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- add proposed_delete flag to config_proposals to support deletion proposals
+      ALTER TABLE config_proposals
+      ADD COLUMN proposed_delete BOOLEAN NOT NULL DEFAULT FALSE;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

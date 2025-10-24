@@ -38,6 +38,8 @@ export interface ConfigFormProps {
   defaultOwnerEmails?: string[];
   defaultEditorEmails?: string[];
   submitting?: boolean;
+  submitLabel?: string; // optional override for submit button label
+  submittingLabel?: string; // optional override for submit button label while submitting
   editorIdPrefix?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
@@ -67,6 +69,8 @@ export function ConfigForm(props: ConfigFormProps) {
     defaultOwnerEmails = [],
     defaultEditorEmails = [],
     submitting,
+    submitLabel,
+    submittingLabel,
     editorIdPrefix,
     createdAt,
     updatedAt,
@@ -502,23 +506,27 @@ export function ConfigForm(props: ConfigFormProps) {
         <div className="flex gap-2">
           <Button type="submit" disabled={!!submitting || !canSubmit}>
             {submitting
-              ? mode === 'new'
-                ? 'Creating…'
-                : mode === 'proposal'
-                  ? 'Creating…'
-                  : 'Saving…'
-              : mode === 'new'
-                ? 'Create Config'
-                : mode === 'proposal'
-                  ? 'Create Proposal'
-                  : 'Save Changes'}
+              ? (submittingLabel ??
+                (mode === 'new' ? 'Creating…' : mode === 'proposal' ? 'Creating…' : 'Saving…'))
+              : (submitLabel ??
+                (mode === 'new'
+                  ? 'Create Config'
+                  : mode === 'proposal'
+                    ? 'Create Proposal'
+                    : 'Save Changes'))}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           {mode !== 'proposal' && onDelete && role === 'owner' && (
             <div className="ml-auto">
-              <Button variant="destructive" onClick={onDelete}>
+              <Button
+                variant="destructive"
+                onClick={e => {
+                  e.preventDefault();
+                  onDelete();
+                }}
+              >
                 Delete
               </Button>
             </div>

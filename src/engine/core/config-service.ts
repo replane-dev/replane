@@ -5,7 +5,7 @@ import {
   type AuditMessageStore,
 } from './audit-message-store';
 import type {ConfigProposalStore} from './config-proposal-store';
-import type {ConfigId, ConfigStore} from './config-store';
+import type {Config, ConfigId, ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import {createConfigVersionId, type ConfigVersionStore} from './config-version-store';
 import type {DateProvider} from './date-provider';
@@ -25,6 +25,14 @@ export interface PatchConfigParams {
   reviewer: User;
   originalProposalId?: string;
   members?: {newMembers: ConfigMember[]};
+  prevVersion: number;
+}
+
+export interface DeleteConfigParams {
+  configId: ConfigId;
+  deleteAuthor: User;
+  reviewer: User;
+  originalProposalId?: string;
   prevVersion: number;
 }
 
@@ -71,60 +79,13 @@ export class ConfigService {
       );
     }
 
-    if (existingConfig.version !== params.prevVersion) {
-      throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
-    }
-
-    if (params.originalProposalId) {
-      const proposal = await this.configProposals.getById(params.originalProposalId);
-
-      assert(proposal, 'Proposal to reject in favor of not found');
-      assert(proposal.configId === params.configId, 'Config ID must match the proposal config ID');
-      assert(
-        proposal.baseConfigVersion === existingConfig.version,
-        'Base config version must match',
-      );
-      assert(proposal.reviewerId === reviewer.id, 'Reviewer must match the proposal reviewer');
-      assert(proposal.rejectedAt === null, 'Proposal to reject in favor of is already rejected');
-      assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
-    }
-
-    // Get all other pending proposals for this config
-    const pendingProposals = await this.configProposals.getPendingProposals({
-      configId: params.configId,
+    await this.rejectProposals({
+      configId: existingConfig.id,
+      originalProposalId: params.originalProposalId,
+      existingConfig,
+      reviewer,
+      prevVersion: params.prevVersion,
     });
-
-    // Reject all other pending proposals
-    for (const proposalInfo of pendingProposals) {
-      // Fetch full proposal details for audit message
-      const proposal = await this.configProposals.getById(proposalInfo.id);
-      assert(proposal, 'Proposal must exist');
-
-      await this.configProposals.updateById({
-        id: proposal.id,
-        rejectedAt: this.dateProvider.now(),
-        reviewerId: reviewer.id,
-        rejectedInFavorOfProposalId: params.originalProposalId,
-      });
-
-      // Create audit message for the rejection
-      await this.auditMessages.create({
-        id: createAuditMessageId(),
-        createdAt: this.dateProvider.now(),
-        userId: reviewer.id,
-        projectId: existingConfig.projectId,
-        configId: params.configId,
-        payload: {
-          type: 'config_proposal_rejected',
-          proposalId: proposal.id,
-          configId: params.configId,
-          rejectedInFavorOfProposalId: params.originalProposalId,
-          proposedValue: proposal.proposedValue ?? undefined,
-          proposedDescription: proposal.proposedDescription ?? undefined,
-          proposedSchema: proposal.proposedSchema ?? undefined,
-        },
-      });
-    }
 
     const nextValue = params.value ? params.value.newValue : existingConfig.value;
     const nextSchema = params.schema ? params.schema.newSchema : existingConfig.schema;
@@ -261,6 +222,118 @@ export class ConfigService {
           },
           added: membersDiff.added,
           removed: membersDiff.removed,
+        },
+      });
+    }
+  }
+
+  async deleteConfig(params: DeleteConfigParams): Promise<void> {
+    const existingConfig = await this.configs.getById(params.configId);
+    if (!existingConfig) {
+      throw new BadRequestError('Config with this name does not exist');
+    }
+
+    // Manage permission is required to delete a config
+    assert(params.reviewer.email, 'Reviewer must have an email');
+    await this.permissionService.ensureCanManageConfig(
+      existingConfig.id,
+      normalizeEmail(params.reviewer.email),
+    );
+
+    await this.rejectProposals({
+      configId: existingConfig.id,
+      originalProposalId: params.originalProposalId,
+      existingConfig,
+      reviewer: params.reviewer,
+      prevVersion: params.prevVersion,
+    });
+
+    await this.configs.deleteById(existingConfig.id);
+
+    await this.auditMessages.create({
+      id: createAuditMessageId(),
+      createdAt: this.dateProvider.now(),
+      userId: params.deleteAuthor.id ?? null,
+      configId: null,
+      projectId: existingConfig.projectId,
+      payload: {
+        type: 'config_deleted',
+        config: {
+          id: existingConfig.id,
+          projectId: existingConfig.projectId,
+          name: existingConfig.name,
+          value: existingConfig.value,
+          schema: existingConfig.schema,
+          description: existingConfig.description,
+          creatorId: existingConfig.creatorId,
+          createdAt: existingConfig.createdAt,
+          updatedAt: existingConfig.updatedAt,
+          version: existingConfig.version,
+        },
+      },
+    });
+  }
+
+  private async rejectProposals(params: {
+    configId: string;
+    originalProposalId?: string;
+    existingConfig: Config;
+    reviewer: User;
+    prevVersion: number;
+  }): Promise<void> {
+    const {reviewer, existingConfig} = params;
+
+    if (existingConfig.version !== params.prevVersion) {
+      throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
+    }
+
+    if (params.originalProposalId) {
+      const proposal = await this.configProposals.getById(params.originalProposalId);
+
+      assert(proposal, 'Proposal to reject in favor of not found');
+      assert(proposal.configId === params.configId, 'Config ID must match the proposal config ID');
+      assert(
+        proposal.baseConfigVersion === existingConfig.version,
+        'Base config version must match',
+      );
+      assert(proposal.reviewerId === reviewer.id, 'Reviewer must match the proposal reviewer');
+      assert(proposal.rejectedAt === null, 'Proposal to reject in favor of is already rejected');
+      assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
+    }
+
+    // Get all other pending proposals for this config
+    const pendingProposals = await this.configProposals.getPendingProposals({
+      configId: params.configId,
+    });
+
+    // Reject all other pending proposals
+    for (const proposalInfo of pendingProposals) {
+      // Fetch full proposal details for audit message
+      const proposal = await this.configProposals.getById(proposalInfo.id);
+      assert(proposal, 'Proposal must exist');
+
+      await this.configProposals.updateById({
+        id: proposal.id,
+        rejectedAt: this.dateProvider.now(),
+        reviewerId: reviewer.id,
+        rejectedInFavorOfProposalId: params.originalProposalId,
+      });
+
+      // Create audit message for the rejection
+      await this.auditMessages.create({
+        id: createAuditMessageId(),
+        createdAt: this.dateProvider.now(),
+        userId: reviewer.id,
+        projectId: existingConfig.projectId,
+        configId: params.configId,
+        payload: {
+          type: 'config_proposal_rejected',
+          proposalId: proposal.id,
+          configId: params.configId,
+          rejectedInFavorOfProposalId: params.originalProposalId,
+          proposedValue: proposal.proposedValue ?? undefined,
+          proposedDescription: proposal.proposedDescription ?? undefined,
+          proposedSchema: proposal.proposedSchema ?? undefined,
         },
       });
     }

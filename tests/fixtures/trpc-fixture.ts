@@ -14,6 +14,7 @@ export interface TrpcFixtureOptions {
   authEmail: string;
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
+  requireProposals?: boolean;
 }
 
 function _createCaller() {
@@ -48,6 +49,7 @@ export class AppFixture {
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
       createEventBusClient: onNotification => eventBus.createClient(onNotification),
+      requireProposals: this.options.requireProposals ?? false,
     });
 
     const connection = await engine.testing.pool.connect();

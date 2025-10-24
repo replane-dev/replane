@@ -2,7 +2,7 @@ import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import type {ConfigProposalId} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
-import {BadRequestError} from '../errors';
+import {BadRequestError, ForbiddenError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -30,7 +30,7 @@ export function createApproveConfigProposalUseCase(
     assert(currentUser, 'Current user not found');
 
     if (proposal.proposerId === currentUser.id) {
-      throw new BadRequestError('Proposer cannot approve their own proposal');
+      throw new ForbiddenError('Proposer cannot approve their own proposal');
     }
 
     // Check if already approved or rejected
@@ -53,6 +53,11 @@ export function createApproveConfigProposalUseCase(
       throw new BadRequestError('Config not found');
     }
 
+    assert(
+      config.version === proposal.baseConfigVersion,
+      "Config proposal version mismatch, even though all proposals must've be rejected after a config edit",
+    );
+
     // Mark the proposal as approved BEFORE patching
     await tx.configProposals.updateById({
       id: proposal.id,
@@ -71,25 +76,38 @@ export function createApproveConfigProposalUseCase(
         type: 'config_proposal_approved',
         proposalId: proposal.id,
         configId: proposal.configId,
+        proposedDelete: proposal.proposedDelete,
         proposedValue: proposal.proposedValue ?? undefined,
         proposedDescription: proposal.proposedDescription ?? undefined,
         proposedSchema: proposal.proposedSchema ?? undefined,
       },
     });
 
-    await tx.configService.patchConfig({
-      configId: proposal.configId,
-      value: proposal.proposedValue ? {newValue: proposal.proposedValue.newValue} : undefined,
-      schema: proposal.proposedSchema ? {newSchema: proposal.proposedSchema.newSchema} : undefined,
-      description:
-        proposal.proposedDescription !== null
-          ? {newDescription: proposal.proposedDescription}
+    // If this is a deletion proposal, delete the config and reject other pending proposals.
+    if (proposal.proposedDelete) {
+      await tx.configService.deleteConfig({
+        configId: proposal.configId,
+        deleteAuthor: patchAuthor,
+        reviewer: currentUser,
+        prevVersion: proposal.baseConfigVersion,
+      });
+    } else {
+      await tx.configService.patchConfig({
+        configId: proposal.configId,
+        value: proposal.proposedValue ? {newValue: proposal.proposedValue.newValue} : undefined,
+        schema: proposal.proposedSchema
+          ? {newSchema: proposal.proposedSchema.newSchema}
           : undefined,
-      patchAuthor: patchAuthor,
-      reviewer: currentUser,
-      prevVersion: proposal.baseConfigVersion,
-      originalProposalId: proposal.id,
-    });
+        description:
+          proposal.proposedDescription !== null
+            ? {newDescription: proposal.proposedDescription}
+            : undefined,
+        patchAuthor: patchAuthor,
+        reviewer: currentUser,
+        prevVersion: proposal.baseConfigVersion,
+        originalProposalId: proposal.id,
+      });
+    }
 
     return {};
   };

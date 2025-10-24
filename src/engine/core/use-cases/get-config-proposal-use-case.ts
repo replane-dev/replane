@@ -20,10 +20,14 @@ export interface ConfigProposalDetails {
   reviewerEmail: string | null;
   rejectedInFavorOfProposalId: string | null;
   baseConfigVersion: number;
+  proposedDelete: boolean;
   proposedValue: {newValue: unknown} | null;
   proposedDescription: string | null;
   proposedSchema: {newSchema: unknown} | null;
   status: 'pending' | 'approved' | 'rejected';
+  approverRole: 'owners' | 'owners_and_editors';
+  approverEmails: string[];
+  approverReason: string;
 }
 
 export interface GetConfigProposalResponse {
@@ -67,6 +71,40 @@ export function createGetConfigProposalUseCase(
         ? 'rejected'
         : 'pending';
 
+    // Determine approval policy and eligible approvers
+    const members = await tx.configUsers.getByConfigId(proposal.configId);
+    const ownerEmails = members
+      .filter(m => m.role === 'owner')
+      .map(m => m.user_email_normalized)
+      .filter(Boolean) as string[];
+    const editorEmails = members
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized)
+      .filter(Boolean) as string[];
+
+    const ownersOnly =
+      proposal.proposedDelete ||
+      proposal.proposedSchema !== null ||
+      proposal.proposedDescription !== null;
+
+    let approverReason = '';
+    if (proposal.proposedDelete) {
+      approverReason = 'Deletion requests require owner approval.';
+    } else if (proposal.proposedSchema !== null) {
+      approverReason = 'Schema changes require owner approval.';
+    } else if (proposal.proposedDescription !== null) {
+      approverReason = 'Description changes require owner approval.';
+    } else {
+      approverReason = 'Value-only changes can be approved by editors or owners.';
+    }
+
+    const approverRole: 'owners' | 'owners_and_editors' = ownersOnly
+      ? 'owners'
+      : 'owners_and_editors';
+    const approverEmails = ownersOnly
+      ? ownerEmails
+      : Array.from(new Set([...ownerEmails, ...editorEmails]));
+
     return {
       proposal: {
         id: proposal.id,
@@ -81,10 +119,14 @@ export function createGetConfigProposalUseCase(
         reviewerEmail,
         rejectedInFavorOfProposalId: proposal.rejectedInFavorOfProposalId,
         baseConfigVersion: proposal.baseConfigVersion,
+        proposedDelete: proposal.proposedDelete,
         proposedValue: proposal.proposedValue,
         proposedDescription: proposal.proposedDescription,
         proposedSchema: proposal.proposedSchema,
         status,
+        approverRole,
+        approverEmails,
+        approverReason,
       },
     };
   };

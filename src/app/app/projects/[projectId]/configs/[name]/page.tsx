@@ -12,6 +12,7 @@ import {
 import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import {useOrg} from '@/contexts/org-context';
 import type {ConfigUserRole} from '@/engine/core/db';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
@@ -20,6 +21,7 @@ import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
 import {useProject, useProjectId} from '../../utils';
+import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
 
 // No props needed in a Client Component; use useParams() instead.
 
@@ -31,8 +33,11 @@ export default function ConfigByNamePage() {
   const projectId = useProjectId();
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
-  const deleteConfig = useMutation(trpc.deleteConfig.mutationOptions());
+  const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
+
   const project = useProject();
+  const deleteOrPropose = useDeleteOrProposeConfig();
+  const org = useOrg();
 
   const config = data.config;
 
@@ -93,6 +98,40 @@ export default function ConfigByNamePage() {
       throw new Error('unreachable: we do not render form when config is undefined');
     }
 
+    if (org.requireProposals) {
+      // Build a minimal proposal containing only changed fields
+      const current = config.config;
+      const valueChanged = JSON.stringify(data.value) !== JSON.stringify(current.value);
+      const descChanged = (data.description ?? '') !== (current.description ?? '');
+      const schemaChanged = JSON.stringify(data.schema) !== JSON.stringify(current.schema);
+
+      const proposedValue = valueChanged ? {newValue: data.value} : undefined;
+      const proposedDescription = descChanged ? {newDescription: data.description} : undefined;
+      const proposedSchema = schemaChanged ? {newSchema: data.schema} : undefined;
+
+      if (!proposedValue && !proposedDescription && !proposedSchema) {
+        alert('No changes to propose.');
+        return;
+      }
+
+      const res = await createConfigProposal.mutateAsync({
+        configId: current.id,
+        proposedValue,
+        proposedDescription,
+        proposedSchema,
+      });
+      const proposalId = (res as any)?.configProposalId ?? (res as any)?.proposalId;
+      if (proposalId) {
+        router.push(
+          `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${proposalId}`,
+        );
+      } else {
+        router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`);
+      }
+      return;
+    }
+
+    // Direct patch path (no approvals required)
     await patchConfig.mutateAsync({
       configId: config?.config.id,
       prevVersion: config?.config.version,
@@ -186,7 +225,7 @@ export default function ConfigByNamePage() {
 
           <ConfigForm
             mode="edit"
-            role={config.myRole}
+            role={org.requireProposals || config.myRole === 'viewer' ? 'owner' : config.myRole}
             defaultName={name}
             defaultValue={defaultValue}
             defaultSchemaEnabled={!!config.config?.schema}
@@ -201,13 +240,22 @@ export default function ConfigByNamePage() {
             updatedAt={config.config.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
-            submitting={patchConfig.isPending}
+            submitting={patchConfig.isPending || createConfigProposal.isPending}
+            submitLabel={org.requireProposals ? 'Propose Changes' : undefined}
+            submittingLabel={org.requireProposals ? 'Proposing…' : undefined}
             onCancel={() => router.push(`/app/projects/${project.id}/configs`)}
             onDelete={async () => {
-              if (confirm(`Delete config "${name}"? This cannot be undone.`)) {
-                await deleteConfig.mutateAsync({configId: config.config.id});
-                router.push(`/app/projects/${project.id}/configs`);
-              }
+              await deleteOrPropose({
+                configId: config.config.id,
+                configName: name,
+                myRole: config.myRole as any,
+                prevVersion: config.config.version,
+                onAfterDelete: () => router.push(`/app/projects/${project.id}/configs`),
+                onAfterPropose: proposalId =>
+                  router.push(
+                    `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${proposalId}`,
+                  ),
+              });
             }}
             onSubmit={handleSubmit}
           />

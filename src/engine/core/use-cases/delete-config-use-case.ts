@@ -1,5 +1,4 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
 import type {ConfigId} from '../config-store';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
@@ -8,49 +7,35 @@ import type {NormalizedEmail} from '../zod';
 export interface DeleteConfigRequest {
   configId: ConfigId;
   currentUserEmail: NormalizedEmail;
+  prevVersion: number;
 }
 
 export interface DeleteConfigResponse {}
 
-export function createDeleteConfigUseCase(): TransactionalUseCase<
-  DeleteConfigRequest,
-  DeleteConfigResponse
-> {
+export interface DeleteConfigUseCaseDeps {
+  requireProposals: boolean;
+}
+
+export function createDeleteConfigUseCase(
+  deps: DeleteConfigUseCaseDeps,
+): TransactionalUseCase<DeleteConfigRequest, DeleteConfigResponse> {
   return async (ctx, tx, req) => {
-    const existingConfig = await tx.configs.getById(req.configId);
-    if (!existingConfig) {
-      throw new BadRequestError('Config with this name does not exist');
+    // When requireProposals is enabled, forbid direct deletions.
+    // Users should use the proposal workflow instead of deleting configs outright.
+    if (deps.requireProposals) {
+      throw new BadRequestError(
+        'Direct config deletion is disabled. Please use the proposal workflow instead.',
+      );
     }
 
-    await tx.permissionService.ensureCanManageConfig(existingConfig.id, req.currentUserEmail);
-
-    await tx.configs.deleteById(existingConfig.id);
-
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-
     assert(currentUser, 'Current user not found');
 
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
-      createdAt: new Date(),
-      userId: currentUser.id,
-      configId: null,
-      projectId: existingConfig.projectId,
-      payload: {
-        type: 'config_deleted',
-        config: {
-          id: existingConfig.id,
-          projectId: existingConfig.projectId,
-          name: existingConfig.name,
-          value: existingConfig.value,
-          schema: existingConfig.schema,
-          description: existingConfig.description,
-          creatorId: existingConfig.creatorId,
-          createdAt: existingConfig.createdAt,
-          updatedAt: existingConfig.updatedAt,
-          version: existingConfig.version,
-        },
-      },
+    await tx.configService.deleteConfig({
+      configId: req.configId,
+      reviewer: currentUser,
+      deleteAuthor: currentUser,
+      prevVersion: req.prevVersion,
     });
 
     return {};

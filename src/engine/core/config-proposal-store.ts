@@ -22,6 +22,7 @@ export function ConfigProposal() {
     reviewerId: z.number().nullable(),
     rejectedInFavorOfProposalId: Uuid().nullable(),
     baseConfigVersion: z.number(),
+    proposedDelete: z.boolean(),
     proposedDescription: z.string().nullable(),
     proposedValue: z.object({newValue: z.unknown()}).nullable(),
     proposedSchema: z.object({newSchema: z.unknown()}).nullable(),
@@ -251,6 +252,7 @@ export class ConfigProposalStore {
         reviewer_id: proposal.reviewerId,
         rejected_in_favor_of_proposal_id: proposal.rejectedInFavorOfProposalId,
         base_config_version: proposal.baseConfigVersion,
+        proposed_delete: proposal.proposedDelete,
         proposed_value: proposal.proposedValue ? toJsonb(proposal.proposedValue) : null,
         proposed_description: proposal.proposedDescription,
         proposed_schema: proposal.proposedSchema ? toJsonb(proposal.proposedSchema) : null,
@@ -263,6 +265,7 @@ export class ConfigProposalStore {
     proposedValue?: unknown;
     proposedDescription?: string;
     proposedSchema?: unknown;
+    proposedDelete?: boolean;
     approvedAt?: Date;
     rejectedAt?: Date;
     reviewerId?: number;
@@ -280,6 +283,7 @@ export class ConfigProposalStore {
               ? toJsonb(params.proposedSchema)
               : null
             : undefined,
+        proposed_delete: params.proposedDelete,
         approved_at: params.approvedAt,
         rejected_at: params.rejectedAt,
         reviewer_id: params.reviewerId,
@@ -305,6 +309,7 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     reviewerId: proposal.reviewer_id,
     rejectedInFavorOfProposalId: proposal.rejected_in_favor_of_proposal_id,
     baseConfigVersion: proposal.base_config_version,
+    proposedDelete: proposal.proposed_delete,
     proposedValue: fromJsonb(proposal.proposed_value),
     proposedDescription: proposal.proposed_description,
     proposedSchema: fromJsonb(proposal.proposed_schema),

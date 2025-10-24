@@ -9,6 +9,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface CreateConfigProposalRequest {
   configId: string;
+  proposedDelete?: boolean;
   proposedValue?: {newValue: unknown};
   proposedDescription?: {newDescription: string};
   proposedSchema?: {newSchema: unknown};
@@ -34,6 +35,7 @@ export function createCreateConfigProposalUseCase(
 
     // At least one field must be proposed
     if (
+      req.proposedDelete !== true &&
       req.proposedValue === undefined &&
       req.proposedDescription === undefined &&
       req.proposedSchema === undefined
@@ -41,14 +43,21 @@ export function createCreateConfigProposalUseCase(
       throw new BadRequestError('At least one field must be proposed');
     }
 
-    const finalSchema = req.proposedSchema ? req.proposedSchema.newSchema : config.schema;
+    // Deletion proposals must not include other fields
+    if (req.proposedDelete) {
+      if (req.proposedValue || req.proposedDescription || req.proposedSchema) {
+        throw new BadRequestError('Deletion proposal cannot include other changes');
+      }
+    }
 
-    const finalValue = req.proposedValue ? req.proposedValue.newValue : config.value;
-
-    if (finalSchema !== null) {
-      const result = validateAgainstJsonSchema(finalValue, finalSchema as any);
-      if (!result.ok) {
-        throw new BadRequestError(`Value does not match schema: ${result.errors.join('; ')}`);
+    if (!req.proposedDelete) {
+      const finalSchema = req.proposedSchema ? req.proposedSchema.newSchema : config.schema;
+      const finalValue = req.proposedValue ? req.proposedValue.newValue : config.value;
+      if (finalSchema !== null) {
+        const result = validateAgainstJsonSchema(finalValue, finalSchema as any);
+        if (!result.ok) {
+          throw new BadRequestError(`Value does not match schema: ${result.errors.join('; ')}`);
+        }
       }
     }
 
@@ -66,6 +75,7 @@ export function createCreateConfigProposalUseCase(
       reviewerId: null,
       rejectedInFavorOfProposalId: null,
       baseConfigVersion: config.version,
+      proposedDelete: req.proposedDelete === true,
       proposedValue: req.proposedValue ? {newValue: req.proposedValue.newValue} : null,
       proposedDescription: req.proposedDescription ? req.proposedDescription.newDescription : null,
       proposedSchema: req.proposedSchema ? {newSchema: req.proposedSchema.newSchema} : null,
@@ -81,6 +91,7 @@ export function createCreateConfigProposalUseCase(
         type: 'config_proposal_created',
         proposalId: configProposalId,
         configId: config.id,
+        proposedDelete: req.proposedDelete,
         proposedValue: {newValue: req.proposedValue?.newValue},
         proposedDescription: req.proposedDescription?.newDescription,
         proposedSchema: {newSchema: req.proposedSchema?.newSchema},

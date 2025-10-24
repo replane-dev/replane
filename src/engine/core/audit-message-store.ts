@@ -125,6 +125,7 @@ export interface ConfigProposalCreatedAuditMessagePayload
   extends BaseAuditMessagePayload<'config_proposal_created'> {
   proposalId: string;
   configId: string;
+  proposedDelete?: boolean;
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
@@ -135,6 +136,7 @@ export interface ConfigProposalRejectedAuditMessagePayload
   proposalId: string;
   configId: string;
   rejectedInFavorOfProposalId?: string;
+  proposedDelete?: boolean;
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
@@ -144,6 +146,7 @@ export interface ConfigProposalApprovedAuditMessagePayload
   extends BaseAuditMessagePayload<'config_proposal_approved'> {
   proposalId: string;
   configId: string;
+  proposedDelete?: boolean;
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};

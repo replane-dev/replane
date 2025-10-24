@@ -70,6 +70,7 @@ export interface ConfigProposals {
   config_id: string;
   created_at: Timestamp;
   id: string;
+  proposed_delete: Generated<boolean>;
   proposed_description: string | null;
   proposed_schema: Json | null;
   proposed_value: Json | null;

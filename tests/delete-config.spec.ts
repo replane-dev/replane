@@ -53,6 +53,7 @@ describe('deleteConfig', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       configId: deleteId,
       currentUserEmail: TEST_USER_EMAIL,
+      prevVersion: 1,
     });
 
     // Confirm deletion
@@ -83,6 +84,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId: '00000000-0000-0000-0000-000000000000', // non-existent id
         currentUserEmail: TEST_USER_EMAIL,
+        prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
@@ -102,12 +104,14 @@ describe('deleteConfig', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       configId,
       currentUserEmail: TEST_USER_EMAIL,
+      prevVersion: 1,
     });
 
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId,
         currentUserEmail: TEST_USER_EMAIL,
+        prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
@@ -134,6 +138,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId,
         currentUserEmail: TEST_USER_EMAIL,
+        prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
 
@@ -167,6 +172,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId,
         currentUserEmail: TEST_USER_EMAIL,
+        prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
 
@@ -192,6 +198,7 @@ describe('deleteConfig', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       configId,
       currentUserEmail: TEST_USER_EMAIL,
+      prevVersion: 1,
     });
 
     const messages = await fixture.engine.testing.auditMessages.list({
@@ -209,5 +216,51 @@ describe('deleteConfig', () => {
     expect(byType.config_deleted.config.name).toBe('delete_audit');
     expect(byType.config_deleted.config.value).toBe('x');
     expect(byType.config_deleted.config.version).toBe(1);
+  });
+});
+
+describe('deleteConfig (requireProposals=true)', () => {
+  const fixture = useAppFixture({authEmail: TEST_USER_EMAIL, requireProposals: true});
+
+  it('should forbid direct delete when requireProposals is enabled', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'cannot_delete_when_require_proposals',
+      value: 42,
+      schema: {type: 'number'},
+      description: 'Test',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    await expect(
+      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+        configId,
+        currentUserEmail: TEST_USER_EMAIL,
+        prevVersion: 1,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it('should forbid deletion if version mismatch', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'version_mismatch_delete',
+      value: 'test',
+      schema: {type: 'string'},
+      description: 'Test',
+      currentUserEmail: TEST_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [TEST_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    await expect(
+      fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
+        configId,
+        currentUserEmail: TEST_USER_EMAIL,
+        prevVersion: 2, // incorrect version
+      }),
+    ).rejects.toBeInstanceOf(BadRequestError);
   });
 });

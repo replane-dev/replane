@@ -96,17 +96,27 @@ describe('getConfigProposalList', () => {
       },
     );
 
-    // Approve P2 at T5 by OTHER_USER (editor)
-    fixture.setNow(T5);
-    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
-      proposalId: P2,
-      currentUserEmail: OTHER_USER_EMAIL,
-    });
-
     // Reject P3 at T6 by OTHER_USER
     fixture.setNow(T6);
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
       proposalId: P3,
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // 0) Get pending proposals
+
+    {
+      const {proposals: pend} = await fixture.trpc.getConfigProposalList({
+        projectId: fixture.projectId,
+        statuses: ['pending'],
+      });
+      expect(pend.map(p => p.id)).toEqual([P2, P1]);
+    }
+
+    // Approve P2 at T5 by OTHER_USER (editor)
+    fixture.setNow(T5);
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: P2,
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -142,12 +152,6 @@ describe('getConfigProposalList', () => {
 
     // 3) Filter by statuses
     {
-      const {proposals: pend} = await fixture.trpc.getConfigProposalList({
-        projectId: fixture.projectId,
-        statuses: ['pending'],
-      });
-      expect(pend.map(p => p.id)).toEqual([P1]);
-
       const {proposals: appr} = await fixture.trpc.getConfigProposalList({
         projectId: fixture.projectId,
         statuses: ['approved'],
@@ -158,13 +162,13 @@ describe('getConfigProposalList', () => {
         projectId: fixture.projectId,
         statuses: ['rejected'],
       });
-      expect(rej.map(p => p.id)).toEqual([P3]);
+      expect(rej.map(p => p.id)).toEqual([P3, P1]);
 
       const {proposals: mix} = await fixture.trpc.getConfigProposalList({
         projectId: fixture.projectId,
-        statuses: ['pending', 'approved'],
+        statuses: ['rejected', 'approved'],
       });
-      expect(mix.map(p => p.id)).toEqual([P2, P1]);
+      expect(mix.map(p => p.id)).toEqual([P3, P2, P1]);
     }
 
     // 4) Filter by createdAt range (>= T2 and < T4) => only P2

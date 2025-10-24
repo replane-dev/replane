@@ -6,6 +6,7 @@ import React from 'react';
 
 interface OrgContextValue {
   organizationName: string | null;
+  requireProposals: boolean;
 }
 
 const OrgContext = React.createContext<OrgContextValue | undefined>(undefined);
@@ -15,7 +16,13 @@ export function OrgProvider({children}: {children: React.ReactNode}) {
   const orgQuery = trpc.getOrganization.queryOptions();
   const {data} = useSuspenseQuery({...orgQuery});
 
-  const value = React.useMemo<OrgContextValue>(() => ({organizationName: data.name}), [data.name]);
+  const value = React.useMemo<OrgContextValue>(
+    () => ({
+      organizationName: data.name,
+      requireProposals: Boolean(data.requireProposals),
+    }),
+    [data.name, data.requireProposals],
+  );
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }

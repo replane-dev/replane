@@ -9,7 +9,10 @@ import {baseProcedure, createTRPCRouter} from '../init';
 export const appRouter = createTRPCRouter({
   getOrganization: baseProcedure.query(async () => {
     const name = process.env.ORGANIZATION_NAME?.trim();
-    return {name: name && name.length > 0 ? name : null};
+    const requireProposals = ['1', 'true', 'yes', 'on'].includes(
+      (process.env.REQUIRE_PROPOSALS ?? '').trim().toLowerCase(),
+    );
+    return {name: name && name.length > 0 ? name : null, requireProposals};
   }),
   hello: baseProcedure
     .input(
@@ -94,6 +97,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         configId: Uuid(),
+        prevVersion: z.number(),
       }),
     )
     .mutation(async opts => {
@@ -103,6 +107,7 @@ export const appRouter = createTRPCRouter({
       await opts.ctx.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId: opts.input.configId,
         currentUserEmail: opts.ctx.currentUserEmail,
+        prevVersion: opts.input.prevVersion,
       });
       return {};
     }),
@@ -455,6 +460,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         configId: Uuid(),
+        proposedDelete: z.boolean().optional(),
         proposedValue: z.object({newValue: ConfigValue()}).optional(),
         proposedDescription: z.object({newDescription: ConfigDescription()}).optional(),
         proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
@@ -468,6 +474,7 @@ export const appRouter = createTRPCRouter({
         GLOBAL_CONTEXT,
         {
           configId: opts.input.configId,
+          proposedDelete: opts.input.proposedDelete,
           proposedValue: opts.input.proposedValue,
           proposedDescription: opts.input.proposedDescription,
           proposedSchema: opts.input.proposedSchema,

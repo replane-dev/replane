@@ -1,3 +1,5 @@
+# docker compose exec postgres psql -U postgres -d replane
+
 services:
   postgres:
     image: postgres:17

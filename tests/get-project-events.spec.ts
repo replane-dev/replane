@@ -145,6 +145,7 @@ describe('getProjectEvents Integration', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       configId,
       currentUserEmail: TEST_USER_EMAIL,
+      prevVersion: 1,
     });
 
     // Get the delete event
