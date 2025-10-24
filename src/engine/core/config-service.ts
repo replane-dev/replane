@@ -67,7 +67,7 @@ export class ConfigService {
     assert(patchAuthor.email, 'Patch author must have an email');
     assert(reviewer.email, 'Reviewer must have an email');
 
-    if (params.members || params.schema) {
+    if (params.members || params.schema || params.description) {
       await this.permissionService.ensureCanManageConfig(
         existingConfig.id,
         normalizeEmail(reviewer.email),
@@ -331,9 +331,11 @@ export class ConfigService {
           proposalId: proposal.id,
           configId: params.configId,
           rejectedInFavorOfProposalId: params.originalProposalId,
+          proposedDelete: proposal.proposedDelete ?? undefined,
           proposedValue: proposal.proposedValue ?? undefined,
           proposedDescription: proposal.proposedDescription ?? undefined,
           proposedSchema: proposal.proposedSchema ?? undefined,
+          proposedMembers: proposal.proposedMembers ?? undefined,
         },
       });
     }

@@ -3,7 +3,7 @@ import {z} from 'zod';
 import type {ConfigProposals, DB} from './db';
 import {fromJsonb, toJsonb} from './store-utils';
 import {createUuidV7} from './uuid';
-import {Uuid} from './zod';
+import {ConfigMember, Uuid} from './zod';
 
 export type ConfigProposalId = string;
 
@@ -26,6 +26,7 @@ export function ConfigProposal() {
     proposedDescription: z.string().nullable(),
     proposedValue: z.object({newValue: z.unknown()}).nullable(),
     proposedSchema: z.object({newSchema: z.unknown()}).nullable(),
+    proposedMembers: z.object({newMembers: z.array(ConfigMember())}).nullable(),
   });
 }
 
@@ -256,6 +257,7 @@ export class ConfigProposalStore {
         proposed_value: proposal.proposedValue ? toJsonb(proposal.proposedValue) : null,
         proposed_description: proposal.proposedDescription,
         proposed_schema: proposal.proposedSchema ? toJsonb(proposal.proposedSchema) : null,
+        proposed_members: proposal.proposedMembers ? toJsonb(proposal.proposedMembers) : null,
       })
       .execute();
   }
@@ -265,6 +267,7 @@ export class ConfigProposalStore {
     proposedValue?: unknown;
     proposedDescription?: string;
     proposedSchema?: unknown;
+    proposedMembers?: ConfigMember[];
     proposedDelete?: boolean;
     approvedAt?: Date;
     rejectedAt?: Date;
@@ -281,6 +284,12 @@ export class ConfigProposalStore {
           params.proposedSchema !== undefined
             ? params.proposedSchema
               ? toJsonb(params.proposedSchema)
+              : null
+            : undefined,
+        proposed_members:
+          params.proposedMembers !== undefined
+            ? params.proposedMembers
+              ? toJsonb(params.proposedMembers)
               : null
             : undefined,
         proposed_delete: params.proposedDelete,
@@ -313,5 +322,6 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     proposedValue: fromJsonb(proposal.proposed_value),
     proposedDescription: proposal.proposed_description,
     proposedSchema: fromJsonb(proposal.proposed_schema),
+    proposedMembers: fromJsonb(proposal.proposed_members),
   };
 }

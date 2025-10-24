@@ -129,6 +129,7 @@ export interface ConfigProposalCreatedAuditMessagePayload
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
+  proposedMembers?: {newMembers: Array<{email: string; role: string}>};
 }
 
 export interface ConfigProposalRejectedAuditMessagePayload
@@ -140,6 +141,7 @@ export interface ConfigProposalRejectedAuditMessagePayload
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
+  proposedMembers?: {newMembers: Array<{email: string; role: string}>};
 }
 
 export interface ConfigProposalApprovedAuditMessagePayload
@@ -150,6 +152,7 @@ export interface ConfigProposalApprovedAuditMessagePayload
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
+  proposedMembers?: {newMembers: Array<{email: string; role: string}>};
 }
 
 export type AuditMessagePayload =

@@ -49,6 +49,7 @@ describe('createConfigProposal', () => {
       proposedValue: {newValue: {flag: false}},
       proposedDescription: null,
       proposedSchema: null,
+      proposedMembers: null,
     });
   });
 
@@ -158,6 +159,69 @@ describe('createConfigProposal', () => {
     expect(proposal?.proposedValue).toBeNull();
     expect(proposal?.proposedDescription).toBeNull();
     expect(proposal?.proposedSchema).toBeNull();
+  });
+
+  it('should create a proposal with member changes', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'members_proposal_config',
+      value: {x: 1},
+      schema: {type: 'object', properties: {x: {type: 'number'}}},
+      description: 'Members test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const newMemberEmail = normalizeEmail('newowner@example.com');
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedMembers: {newMembers: [{email: newMemberEmail, role: 'owner'}]},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(configProposalId).toBeDefined();
+
+    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    expect(proposal?.proposedMembers).toEqual({
+      newMembers: [{email: newMemberEmail, role: 'owner'}],
+    });
+  });
+
+  it('should create audit message including proposedMembers', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'audit_members_config',
+      value: {x: 1},
+      schema: {type: 'object'},
+      description: 'Audit members test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const memberEmail = normalizeEmail('auditmember@example.com');
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedMembers: {newMembers: [{email: memberEmail, role: 'editor'}]},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    const messages = await fixture.engine.testing.auditMessages.list({
+      lte: new Date('2100-01-01T00:00:00Z'),
+      limit: 50,
+      orderBy: 'created_at desc, id desc',
+      projectId: fixture.projectId,
+    });
+
+    const proposalMessage = messages.find((m: any) => m.payload.type === 'config_proposal_created');
+    expect(proposalMessage).toBeDefined();
+    expect(proposalMessage?.payload).toMatchObject({
+      type: 'config_proposal_created',
+      proposalId: configProposalId,
+      configId,
+      proposedMembers: {newMembers: [{email: memberEmail, role: 'editor'}]},
+    });
   });
 
   it('should validate new value against new schema when both are proposed', async () => {

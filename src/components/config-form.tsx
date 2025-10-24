@@ -87,15 +87,14 @@ export function ConfigForm(props: ConfigFormProps) {
   // Permissions
   // - new: fully editable
   // - edit: respect role-based restrictions
-  // - proposal: allow proposing value/description/schema regardless of role, but never allow owners/editors edits
-  const isEdit = mode === 'edit';
+  // - proposal: allow proposing value/description/schema and members regardless of role
   const isProposal = mode === 'proposal';
-  const canEditDescription = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
+  const canEditDescription = mode === 'new' ? true : isProposal ? true : role === 'owner';
   const canEditValue = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
   const canEditSchema = mode === 'new' ? true : isProposal ? true : role === 'owner';
-  const canEditOwnersEditors = mode === 'new' ? true : isProposal ? false : role === 'owner';
+  const canEditOwnersEditors = mode === 'new' ? true : isProposal ? true : role === 'owner';
   const canSubmit = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
-  const showOwnersEditors = mode !== 'proposal';
+  const showOwnersEditors = true;
 
   const ajv = React.useMemo(
     () => new Ajv({allErrors: true, strict: false, allowUnionTypes: true}),
@@ -165,7 +164,7 @@ export function ConfigForm(props: ConfigFormProps) {
       }),
   } as const;
 
-  const fullSchema =
+  const fullSchemaBase =
     mode === 'new'
       ? z.object({
           name: z
@@ -174,6 +173,38 @@ export function ConfigForm(props: ConfigFormProps) {
           ...baseSchema,
         })
       : z.object({...baseSchema});
+
+  const fullSchema = fullSchemaBase.superRefine((vals, ctx) => {
+    const owners = (vals.ownersInput ?? '')
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    const editors = (vals.editorsInput ?? '')
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    const overlap = owners.filter(e => editors.includes(e));
+    if (overlap.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `The same email cannot be both owner and editor: ${Array.from(new Set(overlap)).join(', ')}`,
+        path: ['ownersInput'],
+      });
+    }
+
+    // check that not multiple times in owners or editors
+    const memberSet = new Set<string>();
+    for (const email of owners.concat(editors)) {
+      if (memberSet.has(email)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate member email found: ${email}`,
+          path: ['ownersInput'],
+        });
+      }
+      memberSet.add(email);
+    }
+  });
 
   type FormValues = z.input<typeof fullSchema> & {name?: string};
 
@@ -390,7 +421,7 @@ export function ConfigForm(props: ConfigFormProps) {
                       {...field}
                     />
                   </FormControl>
-                  {mode !== 'new' && !canEditOwnersEditors && (
+                  {mode === 'edit' && !canEditOwnersEditors && (
                     <FormDescription>Only owners can modify owners.</FormDescription>
                   )}
                   <FormMessage />
@@ -412,7 +443,7 @@ export function ConfigForm(props: ConfigFormProps) {
                       {...field}
                     />
                   </FormControl>
-                  {mode !== 'new' && !canEditOwnersEditors && (
+                  {mode === 'edit' && !canEditOwnersEditors && (
                     <FormDescription>Only owners can modify editors.</FormDescription>
                   )}
                   <FormMessage />

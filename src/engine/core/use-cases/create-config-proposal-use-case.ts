@@ -13,6 +13,7 @@ export interface CreateConfigProposalRequest {
   proposedValue?: {newValue: unknown};
   proposedDescription?: {newDescription: string};
   proposedSchema?: {newSchema: unknown};
+  proposedMembers?: {newMembers: Array<{email: string; role: 'owner' | 'editor' | 'viewer'}>};
   currentUserEmail: NormalizedEmail;
 }
 
@@ -38,14 +39,20 @@ export function createCreateConfigProposalUseCase(
       req.proposedDelete !== true &&
       req.proposedValue === undefined &&
       req.proposedDescription === undefined &&
-      req.proposedSchema === undefined
+      req.proposedSchema === undefined &&
+      req.proposedMembers === undefined
     ) {
       throw new BadRequestError('At least one field must be proposed');
     }
 
     // Deletion proposals must not include other fields
     if (req.proposedDelete) {
-      if (req.proposedValue || req.proposedDescription || req.proposedSchema) {
+      if (
+        req.proposedValue ||
+        req.proposedDescription ||
+        req.proposedSchema ||
+        req.proposedMembers
+      ) {
         throw new BadRequestError('Deletion proposal cannot include other changes');
       }
     }
@@ -79,6 +86,7 @@ export function createCreateConfigProposalUseCase(
       proposedValue: req.proposedValue ? {newValue: req.proposedValue.newValue} : null,
       proposedDescription: req.proposedDescription ? req.proposedDescription.newDescription : null,
       proposedSchema: req.proposedSchema ? {newSchema: req.proposedSchema.newSchema} : null,
+      proposedMembers: req.proposedMembers ? {newMembers: req.proposedMembers.newMembers} : null,
     });
 
     await tx.auditMessages.create({
@@ -95,6 +103,9 @@ export function createCreateConfigProposalUseCase(
         proposedValue: {newValue: req.proposedValue?.newValue},
         proposedDescription: req.proposedDescription?.newDescription,
         proposedSchema: {newSchema: req.proposedSchema?.newSchema},
+        proposedMembers: req.proposedMembers
+          ? {newMembers: req.proposedMembers.newMembers}
+          : undefined,
       },
     });
 

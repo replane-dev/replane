@@ -295,6 +295,13 @@ export const migrations: Migration[] = [
       ADD COLUMN proposed_delete BOOLEAN NOT NULL DEFAULT FALSE;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- add proposed_members to config_proposals to support membership changes via proposals
+      ALTER TABLE config_proposals
+      ADD COLUMN proposed_members JSONB NULL;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

@@ -67,6 +67,42 @@ describe('getConfigProposal', () => {
     });
     expect(result.proposal.createdAt).toBeDefined();
     expect(result.proposal.baseConfigVersion).toBe(1);
+    // Value-only changes can be approved by editors or owners
+    expect(result.proposal.approverRole).toBe('owners_and_editors');
+    expect(result.proposal.approverReason).toBe(
+      'Value-only changes can be approved by editors or owners.',
+    );
+    expect(result.proposal.approverEmails).toEqual(
+      expect.arrayContaining([CURRENT_USER_EMAIL, OTHER_USER_EMAIL]),
+    );
+  });
+
+  it('should indicate owners as approvers for member changes', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'get_proposal_members',
+      value: {enabled: false},
+      schema: null,
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(result.proposal.approverRole).toBe('owners');
+    expect(result.proposal.approverReason).toBe('Membership changes require owner approval.');
+    expect(result.proposal.approverEmails).toEqual([OTHER_USER_EMAIL]);
   });
 
   it('should get a pending proposal with description change', async () => {

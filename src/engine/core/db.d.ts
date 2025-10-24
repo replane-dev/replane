@@ -72,6 +72,7 @@ export interface ConfigProposals {
   id: string;
   proposed_delete: Generated<boolean>;
   proposed_description: string | null;
+  proposed_members: Json | null;
   proposed_schema: Json | null;
   proposed_value: Json | null;
   proposer_id: number | null;

@@ -110,3 +110,24 @@ describe('deleteProject', () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
+
+describe('deleteProject with proposals required', () => {
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL, requireProposals: true});
+
+  it('forbids direct deletion when proposals are required', async () => {
+    // Create an extra project so we are not attempting to delete the last one
+    const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+      currentUserEmail: CURRENT_USER_EMAIL,
+      name: 'ToDeleteWithProposals',
+      description: 'temp',
+    });
+
+    await expect(
+      fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
+        id: projectId,
+        confirmName: 'ToDeleteWithProposals',
+        currentUserEmail: CURRENT_USER_EMAIL,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});

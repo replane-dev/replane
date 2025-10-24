@@ -158,11 +158,21 @@ export default function ReviewConfigProposalPage() {
                 value: config.config.value,
                 description: config.config.description,
                 schema: config.config.schema,
+                owners: config.ownerEmails,
+                editors: config.editorEmails,
               }}
               proposed={{
                 value: proposal.proposedValue,
                 description: proposal.proposedDescription,
                 schema: proposal.proposedSchema,
+                members: proposal.proposedMembers
+                  ? {
+                      newMembers: proposal.proposedMembers.newMembers.map(m => ({
+                        email: m.email,
+                        role: m.role as 'owner' | 'editor' | 'viewer',
+                      })),
+                    }
+                  : null,
               }}
             />
           ) : (

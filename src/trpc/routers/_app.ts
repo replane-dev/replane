@@ -464,6 +464,11 @@ export const appRouter = createTRPCRouter({
         proposedValue: z.object({newValue: ConfigValue()}).optional(),
         proposedDescription: z.object({newDescription: ConfigDescription()}).optional(),
         proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
+        proposedMembers: z
+          .object({
+            newMembers: z.array(ConfigMember()),
+          })
+          .optional(),
       }),
     )
     .mutation(async opts => {
@@ -478,6 +483,7 @@ export const appRouter = createTRPCRouter({
           proposedValue: opts.input.proposedValue,
           proposedDescription: opts.input.proposedDescription,
           proposedSchema: opts.input.proposedSchema,
+          proposedMembers: opts.input.proposedMembers,
           currentUserEmail: opts.ctx.currentUserEmail,
         },
       );

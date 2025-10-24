@@ -34,6 +34,10 @@ export default function ProjectSettingsPage() {
   const trpc = useTRPC();
   const router = useRouter();
 
+  // Org settings (for gating destructive actions via proposals requirement)
+  const orgQuery = trpc.getOrganization.queryOptions();
+  const {data: org} = useSuspenseQuery({...orgQuery});
+
   // Project details
   const detailsQuery = trpc.getProject.queryOptions({id: projectId});
   const {data: detailsData} = useSuspenseQuery({...detailsQuery});
@@ -109,6 +113,7 @@ export default function ProjectSettingsPage() {
   const canEditDetails = myRole === 'owner' || myRole === 'admin';
   const canManageMembers = myRole === 'owner';
   const canDeleteProject = myRole === 'owner';
+  const proposalsRequired = org?.requireProposals ?? false;
 
   return (
     <div className="p-6 space-y-10 max-w-3xl">
@@ -229,42 +234,44 @@ export default function ProjectSettingsPage() {
       {msg ? <p className="text-sm text-green-600">{msg}</p> : null}
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
 
-      <section className="pt-4">
-        <h2 className="mb-2 text-xl font-semibold">Danger zone</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Deleting a project will permanently remove its configs and API keys. This action cannot be
-          undone.
-        </p>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="text-destructive"
-              disabled={!canDeleteProject}
-              title={!canDeleteProject ? 'Only owners can delete a project' : undefined}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete project
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete project</DialogTitle>
-              <DialogDescription>
-                Please type the project name to confirm deletion. This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DeleteProjectForm
-              projectId={projectId}
-              projectName={detailsData.project.name}
-              onDeleted={() => {
-                toast.success('Project deleted');
-                router.push('/app');
-              }}
-            />
-            <DialogFooter />
-          </DialogContent>
-        </Dialog>
-      </section>
+      {!proposalsRequired && (
+        <section className="pt-4">
+          <h2 className="mb-2 text-xl font-semibold">Danger zone</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Deleting a project will permanently remove its configs and API keys. This action cannot
+            be undone.
+          </p>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="text-destructive"
+                disabled={!canDeleteProject}
+                title={!canDeleteProject ? 'Only owners can delete a project' : undefined}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete project
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete project</DialogTitle>
+                <DialogDescription>
+                  Please type the project name to confirm deletion. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DeleteProjectForm
+                projectId={projectId}
+                projectName={detailsData.project.name}
+                onDeleted={() => {
+                  toast.success('Project deleted');
+                  router.push('/app');
+                }}
+              />
+              <DialogFooter />
+            </DialogContent>
+          </Dialog>
+        </section>
+      )}
     </div>
   );
 }

@@ -101,7 +101,24 @@ export default function ProposeConfigChangesPage() {
         ? {newSchema: data.schema}
         : undefined;
 
-    if (!proposedValue && !proposedDescription && !proposedSchema) {
+    // Members change detection
+    const currentOwners = (config.ownerEmails ?? []).slice().sort();
+    const currentEditors = (config.editorEmails ?? []).slice().sort();
+    const newOwners = (data.ownerEmails ?? []).slice().sort();
+    const newEditors = (data.editorEmails ?? []).slice().sort();
+    const ownersChanged = JSON.stringify(currentOwners) !== JSON.stringify(newOwners);
+    const editorsChanged = JSON.stringify(currentEditors) !== JSON.stringify(newEditors);
+    const proposedMembers =
+      ownersChanged || editorsChanged
+        ? {
+            newMembers: [
+              ...newOwners.map(email => ({email, role: 'owner' as const})),
+              ...newEditors.map(email => ({email, role: 'editor' as const})),
+            ],
+          }
+        : undefined;
+
+    if (!proposedValue && !proposedDescription && !proposedSchema && !proposedMembers) {
       // Nothing to propose
       alert('No changes detected. Update a field to create a proposal.');
       return;
@@ -112,6 +129,7 @@ export default function ProposeConfigChangesPage() {
       proposedValue,
       proposedDescription,
       proposedSchema,
+      proposedMembers,
     });
 
     router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}`);

@@ -24,6 +24,7 @@ export interface ConfigProposalDetails {
   proposedValue: {newValue: unknown} | null;
   proposedDescription: string | null;
   proposedSchema: {newSchema: unknown} | null;
+  proposedMembers: {newMembers: Array<{email: string; role: string}>} | null;
   status: 'pending' | 'approved' | 'rejected';
   approverRole: 'owners' | 'owners_and_editors';
   approverEmails: string[];
@@ -85,7 +86,8 @@ export function createGetConfigProposalUseCase(
     const ownersOnly =
       proposal.proposedDelete ||
       proposal.proposedSchema !== null ||
-      proposal.proposedDescription !== null;
+      proposal.proposedDescription !== null ||
+      (proposal as any).proposedMembers !== null;
 
     let approverReason = '';
     if (proposal.proposedDelete) {
@@ -94,6 +96,8 @@ export function createGetConfigProposalUseCase(
       approverReason = 'Schema changes require owner approval.';
     } else if (proposal.proposedDescription !== null) {
       approverReason = 'Description changes require owner approval.';
+    } else if ((proposal as any).proposedMembers !== null) {
+      approverReason = 'Membership changes require owner approval.';
     } else {
       approverReason = 'Value-only changes can be approved by editors or owners.';
     }
@@ -123,6 +127,7 @@ export function createGetConfigProposalUseCase(
         proposedValue: proposal.proposedValue,
         proposedDescription: proposal.proposedDescription,
         proposedSchema: proposal.proposedSchema,
+        proposedMembers: (proposal as any).proposedMembers ?? null,
         status,
         approverRole,
         approverEmails,

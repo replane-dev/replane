@@ -53,11 +53,14 @@ export interface ConfigProposalDiffProps {
     value: unknown;
     description: string;
     schema: unknown | null;
+    owners?: string[];
+    editors?: string[];
   };
   proposed: {
     value?: {newValue?: unknown} | null;
     description?: string | null;
     schema?: {newSchema?: unknown} | null;
+    members?: {newMembers?: Array<{email: string; role: 'owner' | 'editor' | 'viewer'}>} | null;
   };
 }
 
@@ -70,7 +73,34 @@ export function ConfigProposalDiff({current, proposed}: ConfigProposalDiffProps)
   if (proposed.schema)
     diffs.push({title: 'Schema', before: current.schema, after: proposed.schema.newSchema});
 
-  if (diffs.length === 0) {
+  // Members diff (owners/editors)
+  let membersChanges: Array<string> = [];
+  if (proposed.members && proposed.members.newMembers) {
+    const currentMap = new Map<string, 'owner' | 'editor' | 'viewer'>();
+    (current.owners ?? []).forEach(e => currentMap.set(e, 'owner'));
+    (current.editors ?? []).forEach(e => currentMap.set(e, 'editor'));
+
+    const proposedMap = new Map<string, 'owner' | 'editor' | 'viewer'>();
+    for (const m of proposed.members.newMembers) proposedMap.set(m.email, m.role);
+
+    const allEmails = new Set<string>([...currentMap.keys(), ...proposedMap.keys()]);
+    const adds: string[] = [];
+    const removes: string[] = [];
+    const roleChanges: string[] = [];
+    for (const email of allEmails) {
+      const before = currentMap.get(email);
+      const after = proposedMap.get(email);
+      if (before && !after) removes.push(`${email} (${before})`);
+      else if (!before && after) adds.push(`${email} (${after})`);
+      else if (before && after && before !== after)
+        roleChanges.push(`${email}: ${before} → ${after}`);
+    }
+    if (adds.length) membersChanges.push(`Add: ${adds.join(', ')}`);
+    if (removes.length) membersChanges.push(`Remove: ${removes.join(', ')}`);
+    if (roleChanges.length) membersChanges.push(`Change: ${roleChanges.join(', ')}`);
+  }
+
+  if (diffs.length === 0 && membersChanges.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -95,6 +125,16 @@ export function ConfigProposalDiff({current, proposed}: ConfigProposalDiffProps)
             language={d.title === 'Description' ? 'plaintext' : 'json'}
           />
         ))}
+        {membersChanges.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-sm font-medium">Members</div>
+            <ul className="list-disc pl-5 text-sm space-y-1">
+              {membersChanges.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

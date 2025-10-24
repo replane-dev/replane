@@ -248,7 +248,7 @@ export async function createEngine(options: EngineOptions) {
     getProjectList: createGetProjectListUseCase(),
     getProject: createGetProjectUseCase(),
     createProject: createCreateProjectUseCase(),
-    deleteProject: createDeleteProjectUseCase(),
+    deleteProject: createDeleteProjectUseCase({requireProposals: options.requireProposals}),
     updateProject: createUpdateProjectUseCase(),
     patchProject: createPatchProjectUseCase(),
     getProjectUsers: createGetProjectUsersUseCase(),

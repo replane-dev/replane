@@ -104,12 +104,28 @@ export default function ConfigByNamePage() {
       const valueChanged = JSON.stringify(data.value) !== JSON.stringify(current.value);
       const descChanged = (data.description ?? '') !== (current.description ?? '');
       const schemaChanged = JSON.stringify(data.schema) !== JSON.stringify(current.schema);
+      // Members change detection
+      const currentOwners = (config.ownerEmails ?? []).slice().sort();
+      const currentEditors = (config.editorEmails ?? []).slice().sort();
+      const newOwners = (data.ownerEmails ?? []).slice().sort();
+      const newEditors = (data.editorEmails ?? []).slice().sort();
+      const ownersChanged = JSON.stringify(currentOwners) !== JSON.stringify(newOwners);
+      const editorsChanged = JSON.stringify(currentEditors) !== JSON.stringify(newEditors);
 
       const proposedValue = valueChanged ? {newValue: data.value} : undefined;
       const proposedDescription = descChanged ? {newDescription: data.description} : undefined;
       const proposedSchema = schemaChanged ? {newSchema: data.schema} : undefined;
+      const proposedMembers =
+        ownersChanged || editorsChanged
+          ? {
+              newMembers: [
+                ...newOwners.map(email => ({email, role: 'owner' as ConfigUserRole})),
+                ...newEditors.map(email => ({email, role: 'editor' as ConfigUserRole})),
+              ],
+            }
+          : undefined;
 
-      if (!proposedValue && !proposedDescription && !proposedSchema) {
+      if (!proposedValue && !proposedDescription && !proposedSchema && !proposedMembers) {
         alert('No changes to propose.');
         return;
       }
@@ -119,6 +135,7 @@ export default function ConfigByNamePage() {
         proposedValue,
         proposedDescription,
         proposedSchema,
+        proposedMembers,
       });
       const proposalId = (res as any)?.configProposalId ?? (res as any)?.proposalId;
       if (proposalId) {

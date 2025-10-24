@@ -76,8 +76,8 @@ describe('approveConfigProposal', () => {
       schema: null,
       description: 'Old description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -142,8 +142,8 @@ describe('approveConfigProposal', () => {
       schema: {type: 'object', properties: {count: {type: 'number'}}},
       description: 'Initial',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -602,8 +602,8 @@ describe('approveConfigProposal', () => {
       schema: {type: 'object', properties: {count: {type: 'number'}}},
       description: 'Initial',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -705,8 +705,8 @@ describe('approveConfigProposal', () => {
       schema: null,
       description: 'To be deleted',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [OTHER_USER_EMAIL],
+      editorEmails: [OTHER_USER_EMAIL],
+      ownerEmails: [CURRENT_USER_EMAIL, THIRD_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -716,18 +716,18 @@ describe('approveConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    // Non-owner (CURRENT_USER) cannot approve deletion
+    // Non-owner (OTHER_USER_EMAIL) cannot approve deletion
     await expect(
       fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
         proposalId: configProposalId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        currentUserEmail: OTHER_USER_EMAIL,
       }),
     ).rejects.toThrow(ForbiddenError);
 
-    // Owner (OTHER_USER) can approve deletion
+    // Owner (THIRD_USER_EMAIL) can approve deletion
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: configProposalId,
-      currentUserEmail: OTHER_USER_EMAIL,
+      currentUserEmail: THIRD_USER_EMAIL,
     });
 
     // Config should be deleted
@@ -736,6 +736,48 @@ describe('approveConfigProposal', () => {
       projectId: fixture.projectId,
     });
     expect(config).toBeUndefined();
+  });
+
+  it('should approve a proposal with member changes (owner required)', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'approve_member_changes',
+      value: {x: 1},
+      schema: null,
+      description: 'Members test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Non-owner (CURRENT_USER) cannot approve member changes
+    await expect(
+      fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        proposalId: configProposalId,
+        currentUserEmail: CURRENT_USER_EMAIL,
+      }),
+    ).rejects.toThrow(ForbiddenError);
+
+    // Owner (OTHER_USER) can approve member changes
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // Verify members were applied
+    const {config} = await fixture.trpc.getConfig({
+      name: 'approve_member_changes',
+      projectId: fixture.projectId,
+    });
+
+    expect(config?.config.version).toBe(2);
+    expect(config?.editorEmails).toContain(THIRD_USER_EMAIL);
   });
 
   it('should throw error if non-editor tries to approve proposal with value change', async () => {
@@ -884,15 +926,15 @@ describe('approveConfigProposal', () => {
     expect(proposals).toHaveLength(1);
   });
 
-  it('should allow editor to approve proposal with description change only', async () => {
+  it('should allow owner to approve proposal with description change only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'editor_can_approve_description',
       value: {x: 1},
       schema: null,
       description: 'Original',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -916,5 +958,41 @@ describe('approveConfigProposal', () => {
     });
     expect(config?.config.description).toBe('Updated description');
     expect(config?.config.version).toBe(2);
+  });
+
+  it('should not allow editor to approve proposal with description change only', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'editor_can_approve_description',
+      value: {x: 1},
+      schema: null,
+      description: 'Original',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create proposal with description change only
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedDescription: {newDescription: 'Updated description'},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Approve as OTHER_USER who is an editor (description changes don't require owner)
+    await expect(() =>
+      fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        proposalId: configProposalId,
+        currentUserEmail: OTHER_USER_EMAIL,
+      }),
+    ).rejects.toThrow(ForbiddenError);
+
+    // Verify description was not updated
+    const {config} = await fixture.trpc.getConfig({
+      name: 'editor_can_approve_description',
+      projectId: fixture.projectId,
+    });
+    expect(config?.config.description).toBe('Original');
+    expect(config?.config.version).toBe(1);
   });
 });

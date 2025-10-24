@@ -80,6 +80,7 @@ export function createApproveConfigProposalUseCase(
         proposedValue: proposal.proposedValue ?? undefined,
         proposedDescription: proposal.proposedDescription ?? undefined,
         proposedSchema: proposal.proposedSchema ?? undefined,
+        proposedMembers: proposal.proposedMembers ?? undefined,
       },
     });
 
@@ -102,6 +103,9 @@ export function createApproveConfigProposalUseCase(
           proposal.proposedDescription !== null
             ? {newDescription: proposal.proposedDescription}
             : undefined,
+        members: proposal.proposedMembers
+          ? {newMembers: proposal.proposedMembers.newMembers}
+          : undefined,
         patchAuthor: patchAuthor,
         reviewer: currentUser,
         prevVersion: proposal.baseConfigVersion,
