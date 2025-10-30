@@ -74,7 +74,7 @@ export function ConfigProposalDiff({current, proposed}: ConfigProposalDiffProps)
     diffs.push({title: 'Schema', before: current.schema, after: proposed.schema.newSchema});
 
   // Members diff (owners/editors)
-  let membersChanges: Array<string> = [];
+  const membersChanges: Array<string> = [];
   if (proposed.members && proposed.members.newMembers) {
     const currentMap = new Map<string, 'owner' | 'editor' | 'viewer'>();
     (current.owners ?? []).forEach(e => currentMap.set(e, 'owner'));
