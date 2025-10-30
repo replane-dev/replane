@@ -15,6 +15,7 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
+import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment} from 'react';
@@ -43,6 +44,9 @@ export default function ReviewConfigProposalPage() {
   const createdAt = new Date(proposal.createdAt);
 
   const shortId = proposal.id.slice(-8);
+
+  const {data: session} = useSession();
+  const sessionUser = session?.user;
 
   return (
     <Fragment>
@@ -186,6 +190,11 @@ export default function ReviewConfigProposalPage() {
               <Button
                 disabled={approve.isPending || reject.isPending}
                 onClick={async () => {
+                  if (proposal.proposerEmail === sessionUser?.email) {
+                    alert('You cannot approve your own proposal.');
+                    return;
+                  }
+
                   await approve.mutateAsync({proposalId: proposal.id});
 
                   if (proposal.proposedDelete) {

@@ -3,6 +3,7 @@
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
+import {useProjects} from '@/contexts/project-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
@@ -16,6 +17,8 @@ export default function NewProjectPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const {refresh: refreshProjects} = useProjects();
+
   const createProject = useMutation(trpc.createProject.mutationOptions());
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,6 +27,7 @@ export default function NewProjectPage() {
     setError(null);
     try {
       const {projectId} = await createProject.mutateAsync({name, description});
+      await refreshProjects();
       router.push(`/app/projects/${projectId}/configs`);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create project');

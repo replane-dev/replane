@@ -29,11 +29,7 @@ export function createPatchConfigUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    // When requireProposals is enabled, forbid direct content changes
-    // (value/schema/description) and require going through proposals instead.
-    // Membership updates (members) are still allowed directly.
-    const hasContentChange = Boolean(req.value || req.schema || req.description);
-    if (deps.requireProposals && hasContentChange) {
+    if (deps.requireProposals) {
       throw new BadRequestError(
         'Direct config changes are disabled. Please create a proposal instead.',
       );
