@@ -118,7 +118,7 @@ export default function ProjectSettingsPage() {
   return (
     <div className="p-6 space-y-10 max-w-3xl">
       <section>
-        <h2 className="mb-4 text-xl font-semibold">Project details</h2>
+        <h2 className="mb-4 text-xl font-semibold">Project settings</h2>
         <form onSubmit={handleSaveDetails} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium">Name</label>
@@ -145,7 +145,7 @@ export default function ProjectSettingsPage() {
             />
             {!canEditDetails && (
               <p className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Only owners or admins can change project details.
+                <Lock className="h-3 w-3" /> Only owners or admins can change project settings.
               </p>
             )}
           </div>
@@ -158,7 +158,7 @@ export default function ProjectSettingsPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-xl font-semibold">Members</h2>
+        <h2 className="mb-4 text-xl font-semibold">Project members</h2>
         <div className="mb-4">
           <RoleLegend />
         </div>

@@ -102,7 +102,10 @@ describe('getConfigProposal', () => {
 
     expect(result.proposal.approverRole).toBe('owners');
     expect(result.proposal.approverReason).toBe('Membership changes require owner approval.');
-    expect(result.proposal.approverEmails).toEqual([OTHER_USER_EMAIL]);
+    expect(result.proposal.approverEmails).toHaveLength(2);
+    expect(result.proposal.approverEmails).toEqual(
+      expect.arrayContaining([OTHER_USER_EMAIL, CURRENT_USER_EMAIL]),
+    );
   });
 
   it('should get a pending proposal with description change', async () => {

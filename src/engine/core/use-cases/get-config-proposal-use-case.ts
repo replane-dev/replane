@@ -73,21 +73,14 @@ export function createGetConfigProposalUseCase(
         : 'pending';
 
     // Determine approval policy and eligible approvers
-    const members = await tx.configUsers.getByConfigId(proposal.configId);
-    const ownerEmails = members
-      .filter(m => m.role === 'owner')
-      .map(m => m.user_email_normalized)
-      .filter(Boolean) as string[];
-    const editorEmails = members
-      .filter(m => m.role === 'editor')
-      .map(m => m.user_email_normalized)
-      .filter(Boolean) as string[];
+    const ownerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
+    const editorEmails = await tx.permissionService.getConfigEditors(proposal.configId);
 
     const ownersOnly =
       proposal.proposedDelete ||
       proposal.proposedSchema !== null ||
       proposal.proposedDescription !== null ||
-      (proposal as any).proposedMembers !== null;
+      proposal.proposedMembers !== null;
 
     let approverReason = '';
     if (proposal.proposedDelete) {
@@ -96,7 +89,7 @@ export function createGetConfigProposalUseCase(
       approverReason = 'Schema changes require owner approval.';
     } else if (proposal.proposedDescription !== null) {
       approverReason = 'Description changes require owner approval.';
-    } else if ((proposal as any).proposedMembers !== null) {
+    } else if (proposal.proposedMembers !== null) {
       approverReason = 'Membership changes require owner approval.';
     } else {
       approverReason = 'Value-only changes can be approved by editors or owners.';
@@ -105,9 +98,7 @@ export function createGetConfigProposalUseCase(
     const approverRole: 'owners' | 'owners_and_editors' = ownersOnly
       ? 'owners'
       : 'owners_and_editors';
-    const approverEmails = ownersOnly
-      ? ownerEmails
-      : Array.from(new Set([...ownerEmails, ...editorEmails]));
+    const approverEmails = ownersOnly ? ownerEmails : editorEmails;
 
     return {
       proposal: {
@@ -127,7 +118,7 @@ export function createGetConfigProposalUseCase(
         proposedValue: proposal.proposedValue,
         proposedDescription: proposal.proposedDescription,
         proposedSchema: proposal.proposedSchema,
-        proposedMembers: (proposal as any).proposedMembers ?? null,
+        proposedMembers: proposal.proposedMembers ?? null,
         status,
         approverRole,
         approverEmails,

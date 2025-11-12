@@ -124,7 +124,7 @@ export default function ProposeConfigChangesPage() {
       return;
     }
 
-    await createProposal.mutateAsync({
+    const {configProposalId} = await createProposal.mutateAsync({
       configId: config.config.id,
       proposedValue,
       proposedDescription,
@@ -132,7 +132,9 @@ export default function ProposeConfigChangesPage() {
       proposedMembers,
     });
 
-    router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}`);
+    router.push(
+      `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${configProposalId}`,
+    );
   }
 
   return (

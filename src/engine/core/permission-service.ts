@@ -2,6 +2,7 @@ import type {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import {ForbiddenError} from './errors';
 import type {ProjectUserStore} from './project-user-store';
+import {unique} from './utils';
 import type {NormalizedEmail} from './zod';
 
 export class PermissionService {
@@ -10,6 +11,46 @@ export class PermissionService {
     private readonly projectUserStore: ProjectUserStore,
     private readonly configStore: ConfigStore,
   ) {}
+
+  async getConfigOwners(configId: string): Promise<string[]> {
+    const config = await this.configStore.getById(configId);
+    if (!config) return [];
+
+    const configUsers = await this.configUserStore.getByConfigId(configId);
+    const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
+
+    const configOwnerEmails = configUsers
+      .filter(cu => cu.role === 'owner')
+      .map(cu => cu.user_email_normalized)
+      .filter(Boolean) as string[];
+
+    const projectOwnerEmails = projectUsers
+      .filter(pu => pu.role === 'owner' || pu.role === 'admin')
+      .map(pu => pu.user_email_normalized)
+      .filter(Boolean) as string[];
+
+    return unique([...configOwnerEmails, ...projectOwnerEmails]);
+  }
+
+  async getConfigEditors(configId: string): Promise<string[]> {
+    const config = await this.configStore.getById(configId);
+    if (!config) return [];
+
+    const configUsers = await this.configUserStore.getByConfigId(configId);
+    const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
+
+    const configEditorEmails = configUsers
+      .filter(cu => cu.role === 'editor' || cu.role === 'owner')
+      .map(cu => cu.user_email_normalized)
+      .filter(Boolean) as string[];
+
+    const projectOwnerEmails = projectUsers
+      .filter(pu => pu.role === 'owner' || pu.role === 'admin')
+      .map(pu => pu.user_email_normalized)
+      .filter(Boolean) as string[];
+
+    return unique([...configEditorEmails, ...projectOwnerEmails]);
+  }
 
   async canEditConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
     const config = await this.configStore.getById(configId);

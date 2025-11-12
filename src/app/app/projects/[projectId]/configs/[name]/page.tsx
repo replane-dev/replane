@@ -137,14 +137,9 @@ export default function ConfigByNamePage() {
         proposedSchema,
         proposedMembers,
       });
-      const proposalId = (res as any)?.configProposalId ?? (res as any)?.proposalId;
-      if (proposalId) {
-        router.push(
-          `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${proposalId}`,
-        );
-      } else {
-        router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`);
-      }
+      router.push(
+        `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
+      );
       return;
     }
 

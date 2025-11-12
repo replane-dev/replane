@@ -302,6 +302,19 @@ export const migrations: Migration[] = [
       ADD COLUMN proposed_members JSONB NULL;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- drop unique config index and create project_id, name index
+      DROP INDEX IF EXISTS idx_configs_name;
+      CREATE UNIQUE INDEX idx_configs_project_id_name ON configs(project_id, name);
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      ALTER TABLE configs
+      DROP CONSTRAINT IF EXISTS configs_name_key;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
