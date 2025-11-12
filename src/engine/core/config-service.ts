@@ -274,6 +274,24 @@ export class ConfigService {
     });
   }
 
+  /**
+   * Rejects all pending proposals for a config.
+   * This is a public method that can be called directly from use cases.
+   */
+  async rejectAllPendingProposals(params: {configId: string; reviewer: User}): Promise<void> {
+    const config = await this.configs.getById(params.configId);
+    if (!config) {
+      throw new BadRequestError('Config not found');
+    }
+
+    await this.rejectAllPendingProposalsInternal({
+      configId: params.configId,
+      reviewer: params.reviewer,
+      existingConfig: config,
+      rejectedInFavorOfProposalId: null,
+    });
+  }
+
   private async rejectProposals(params: {
     configId: string;
     originalProposalId?: string;
@@ -301,13 +319,34 @@ export class ConfigService {
       assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
     }
 
-    // Get all other pending proposals for this config
+    await this.rejectAllPendingProposalsInternal({
+      configId: params.configId,
+      reviewer: params.reviewer,
+      existingConfig: params.existingConfig,
+      rejectedInFavorOfProposalId: params.originalProposalId ?? null,
+    });
+  }
+
+  private async rejectAllPendingProposalsInternal(params: {
+    configId: string;
+    reviewer: User;
+    existingConfig: Config;
+    rejectedInFavorOfProposalId: string | null;
+  }): Promise<void> {
+    const {reviewer, existingConfig} = params;
+
+    // Get all pending proposals for this config
     const pendingProposals = await this.configProposals.getPendingProposals({
       configId: params.configId,
     });
 
-    // Reject all other pending proposals
+    // Reject all pending proposals
     for (const proposalInfo of pendingProposals) {
+      assert(
+        !proposalInfo.approvedAt && !proposalInfo.rejectedAt,
+        'Proposal should not be approved or rejected',
+      );
+
       // Fetch full proposal details for audit message
       const proposal = await this.configProposals.getById(proposalInfo.id);
       assert(proposal, 'Proposal must exist');
@@ -316,7 +355,7 @@ export class ConfigService {
         id: proposal.id,
         rejectedAt: this.dateProvider.now(),
         reviewerId: reviewer.id,
-        rejectedInFavorOfProposalId: params.originalProposalId,
+        rejectedInFavorOfProposalId: params.rejectedInFavorOfProposalId,
       });
 
       // Create audit message for the rejection
@@ -330,7 +369,7 @@ export class ConfigService {
           type: 'config_proposal_rejected',
           proposalId: proposal.id,
           configId: params.configId,
-          rejectedInFavorOfProposalId: params.originalProposalId,
+          rejectedInFavorOfProposalId: params.rejectedInFavorOfProposalId ?? undefined,
           proposedDelete: proposal.proposedDelete ?? undefined,
           proposedValue: proposal.proposedValue ?? undefined,
           proposedDescription: proposal.proposedDescription ?? undefined,

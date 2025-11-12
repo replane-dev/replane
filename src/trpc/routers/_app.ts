@@ -521,6 +521,22 @@ export const appRouter = createTRPCRouter({
       });
       return {};
     }),
+  rejectAllPendingConfigProposals: baseProcedure
+    .input(
+      z.object({
+        configId: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      await opts.ctx.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
+        configId: opts.input.configId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return {};
+    }),
   getConfigProposal: baseProcedure
     .input(
       z.object({

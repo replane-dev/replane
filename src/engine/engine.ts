@@ -56,6 +56,7 @@ import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
+import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
 import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
 import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
@@ -232,6 +233,7 @@ export async function createEngine(options: EngineOptions) {
     createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
     approveConfigProposal: createApproveConfigProposalUseCase({dateProvider}),
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
+    rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
     patchConfig: createPatchConfigUseCase({

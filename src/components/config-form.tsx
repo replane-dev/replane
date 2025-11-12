@@ -20,7 +20,7 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {zodResolver} from '@hookform/resolvers/zod';
 import Ajv from 'ajv';
 import {format, formatDistanceToNow} from 'date-fns';
-import {CalendarDays, Clock3, FileCog, GitCommitVertical, PenLine} from 'lucide-react';
+import {CalendarDays, Clock3, FileCog, GitBranch, GitCommitVertical} from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
@@ -46,7 +46,7 @@ export interface ConfigFormProps {
   currentVersion?: number;
   currentPendingProposalsCount?: number;
   versionsLink?: string; // link to versions page
-  onCancel: () => void;
+  onCancel?: () => void;
   onDelete?: () => Promise<void> | void;
   onSubmit: (data: {
     action: 'save' | 'propose';
@@ -341,7 +341,7 @@ export function ConfigForm(props: ConfigFormProps) {
                   {typeof currentName === 'string' && typeof currentPendingProposalsCount && (
                     <>
                       <div className="sm:col-span-3 inline-flex items-center gap-1.5">
-                        <PenLine className="h-3.5 w-3.5" /> Proposals
+                        <GitBranch className="h-3.5 w-3.5" /> Proposals
                       </div>
                       <div className="sm:col-span-9 flex items-center gap-2">
                         <span>{currentPendingProposalsCount}</span>
@@ -598,15 +598,22 @@ export function ConfigForm(props: ConfigFormProps) {
               {proposing ? 'Proposing…' : 'Create Proposal'}
             </Button>
           )}
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
           {mode !== 'proposal' && onDelete && role === 'owner' && (
             <div className="ml-auto">
               <Button
-                variant="destructive"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
                 onClick={e => {
                   e.preventDefault();
+                  if (
+                    !confirm('Are you sure you want to delete this config? This cannot be undone.')
+                  )
+                    return;
                   onDelete();
                 }}
               >

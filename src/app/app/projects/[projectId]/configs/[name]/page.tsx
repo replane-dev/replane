@@ -2,6 +2,17 @@
 
 import {ConfigForm} from '@/components/config-form';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -20,7 +31,7 @@ import {formatDistanceToNow} from 'date-fns';
 import {GitBranch} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
-import {Fragment, useMemo} from 'react';
+import {Fragment, useMemo, useState} from 'react';
 import {useProject, useProjectId} from '../../utils';
 import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
 
@@ -35,6 +46,10 @@ export default function ConfigByNamePage() {
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
+  const rejectAllPendingProposals = useMutation(
+    trpc.rejectAllPendingConfigProposals.mutationOptions(),
+  );
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
   const project = useProject();
   const deleteOrPropose = useDeleteOrProposeConfig();
@@ -219,13 +234,58 @@ export default function ConfigByNamePage() {
                         </div>
                       )}
                     </div>
-                    <Button asChild size="sm" variant="default">
-                      <Link
-                        href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
-                      >
-                        {config.pendingProposals.length === 1 ? 'Review proposal' : 'View all'}
-                      </Link>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <AlertDialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {config.pendingProposals.length === 1 ? 'Reject' : 'Reject all'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reject all pending proposals?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will reject all pending proposal This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={async () => {
+                                try {
+                                  await rejectAllPendingProposals.mutateAsync({
+                                    configId: config.config.id,
+                                  });
+                                  setIsRejectDialogOpen(false);
+                                  router.refresh();
+                                } catch (error) {
+                                  console.error('Failed to reject all proposals:', error);
+                                }
+                              }}
+                              disabled={rejectAllPendingProposals.isPending}
+                              className="bg-destructive text-white hover:bg-destructive/90"
+                            >
+                              {rejectAllPendingProposals.isPending
+                                ? 'Rejecting...'
+                                : config.pendingProposals.length === 1
+                                  ? 'Reject'
+                                  : 'Reject all'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <Button asChild size="sm" variant="default">
+                        <Link
+                          href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
+                        >
+                          {config.pendingProposals.length === 1 ? 'Review proposal' : 'View all'}
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                   {config.pendingProposals.length > 1 && (
                     <ul className="mt-3 space-y-4 border-t border-primary/10 pt-3">
@@ -279,7 +339,6 @@ export default function ConfigByNamePage() {
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
             saving={patchConfig.isPending}
             proposing={createConfigProposal.isPending}
-            onCancel={() => router.push(`/app/projects/${project.id}/configs`)}
             onDelete={async () => {
               await deleteOrPropose({
                 configId: config.config.id,
