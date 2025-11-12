@@ -1,5 +1,6 @@
 'use client';
 
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {JsonEditor} from '@/components/json-editor';
 import {Button} from '@/components/ui/button';
 import {
@@ -19,7 +20,7 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {zodResolver} from '@hookform/resolvers/zod';
 import Ajv from 'ajv';
 import {format, formatDistanceToNow} from 'date-fns';
-import {CalendarDays, Clock3, FileCog, GitCommitVertical} from 'lucide-react';
+import {CalendarDays, Clock3, FileCog, GitCommitVertical, PenLine} from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
@@ -30,24 +31,25 @@ type Mode = 'new' | 'edit' | 'proposal';
 export interface ConfigFormProps {
   mode: Mode;
   role: 'viewer' | 'owner' | 'editor';
-  defaultName?: string; // used in edit mode (read-only display)
+  currentName?: string; // used in edit mode (read-only display)
   defaultValue: string; // JSON string
   defaultDescription?: string;
   defaultSchemaEnabled?: boolean;
   defaultSchema?: string; // JSON string
   defaultOwnerEmails?: string[];
   defaultEditorEmails?: string[];
-  submitting?: boolean;
-  submitLabel?: string; // optional override for submit button label
-  submittingLabel?: string; // optional override for submit button label while submitting
+  proposing?: boolean;
+  saving?: boolean;
   editorIdPrefix?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
   currentVersion?: number;
+  currentPendingProposalsCount?: number;
   versionsLink?: string; // link to versions page
   onCancel: () => void;
   onDelete?: () => Promise<void> | void;
   onSubmit: (data: {
+    action: 'save' | 'propose';
     name: string;
     value: unknown;
     schema: unknown | null;
@@ -61,16 +63,16 @@ export function ConfigForm(props: ConfigFormProps) {
   const {
     mode,
     role: rawRole,
-    defaultName = '',
+    currentName,
+    currentPendingProposalsCount,
     defaultValue,
     defaultDescription = '',
     defaultSchemaEnabled = false,
     defaultSchema = '',
     defaultOwnerEmails = [],
     defaultEditorEmails = [],
-    submitting,
-    submitLabel,
-    submittingLabel,
+    proposing,
+    saving,
     editorIdPrefix,
     createdAt,
     updatedAt,
@@ -80,6 +82,10 @@ export function ConfigForm(props: ConfigFormProps) {
     onDelete,
     onSubmit,
   } = props;
+
+  const defaultName = currentName ?? '';
+
+  const projectId = useProjectId();
 
   // Normalize role, tolerate common typo "editor"
   const role: 'viewer' | 'owner' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
@@ -100,6 +106,9 @@ export function ConfigForm(props: ConfigFormProps) {
     () => new Ajv({allErrors: true, strict: false, allowUnionTypes: true}),
     [],
   );
+
+  // Track which action button was clicked
+  const submitActionRef = React.useRef<'save' | 'propose' | null>(null);
 
   const baseSchema = {
     value: z
@@ -253,7 +262,12 @@ export function ConfigForm(props: ConfigFormProps) {
       }
     }
 
+    // Determine action: use tracked action, or default based on mode
+    const action: 'save' | 'propose' =
+      submitActionRef.current ?? (mode === 'proposal' ? 'propose' : 'save');
+
     await onSubmit({
+      action,
       name: values.name ?? defaultName,
       value: payloadValue,
       schema: values.schemaEnabled ? parsedSchema : null,
@@ -267,6 +281,9 @@ export function ConfigForm(props: ConfigFormProps) {
         .map(s => s.trim())
         .filter(Boolean),
     });
+
+    // Reset action ref after submission
+    submitActionRef.current = null;
   }
 
   // Reactive schema for Value editor (useWatch ensures defaults are considered before inputs mount)
@@ -320,6 +337,23 @@ export function ConfigForm(props: ConfigFormProps) {
                   <div className="sm:col-span-9">
                     <span>{defaultName}</span>
                   </div>
+
+                  {typeof currentName === 'string' && typeof currentPendingProposalsCount && (
+                    <>
+                      <div className="sm:col-span-3 inline-flex items-center gap-1.5">
+                        <PenLine className="h-3.5 w-3.5" /> Proposals
+                      </div>
+                      <div className="sm:col-span-9 flex items-center gap-2">
+                        <span>{currentPendingProposalsCount}</span>
+                        <Link
+                          href={`/app/projects/${projectId}/configs/${encodeURIComponent(currentName)}/proposals`}
+                          className="text-xs underline text-muted-foreground hover:text-foreground"
+                        >
+                          View proposals
+                        </Link>
+                      </div>
+                    </>
+                  )}
 
                   {typeof currentVersion === 'number' && (
                     <>
@@ -535,17 +569,35 @@ export function ConfigForm(props: ConfigFormProps) {
         )}
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={!!submitting || !canSubmit}>
-            {submitting
-              ? (submittingLabel ??
-                (mode === 'new' ? 'Creating…' : mode === 'proposal' ? 'Creating…' : 'Saving…'))
-              : (submitLabel ??
-                (mode === 'new'
+          {(mode === 'new' || mode === 'edit') && (
+            <Button
+              type="submit"
+              disabled={!!saving || !canSubmit}
+              onClick={() => {
+                submitActionRef.current = 'save';
+              }}
+            >
+              {saving
+                ? mode === 'new'
+                  ? 'Creating…'
+                  : 'Saving…'
+                : mode === 'new'
                   ? 'Create Config'
-                  : mode === 'proposal'
-                    ? 'Create Proposal'
-                    : 'Save Changes'))}
-          </Button>
+                  : 'Save Changes'}
+            </Button>
+          )}
+          {(mode === 'edit' || mode === 'proposal') && (
+            <Button
+              type="submit"
+              variant={mode === 'edit' ? 'outline' : 'default'}
+              disabled={!!proposing || !canSubmit}
+              onClick={() => {
+                submitActionRef.current = 'propose';
+              }}
+            >
+              {proposing ? 'Proposing…' : 'Create Proposal'}
+            </Button>
+          )}
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>

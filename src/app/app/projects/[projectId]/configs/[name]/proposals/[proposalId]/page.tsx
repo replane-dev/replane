@@ -93,8 +93,6 @@ export default function ReviewConfigProposalPage() {
         <div className="max-w-4xl space-y-6">
           <div className="rounded-lg border bg-card/50 p-3 text-sm">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-              <div className="sm:col-span-3">Proposal ID</div>
-              <div className="sm:col-span-9 break-all">{proposal.id}</div>
               <div className="sm:col-span-3">Proposer</div>
               <div className="sm:col-span-9">{proposal.proposerEmail ?? 'Unknown'}</div>
               <div className="sm:col-span-3">Created</div>

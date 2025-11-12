@@ -163,7 +163,7 @@ export default function ProposeConfigChangesPage() {
           <ConfigForm
             mode="proposal"
             role={config.myRole}
-            defaultName={name}
+            currentName={name}
             defaultValue={defaultValue}
             defaultSchemaEnabled={!!config.config?.schema}
             defaultSchema={
@@ -177,7 +177,7 @@ export default function ProposeConfigChangesPage() {
             updatedAt={config.config.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
-            submitting={createProposal.isPending}
+            proposing={createProposal.isPending}
             onCancel={() =>
               router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(name)}`)
             }

@@ -117,8 +117,15 @@ export type JsonSchemaValidationResult<T = unknown> =
 
 export function validateAgainstJsonSchema<T = unknown>(
   value: unknown,
-  schema: JsonSchema,
+  inputSchema: JsonSchema,
 ): JsonSchemaValidationResult<T> {
+  let schema: JsonSchema;
+  // Ajv doesn't allow to compile schema with the same $id, so we need to remove it.
+  if (Object.hasOwn(inputSchema, '$id')) {
+    schema = {...inputSchema, $id: undefined};
+  } else {
+    schema = inputSchema;
+  }
   const validate = __ajv.compile<T>(schema as JSONSchemaType<T>);
   const valid = validate(value);
 

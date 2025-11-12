@@ -17,6 +17,7 @@ import type {ConfigUserRole} from '@/engine/core/db';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
+import {GitBranch} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
@@ -87,6 +88,7 @@ export default function ConfigByNamePage() {
   }
 
   async function handleSubmit(data: {
+    action: 'save' | 'propose';
     name: string;
     value: unknown;
     schema: unknown | null;
@@ -98,7 +100,7 @@ export default function ConfigByNamePage() {
       throw new Error('unreachable: we do not render form when config is undefined');
     }
 
-    if (org.requireProposals) {
+    if (data.action === 'propose') {
       // Build a minimal proposal containing only changed fields
       const current = config.config;
       const valueChanged = JSON.stringify(data.value) !== JSON.stringify(current.value);
@@ -186,59 +188,82 @@ export default function ConfigByNamePage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-3xl space-y-6">
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              {config.pendingProposals.length > 0
-                ? `${config.pendingProposals.length} pending proposal${config.pendingProposals.length > 1 ? 's' : ''}`
-                : 'No pending proposals'}
-            </div>
-            <Button asChild variant="outline">
-              <Link
-                href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
-              >
-                View proposals
-              </Link>
-            </Button>
-            <Button asChild className="ml-auto" variant="secondary">
-              <Link
-                href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/propose`}
-              >
-                Propose changes
-              </Link>
-            </Button>
-          </div>
-
           {config.pendingProposals.length > 0 && (
-            <div className="rounded-lg border bg-card/50 p-3">
-              <div className="text-sm font-medium mb-2">Pending proposals</div>
-              <ul className="space-y-2">
-                {config.pendingProposals.map(p => (
-                  <li key={p.id} className="flex items-center justify-between text-sm">
-                    <div className="flex flex-col">
-                      <span>
-                        By {p.proposerEmail ?? 'Unknown'} · based on version {p.baseConfigVersion}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {formatDistanceToNow(new Date(p.createdAt), {addSuffix: true})}
-                      </span>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-start gap-3">
+                <GitBranch className="size-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-4 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-foreground mb-1">
+                        {config.pendingProposals.length === 1
+                          ? 'Review pending proposal'
+                          : `${config.pendingProposals.length} pending proposals`}
+                      </div>
+                      {config.pendingProposals.length === 1 ? (
+                        <div className="text-sm text-muted-foreground">
+                          <span>
+                            By {config.pendingProposals[0]!.proposerEmail ?? 'Unknown'} · based on
+                            version {config.pendingProposals[0]!.baseConfigVersion}
+                          </span>
+                          <span className="mx-1">·</span>
+                          <span>
+                            {formatDistanceToNow(new Date(config.pendingProposals[0]!.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          {config.pendingProposals.length} proposals waiting for review
+                        </div>
+                      )}
                     </div>
-                    <Button asChild size="sm" variant="outline">
+                    <Button asChild size="sm" variant="default">
                       <Link
-                        href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${p.id}`}
+                        href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
                       >
-                        Review
+                        {config.pendingProposals.length === 1 ? 'Review proposal' : 'View all'}
                       </Link>
                     </Button>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                  {config.pendingProposals.length > 1 && (
+                    <ul className="mt-3 space-y-4 border-t border-primary/10 pt-3">
+                      {config.pendingProposals.map(p => (
+                        <li
+                          key={p.id}
+                          className="flex items-center justify-between text-sm text-muted-foreground"
+                        >
+                          <div className="flex flex-col">
+                            <span>
+                              By {p.proposerEmail ?? 'Unknown'} · based on version{' '}
+                              {p.baseConfigVersion}
+                            </span>
+                            <span className="text-xs text-muted-foreground/80">
+                              {formatDistanceToNow(new Date(p.createdAt), {addSuffix: true})}
+                            </span>
+                          </div>
+                          <Button asChild size="sm" variant="outline">
+                            <Link
+                              href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${p.id}`}
+                            >
+                              Review
+                            </Link>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           <ConfigForm
-            mode="edit"
+            mode={org.requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
             role={org.requireProposals || config.myRole === 'viewer' ? 'owner' : config.myRole}
-            defaultName={name}
+            currentName={name}
+            currentPendingProposalsCount={config.pendingProposals.length}
             defaultValue={defaultValue}
             defaultSchemaEnabled={!!config.config?.schema}
             defaultSchema={
@@ -252,9 +277,8 @@ export default function ConfigByNamePage() {
             updatedAt={config.config.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
-            submitting={patchConfig.isPending || createConfigProposal.isPending}
-            submitLabel={org.requireProposals ? 'Propose Changes' : undefined}
-            submittingLabel={org.requireProposals ? 'Proposing…' : undefined}
+            saving={patchConfig.isPending}
+            proposing={createConfigProposal.isPending}
             onCancel={() => router.push(`/app/projects/${project.id}/configs`)}
             onDelete={async () => {
               await deleteOrPropose({
