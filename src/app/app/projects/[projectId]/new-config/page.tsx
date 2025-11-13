@@ -80,7 +80,6 @@ export default function NewConfigPage() {
           <ConfigForm
             mode="new"
             role="owner"
-            defaultName=""
             defaultValue={''}
             defaultSchemaEnabled={false}
             defaultSchema={''}
@@ -88,7 +87,7 @@ export default function NewConfigPage() {
             defaultEditorEmails={[]}
             defaultDescription={''}
             editorIdPrefix="new-config"
-            submitting={createConfig.isPending}
+            saving={createConfig.isPending}
             onCancel={() => router.push(`/app/projects/${projectId}/configs`)}
             onSubmit={handleSubmit}
           />
