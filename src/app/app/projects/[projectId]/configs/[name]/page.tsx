@@ -25,7 +25,6 @@ import {Button} from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -39,7 +38,7 @@ import type {ConfigUserRole} from '@/engine/core/db';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
-import {GitBranch} from 'lucide-react';
+import {AlertTriangle, GitBranch, Info} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo, useState} from 'react';
@@ -403,15 +402,59 @@ export default function ConfigByNamePage() {
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
               <DialogTitle>Create Proposal</DialogTitle>
-              <DialogDescription>
-                Add an optional message to explain the changes you&apos;re proposing.
-              </DialogDescription>
             </DialogHeader>
+
+            {/* Warning/Info about proposal rejection */}
+            <div className="pt-2">
+              {config && config.pendingProposals.length > 0 ? (
+                <div className="rounded-lg border border-yellow-200/50 bg-yellow-50/50 dark:border-yellow-900/30 dark:bg-yellow-950/20 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 text-sm space-y-2">
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {config.pendingProposals.length === 1
+                            ? '1 other proposal is pending'
+                            : `${config.pendingProposals.length} other proposals are pending`}
+                        </p>
+                        <p className="text-foreground/80 dark:text-foreground/70 mt-1">
+                          If another proposal gets approved before this one, your proposal will be
+                          automatically rejected since only one proposal can be applied at a time.
+                        </p>
+                      </div>
+                      <Link
+                        href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
+                        className="inline-flex items-center text-sm font-medium text-yellow-700 dark:text-yellow-300 hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        View pending proposals →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 text-sm space-y-2">
+                      <p className="text-foreground/80 dark:text-foreground/70">
+                        This proposal will be automatically rejected if{' '}
+                        {org.requireProposals
+                          ? 'another proposal gets approved'
+                          : 'another proposal gets approved or the config is edited directly'}
+                        . Only one change can be applied to a config at a time.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="proposal-message">
-                  Proposal description{' '}
-                  <span className="text-muted-foreground text-xs">(optional)</span>
+                  Message <span className="text-muted-foreground text-xs">(optional)</span>
                 </Label>
                 <Textarea
                   id="proposal-message"

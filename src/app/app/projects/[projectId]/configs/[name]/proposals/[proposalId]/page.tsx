@@ -277,7 +277,7 @@ export default function ReviewConfigProposalPage() {
                       } else if (reason === 'config_edited') {
                         return 'This proposal was automatically rejected because the config was edited directly, making this proposal outdated. Proposals must be based on the current config version.';
                       } else if (reason === 'rejected_explicitly') {
-                        return 'This proposal was explicitly rejected by a reviewer and will not be applied to the config.';
+                        return 'This proposal was rejected by a reviewer and will not be applied to the config.';
                       } else {
                         assertNever(reason, 'Unhandled rejection reason');
                       }
@@ -285,8 +285,18 @@ export default function ReviewConfigProposalPage() {
                   </p>
                   {proposal.rejectionReason !== 'config_deleted' && (
                     <p className="text-sm text-foreground/70 dark:text-foreground/60 italic">
-                      You can create a new proposal based on the current config version if
-                      you&apos;d like to propose similar changes.
+                      {proposal.rejectionReason === 'rejected_explicitly' ? (
+                        <>
+                          Consider discussing the feedback with{' '}
+                          {proposal.reviewerEmail ? proposal.reviewerEmail : 'the reviewer'} before
+                          creating a new proposal.
+                        </>
+                      ) : (
+                        <>
+                          You can create a new proposal based on the current config version if
+                          you&apos;d like to propose similar changes.
+                        </>
+                      )}
                     </p>
                   )}
                   {proposal.rejectionReason === 'another_proposal_approved' &&
