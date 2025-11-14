@@ -59,6 +59,7 @@ export default function RootLayout({
             toastOptions={{
               classNames: {
                 error: '!text-destructive ![&>svg]:text-destructive',
+                description: '!text-foreground',
               },
             }}
           />
