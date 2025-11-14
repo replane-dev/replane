@@ -242,8 +242,8 @@ export default function ReviewConfigProposalPage() {
                   </p>
                   {proposal.rejectionReason !== 'config_deleted' && (
                     <p className="text-sm text-foreground/70 dark:text-foreground/60 italic">
-                      You can create a new proposal based on the current config version if you'd
-                      like to propose similar changes.
+                      You can create a new proposal based on the current config version if
+                      you&apos;d like to propose similar changes.
                     </p>
                   )}
                   {proposal.rejectionReason === 'another_proposal_approved' &&

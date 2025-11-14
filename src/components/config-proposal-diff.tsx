@@ -117,7 +117,7 @@ export function ConfigProposalDiff({current, proposed}: ConfigProposalDiffProps)
         <div className="text-center">
           <div className="text-sm font-semibold text-foreground mb-1">No changes proposed</div>
           <p className="text-sm text-muted-foreground">
-            This proposal doesn't introduce any modifications to the config.
+            This proposal doesn&apos;t introduce any modifications to the config.
           </p>
         </div>
       </div>
