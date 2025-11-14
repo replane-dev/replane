@@ -1,6 +1,7 @@
 'use client';
 
 import {JsonEditor} from '@/components/json-editor';
+import {Badge} from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,14 +10,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
-import {AlignLeft, Calendar, Code2, FileText, GitCommitVertical, User} from 'lucide-react';
+import {AlignLeft, Calendar, Code2, FileText, User} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
@@ -117,7 +117,9 @@ export default function ConfigVersionDetailsPage() {
                         Version {version.version}
                       </Badge>
                       {currentConfigVersion === version.version && (
-                        <Badge variant="outline" className="text-xs">Current</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Current
+                        </Badge>
                       )}
                     </div>
                     {currentConfigVersion !== undefined &&
