@@ -1,6 +1,8 @@
 'use client';
 
+import {AuditEventDisplay} from '@/components/audit-event-display';
 import {JsonEditor} from '@/components/json-editor';
+import {Badge} from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,15 +11,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
+import {Button} from '@/components/ui/button';
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {Calendar, FileText, User} from 'lucide-react';
+import {format, formatDistanceToNow} from 'date-fns';
+import {Calendar, ChevronDown, Code2, FileText, User} from 'lucide-react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
-import {Fragment, useMemo} from 'react';
+import {Fragment, useMemo, useState} from 'react';
 import {useProjectId} from '../../utils';
 
 export default function AuditLogMessagePage() {
@@ -25,19 +30,13 @@ export default function AuditLogMessagePage() {
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getAuditLogMessage.queryOptions({id}));
   const message = data.message;
-
-  const meta = useMemo(() => {
-    if (!message) return null;
-    const createdAt = new Date(message.createdAt);
-    const full = createdAt.toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'});
-    return {full};
-  }, [message]);
+  const projectId = useProjectId();
+  const [showRawJson, setShowRawJson] = useState(false);
 
   const payloadJson = useMemo(
     () => (message ? JSON.stringify(message.payload, null, 2) : ''),
     [message],
   );
-  const projectId = useProjectId();
 
   return (
     <Fragment>
@@ -60,49 +59,131 @@ export default function AuditLogMessagePage() {
           </Breadcrumb>
         </div>
       </header>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 max-w-4xl">
-        {!message && (
-          <Card>
-            <CardContent className="p-6">Audit log message not found.</CardContent>
-          </Card>
-        )}
-        {message && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" /> Audit Log Message
-              </CardTitle>
-              <CardDescription>
-                <div className="pt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
-                    <Calendar className="h-3 w-3" /> {meta?.full}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
-                    <User className="h-3 w-3" /> {message.userEmail ?? 'Unknown user'}
-                  </span>
-                  {message.configName && (
-                    <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
-                      Config: {message.configName}
-                    </span>
-                  )}
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="max-w-4xl space-y-6">
+          {!message && (
+            <div className="rounded-lg border bg-card/50 p-6">
+              <p className="text-center text-muted-foreground">Audit log message not found.</p>
+            </div>
+          )}
+          {message && (
+            <>
+              {/* Message Info */}
+              <div className="rounded-lg border bg-card/50 p-4">
+                <div className="space-y-4">
+                  {/* Type Badge */}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs font-medium">
+                      {(() => {
+                        const payload = message.payload as {type?: string};
+                        const type = payload.type ?? 'unknown';
+                        return type
+                          .replace(/_/g, ' ')
+                          .replace(/\b\w/g, (c: string) => c.toUpperCase());
+                      })()}
+                    </Badge>
+                    {message.configName && (
+                      <Link
+                        href={`/app/projects/${projectId}/configs/${encodeURIComponent(message.configName)}`}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                      >
+                        Config: {message.configName}
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* Timestamp */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-0.5">Timestamp</div>
+                        <div className="text-sm font-medium">
+                          {formatDistanceToNow(new Date(message.createdAt), {addSuffix: true})}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(message.createdAt), 'PPpp')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* User */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-0.5">User</div>
+                        <div className="text-sm font-medium break-all">
+                          {message.userEmail ?? 'System'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Message ID */}
+                    <div className="flex items-center gap-2.5 sm:col-span-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-0.5">Message ID</div>
+                        <div className="text-sm font-mono font-medium break-all">{message.id}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="font-semibold mb-2">Payload</h2>
-                <JsonEditor
-                  id={`audit-message-${message.id}`}
-                  aria-label="Audit log message payload JSON"
-                  value={payloadJson}
-                  onChange={() => {}}
-                  readOnly
-                  height={360}
+              </div>
+
+              {/* Event Details */}
+              <div className="rounded-lg border bg-card/50 p-6">
+                <AuditEventDisplay
+                  payload={message.payload as AuditMessagePayload}
+                  projectId={projectId}
                 />
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              {/* Raw JSON Payload */}
+              <Collapsible open={showRawJson} onOpenChange={setShowRawJson}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => setShowRawJson(!showRawJson)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Code2 className="h-4 w-4" />
+                      <span>View Raw JSON Payload</span>
+                    </div>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${showRawJson ? 'rotate-180' : ''}`}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-4 rounded-lg border bg-card/50 overflow-hidden">
+                    <div className="border-b bg-muted/30 px-6 py-3">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Event Payload (JSON)
+                      </span>
+                    </div>
+                    <div className="p-6">
+                      <JsonEditor
+                        id={`audit-message-${message.id}`}
+                        aria-label="Audit log message payload JSON"
+                        value={payloadJson}
+                        onChange={() => {}}
+                        readOnly
+                        height={400}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
+        </div>
       </div>
     </Fragment>
   );
