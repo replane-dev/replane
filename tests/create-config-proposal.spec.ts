@@ -51,6 +51,7 @@ describe('createConfigProposal', () => {
       proposedDescription: null,
       proposedSchema: null,
       proposedMembers: null,
+      message: null,
     });
   });
 

@@ -30,6 +30,7 @@ export function ConfigProposal() {
     proposedValue: z.object({newValue: z.unknown()}).nullable(),
     proposedSchema: z.object({newSchema: z.unknown()}).nullable(),
     proposedMembers: z.object({newMembers: z.array(ConfigMember())}).nullable(),
+    message: z.string().nullable(),
   });
 }
 
@@ -262,6 +263,7 @@ export class ConfigProposalStore {
         proposed_description: proposal.proposedDescription,
         proposed_schema: proposal.proposedSchema ? toJsonb(proposal.proposedSchema) : null,
         proposed_members: proposal.proposedMembers ? toJsonb(proposal.proposedMembers) : null,
+        message: proposal.message,
       })
       .execute();
   }
@@ -330,5 +332,6 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     proposedDescription: proposal.proposed_description,
     proposedSchema: fromJsonb(proposal.proposed_schema),
     proposedMembers: fromJsonb(proposal.proposed_members),
+    message: proposal.message,
   };
 }

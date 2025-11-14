@@ -130,6 +130,7 @@ export interface ConfigProposalCreatedAuditMessagePayload
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
   proposedMembers?: {newMembers: Array<{email: string; role: string}>};
+  message?: string;
 }
 
 export interface ConfigProposalRejectedAuditMessagePayload

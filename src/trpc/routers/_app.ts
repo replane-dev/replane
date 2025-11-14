@@ -466,6 +466,7 @@ export const appRouter = createTRPCRouter({
             newMembers: z.array(ConfigMember()),
           })
           .optional(),
+        message: z.string().max(5000).optional(),
       }),
     )
     .mutation(async opts => {
@@ -481,6 +482,7 @@ export const appRouter = createTRPCRouter({
           proposedDescription: opts.input.proposedDescription,
           proposedSchema: opts.input.proposedSchema,
           proposedMembers: opts.input.proposedMembers,
+          message: opts.input.message,
           currentUserEmail: opts.ctx.currentUserEmail,
         },
       );

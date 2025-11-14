@@ -11,15 +11,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import {Button} from '@/components/ui/button';
-import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
-import {Calendar, ChevronDown, Code2, FileText, User} from 'lucide-react';
+import {Calendar, FileText, User} from 'lucide-react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
 import {Fragment, useMemo, useState} from 'react';
@@ -143,44 +141,21 @@ export default function AuditLogMessagePage() {
                   projectId={projectId}
                 />
               </div>
-
-              {/* Raw JSON Payload */}
-              <Collapsible open={showRawJson} onOpenChange={setShowRawJson}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between"
-                    onClick={() => setShowRawJson(!showRawJson)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Code2 className="h-4 w-4" />
-                      <span>View Raw JSON Payload</span>
-                    </div>
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${showRawJson ? 'rotate-180' : ''}`}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="mt-4 rounded-lg border bg-card/50 overflow-hidden">
-                    <div className="border-b bg-muted/30 px-6 py-3">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Event Payload (JSON)
-                      </span>
-                    </div>
-                    <div className="p-6">
-                      <JsonEditor
-                        id={`audit-message-${message.id}`}
-                        aria-label="Audit log message payload JSON"
-                        value={payloadJson}
-                        onChange={() => {}}
-                        readOnly
-                        height={400}
-                      />
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              <div className="mt-4 rounded-lg border bg-card/50 overflow-hidden">
+                <div className="border-b bg-muted/30 px-6 py-3">
+                  <span className="text-sm font-medium text-muted-foreground">Log payload</span>
+                </div>
+                <div className="p-6">
+                  <JsonEditor
+                    id={`audit-message-${message.id}`}
+                    aria-label="Audit log message payload JSON"
+                    value={payloadJson}
+                    onChange={() => {}}
+                    readOnly
+                    height={400}
+                  />
+                </div>
+              </div>
             </>
           )}
         </div>

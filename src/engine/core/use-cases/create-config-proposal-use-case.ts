@@ -14,6 +14,7 @@ export interface CreateConfigProposalRequest {
   proposedDescription?: {newDescription: string};
   proposedSchema?: {newSchema: unknown};
   proposedMembers?: {newMembers: Array<{email: string; role: 'owner' | 'editor'}>};
+  message?: string;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -88,6 +89,7 @@ export function createCreateConfigProposalUseCase(
       proposedDescription: req.proposedDescription ? req.proposedDescription.newDescription : null,
       proposedSchema: req.proposedSchema ? {newSchema: req.proposedSchema.newSchema} : null,
       proposedMembers: req.proposedMembers ? {newMembers: req.proposedMembers.newMembers} : null,
+      message: req.message ?? null,
     });
 
     await tx.auditMessages.create({
@@ -107,6 +109,7 @@ export function createCreateConfigProposalUseCase(
         proposedMembers: req.proposedMembers
           ? {newMembers: req.proposedMembers.newMembers}
           : undefined,
+        message: req.message,
       },
     });
 

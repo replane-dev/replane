@@ -76,6 +76,7 @@ export interface ConfigProposals {
   config_id: string;
   created_at: Timestamp;
   id: string;
+  message: string | null;
   proposed_delete: Generated<boolean>;
   proposed_description: string | null;
   proposed_members: Json | null;

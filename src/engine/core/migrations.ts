@@ -365,6 +365,13 @@ export const migrations: Migration[] = [
       ALTER TYPE config_user_role_v2 RENAME TO config_user_role;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Add message column to config_proposals for proposal descriptions
+      ALTER TABLE config_proposals
+      ADD COLUMN message TEXT NULL;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

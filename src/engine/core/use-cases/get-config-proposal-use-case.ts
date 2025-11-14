@@ -28,6 +28,7 @@ export interface ConfigProposalDetails {
   proposedDescription: string | null;
   proposedSchema: {newSchema: unknown} | null;
   proposedMembers: {newMembers: Array<{email: string; role: string}>} | null;
+  message: string | null;
   status: 'pending' | 'approved' | 'rejected';
   approverRole: 'owners' | 'owners_and_editors';
   approverEmails: string[];
@@ -153,6 +154,7 @@ export function createGetConfigProposalUseCase(
         proposedDescription: proposal.proposedDescription,
         proposedSchema: proposal.proposedSchema,
         proposedMembers: proposal.proposedMembers ?? null,
+        message: proposal.message,
         status,
         approverRole,
         approverEmails,
