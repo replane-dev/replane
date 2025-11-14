@@ -1,4 +1,5 @@
 import {getAuthOptions} from '@/app/auth-options';
+import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import type {NormalizedEmail} from '@/engine/core/zod';
 import type {Engine} from '@/engine/engine';
@@ -33,6 +34,21 @@ const t = initTRPC.context<TrpcContext>().create({
    * @see https://trpc.io/docs/server/data-transformers
    */
   // transformer: superjson,
+  errorFormatter: ({shape, error}) => {
+    // Pass through BadRequestError codes to the frontend
+    if (error.cause instanceof BadRequestError && error.cause.code) {
+      return {
+        ...shape,
+        data: {
+          ...shape.data,
+          cause: {
+            code: error.cause.code,
+          },
+        },
+      };
+    }
+    return shape;
+  },
 });
 // Base router and procedure helpers
 export const createTRPCRouter = t.router;

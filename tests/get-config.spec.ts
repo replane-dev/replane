@@ -185,6 +185,7 @@ describe('getConfig', () => {
 
     // Create pending proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {enabled: true}},
       currentUserEmail: OTHER_USER_EMAIL,
@@ -221,6 +222,7 @@ describe('getConfig', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -230,6 +232,7 @@ describe('getConfig', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: THIRD_USER_EMAIL,
@@ -264,6 +267,7 @@ describe('getConfig', () => {
 
     // Create and approve a proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {enabled: true}},
       currentUserEmail: OTHER_USER_EMAIL,
@@ -296,6 +300,7 @@ describe('getConfig', () => {
 
     // Create and reject a proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {enabled: true}},
       currentUserEmail: OTHER_USER_EMAIL,
@@ -329,6 +334,7 @@ describe('getConfig', () => {
     // Create and approve first proposal
     const {configProposalId: approvedProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -342,6 +348,7 @@ describe('getConfig', () => {
     // Create pending proposal
     const {configProposalId: pendingProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 2,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: THIRD_USER_EMAIL,
@@ -370,6 +377,7 @@ describe('getConfig', () => {
 
     // Create proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {enabled: true}},
       currentUserEmail: OTHER_USER_EMAIL,
@@ -414,6 +422,7 @@ describe('getConfig', () => {
     const {configProposalId: firstProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -429,6 +438,7 @@ describe('getConfig', () => {
     const {configProposalId: secondProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 2,
         configId,
         proposedValue: {newValue: {enabled: false}},
         currentUserEmail: OTHER_USER_EMAIL,

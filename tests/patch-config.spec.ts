@@ -359,6 +359,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {count: 2}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -368,6 +369,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {count: 3}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -377,6 +379,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {count: 4}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -442,6 +445,7 @@ describe('patchConfig', () => {
 
     // Create a proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {x: 2}},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -493,6 +497,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {x: 2}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -502,6 +507,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {x: 3}},
         proposedDescription: {newDescription: 'Updated'},
@@ -512,6 +518,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedSchema: {newSchema: {type: 'object', properties: {y: {type: 'number'}}}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -729,8 +736,12 @@ describe('patchConfig', () => {
       `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
       [v1Id],
     );
-    const v1Owners = v1Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
-    const v1Editors = v1Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+    const v1Owners = v1Members.rows
+      .filter(m => m.role === 'owner')
+      .map(m => m.user_email_normalized);
+    const v1Editors = v1Members.rows
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
 
     expect(v1Owners).toEqual([CURRENT_USER_EMAIL]);
     expect(v1Editors).toEqual([editor1]);
@@ -760,8 +771,12 @@ describe('patchConfig', () => {
       `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
       [v2Id],
     );
-    const v2Owners = v2Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
-    const v2Editors = v2Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+    const v2Owners = v2Members.rows
+      .filter(m => m.role === 'owner')
+      .map(m => m.user_email_normalized);
+    const v2Editors = v2Members.rows
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
 
     expect(v2Owners).toEqual([CURRENT_USER_EMAIL]);
     expect(v2Editors).toEqual([editor2]);
@@ -800,11 +815,15 @@ describe('patchConfig', () => {
       `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
       [v2Id],
     );
-    
+
     expect(v2Members.rows.length).toBeGreaterThan(0);
-    const v2Owners = v2Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
-    const v2Editors = v2Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
-    
+    const v2Owners = v2Members.rows
+      .filter(m => m.role === 'owner')
+      .map(m => m.user_email_normalized);
+    const v2Editors = v2Members.rows
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
+
     expect(v2Owners).toEqual([CURRENT_USER_EMAIL]);
     expect(v2Editors).toEqual([editor]);
   });

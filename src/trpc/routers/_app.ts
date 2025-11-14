@@ -457,6 +457,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         configId: Uuid(),
+        baseVersion: z.number(),
         proposedDelete: z.boolean().optional(),
         proposedValue: z.object({newValue: ConfigValue()}).optional(),
         proposedDescription: z.object({newDescription: ConfigDescription()}).optional(),
@@ -477,6 +478,7 @@ export const appRouter = createTRPCRouter({
         GLOBAL_CONTEXT,
         {
           configId: opts.input.configId,
+          baseVersion: opts.input.baseVersion,
           proposedDelete: opts.input.proposedDelete,
           proposedValue: opts.input.proposedValue,
           proposedDescription: opts.input.proposedDescription,

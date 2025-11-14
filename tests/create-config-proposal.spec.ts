@@ -26,6 +26,7 @@ describe('createConfigProposal', () => {
     // Create a proposal with new value
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       configId,
+      baseVersion: 1,
       proposedValue: {newValue: {flag: false}},
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -73,6 +74,7 @@ describe('createConfigProposal', () => {
     };
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedSchema: {newSchema},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -96,6 +98,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'New description'},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -120,6 +123,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {x: 2, y: 3}},
       proposedSchema: {
@@ -150,6 +154,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedDelete: true,
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -177,6 +182,7 @@ describe('createConfigProposal', () => {
 
     const newMemberEmail = normalizeEmail('newowner@example.com');
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedMembers: {newMembers: [{email: newMemberEmail, role: 'owner'}]},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -204,6 +210,7 @@ describe('createConfigProposal', () => {
 
     const memberEmail = normalizeEmail('auditmember@example.com');
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedMembers: {newMembers: [{email: memberEmail, role: 'editor'}]},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -241,6 +248,7 @@ describe('createConfigProposal', () => {
     // Propose incompatible value and schema
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {count: 'not a number'}},
         proposedSchema: {
@@ -266,6 +274,7 @@ describe('createConfigProposal', () => {
     // Propose value that doesn't match current schema
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {flag: 'not a boolean'}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -288,6 +297,7 @@ describe('createConfigProposal', () => {
     // Propose schema that current value doesn't satisfy
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         proposedSchema: {
           newSchema: {
@@ -313,6 +323,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedSchema: {newSchema: null},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -336,6 +347,7 @@ describe('createConfigProposal', () => {
 
     // Remove schema and propose invalid value - should be allowed
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: 'this would fail with the old schema'},
       proposedSchema: {newSchema: null},
@@ -349,6 +361,7 @@ describe('createConfigProposal', () => {
   it('should throw BadRequestError when config does not exist', async () => {
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId: createUuidV4(),
         proposedValue: {newValue: 'test'},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -370,6 +383,7 @@ describe('createConfigProposal', () => {
 
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
@@ -403,6 +417,7 @@ describe('createConfigProposal', () => {
 
     // Other user (not an editor/owner) should be able to create proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: 'allowed'},
       currentUserEmail: otherUserEmail,
@@ -426,6 +441,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
       configId,
       proposedValue: {newValue: {x: 2}},
       proposedDescription: {newDescription: 'Updated via proposal'},
@@ -474,11 +490,43 @@ describe('createConfigProposal', () => {
     // Create proposal - should track version 2
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       configId,
+      baseVersion: 2, // Config was updated to version 2
       proposedValue: {newValue: 3},
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
     expect(proposal?.baseConfigVersion).toBe(2);
+  });
+
+  it('should throw error if config version has changed', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'version_check_config',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Update the config (version becomes 2)
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {x: 2}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Try to create a proposal based on version 1 (should fail)
+    await expect(
+      fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        configId,
+        baseVersion: 1, // Config is now at version 2
+        proposedValue: {newValue: {x: 3}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      }),
+    ).rejects.toThrow('Config was edited by another user');
   });
 });

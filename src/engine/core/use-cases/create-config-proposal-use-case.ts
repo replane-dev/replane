@@ -9,6 +9,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface CreateConfigProposalRequest {
   configId: string;
+  baseVersion: number;
   proposedDelete?: boolean;
   proposedValue?: {newValue: unknown};
   proposedDescription?: {newDescription: string};
@@ -33,6 +34,13 @@ export function createCreateConfigProposalUseCase(
     const config = await tx.configs.getById(req.configId);
     if (!config) {
       throw new BadRequestError('Config not found');
+    }
+
+    // Check if config version matches the base version
+    if (config.version !== req.baseVersion) {
+      throw new BadRequestError('Config was edited by another user. Please, refresh the page.', {
+        code: 'CONFIG_VERSION_MISMATCH',
+      });
     }
 
     // At least one field must be proposed

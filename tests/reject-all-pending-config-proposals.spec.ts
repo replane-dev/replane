@@ -44,6 +44,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -53,6 +54,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: THIRD_USER_EMAIL,
@@ -62,6 +64,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {count: 42}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -123,6 +126,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -132,6 +136,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -201,6 +206,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: valueProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -210,6 +216,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: schemaProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedSchema: {newSchema},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -218,22 +225,21 @@ describe('rejectAllPendingConfigProposals', () => {
 
     const {configProposalId: descriptionProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Updated description'},
         currentUserEmail: OTHER_USER_EMAIL,
-      },
-    );
+      });
 
-    const {configProposalId: membersProposalId} = await fixture.engine.useCases.createConfigProposal(
-      GLOBAL_CONTEXT,
-      {
+    const {configProposalId: membersProposalId} =
+      await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        baseVersion: 1,
         configId,
         proposedMembers: {
           newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}],
         },
         currentUserEmail: OTHER_USER_EMAIL,
-      },
-    );
+      });
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
@@ -243,9 +249,8 @@ describe('rejectAllPendingConfigProposals', () => {
     // Verify all proposals are rejected
     const valueProposal = await fixture.engine.testing.configProposals.getById(valueProposalId);
     const schemaProposal = await fixture.engine.testing.configProposals.getById(schemaProposalId);
-    const descriptionProposal = await fixture.engine.testing.configProposals.getById(
-      descriptionProposalId,
-    );
+    const descriptionProposal =
+      await fixture.engine.testing.configProposals.getById(descriptionProposalId);
     const membersProposal = await fixture.engine.testing.configProposals.getById(membersProposalId);
 
     assert(valueProposal && schemaProposal && descriptionProposal && membersProposal);
@@ -268,7 +273,9 @@ describe('rejectAllPendingConfigProposals', () => {
 
     expect(rejectionMessages.length).toBeGreaterThanOrEqual(4);
 
-    const valueRejection = rejectionMessages.find(msg => msg.payload.proposalId === valueProposalId);
+    const valueRejection = rejectionMessages.find(
+      msg => msg.payload.proposalId === valueProposalId,
+    );
     const schemaRejection = rejectionMessages.find(
       msg => msg.payload.proposalId === schemaProposalId,
     );
@@ -305,6 +312,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: deleteProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDelete: true,
         currentUserEmail: OTHER_USER_EMAIL,
@@ -314,6 +322,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: valueProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -409,6 +418,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -418,6 +428,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -464,6 +475,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -473,6 +485,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -517,6 +530,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedValue: {newValue: {enabled: true}},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -526,6 +540,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description'},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -552,4 +567,3 @@ describe('rejectAllPendingConfigProposals', () => {
     expect(pendingAfter).toHaveLength(0);
   });
 });
-

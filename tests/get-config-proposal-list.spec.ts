@@ -56,6 +56,7 @@ describe('getConfigProposalList', () => {
     const {configProposalId: P1} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId: configAId,
         proposedDescription: {newDescription: 'A1'},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -67,6 +68,7 @@ describe('getConfigProposalList', () => {
     const {configProposalId: P2} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId: configAId,
         proposedValue: {newValue: {a: 2}},
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -90,6 +92,7 @@ describe('getConfigProposalList', () => {
     const {configProposalId: P3} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        baseVersion: 1,
         configId: configBId,
         proposedDescription: {newDescription: 'B1'},
         currentUserEmail: CURRENT_USER_EMAIL,

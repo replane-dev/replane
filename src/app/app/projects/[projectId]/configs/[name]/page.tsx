@@ -414,18 +414,32 @@ export default function ConfigByNamePage() {
                 onClick={async () => {
                   if (!pendingProposalData) return;
 
-                  const res = await createConfigProposal.mutateAsync({
-                    ...pendingProposalData,
-                    message: proposalMessage.trim() || undefined,
-                  });
+                  try {
+                    const res = await createConfigProposal.mutateAsync({
+                      ...pendingProposalData,
+                      baseVersion: config.config.version,
+                      message: proposalMessage.trim() || undefined,
+                    });
 
-                  setShowProposalDialog(false);
-                  setProposalMessage('');
-                  setPendingProposalData(null);
+                    setShowProposalDialog(false);
+                    setProposalMessage('');
+                    setPendingProposalData(null);
 
-                  router.push(
-                    `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
-                  );
+                    router.push(
+                      `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
+                    );
+                  } catch (error: any) {
+                    if (error?.data?.cause?.code === 'CONFIG_VERSION_MISMATCH') {
+                      setShowProposalDialog(false);
+                      setProposalMessage('');
+                      setPendingProposalData(null);
+                      alert(
+                        'The config was edited by another user while you were making changes. Please refresh the page to see the latest version and create a new proposal.',
+                      );
+                    } else {
+                      throw error;
+                    }
+                  }
                 }}
               >
                 {createConfigProposal.isPending ? 'Creating…' : 'Create Proposal'}
