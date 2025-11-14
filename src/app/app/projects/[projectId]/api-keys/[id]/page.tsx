@@ -1,5 +1,7 @@
 'use client';
 
+import {ApiKeyExplainer} from '@/components/api-key-explainer';
+import {ApiKeySdkGuide} from '@/components/api-key-sdk-guide';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,18 +10,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
+import {format, formatDistanceToNow} from 'date-fns';
+import {AlignLeft, CalendarDays, FileKey, Mail, Trash2} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useState} from 'react';
@@ -58,85 +55,143 @@ export default function ApiKeyDetailPage() {
           </Breadcrumb>
         </div>
       </header>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 max-w-2xl">
-        {!apiKey && (
-          <Card>
-            <CardContent className="p-6 text-muted-foreground">API key not found.</CardContent>
-          </Card>
-        )}
-        {apiKey && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{apiKey.name || 'Untitled Key'}</CardTitle>
-              <CardDescription>
-                Created {new Date(apiKey.createdAt).toLocaleString()}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div>
-                  <h2 className="text-sm font-medium mb-1">Description</h2>
-                  <p className="text-sm whitespace-pre-wrap break-words">
-                    {apiKey.description || '—'}
-                  </p>
-                </div>
-                <div>
-                  <h2 className="text-sm font-medium mb-1">Creator</h2>
-                  <p className="text-sm">{apiKey.creatorEmail || '—'}</p>
-                </div>
-                <div>
-                  <h2 className="text-sm font-medium mb-1">ID</h2>
-                  <p className="text-sm font-mono break-all">{apiKey.id}</p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col items-start gap-4">
-              {!confirming && (
-                <button
-                  type="button"
-                  onClick={() => setConfirming(true)}
-                  className="inline-flex items-center rounded border border-destructive text-destructive px-4 py-2 text-sm hover:bg-destructive/10"
-                >
-                  Delete API Key
-                </button>
-              )}
-              {confirming && (
-                <div className="space-y-3 w-full">
-                  <p className="text-sm font-medium text-foreground">
-                    This action{' '}
-                    <span className="font-semibold text-destructive">cannot be undone</span>. Are
-                    you sure?
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={deleteMutation.isPending}
-                      onClick={async () => {
-                        try {
-                          await deleteMutation.mutateAsync({id, projectId});
-                          toast.success('API key deleted');
-                          router.push(`/app/projects/${projectId}/api-keys`);
-                        } catch (e) {
-                          toast.error('Failed to delete');
-                        }
-                      }}
-                      className="inline-flex items-center rounded bg-destructive text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:text-white"
-                    >
-                      {deleteMutation.isPending ? 'Deleting…' : 'Confirm Delete'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirming(false)}
-                      className="inline-flex items-center rounded border px-4 py-2 text-sm"
-                    >
-                      Cancel
-                    </button>
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="max-w-3xl space-y-6">
+          <ApiKeyExplainer />
+          {!apiKey && (
+            <div className="rounded-lg border bg-card/50 p-6">
+              <p className="text-center text-muted-foreground">API key not found.</p>
+            </div>
+          )}
+          {apiKey && (
+            <>
+              {/* API Key Details */}
+              <div className="rounded-lg border bg-card/50 p-4">
+                <div className="space-y-4">
+                  {/* Name and Created At */}
+                  <div>
+                    <h1 className="text-xl font-semibold text-foreground mb-1">
+                      {apiKey.name || 'Untitled Key'}
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                      Created {formatDistanceToNow(new Date(apiKey.createdAt), {addSuffix: true})}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* Created Date */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-0.5">Created</div>
+                        <div className="text-sm font-medium">
+                          {format(new Date(apiKey.createdAt), 'MMM d, yyyy')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Creator */}
+                    {apiKey.creatorEmail && (
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-muted-foreground mb-0.5">Creator</div>
+                          <div className="text-sm font-medium break-all">{apiKey.creatorEmail}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Key ID */}
+                    <div className="flex items-center gap-2.5 sm:col-span-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                        <FileKey className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-0.5">Key ID</div>
+                        <div className="text-sm font-mono font-medium break-all">{apiKey.id}</div>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {apiKey.description && (
+                      <div className="flex items-start gap-2.5 sm:col-span-2">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0 mt-0.5">
+                          <AlignLeft className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-muted-foreground mb-0.5">Description</div>
+                          <p className="text-sm font-medium whitespace-pre-wrap break-words">
+                            {apiKey.description}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </CardFooter>
-          </Card>
-        )}
+              </div>
+
+              {/* Delete Section */}
+              <div className="rounded-lg border border-red-200/50 bg-red-50/50 dark:border-red-900/30 dark:bg-red-950/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Trash2 className="size-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-foreground mb-2">Danger zone</div>
+                    {!confirming ? (
+                      <>
+                        <p className="text-sm text-foreground/80 dark:text-foreground/70 mb-3">
+                          Once you delete an API key, all applications using it will immediately
+                          lose access. This action cannot be undone.
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => setConfirming(true)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Delete API Key
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-foreground/80 dark:text-foreground/70">
+                          This action{' '}
+                          <span className="font-semibold text-destructive">cannot be undone</span>.
+                          Are you sure?
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="destructive"
+                            disabled={deleteMutation.isPending}
+                            onClick={async () => {
+                              try {
+                                await deleteMutation.mutateAsync({id, projectId});
+                                toast.success('API key deleted');
+                                router.push(`/app/projects/${projectId}/api-keys`);
+                              } catch (e) {
+                                toast.error('Failed to delete');
+                              }
+                            }}
+                          >
+                            {deleteMutation.isPending ? 'Deleting…' : 'Confirm Delete'}
+                          </Button>
+                          <Button variant="outline" onClick={() => setConfirming(false)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* SDK Integration Guide */}
+              <ApiKeySdkGuide apiKey={null} />
+            </>
+          )}
+        </div>
       </div>
     </Fragment>
   );

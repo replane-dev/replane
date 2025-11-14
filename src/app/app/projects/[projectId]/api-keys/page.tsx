@@ -1,5 +1,6 @@
 'use client';
 
+import {ApiKeyExplainer} from '@/components/api-key-explainer';
 import {ApiKeysTable} from '@/components/api-keys-table';
 import {
   Breadcrumb,
@@ -30,7 +31,10 @@ export default function ApiKeysPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <ApiKeysTable projectId={projectId} />
+        <div className="max-w-4xl space-y-4">
+          <ApiKeyExplainer />
+          <ApiKeysTable projectId={projectId} />
+        </div>
       </div>
     </Fragment>
   );
