@@ -3,7 +3,7 @@ import {assertNever} from './utils';
 
 export function combineConfigAndProjectRoles(
   myProjectUserRole: ProjectUserRole,
-  _myConfigUserRole: ConfigUserRole,
+  _myConfigUserRole: ConfigUserRole | 'viewer',
 ): ConfigUserRole {
   if (myProjectUserRole === 'owner') {
     return 'owner';

@@ -13,7 +13,7 @@ export interface CreateConfigProposalRequest {
   proposedValue?: {newValue: unknown};
   proposedDescription?: {newDescription: string};
   proposedSchema?: {newSchema: unknown};
-  proposedMembers?: {newMembers: Array<{email: string; role: 'owner' | 'editor' | 'viewer'}>};
+  proposedMembers?: {newMembers: Array<{email: string; role: 'owner' | 'editor'}>};
   currentUserEmail: NormalizedEmail;
 }
 
@@ -80,6 +80,7 @@ export function createCreateConfigProposalUseCase(
       rejectedAt: null,
       approvedAt: null,
       reviewerId: null,
+      rejectionReason: null,
       rejectedInFavorOfProposalId: null,
       baseConfigVersion: config.version,
       proposedDelete: req.proposedDelete === true,
