@@ -1,6 +1,6 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
-import type {ConfigProposals, DB} from './db';
+import type {ConfigProposalRejectionReason, ConfigProposals, DB} from './db';
 import {fromJsonb, toJsonb} from './store-utils';
 import {createUuidV7} from './uuid';
 import {ConfigMember, Uuid} from './zod';
@@ -21,6 +21,9 @@ export function ConfigProposal() {
     approvedAt: z.date().nullable(),
     reviewerId: z.number().nullable(),
     rejectedInFavorOfProposalId: Uuid().nullable(),
+    rejectionReason: z
+      .enum(['config_edited', 'config_deleted', 'another_proposal_approved', 'rejected_explicitly'])
+      .nullable(),
     baseConfigVersion: z.number(),
     proposedDelete: z.boolean(),
     proposedDescription: z.string().nullable(),
@@ -252,6 +255,7 @@ export class ConfigProposalStore {
         approved_at: proposal.approvedAt,
         reviewer_id: proposal.reviewerId,
         rejected_in_favor_of_proposal_id: proposal.rejectedInFavorOfProposalId,
+        rejection_reason: proposal.rejectionReason,
         base_config_version: proposal.baseConfigVersion,
         proposed_delete: proposal.proposedDelete,
         proposed_value: proposal.proposedValue ? toJsonb(proposal.proposedValue) : null,
@@ -273,6 +277,7 @@ export class ConfigProposalStore {
     rejectedAt?: Date;
     reviewerId?: number;
     rejectedInFavorOfProposalId?: string | null;
+    rejectionReason?: ConfigProposalRejectionReason | null;
   }): Promise<void> {
     await this.db
       .updateTable('config_proposals')
@@ -297,6 +302,7 @@ export class ConfigProposalStore {
         rejected_at: params.rejectedAt,
         reviewer_id: params.reviewerId,
         rejected_in_favor_of_proposal_id: params.rejectedInFavorOfProposalId,
+        rejection_reason: params.rejectionReason,
       })
       .where('id', '=', params.id)
       .execute();
@@ -317,6 +323,7 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     approvedAt: proposal.approved_at,
     reviewerId: proposal.reviewer_id,
     rejectedInFavorOfProposalId: proposal.rejected_in_favor_of_proposal_id,
+    rejectionReason: proposal.rejection_reason,
     baseConfigVersion: proposal.base_config_version,
     proposedDelete: proposal.proposed_delete,
     proposedValue: fromJsonb(proposal.proposed_value),

@@ -68,6 +68,7 @@ export interface EngineOptions {
   databaseUrl: string;
   dbSchema: string;
   requireProposals: boolean;
+  allowSelfApprovals: boolean;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
   createEventBusClient?: (
@@ -231,7 +232,10 @@ export async function createEngine(options: EngineOptions) {
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),
     createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
-    approveConfigProposal: createApproveConfigProposalUseCase({dateProvider}),
+    approveConfigProposal: createApproveConfigProposalUseCase({
+      dateProvider,
+      allowSelfApprovals: options.allowSelfApprovals,
+    }),
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
     rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
     getConfigProposal: createGetConfigProposalUseCase({}),

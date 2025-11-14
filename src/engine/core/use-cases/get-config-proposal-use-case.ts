@@ -1,3 +1,5 @@
+import assert from 'assert';
+import type {ConfigProposalRejectionReason} from '../db';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -19,6 +21,7 @@ export interface ConfigProposalDetails {
   reviewerId: number | null;
   reviewerEmail: string | null;
   rejectedInFavorOfProposalId: string | null;
+  rejectionReason: ConfigProposalRejectionReason | null;
   baseConfigVersion: number;
   proposedDelete: boolean;
   proposedValue: {newValue: unknown} | null;
@@ -29,6 +32,11 @@ export interface ConfigProposalDetails {
   approverRole: 'owners' | 'owners_and_editors';
   approverEmails: string[];
   approverReason: string;
+  baseValue: unknown | null;
+  baseDescription: string | null;
+  baseSchema: unknown | null;
+  baseOwnerEmails: string[];
+  baseEditorEmails: string[];
 }
 
 export interface GetConfigProposalResponse {
@@ -100,6 +108,31 @@ export function createGetConfigProposalUseCase(
       : 'owners_and_editors';
     const approverEmails = ownersOnly ? ownerEmails : editorEmails;
 
+    // Get the base version of the config to show the diff against the original state
+    const baseVersion = await tx.configVersions.getByConfigIdAndVersion(
+      proposal.configId,
+      proposal.baseConfigVersion,
+    );
+    assert(
+      baseVersion,
+      `Base config version ${proposal.baseConfigVersion} not found for config ${proposal.configId}`,
+    );
+
+    // getByConfigIdAndVersion already extracts value and schema from JSON wrappers
+    const baseValue = baseVersion.value ?? null;
+    const baseDescription = baseVersion.description ?? null;
+    const baseSchema = baseVersion.schema ?? null;
+
+    // Get base members from the version snapshot, or fall back to current members if not versioned
+    const baseOwnerEmails =
+      baseVersion.members.length > 0
+        ? baseVersion.members.filter(m => m.role === 'owner').map(m => m.normalizedEmail)
+        : ownerEmails;
+    const baseEditorEmails =
+      baseVersion.members.length > 0
+        ? baseVersion.members.filter(m => m.role === 'editor').map(m => m.normalizedEmail)
+        : editorEmails;
+
     return {
       proposal: {
         id: proposal.id,
@@ -113,6 +146,7 @@ export function createGetConfigProposalUseCase(
         reviewerId: proposal.reviewerId,
         reviewerEmail,
         rejectedInFavorOfProposalId: proposal.rejectedInFavorOfProposalId,
+        rejectionReason: proposal.rejectionReason,
         baseConfigVersion: proposal.baseConfigVersion,
         proposedDelete: proposal.proposedDelete,
         proposedValue: proposal.proposedValue,
@@ -123,6 +157,11 @@ export function createGetConfigProposalUseCase(
         approverRole,
         approverEmails,
         approverReason,
+        baseValue,
+        baseDescription,
+        baseSchema,
+        baseOwnerEmails,
+        baseEditorEmails,
       },
     };
   };

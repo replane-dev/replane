@@ -552,4 +552,140 @@ describe('getConfigProposal', () => {
     expect(result.proposal.proposerId).toBeNull();
     expect(result.proposal.proposerEmail).toBeNull();
   });
+
+  it('should return base members from version snapshot', async () => {
+    // Create a config with initial members
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'base_members_test',
+      value: {count: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [OTHER_USER_EMAIL],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    // Create a proposal based on version 1
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedValue: {newValue: {count: 2}},
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // Now modify the config's members (this will create version 2)
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      members: {
+        newMembers: [
+          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: THIRD_USER_EMAIL, role: 'editor'}, // THIRD_USER instead of OTHER_USER
+        ],
+      },
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Get the proposal - it should show base members from version 1, not current members
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Base members should be from version 1
+    expect(result.proposal.baseOwnerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(result.proposal.baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
+
+    // Current members would be different (OTHER_USER removed, THIRD_USER added)
+    // But the proposal should show the diff against the base version
+  });
+
+  it('should handle member changes in proposal diff correctly', async () => {
+    // Create config with initial members
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'member_diff_test',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [OTHER_USER_EMAIL],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    // Create a proposal to change members
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedMembers: {
+        newMembers: [
+          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: THIRD_USER_EMAIL, role: 'editor'}, // Replace OTHER_USER with THIRD_USER
+        ],
+      },
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Verify base members match the original config
+    expect(result.proposal.baseOwnerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(result.proposal.baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
+
+    // Verify the proposed members
+    expect(result.proposal.proposedMembers?.newMembers).toEqual([
+      {email: CURRENT_USER_EMAIL, role: 'owner'},
+      {email: THIRD_USER_EMAIL, role: 'editor'},
+    ]);
+  });
+
+  it('should fallback to current members for old versions without member data', async () => {
+    // This test simulates an old version that was created before members were versioned
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'old_version_test',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [OTHER_USER_EMAIL],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    // Manually delete members to simulate old data (versions created before member versioning)
+    const connection = await fixture.engine.testing.pool.connect();
+    try {
+      const versionIdResult = await connection.query(
+        `SELECT id FROM config_versions WHERE config_id = $1 AND version = 1`,
+        [configId],
+      );
+      const versionId = versionIdResult.rows[0].id;
+      await connection.query(`DELETE FROM config_version_members WHERE config_version_id = $1`, [
+        versionId,
+      ]);
+    } finally {
+      connection.release();
+    }
+
+    // Create a proposal based on this version
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedValue: {newValue: {x: 2}},
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Should fallback to current members when version doesn't have member data
+    expect(result.proposal.baseOwnerEmails).toEqual([CURRENT_USER_EMAIL]);
+    // getConfigEditors includes both editors and owners, so it will include both
+    expect(result.proposal.baseEditorEmails).toEqual(
+      expect.arrayContaining([OTHER_USER_EMAIL, CURRENT_USER_EMAIL]),
+    );
+  });
 });

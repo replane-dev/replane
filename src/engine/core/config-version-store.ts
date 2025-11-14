@@ -4,6 +4,7 @@ import type {ConfigProposalId} from './config-proposal-store';
 import type {ConfigId} from './config-store';
 import type {DB} from './db';
 import {createUuidV7} from './uuid';
+import type {NormalizedEmail} from './zod';
 
 export type ConfigVersionId = string;
 
@@ -17,6 +18,7 @@ export interface ConfigLike {
   name: string;
   value: unknown;
   schema: unknown;
+  members: Array<{normalizedEmail: NormalizedEmail; role: 'owner' | 'editor'}>;
 }
 
 export interface ConfigVersion extends ConfigLike {
@@ -50,6 +52,17 @@ export class ConfigVersionStore {
         },
       ])
       .execute();
+
+    // Insert members into separate table
+    if (configVersion.members.length > 0) {
+      const memberRows = configVersion.members.map(member => ({
+        config_version_id: configVersion.id,
+        user_email_normalized: member.normalizedEmail,
+        role: member.role,
+      }));
+
+      await this.db.insertInto('config_version_members').values(memberRows).execute();
+    }
   }
 
   async listByConfigId(configId: string) {
@@ -88,6 +101,7 @@ export class ConfigVersionStore {
         description: string;
         value: unknown;
         schema: unknown;
+        members: Array<{normalizedEmail: string; role: 'owner' | 'editor'}>;
         authorEmail: string | null;
         proposalId: ConfigProposalId | null;
       }
@@ -120,6 +134,18 @@ export class ConfigVersionStore {
       return input;
     };
 
+    // Fetch members from the separate table
+    const memberRows = await this.db
+      .selectFrom('config_version_members')
+      .select(['user_email_normalized', 'role'])
+      .where('config_version_id', '=', row.id)
+      .execute();
+
+    const members = memberRows.map(m => ({
+      normalizedEmail: m.user_email_normalized,
+      role: m.role as 'owner' | 'editor',
+    }));
+
     return {
       id: row.id as ConfigVersionId,
       version: row.version,
@@ -127,6 +153,7 @@ export class ConfigVersionStore {
       description: row.description,
       value: extractJsonWrapper(row.value),
       schema: row.schema === null ? null : extractJsonWrapper(row.schema),
+      members,
       authorEmail: (row as unknown as {author_email: string | null}).author_email,
       proposalId: (row as unknown as {proposal_id: ConfigProposalId | null}).proposal_id,
     };

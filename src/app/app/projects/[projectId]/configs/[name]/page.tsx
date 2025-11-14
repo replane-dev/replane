@@ -204,9 +204,9 @@ export default function ConfigByNamePage() {
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-3xl space-y-6">
           {config.pendingProposals.length > 0 && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <div className="rounded-lg border border-yellow-300/60 bg-yellow-50 dark:border-yellow-800/40 dark:bg-yellow-950/30 p-4">
               <div className="flex items-start gap-3">
-                <GitBranch className="size-5 text-primary mt-0.5 shrink-0" />
+                <GitBranch className="size-5 text-yellow-700 dark:text-yellow-300 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-4 mb-1">
                     <div className="flex-1 min-w-0">
@@ -216,7 +216,7 @@ export default function ConfigByNamePage() {
                           : `${config.pendingProposals.length} pending proposals`}
                       </div>
                       {config.pendingProposals.length === 1 ? (
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-foreground/80 dark:text-foreground/70">
                           <span>
                             By {config.pendingProposals[0]!.proposerEmail ?? 'Unknown'} · based on
                             version {config.pendingProposals[0]!.baseConfigVersion}
@@ -229,7 +229,7 @@ export default function ConfigByNamePage() {
                           </span>
                         </div>
                       ) : (
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-foreground/80 dark:text-foreground/70">
                           {config.pendingProposals.length} proposals waiting for review
                         </div>
                       )}
@@ -288,18 +288,18 @@ export default function ConfigByNamePage() {
                     </div>
                   </div>
                   {config.pendingProposals.length > 1 && (
-                    <ul className="mt-3 space-y-4 border-t border-primary/10 pt-3">
+                    <ul className="mt-3 space-y-4 border-t border-yellow-300/40 dark:border-yellow-800/30 pt-3">
                       {config.pendingProposals.map(p => (
                         <li
                           key={p.id}
-                          className="flex items-center justify-between text-sm text-muted-foreground"
+                          className="flex items-center justify-between text-sm text-foreground/80 dark:text-foreground/70"
                         >
                           <div className="flex flex-col">
                             <span>
                               By {p.proposerEmail ?? 'Unknown'} · based on version{' '}
                               {p.baseConfigVersion}
                             </span>
-                            <span className="text-xs text-muted-foreground/80">
+                            <span className="text-xs text-foreground/60 dark:text-foreground/50">
                               {formatDistanceToNow(new Date(p.createdAt), {addSuffix: true})}
                             </span>
                           </div>

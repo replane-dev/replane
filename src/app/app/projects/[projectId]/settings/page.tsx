@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {Textarea} from '@/components/ui/textarea';
+import {useOrg} from '@/contexts/org-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {Info, Lock, Plus, Trash2} from 'lucide-react';
@@ -116,37 +117,44 @@ export default function ProjectSettingsPage() {
   const proposalsRequired = org?.requireProposals ?? false;
 
   return (
-    <div className="p-6 space-y-10 max-w-3xl">
+    <div className="p-6 space-y-8 max-w-3xl">
       <section>
         <h2 className="mb-4 text-xl font-semibold">Project settings</h2>
         <form onSubmit={handleSaveDetails} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Name</label>
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-              readOnly={!canEditDetails}
-              aria-readonly={!canEditDetails}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Use letters, numbers, hyphens and underscores (1-100 chars)
-            </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Description</label>
-            <Textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Optional description"
-              readOnly={!canEditDetails}
-              aria-readonly={!canEditDetails}
-              rows={4}
-            />
-            {!canEditDetails && (
-              <p className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Only owners or admins can change project settings.
+          <div className="rounded-lg border bg-card/50 p-4 space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Name</label>
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+                readOnly={!canEditDetails}
+                aria-readonly={!canEditDetails}
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Use letters, numbers, hyphens and underscores (1-100 chars)
               </p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Description</label>
+              <Textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Optional description"
+                readOnly={!canEditDetails}
+                aria-readonly={!canEditDetails}
+                rows={4}
+              />
+            </div>
+            {!canEditDetails && (
+              <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-3">
+                <div className="flex items-start gap-2">
+                  <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Only owners or admins can change project settings.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
           <div className="flex gap-2">
@@ -163,46 +171,57 @@ export default function ProjectSettingsPage() {
           <RoleLegend />
         </div>
         <div className="space-y-3">
-          {users.map((u, idx) => (
-            <div key={idx} className="flex flex-wrap items-center gap-2">
-              <Input
-                placeholder="Email"
-                value={u.email}
-                onChange={e =>
-                  setUsers(prev =>
-                    prev.map((x, i) => (i === idx ? {...x, email: e.target.value} : x)),
-                  )
-                }
-                className="min-w-[260px] flex-1"
-                readOnly={!canManageMembers}
-                aria-readonly={!canManageMembers}
-              />
-              <Select
-                value={u.role}
-                onValueChange={val =>
-                  setUsers(prev => prev.map((x, i) => (i === idx ? {...x, role: val as Role} : x)))
-                }
-                disabled={!canManageMembers}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owner">Owner</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => handleRemoveUser(u.email, idx)}
-                title="Remove"
-                disabled={!canManageMembers}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          {users.length > 0 && (
+            <div className="space-y-3">
+              {users.map((u, idx) => (
+                <div
+                  key={idx}
+                  className="flex flex-wrap items-center gap-2 p-3 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors"
+                >
+                  <Input
+                    placeholder="Email"
+                    value={u.email}
+                    onChange={e =>
+                      setUsers(prev =>
+                        prev.map((x, i) => (i === idx ? {...x, email: e.target.value} : x)),
+                      )
+                    }
+                    className="min-w-[260px] flex-1"
+                    readOnly={!canManageMembers}
+                    aria-readonly={!canManageMembers}
+                  />
+                  <Select
+                    value={u.role}
+                    onValueChange={val =>
+                      setUsers(prev =>
+                        prev.map((x, i) => (i === idx ? {...x, role: val as Role} : x)),
+                      )
+                    }
+                    disabled={!canManageMembers}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveUser(u.email, idx)}
+                    title="Remove"
+                    disabled={!canManageMembers}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
           <div>
             <Button
               type="button"
@@ -223,10 +242,14 @@ export default function ProjectSettingsPage() {
             </Button>
           </div>
           {!canManageMembers && (
-            <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> You don&apos;t have permission to manage members. Only
-              owners can make changes.
-            </p>
+            <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-3">
+              <div className="flex items-start gap-2">
+                <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  You don&apos;t have permission to manage members. Only owners can make changes.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </section>
@@ -235,41 +258,51 @@ export default function ProjectSettingsPage() {
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
 
       {!proposalsRequired && (
-        <section className="pt-4">
-          <h2 className="mb-2 text-xl font-semibold">Danger zone</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Deleting a project will permanently remove its configs and API keys. This action cannot
-            be undone.
-          </p>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="text-destructive"
-                disabled={!canDeleteProject}
-                title={!canDeleteProject ? 'Only owners can delete a project' : undefined}
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete project
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete project</DialogTitle>
-                <DialogDescription>
-                  Please type the project name to confirm deletion. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DeleteProjectForm
-                projectId={projectId}
-                projectName={detailsData.project.name}
-                onDeleted={() => {
-                  toast.success('Project deleted');
-                  router.push('/app');
-                }}
-              />
-              <DialogFooter />
-            </DialogContent>
-          </Dialog>
+        <section>
+          <h2 className="mb-4 text-xl font-semibold">Danger zone</h2>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+            <div className="flex items-start gap-3">
+              <Trash2 className="size-5 text-destructive mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0 space-y-3">
+                <div>
+                  <div className="text-sm font-semibold text-foreground mb-1">Delete project</div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Deleting a project will permanently remove its configs and API keys. This action
+                    cannot be undone.
+                  </p>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        disabled={!canDeleteProject}
+                        title={!canDeleteProject ? 'Only owners can delete a project' : undefined}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete project
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Delete project</DialogTitle>
+                        <DialogDescription>
+                          Please type the project name to confirm deletion. This action cannot be
+                          undone.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DeleteProjectForm
+                        projectId={projectId}
+                        projectName={detailsData.project.name}
+                        onDeleted={() => {
+                          toast.success('Project deleted');
+                          router.push('/app');
+                        }}
+                      />
+                      <DialogFooter />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       )}
     </div>
@@ -325,21 +358,36 @@ function DeleteProjectForm({
 }
 
 function RoleLegend() {
+  const {requireProposals} = useOrg();
+
   return (
-    <div className="rounded-md border bg-card/40 p-3 text-xs space-y-2">
-      <div className="font-medium flex items-center gap-1">
-        <Info className="h-3.5 w-3.5" /> Roles
+    <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-4">
+      <div className="flex items-start gap-3">
+        <Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0 space-y-3">
+          <div>
+            <div className="text-sm font-semibold text-foreground mb-2">Project member roles</div>
+            <div className="space-y-2.5 text-sm text-muted-foreground">
+              <div>
+                <span className="font-semibold text-foreground">Owner</span>:
+                {requireProposals
+                  ? ' Can approve all config change proposals. Can edit project details, manage members, and delete project. Must create proposals to change configs.'
+                  : ' Can edit project details, manage project members, delete project, and manage all configs.'}
+              </div>
+              <div>
+                <span className="font-semibold text-foreground">Admin</span>:
+                {requireProposals
+                  ? ' Can approve all config change proposals. Can edit project details. Cannot manage members or delete project. Must create proposals to change configs.'
+                  : ' Can edit project details and configs but cannot manage project members or delete the project.'}
+              </div>
+              <div>
+                <span className="font-semibold text-foreground">Everyone else</span>: Can view
+                configs and {requireProposals ? 'must' : 'can'} create proposals to suggest changes.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <ul className="list-disc pl-4 space-y-1">
-        <li>
-          <span className="font-semibold">Owner</span>: Full access. Can edit project details,
-          manage members, delete project, and manage all configs.
-        </li>
-        <li>
-          <span className="font-semibold">Admin</span>: Can edit project details and configs but
-          cannot manage members or delete the project.
-        </li>
-      </ul>
     </div>
   );
 }

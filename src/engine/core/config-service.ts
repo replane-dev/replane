@@ -9,6 +9,7 @@ import type {Config, ConfigId, ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import {createConfigVersionId, type ConfigVersionStore} from './config-version-store';
 import type {DateProvider} from './date-provider';
+import type {ConfigProposalRejectionReason} from './db';
 import {BadRequestError} from './errors';
 import {diffMembers} from './member-diff';
 import type {PermissionService} from './permission-service';
@@ -85,6 +86,7 @@ export class ConfigService {
       existingConfig,
       reviewer,
       prevVersion: params.prevVersion,
+      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
     });
 
     const nextValue = params.value ? params.value.newValue : existingConfig.value;
@@ -113,18 +115,14 @@ export class ConfigService {
       version: nextVersion,
     });
 
-    await this.configVersions.create({
-      configId: existingConfig.id,
-      createdAt: this.dateProvider.now(),
-      description: nextDescription,
-      id: createConfigVersionId(),
-      name: existingConfig.name,
-      schema: nextSchema,
-      value: nextValue,
-      version: nextVersion,
-      authorId: patchAuthor.id ?? null,
-      proposalId: params.originalProposalId ?? null,
-    });
+    // Capture members before any updates for versioning
+    const configUsersBefore = await this.configUsers.getByConfigId(existingConfig.id);
+    const ownerEmailsBefore = configUsersBefore
+      .filter(u => u.role === 'owner')
+      .map(u => u.user_email_normalized);
+    const editorEmailsBefore = configUsersBefore
+      .filter(u => u.role === 'editor')
+      .map(u => u.user_email_normalized);
 
     let membersDiff: {
       added: Array<{email: string; role: string}>;
@@ -158,6 +156,38 @@ export class ConfigService {
         removed: removed.map(r => ({email: r.email, role: r.role})),
       };
     }
+
+    // Get final members for the version
+    const configUsersAfter = await this.configUsers.getByConfigId(existingConfig.id);
+    const ownerEmailsAfter = configUsersAfter
+      .filter(u => u.role === 'owner')
+      .map(u => u.user_email_normalized);
+    const editorEmailsAfter = configUsersAfter
+      .filter(u => u.role === 'editor')
+      .map(u => u.user_email_normalized);
+
+    await this.configVersions.create({
+      configId: existingConfig.id,
+      createdAt: this.dateProvider.now(),
+      description: nextDescription,
+      id: createConfigVersionId(),
+      name: existingConfig.name,
+      schema: nextSchema,
+      value: nextValue,
+      version: nextVersion,
+      members: [
+        ...ownerEmailsAfter.map(email => ({
+          normalizedEmail: normalizeEmail(email),
+          role: 'owner' as const,
+        })),
+        ...editorEmailsAfter.map(email => ({
+          normalizedEmail: normalizeEmail(email),
+          role: 'editor' as const,
+        })),
+      ],
+      authorId: patchAuthor.id ?? null,
+      proposalId: params.originalProposalId ?? null,
+    });
 
     const afterConfig = await this.configs.getById(existingConfig.id);
 
@@ -246,6 +276,7 @@ export class ConfigService {
       existingConfig,
       reviewer: params.reviewer,
       prevVersion: params.prevVersion,
+      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_deleted',
     });
 
     await this.configs.deleteById(existingConfig.id);
@@ -289,6 +320,7 @@ export class ConfigService {
       reviewer: params.reviewer,
       existingConfig: config,
       rejectedInFavorOfProposalId: null,
+      rejectionReason: 'rejected_explicitly',
     });
   }
 
@@ -298,6 +330,7 @@ export class ConfigService {
     existingConfig: Config;
     reviewer: User;
     prevVersion: number;
+    rejectionReason: Exclude<ConfigProposalRejectionReason, 'rejected_explicitly'>;
   }): Promise<void> {
     const {reviewer, existingConfig} = params;
 
@@ -324,6 +357,7 @@ export class ConfigService {
       reviewer: params.reviewer,
       existingConfig: params.existingConfig,
       rejectedInFavorOfProposalId: params.originalProposalId ?? null,
+      rejectionReason: params.rejectionReason,
     });
   }
 
@@ -332,6 +366,7 @@ export class ConfigService {
     reviewer: User;
     existingConfig: Config;
     rejectedInFavorOfProposalId: string | null;
+    rejectionReason: ConfigProposalRejectionReason;
   }): Promise<void> {
     const {reviewer, existingConfig} = params;
 
@@ -356,6 +391,7 @@ export class ConfigService {
         rejectedAt: this.dateProvider.now(),
         reviewerId: reviewer.id,
         rejectedInFavorOfProposalId: params.rejectedInFavorOfProposalId,
+        rejectionReason: params.rejectionReason,
       });
 
       // Create audit message for the rejection

@@ -343,4 +343,39 @@ describe('createConfig', () => {
       }),
     ).rejects.toThrow(BadRequestError);
   });
+
+  it('should version members when creating config', async () => {
+    const editor1 = normalizeEmail('editor1@example.com');
+    const editor2 = normalizeEmail('editor2@example.com');
+
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'version_members_on_create',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [editor1, editor2],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    // Verify the version was created with members in the separate table
+    const version1Id = await fixture.engine.testing.pool.query(
+      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 1`,
+      [configId],
+    );
+    const versionId = version1Id.rows[0].id;
+
+    const members = await fixture.engine.testing.pool.query(
+      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1 ORDER BY role, user_email_normalized`,
+      [versionId],
+    );
+
+    const owners = members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const editors = members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+
+    expect(owners).toEqual([CURRENT_USER_EMAIL]);
+    expect(editors).toEqual(expect.arrayContaining([editor1, editor2]));
+    expect(editors).toHaveLength(2);
+  });
 });

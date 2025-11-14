@@ -100,4 +100,120 @@ describe('restore-config-version', () => {
     expect(restored.after.value).toEqual({a: 1});
     expect(restored.after.version).toBe(restored.before.version + 1);
   });
+
+  it('should restore members from version snapshot', async () => {
+    const otherUser = normalizeEmail('other@example.com');
+    const thirdUser = normalizeEmail('third@example.com');
+
+    // Create config with initial members
+    await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'restore-members',
+      description: 'initial',
+      value: {x: 1},
+      schema: null,
+      ownerEmails: [TEST_USER_EMAIL],
+      editorEmails: [otherUser],
+      currentUserEmail: TEST_USER_EMAIL,
+      projectId: fx.projectId,
+    });
+
+    const v1 = await fx.trpc.getConfig({name: 'restore-members', projectId: fx.projectId});
+    
+    // Update to version 2 with different members
+    await fx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId: v1.config!.config.id,
+      prevVersion: v1.config!.config.version,
+      members: {
+        newMembers: [
+          {email: TEST_USER_EMAIL, role: 'owner'},
+          {email: thirdUser, role: 'editor'}, // Changed from otherUser to thirdUser
+        ],
+      },
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+
+    const v2 = await fx.trpc.getConfig({name: 'restore-members', projectId: fx.projectId});
+    expect(v2.config!.editorEmails).toEqual([thirdUser]);
+
+    // Restore to version 1
+    await fx.trpc.restoreConfigVersion({
+      name: 'restore-members',
+      versionToRestore: 1,
+      expectedCurrentVersion: v2.config!.config.version,
+      projectId: fx.projectId,
+    });
+
+    const v3 = await fx.trpc.getConfig({name: 'restore-members', projectId: fx.projectId});
+    
+    // Restore doesn't change members, only value/schema/description
+    expect(v3.config!.config.version).toBe(3);
+    expect(v3.config!.editorEmails).toEqual([thirdUser]); // Members not restored
+    
+    // Verify the version snapshot has CURRENT members (thirdUser), not v1 members (otherUser)
+    const version3Id = await fx.engine.testing.pool.query(
+      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 3`,
+      [v1.config!.config.id],
+    );
+    const v3Id = version3Id.rows[0].id;
+
+    const v3Members = await fx.engine.testing.pool.query(
+      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
+      [v3Id],
+    );
+    const v3Owners = v3Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const v3Editors = v3Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+
+    expect(v3Owners).toEqual([TEST_USER_EMAIL]);
+    expect(v3Editors).toEqual([thirdUser]); // Current members, not restored from v1
+  });
+
+  it('should version members correctly when patching', async () => {
+    const editor1 = normalizeEmail('editor1@example.com');
+    const editor2 = normalizeEmail('editor2@example.com');
+
+    await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'version-members-test',
+      description: 'test',
+      value: {x: 1},
+      schema: null,
+      ownerEmails: [TEST_USER_EMAIL],
+      editorEmails: [editor1],
+      currentUserEmail: TEST_USER_EMAIL,
+      projectId: fx.projectId,
+    });
+
+    const v1 = await fx.trpc.getConfig({name: 'version-members-test', projectId: fx.projectId});
+
+    // Patch to change members
+    await fx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId: v1.config!.config.id,
+      prevVersion: v1.config!.config.version,
+      members: {
+        newMembers: [
+          {email: TEST_USER_EMAIL, role: 'owner'},
+          {email: editor2, role: 'editor'},
+        ],
+      },
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+
+    // Verify the version was created with correct members
+    const version2Id = await fx.engine.testing.pool.query(
+      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 2`,
+      [v1.config!.config.id],
+    );
+    const v2Id = version2Id.rows[0].id;
+
+    const v2Members = await fx.engine.testing.pool.query(
+      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
+      [v2Id],
+    );
+
+    expect(v2Members.rows.length).toBeGreaterThan(0);
+    const v2Owners = v2Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const v2Editors = v2Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+
+    expect(v2Owners).toEqual([TEST_USER_EMAIL]);
+    expect(v2Editors).toEqual([editor2]);
+  });
 });

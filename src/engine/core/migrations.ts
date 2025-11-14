@@ -315,6 +315,56 @@ export const migrations: Migration[] = [
       DROP CONSTRAINT IF EXISTS configs_name_key;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- add rejection_reason to config_proposals to track why a proposal was rejected
+      CREATE TYPE config_proposal_rejection_reason AS ENUM (
+        'config_edited',
+        'config_deleted',
+        'another_proposal_approved',
+        'rejected_explicitly'
+      );
+
+      ALTER TABLE config_proposals
+      ADD COLUMN rejection_reason config_proposal_rejection_reason NULL;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- create separate table for config version members
+      CREATE TABLE config_version_members (
+        config_version_id UUID NOT NULL REFERENCES config_versions(id) ON DELETE CASCADE,
+        user_email_normalized TEXT NOT NULL,
+        role config_user_role NOT NULL,
+        PRIMARY KEY (config_version_id, user_email_normalized)
+      );
+
+      CREATE INDEX idx_config_version_members_version_id ON config_version_members(config_version_id);
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Remove 'viewer' role from config_user_role enum
+      -- Step 1: Create new enum without 'viewer'
+      CREATE TYPE config_user_role_v2 AS ENUM ('owner', 'editor');
+
+      -- Step 2: Delete all config_users with role = 'viewer'
+      DELETE FROM config_users WHERE role = 'viewer';
+
+      -- Step 3: Change column types to use the new enum
+      ALTER TABLE config_users
+        ALTER COLUMN role TYPE config_user_role_v2 USING role::text::config_user_role_v2;
+
+      ALTER TABLE config_version_members
+        ALTER COLUMN role TYPE config_user_role_v2 USING role::text::config_user_role_v2;
+
+      -- Step 4: Drop the old enum
+      DROP TYPE config_user_role;
+
+      -- Step 5: Rename the new enum to the original name
+      ALTER TYPE config_user_role_v2 RENAME TO config_user_role;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

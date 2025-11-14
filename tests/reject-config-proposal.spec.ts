@@ -57,6 +57,7 @@ describe('rejectConfigProposal', () => {
     expect(proposal.rejectedAt).toBeDefined();
     expect(proposal.approvedAt).toBeNull();
     expect(proposal.reviewerId).toBe(1); // CURRENT_USER_ID is 1
+    expect(proposal.rejectionReason).toBe('rejected_explicitly');
 
     // Verify audit message
     const auditMessages = await fixture.engine.testing.auditMessages.list({

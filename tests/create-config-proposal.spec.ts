@@ -40,6 +40,7 @@ describe('createConfigProposal', () => {
       configId,
       proposerId: TEST_USER_ID,
       createdAt: fixture.now,
+      rejectionReason: null,
       rejectedAt: null,
       approvedAt: null,
       reviewerId: null,

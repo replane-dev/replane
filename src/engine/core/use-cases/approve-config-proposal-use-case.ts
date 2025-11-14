@@ -15,6 +15,7 @@ export interface ApproveConfigProposalResponse {}
 
 export interface ApproveConfigProposalUseCaseDeps {
   dateProvider: DateProvider;
+  allowSelfApprovals: boolean;
 }
 
 export function createApproveConfigProposalUseCase(
@@ -29,7 +30,7 @@ export function createApproveConfigProposalUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    if (proposal.proposerId === currentUser.id) {
+    if (!deps.allowSelfApprovals && proposal.proposerId === currentUser.id) {
       throw new ForbiddenError('Proposer cannot approve their own proposal');
     }
 

@@ -4,6 +4,7 @@ import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
+import {normalizeEmail} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
 export interface RestoreConfigVersionRequest {
@@ -65,6 +66,9 @@ export function createRestoreConfigVersionUseCase(
       version: nextVersion,
     });
 
+    // Get current members (restore doesn't change members, only value/schema/description)
+    const configUsers = await tx.configUsers.getByConfigId(config.id);
+
     await tx.configVersions.create({
       configId: config.id,
       createdAt: now,
@@ -74,6 +78,10 @@ export function createRestoreConfigVersionUseCase(
       schema: versionSnapshot.schema,
       value: versionSnapshot.value,
       version: nextVersion,
+      members: configUsers.map(u => ({
+        normalizedEmail: normalizeEmail(u.user_email_normalized),
+        role: u.role,
+      })),
       authorId: currentUser.id,
       proposalId: null,
     });

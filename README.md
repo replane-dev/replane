@@ -91,6 +91,7 @@ Minimum required:
 Optional:
 
 - ORGANIZATION_NAME – display name shown in the UI (e.g. sidebar project switcher). If not set, the label is omitted.
+- ALLOW_SELF_APPROVALS – if set to `true`, allows proposers to approve their own proposals. By default (false), self-approvals are not allowed.
 
 See `.env.example` for a working template.
 

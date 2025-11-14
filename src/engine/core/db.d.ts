@@ -5,7 +5,13 @@
 
 import type {ColumnType} from 'kysely';
 
-export type ConfigUserRole = 'editor' | 'owner' | 'viewer';
+export type ConfigProposalRejectionReason =
+  | 'another_proposal_approved'
+  | 'config_deleted'
+  | 'config_edited'
+  | 'rejected_explicitly';
+
+export type ConfigUserRole = 'owner' | 'editor';
 
 export type Generated<T> =
   T extends ColumnType<infer S, infer I, infer U>
@@ -78,6 +84,7 @@ export interface ConfigProposals {
   proposer_id: number | null;
   rejected_at: Timestamp | null;
   rejected_in_favor_of_proposal_id: string | null;
+  rejection_reason: ConfigProposalRejectionReason | null;
   reviewer_id: number | null;
 }
 
@@ -113,6 +120,12 @@ export interface ConfigVersions {
   schema: Json | null;
   value: Json;
   version: number;
+}
+
+export interface ConfigVersionMembers {
+  config_version_id: string;
+  role: ConfigUserRole;
+  user_email_normalized: string;
 }
 
 export interface Migrations {
@@ -165,6 +178,7 @@ export interface DB {
   audit_messages: AuditMessages;
   config_proposals: ConfigProposals;
   config_users: ConfigUsers;
+  config_version_members: ConfigVersionMembers;
   config_versions: ConfigVersions;
   configs: Configs;
   migrations: Migrations;

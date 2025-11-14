@@ -49,6 +49,7 @@ export function createRejectConfigProposalUseCase(
       rejectedAt: deps.dateProvider.now(),
       reviewerId: currentUser.id,
       rejectedInFavorOfProposalId: null,
+      rejectionReason: 'rejected_explicitly',
     });
 
     // Create audit message for the rejection

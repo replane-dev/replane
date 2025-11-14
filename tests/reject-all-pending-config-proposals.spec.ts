@@ -89,14 +89,17 @@ describe('rejectAllPendingConfigProposals', () => {
     expect(proposal1.rejectedAt).toBeDefined();
     expect(proposal1.approvedAt).toBeNull();
     expect(proposal1.reviewerId).toBe(1); // CURRENT_USER_ID is 1
+    expect(proposal1.rejectionReason).toBe('rejected_explicitly');
 
     expect(proposal2.rejectedAt).toBeDefined();
     expect(proposal2.approvedAt).toBeNull();
     expect(proposal2.reviewerId).toBe(1);
+    expect(proposal2.rejectionReason).toBe('rejected_explicitly');
 
     expect(proposal3.rejectedAt).toBeDefined();
     expect(proposal3.approvedAt).toBeNull();
     expect(proposal3.reviewerId).toBe(1);
+    expect(proposal3.rejectionReason).toBe('rejected_explicitly');
 
     // Verify no pending proposals remain
     const pendingAfter = await fixture.engine.testing.configProposals.getPendingProposals({

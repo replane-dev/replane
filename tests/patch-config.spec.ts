@@ -404,6 +404,7 @@ describe('patchConfig', () => {
     expect(rejectedProposal1.rejectedAt).not.toBeNull();
     expect(rejectedProposal1.reviewerId).toBe(TEST_USER_ID);
     expect(rejectedProposal1.rejectedInFavorOfProposalId).toBe(null);
+    expect(rejectedProposal1.rejectionReason).toBe('config_edited');
 
     const rejectedProposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
     assert(rejectedProposal2, 'Proposal 2 should exist');
@@ -411,6 +412,7 @@ describe('patchConfig', () => {
     expect(rejectedProposal2.rejectedAt).not.toBeNull();
     expect(rejectedProposal2.reviewerId).toBe(TEST_USER_ID);
     expect(rejectedProposal2.rejectedInFavorOfProposalId).toBe(null);
+    expect(rejectedProposal2.rejectionReason).toBe('config_edited');
 
     const rejectedProposal3 = await fixture.engine.testing.configProposals.getById(proposal3Id);
     assert(rejectedProposal3, 'Proposal 3 should exist');
@@ -418,6 +420,7 @@ describe('patchConfig', () => {
     expect(rejectedProposal3.rejectedAt).not.toBeNull();
     expect(rejectedProposal3.reviewerId).toBe(TEST_USER_ID);
     expect(rejectedProposal3.rejectedInFavorOfProposalId).toBe(null);
+    expect(rejectedProposal3.rejectionReason).toBe('config_edited');
 
     // Verify no pending proposals remain
     const pendingAfter = await fixture.engine.testing.configProposals.getPendingProposals({
@@ -698,5 +701,111 @@ describe('patchConfig', () => {
     expect(config?.editorEmails).toContain(normalizeEmail('editor2@example.com'));
     expect(config?.ownerEmails).toContain(normalizeEmail('owner1@example.com'));
     expect(config?.ownerEmails).toContain(CURRENT_USER_EMAIL);
+  });
+
+  it('should version members when patching', async () => {
+    const editor1 = normalizeEmail('editor1@example.com');
+    const editor2 = normalizeEmail('editor2@example.com');
+
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_version_members',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [editor1],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    // Verify version 1 has initial members
+    const version1Id = await fixture.engine.testing.pool.query(
+      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 1`,
+      [configId],
+    );
+    const v1Id = version1Id.rows[0].id;
+
+    const v1Members = await fixture.engine.testing.pool.query(
+      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
+      [v1Id],
+    );
+    const v1Owners = v1Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const v1Editors = v1Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+
+    expect(v1Owners).toEqual([CURRENT_USER_EMAIL]);
+    expect(v1Editors).toEqual([editor1]);
+
+    // Patch to change both value and members
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {x: 2}},
+      members: {
+        newMembers: [
+          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: editor2, role: 'editor'},
+        ],
+      },
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Verify version 2 has updated members
+    const version2Id = await fixture.engine.testing.pool.query(
+      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 2`,
+      [configId],
+    );
+    const v2Id = version2Id.rows[0].id;
+
+    const v2Members = await fixture.engine.testing.pool.query(
+      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
+      [v2Id],
+    );
+    const v2Owners = v2Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const v2Editors = v2Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+
+    expect(v2Owners).toEqual([CURRENT_USER_EMAIL]);
+    expect(v2Editors).toEqual([editor2]);
+  });
+
+  it('should version members even when only value changes', async () => {
+    const editor = normalizeEmail('editor@example.com');
+
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_value_only_members',
+      value: {x: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [editor],
+      ownerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    // Patch only the value (not members)
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      value: {newValue: {x: 2}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    // Verify version 2 still has members snapshot
+    const version2Id = await fixture.engine.testing.pool.query(
+      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 2`,
+      [configId],
+    );
+    const v2Id = version2Id.rows[0].id;
+
+    const v2Members = await fixture.engine.testing.pool.query(
+      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
+      [v2Id],
+    );
+    
+    expect(v2Members.rows.length).toBeGreaterThan(0);
+    const v2Owners = v2Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const v2Editors = v2Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+    
+    expect(v2Owners).toEqual([CURRENT_USER_EMAIL]);
+    expect(v2Editors).toEqual([editor]);
   });
 });

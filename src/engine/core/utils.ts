@@ -19,6 +19,25 @@ export function ensureDefined<T>(value: T | undefined, message: string): T {
   return value;
 }
 
+function parseBooleanEnv(value: string | undefined): boolean {
+  return ['1', 'true', 'yes', 'on'].includes((value ?? '').trim().toLowerCase());
+}
+
+export interface OrganizationConfig {
+  organizationName: string | null;
+  requireProposals: boolean;
+  allowSelfApprovals: boolean;
+}
+
+export function getOrganizationConfig(): OrganizationConfig {
+  const name = process.env.ORGANIZATION_NAME?.trim();
+  return {
+    organizationName: name && name.length > 0 ? name : null,
+    requireProposals: parseBooleanEnv(process.env.REQUIRE_PROPOSALS),
+    allowSelfApprovals: parseBooleanEnv(process.env.ALLOW_SELF_APPROVALS),
+  };
+}
+
 export function chunkArray<T>(array: T[], size: number): T[][] {
   if (size <= 0) {
     throw new Error('Chunk size must be greater than 0');

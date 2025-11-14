@@ -15,6 +15,7 @@ export interface TrpcFixtureOptions {
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
   requireProposals?: boolean;
+  allowSelfApprovals?: boolean;
 }
 
 function _createCaller() {
@@ -50,6 +51,7 @@ export class AppFixture {
       onConflictRetriesCount: this.options.onConflictRetriesCount,
       createEventBusClient: onNotification => eventBus.createClient(onNotification),
       requireProposals: this.options.requireProposals ?? false,
+      allowSelfApprovals: this.options.allowSelfApprovals ?? false,
     });
 
     const connection = await engine.testing.pool.connect();

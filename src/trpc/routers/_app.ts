@@ -1,6 +1,7 @@
 import {ConfigDescription, ConfigName, ConfigSchema, ConfigValue} from '@/engine/core/config-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ProjectDescription, ProjectName} from '@/engine/core/project-store';
+import {getOrganizationConfig} from '@/engine/core/utils';
 import {ConfigMember, EditorArray, Email, OwnerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
@@ -8,11 +9,7 @@ import {baseProcedure, createTRPCRouter} from '../init';
 
 export const appRouter = createTRPCRouter({
   getOrganization: baseProcedure.query(async () => {
-    const name = process.env.ORGANIZATION_NAME?.trim();
-    const requireProposals = ['1', 'true', 'yes', 'on'].includes(
-      (process.env.REQUIRE_PROPOSALS ?? '').trim().toLowerCase(),
-    );
-    return {name: name && name.length > 0 ? name : null, requireProposals};
+    return getOrganizationConfig();
   }),
   hello: baseProcedure
     .input(

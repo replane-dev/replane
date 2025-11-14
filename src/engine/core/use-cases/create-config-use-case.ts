@@ -6,7 +6,7 @@ import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
-import {validateAgainstJsonSchema} from '../utils';
+import {normalizeEmail, validateAgainstJsonSchema} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
 export interface CreateConfigRequest {
@@ -84,6 +84,7 @@ export function createCreateConfigUseCase(
       schema: req.schema,
       value: req.value,
       version: 1,
+      members: allMembers.map(m => ({normalizedEmail: normalizeEmail(m.email), role: m.role})),
       authorId: currentUser.id,
       proposalId: null,
     });

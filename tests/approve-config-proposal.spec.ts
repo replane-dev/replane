@@ -234,6 +234,7 @@ describe('approveConfigProposal', () => {
     expect(rejectedProposal1.rejectedAt).not.toBeNull();
     expect(rejectedProposal1.reviewerId).toBe(OTHER_USER_ID);
     expect(rejectedProposal1.rejectedInFavorOfProposalId).toBe(proposal2Id);
+    expect(rejectedProposal1.rejectionReason).toBe('another_proposal_approved');
 
     const rejectedProposal3 = await fixture.engine.testing.configProposals.getById(proposal3Id);
     assert(rejectedProposal3, 'Proposal 3 should exist');
@@ -241,6 +242,7 @@ describe('approveConfigProposal', () => {
     expect(rejectedProposal3.rejectedAt).not.toBeNull();
     expect(rejectedProposal3.reviewerId).toBe(OTHER_USER_ID);
     expect(rejectedProposal3.rejectedInFavorOfProposalId).toBe(proposal2Id);
+    expect(rejectedProposal3.rejectionReason).toBe('another_proposal_approved');
 
     // Verify config has proposal 2's value
     const {config} = await fixture.trpc.getConfig({
@@ -994,5 +996,63 @@ describe('approveConfigProposal', () => {
     });
     expect(config?.config.description).toBe('Original');
     expect(config?.config.version).toBe(1);
+  });
+});
+
+describe('approveConfigProposal with allowSelfApprovals enabled', () => {
+  const fixture = useAppFixture({
+    authEmail: CURRENT_USER_EMAIL,
+    allowSelfApprovals: true,
+  });
+
+  beforeEach(async () => {
+    const connection = await fixture.engine.testing.pool.connect();
+    try {
+      await connection.query(
+        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW()), ($3, 'Third', $4, NOW())`,
+        [OTHER_USER_ID, OTHER_USER_EMAIL, THIRD_USER_ID, THIRD_USER_EMAIL],
+      );
+    } finally {
+      connection.release();
+    }
+  });
+
+  it('should allow proposer to approve their own proposal', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'self_approve_test',
+      value: {count: 1},
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      proposedValue: {newValue: {count: 2}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Should not throw error because allowSelfApprovals is enabled
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Verify config was updated
+    const {config} = await fixture.trpc.getConfig({
+      name: 'self_approve_test',
+      projectId: fixture.projectId,
+    });
+
+    expect(config?.config.value).toEqual({count: 2});
+    expect(config?.config.version).toBe(2);
+
+    // Verify proposal is approved
+    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    expect(proposal?.approvedAt).toBeDefined();
+    expect(proposal?.reviewerId).toBe(1); // CURRENT_USER_ID
   });
 });
