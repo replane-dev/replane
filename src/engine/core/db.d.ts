@@ -11,7 +11,7 @@ export type ConfigProposalRejectionReason =
   | 'config_edited'
   | 'rejected_explicitly';
 
-export type ConfigUserRole = 'owner' | 'editor';
+export type ConfigUserRole = 'editor' | 'owner';
 
 export type Generated<T> =
   T extends ColumnType<infer S, infer I, infer U>
@@ -109,6 +109,12 @@ export interface ConfigUsers {
   user_email_normalized: string;
 }
 
+export interface ConfigVersionMembers {
+  config_version_id: string;
+  role: ConfigUserRole;
+  user_email_normalized: string;
+}
+
 export interface ConfigVersions {
   author_id: number | null;
   config_id: string;
@@ -120,12 +126,6 @@ export interface ConfigVersions {
   schema: Json | null;
   value: Json;
   version: number;
-}
-
-export interface ConfigVersionMembers {
-  config_version_id: string;
-  role: ConfigUserRole;
-  user_email_normalized: string;
 }
 
 export interface Migrations {
