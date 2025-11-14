@@ -1,6 +1,7 @@
 'use client';
 
 import {ConfigForm} from '@/components/config-form';
+import {PendingProposalsWarningDialog} from '@/components/pending-proposals-warning-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +68,8 @@ export default function ConfigByNamePage() {
   const [proposalMessage, setProposalMessage] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
   const [pendingProposalData, setPendingProposalData] = useState<any>(null);
+  const [showPendingWarning, setShowPendingWarning] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState<any>(null);
 
   const config = data.config;
 
@@ -74,6 +77,34 @@ export default function ConfigByNamePage() {
     if (!config) return '';
     return JSON.stringify(config.config.value, null, 2);
   }, [config]);
+
+  async function executePatchConfig(data: {
+    value: unknown;
+    schema: unknown | null;
+    description: string;
+    ownerEmails: string[];
+    editorEmails: string[];
+  }) {
+    if (!config) return;
+
+    await patchConfig.mutateAsync({
+      configId: config.config.id,
+      prevVersion: config.config.version,
+      value: {newValue: data.value},
+      schema: config.myRole === 'owner' ? {newSchema: data.schema} : undefined,
+      description: {newDescription: data.description},
+      members:
+        config.myRole === 'owner'
+          ? {
+              newMembers: [
+                ...data.ownerEmails.map(email => ({email, role: 'owner' as ConfigUserRole})),
+                ...data.editorEmails.map(email => ({email, role: 'editor' as ConfigUserRole})),
+              ],
+            }
+          : undefined,
+    });
+    router.push(`/app/projects/${projectId}/configs`);
+  }
 
   if (!config) {
     return (
@@ -173,23 +204,22 @@ export default function ConfigByNamePage() {
     }
 
     // Direct patch path (no approvals required)
-    await patchConfig.mutateAsync({
-      configId: config?.config.id,
-      prevVersion: config?.config.version,
-      value: {newValue: data.value},
-      schema: config?.myRole === 'owner' ? {newSchema: data.schema} : undefined,
-      description: {newDescription: data.description},
-      members:
-        config?.myRole === 'owner'
-          ? {
-              newMembers: [
-                ...data.ownerEmails.map(email => ({email, role: 'owner' as ConfigUserRole})),
-                ...data.editorEmails.map(email => ({email, role: 'editor' as ConfigUserRole})),
-              ],
-            }
-          : undefined,
-    });
-    router.push(`/app/projects/${projectId}/configs`);
+    // Check if there are pending proposals
+    if (config.pendingProposals.length > 0) {
+      setPendingEditData(data);
+      setShowPendingWarning(true);
+      return;
+    }
+
+    await executePatchConfig(data);
+  }
+
+  async function confirmEdit() {
+    if (!pendingEditData) return;
+
+    setShowPendingWarning(false);
+    setPendingEditData(null);
+    await executePatchConfig(pendingEditData);
   }
 
   return (
@@ -447,6 +477,20 @@ export default function ConfigByNamePage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Pending Proposals Warning for Edit */}
+        {config && (
+          <PendingProposalsWarningDialog
+            open={showPendingWarning}
+            onOpenChange={setShowPendingWarning}
+            pendingProposals={config.pendingProposals}
+            configName={name}
+            projectId={projectId}
+            action="edit"
+            onConfirm={confirmEdit}
+            isLoading={patchConfig.isPending}
+          />
+        )}
       </div>
     </Fragment>
   );

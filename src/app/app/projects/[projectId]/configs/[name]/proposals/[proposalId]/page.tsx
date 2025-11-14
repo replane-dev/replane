@@ -1,6 +1,7 @@
 'use client';
 
 import {ConfigProposalDiff} from '@/components/config-proposal-diff';
+import {PendingProposalsWarningDialog} from '@/components/pending-proposals-warning-dialog';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -58,6 +59,11 @@ export default function ReviewConfigProposalPage() {
 
   const proposal = proposalData.proposal;
 
+  // Fetch config to get other pending proposals
+  const {data: configData} = useSuspenseQuery(
+    trpc.getConfig.queryOptions({name: proposal.configName, projectId: project.id}),
+  );
+
   const approve = useMutation(trpc.approveConfigProposal.mutationOptions());
   const reject = useMutation(trpc.rejectConfigProposal.mutationOptions());
 
@@ -72,6 +78,21 @@ export default function ReviewConfigProposalPage() {
     !org.allowSelfApprovals && proposal.proposerEmail === sessionUser?.email;
 
   const [showAllApprovers, setShowAllApprovers] = useState(false);
+  const [showApproveWarning, setShowApproveWarning] = useState(false);
+
+  // Get other pending proposals (excluding current one)
+  const otherPendingProposals =
+    configData?.config?.pendingProposals.filter(p => p.id !== proposal.id) ?? [];
+
+  async function handleApprove() {
+    await approve.mutateAsync({proposalId: proposal.id});
+
+    if (proposal.proposedDelete) {
+      router.push(`/app/projects/${project.id}/configs`);
+    } else {
+      router.push(`/app/projects/${project.id}/configs/${encodeURIComponent(proposal.configName)}`);
+    }
+  }
 
   return (
     <Fragment>
@@ -399,15 +420,13 @@ export default function ReviewConfigProposalPage() {
                     <Button
                       disabled={approve.isPending || reject.isPending || isSelfApprovalDisabled}
                       onClick={async () => {
-                        await approve.mutateAsync({proposalId: proposal.id});
-
-                        if (proposal.proposedDelete) {
-                          router.push(`/app/projects/${project.id}/configs`);
-                        } else {
-                          router.push(
-                            `/app/projects/${project.id}/configs/${encodeURIComponent(proposal.configName)}`,
-                          );
+                        // Show warning if there are other pending proposals
+                        if (otherPendingProposals.length > 0) {
+                          setShowApproveWarning(true);
+                          return;
                         }
+
+                        await handleApprove();
                       }}
                     >
                       {approve.isPending
@@ -439,6 +458,21 @@ export default function ReviewConfigProposalPage() {
             </div>
           </div>
         )}
+
+        {/* Pending Proposals Warning for Approval */}
+        <PendingProposalsWarningDialog
+          open={showApproveWarning}
+          onOpenChange={setShowApproveWarning}
+          pendingProposals={otherPendingProposals}
+          configName={proposal.configName}
+          projectId={project.id}
+          action="approve"
+          onConfirm={async () => {
+            setShowApproveWarning(false);
+            await handleApprove();
+          }}
+          isLoading={approve.isPending}
+        />
       </div>
     </Fragment>
   );
