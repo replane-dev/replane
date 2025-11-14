@@ -27,6 +27,7 @@ import {
   Clock3,
   GitCommitVertical,
   Mail,
+  MessageSquare,
   User,
   XCircle,
 } from 'lucide-react';
@@ -195,6 +196,27 @@ export default function ReviewConfigProposalPage() {
                       <div className="text-sm font-medium">{proposal.reviewerEmail}</div>
                     </div>
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Proposal Message */}
+          <div className="rounded-lg border bg-card/50 p-4">
+            <div className="flex items-start gap-3">
+              <MessageSquare className="size-5 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-foreground mb-2">
+                  Proposal description
+                </div>
+                {proposal.message ? (
+                  <p className="text-sm text-foreground/80 dark:text-foreground/70 whitespace-pre-wrap break-words">
+                    {proposal.message}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No message was provided with this proposal.
+                  </p>
                 )}
               </div>
             </div>

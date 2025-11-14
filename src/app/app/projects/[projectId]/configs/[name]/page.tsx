@@ -21,8 +21,18 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import {Button} from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {Label} from '@/components/ui/label';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import {Textarea} from '@/components/ui/textarea';
 import {useOrg} from '@/contexts/org-context';
 import type {ConfigUserRole} from '@/engine/core/db';
 import {useTRPC} from '@/trpc/client';
@@ -54,6 +64,9 @@ export default function ConfigByNamePage() {
   const project = useProject();
   const deleteOrPropose = useDeleteOrProposeConfig();
   const org = useOrg();
+  const [proposalMessage, setProposalMessage] = useState('');
+  const [showProposalDialog, setShowProposalDialog] = useState(false);
+  const [pendingProposalData, setPendingProposalData] = useState<any>(null);
 
   const config = data.config;
 
@@ -147,16 +160,15 @@ export default function ConfigByNamePage() {
         return;
       }
 
-      const res = await createConfigProposal.mutateAsync({
+      // Store the proposal data and show dialog
+      setPendingProposalData({
         configId: current.id,
         proposedValue,
         proposedDescription,
         proposedSchema,
         proposedMembers,
       });
-      router.push(
-        `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
-      );
+      setShowProposalDialog(true);
       return;
     }
 
@@ -355,6 +367,72 @@ export default function ConfigByNamePage() {
             onSubmit={handleSubmit}
           />
         </div>
+
+        {/* Proposal Message Dialog */}
+        <Dialog open={showProposalDialog} onOpenChange={setShowProposalDialog}>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle>Create Proposal</DialogTitle>
+              <DialogDescription>
+                Add an optional message to explain the changes you're proposing.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="proposal-message">
+                  Proposal description{' '}
+                  <span className="text-muted-foreground text-xs">(optional)</span>
+                </Label>
+                <Textarea
+                  id="proposal-message"
+                  value={proposalMessage}
+                  onChange={e => setProposalMessage(e.target.value)}
+                  placeholder="Describe the changes you're proposing and why they're needed..."
+                  className="min-h-[120px]"
+                  maxLength={5000}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {proposalMessage.length}/5000 characters
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowProposalDialog(false);
+                  setProposalMessage('');
+                  setPendingProposalData(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={createConfigProposal.isPending}
+                onClick={async () => {
+                  if (!pendingProposalData) return;
+
+                  const res = await createConfigProposal.mutateAsync({
+                    ...pendingProposalData,
+                    message: proposalMessage.trim() || undefined,
+                  });
+
+                  setShowProposalDialog(false);
+                  setProposalMessage('');
+                  setPendingProposalData(null);
+
+                  router.push(
+                    `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
+                  );
+                }}
+              >
+                {createConfigProposal.isPending ? 'Creating…' : 'Create Proposal'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Fragment>
   );

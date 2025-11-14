@@ -259,6 +259,14 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
           <span>View Proposal</span>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground/60" />
         </Link>
+        {payload.message && (
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <div className="text-xs font-medium text-muted-foreground mb-1">Message:</div>
+            <p className="text-sm text-foreground/80 dark:text-foreground/70 whitespace-pre-wrap">
+              {payload.message}
+            </p>
+          </div>
+        )}
         <div className="space-y-2">
           {payload.proposedDelete && (
             <Badge variant="destructive" className="text-xs">
