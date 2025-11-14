@@ -24,7 +24,7 @@ export type ErrorFallbackProps = {
 export function ErrorFallback({error, resetErrorBoundary}: ErrorFallbackProps) {
   // Optional: log error to an error reporting service here
   useEffect(() => {
-    // eslint-disable-next-line no-console
+     
     console.error('App ErrorBoundary captured error:', error);
   }, [error]);
 

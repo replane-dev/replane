@@ -120,7 +120,7 @@ export default function NewApiKeyPage() {
                   API Key Created Successfully
                 </h2>
                 <p className="text-sm text-foreground/80 dark:text-foreground/70 mt-1">
-                  Copy and store this key securely. You won't be able to see it again.
+                  Copy and store this key securely. You won&apos;t be able to see it again.
                 </p>
               </div>
               <div className="p-6 space-y-6">

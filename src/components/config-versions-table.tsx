@@ -213,7 +213,7 @@ export function ConfigVersionsTable({name}: {name: string}) {
                         });
                         toast.success(`Restored v${version.version} to new latest version`);
                       } catch (e) {
-                        // eslint-disable-next-line no-alert
+                         
                         alert((e as Error).message);
                       }
                     }}

@@ -42,7 +42,7 @@ class ConsoleLogger implements Logger {
       ...entry,
       error: entry.error ? errorToJson(entry.error) : undefined,
       traceId: ctx.traceId,
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+       
       msg: entry.error ? `${entry.msg} - ${entry.error?.toString()}` : entry.msg,
     });
   }

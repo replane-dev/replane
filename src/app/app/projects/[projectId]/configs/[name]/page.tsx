@@ -374,7 +374,7 @@ export default function ConfigByNamePage() {
             <DialogHeader>
               <DialogTitle>Create Proposal</DialogTitle>
               <DialogDescription>
-                Add an optional message to explain the changes you're proposing.
+                Add an optional message to explain the changes you&apos;re proposing.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
