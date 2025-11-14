@@ -130,6 +130,7 @@ export default function ProposeConfigChangesPage() {
       proposedDescription,
       proposedSchema,
       proposedMembers,
+      baseVersion: config.config.version,
     });
 
     router.push(

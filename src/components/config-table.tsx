@@ -185,6 +185,7 @@ export function ConfigTable() {
                       configId: config.id,
                       configName: config.name,
                       myRole: config.myRole,
+                      prevVersion: config.version,
                       onAfterPropose: proposalId =>
                         router.push(
                           `/app/projects/${projectId}/configs/${encodeURIComponent(config.name)}/proposals/${proposalId}`,

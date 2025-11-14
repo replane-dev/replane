@@ -18,7 +18,7 @@ export function useDeleteOrProposeConfig() {
       configId: string;
       configName: string;
       myRole: 'owner' | 'editor' | 'viewer' | string;
-      prevVersion?: number;
+      prevVersion: number;
       onAfterDelete?: () => void | Promise<void>;
       onAfterPropose?: (proposalId: string) => void | Promise<void>;
     }) {
@@ -31,6 +31,7 @@ export function useDeleteOrProposeConfig() {
         const res = await createConfigProposal.mutateAsync({
           configId: params.configId,
           proposedDelete: true,
+          baseVersion: params.prevVersion,
         });
         const proposalId = (res as any)?.configProposalId ?? (res as any)?.proposalId ?? '';
         await params.onAfterPropose?.(proposalId);
