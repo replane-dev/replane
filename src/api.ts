@@ -64,6 +64,7 @@ honoApi.openapi(
   {
     method: 'get',
     path: '/configs/{name}/value',
+    operationId: 'getConfigValue',
     request: {
       params: z.object({name: ConfigName()}),
     },
@@ -101,68 +102,85 @@ honoApi.openapi(
   },
 );
 
-honoApi.get('/events', async c => {
-  const projectId = c.get('projectId');
-  const context = c.get('context');
-  const engine = await getEngine();
+honoApi.openapi(
+  {
+    method: 'get',
+    path: '/events',
+    operationId: 'getProjectEvents',
+    responses: {
+      200: {
+        description: 'Server-sent events stream for project updates',
+        content: {
+          'text/event-stream': {
+            schema: z.object({}),
+          },
+        },
+      },
+    },
+  },
+  async c => {
+    const projectId = c.get('projectId');
+    const context = c.get('context');
+    const engine = await getEngine();
 
-  const headers = {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  };
+    const headers = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    };
 
-  const abortController = new AbortController();
-  const onAbort = () => abortController.abort();
-  c.req.raw.signal.addEventListener('abort', onAbort);
+    const abortController = new AbortController();
+    const onAbort = () => abortController.abort();
+    c.req.raw.signal.addEventListener('abort', onAbort);
 
-  const events = engine.useCases.getProjectEvents(context, {
-    projectId,
-    abortSignal: abortController.signal,
-  });
+    const events = engine.useCases.getProjectEvents(context, {
+      projectId,
+      abortSignal: abortController.signal,
+    });
 
-  const encoder = new TextEncoder();
+    const encoder = new TextEncoder();
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let errored = false;
-      // heartbeat to keep proxies from closing the connection due to inactivity
-      const heartbeat = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(`: ping\n\n`));
-        } catch {}
-      }, 15000);
-
-      try {
-        controller.enqueue(encoder.encode(`: connected\n\n`));
-
-        for await (const event of events) {
-          const data = JSON.stringify(event);
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-        }
-      } catch (err) {
-        errored = true;
-        console.error('SSE stream error:', err);
-        controller.error(err);
-      } finally {
-        clearInterval(heartbeat);
-        c.req.raw.signal.removeEventListener('abort', onAbort);
-        if (!errored) {
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        let errored = false;
+        // heartbeat to keep proxies from closing the connection due to inactivity
+        const heartbeat = setInterval(() => {
           try {
-            controller.close();
+            controller.enqueue(encoder.encode(`: ping\n\n`));
           } catch {}
-        }
-      }
-    },
-    async cancel() {
-      abortController.abort();
-      c.req.raw.signal.removeEventListener('abort', onAbort);
-    },
-  });
+        }, 15000);
 
-  return new Response(stream, {headers});
-});
+        try {
+          controller.enqueue(encoder.encode(`: connected\n\n`));
+
+          for await (const event of events) {
+            const data = JSON.stringify(event);
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+        } catch (err) {
+          errored = true;
+          console.error('SSE stream error:', err);
+          controller.error(err);
+        } finally {
+          clearInterval(heartbeat);
+          c.req.raw.signal.removeEventListener('abort', onAbort);
+          if (!errored) {
+            try {
+              controller.close();
+            } catch {}
+          }
+        }
+      },
+      async cancel() {
+        abortController.abort();
+        c.req.raw.signal.removeEventListener('abort', onAbort);
+      },
+    });
+
+    return new Response(stream, {headers});
+  },
+);
 
 honoApi.get('/openapi.json', c =>
   c.json(
