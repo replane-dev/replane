@@ -169,6 +169,7 @@ honoApi.get('/openapi.json', c =>
     honoApi.getOpenAPI31Document({
       openapi: '3.1.0',
       info: {title: 'Replane API', version: '1.0.0'},
+      servers: [{url: 'http://localhost:3000/api/v1'}],
     }),
   ),
 );
