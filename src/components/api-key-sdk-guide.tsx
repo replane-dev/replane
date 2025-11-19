@@ -26,6 +26,8 @@ export function ApiKeySdkGuide({apiKey}: ApiKeySdkGuideProps) {
 
   const apiKeyValue = apiKey || 'your-api-key-here';
   const isPlaceholder = !apiKey;
+  const baseUrl =
+    typeof window !== 'undefined' ? window.location.origin : 'https://your-replane-instance.com';
 
   const installSnippet = `npm install replane-sdk
 # or
@@ -36,8 +38,9 @@ yarn add replane-sdk`;
   const basicUsageSnippet = `import { createReplaneClient } from 'replane-sdk';
 
 const replane = createReplaneClient({
+  // Each API key is tied to one project only
   apiKey: '${apiKeyValue}',
-  baseUrl: 'https://your-replane-instance.com',
+  baseUrl: '${baseUrl}',
 });
 
 // One-off fetch
