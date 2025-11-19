@@ -192,6 +192,43 @@ export class ConfigProposalStore {
     return undefined;
   }
 
+  async getRejectedByApprovalId(params: {
+    approvalId: string;
+  }): Promise<Array<ConfigProposalInfo & {proposerEmail: string | null}>> {
+    const proposals = await this.db
+      .selectFrom('config_proposals')
+      .leftJoin('users as proposer', 'proposer.id', 'config_proposals.proposer_id')
+      .select(({ref}) => [
+        'config_proposals.id',
+        'config_proposals.config_id',
+        'config_proposals.proposer_id',
+        'config_proposals.created_at',
+        'config_proposals.rejected_at',
+        'config_proposals.approved_at',
+        'config_proposals.reviewer_id',
+        'config_proposals.rejected_in_favor_of_proposal_id',
+        'config_proposals.base_config_version',
+        ref('proposer.email').as('proposer_email'),
+      ])
+      .where('config_proposals.rejected_in_favor_of_proposal_id', '=', params.approvalId)
+      .orderBy('config_proposals.created_at', 'desc')
+      .execute();
+
+    return proposals.map(p => ({
+      id: p.id,
+      configId: p.config_id,
+      proposerId: p.proposer_id,
+      createdAt: p.created_at,
+      rejectedAt: p.rejected_at,
+      approvedAt: p.approved_at,
+      reviewerId: p.reviewer_id,
+      rejectedInFavorOfProposalId: p.rejected_in_favor_of_proposal_id,
+      baseConfigVersion: p.base_config_version,
+      status: p.approved_at ? 'approved' : p.rejected_at ? 'rejected' : ('pending' as const),
+      proposerEmail: p.proposer_email ?? null,
+    }));
+  }
+
   async getPendingProposals(params: {configId: string}): Promise<ConfigProposalInfo[]> {
     const proposals = await this.db
       .selectFrom('config_proposals')

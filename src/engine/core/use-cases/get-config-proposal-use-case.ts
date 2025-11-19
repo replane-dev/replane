@@ -42,6 +42,10 @@ export interface ConfigProposalDetails {
 
 export interface GetConfigProposalResponse {
   proposal: ConfigProposalDetails;
+  proposalsRejectedByThisApproval: Array<{
+    id: string;
+    proposerEmail: string | null;
+  }>;
 }
 
 export interface GetConfigProposalUseCaseDeps {}
@@ -134,6 +138,18 @@ export function createGetConfigProposalUseCase(
         ? baseVersion.members.filter(m => m.role === 'editor').map(m => m.normalizedEmail)
         : editorEmails;
 
+    // Fetch proposals that were rejected because of this approval
+    let proposalsRejectedByThisApproval: Array<{id: string; proposerEmail: string | null}> = [];
+    if (status === 'approved') {
+      const rejectedProposals = await tx.configProposals.getRejectedByApprovalId({
+        approvalId: proposal.id,
+      });
+      proposalsRejectedByThisApproval = rejectedProposals.map(p => ({
+        id: p.id,
+        proposerEmail: p.proposerEmail,
+      }));
+    }
+
     return {
       proposal: {
         id: proposal.id,
@@ -165,6 +181,7 @@ export function createGetConfigProposalUseCase(
         baseOwnerEmails,
         baseEditorEmails,
       },
+      proposalsRejectedByThisApproval,
     };
   };
 }

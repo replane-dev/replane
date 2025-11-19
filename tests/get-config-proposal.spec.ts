@@ -707,4 +707,227 @@ describe('getConfigProposal', () => {
       expect.arrayContaining([OTHER_USER_EMAIL, CURRENT_USER_EMAIL]),
     );
   });
+
+  it('should return empty proposalsRejectedByThisApproval for pending proposal', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'pending_rejected_list',
+      value: {enabled: false},
+      schema: null,
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedValue: {newValue: {enabled: true}},
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(result.proposalsRejectedByThisApproval).toEqual([]);
+  });
+
+  it('should return empty proposalsRejectedByThisApproval for rejected proposal', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'rejected_rejected_list',
+      value: {enabled: false},
+      schema: null,
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedValue: {newValue: {enabled: true}},
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(result.proposalsRejectedByThisApproval).toEqual([]);
+  });
+
+  it('should return proposalsRejectedByThisApproval when proposal is approved', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'approved_with_rejected',
+      value: {enabled: false},
+      schema: null,
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create three proposals
+    const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        baseVersion: 1,
+        configId,
+        proposedValue: {newValue: {enabled: true}},
+        currentUserEmail: OTHER_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        baseVersion: 1,
+        configId,
+        proposedValue: {newValue: {enabled: false, count: 5}},
+        currentUserEmail: THIRD_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        baseVersion: 1,
+        configId,
+        proposedValue: {newValue: {enabled: true, count: 10}},
+        currentUserEmail: CURRENT_USER_EMAIL,
+      },
+    );
+
+    // Approve proposal 2 (which should reject proposals 1 and 3)
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: proposal2Id,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Get the approved proposal
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: proposal2Id,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Should include the two rejected proposals
+    expect(result.proposalsRejectedByThisApproval).toHaveLength(2);
+    expect(result.proposalsRejectedByThisApproval).toEqual(
+      expect.arrayContaining([
+        {id: proposal1Id, proposerEmail: OTHER_USER_EMAIL},
+        {id: proposal3Id, proposerEmail: CURRENT_USER_EMAIL},
+      ]),
+    );
+  });
+
+  it('should return proposalsRejectedByThisApproval with null proposerEmail when proposer was deleted', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'approved_with_null_proposer',
+      value: {enabled: false},
+      schema: null,
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create two proposals
+    const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        baseVersion: 1,
+        configId,
+        proposedValue: {newValue: {enabled: true}},
+        currentUserEmail: OTHER_USER_EMAIL,
+      },
+    );
+
+    const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        baseVersion: 1,
+        configId,
+        proposedValue: {newValue: {enabled: false, count: 5}},
+        currentUserEmail: THIRD_USER_EMAIL,
+      },
+    );
+
+    // Manually set proposal1's proposerId to null (simulating deleted user)
+    const connection = await fixture.engine.testing.pool.connect();
+    try {
+      await connection.query('UPDATE config_proposals SET proposer_id = NULL WHERE id = $1', [
+        proposal1Id,
+      ]);
+    } finally {
+      connection.release();
+    }
+
+    // Approve proposal 2 (which should reject proposal 1)
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: proposal2Id,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Get the approved proposal
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: proposal2Id,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Should include the rejected proposal with null proposerEmail
+    expect(result.proposalsRejectedByThisApproval).toHaveLength(1);
+    expect(result.proposalsRejectedByThisApproval[0]).toEqual({
+      id: proposal1Id,
+      proposerEmail: null,
+    });
+  });
+
+  it('should return empty proposalsRejectedByThisApproval when no other proposals were rejected', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'approved_no_others',
+      value: {enabled: false},
+      schema: null,
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      ownerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    // Create only one proposal
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedValue: {newValue: {enabled: true}},
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // Approve it
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Get the approved proposal
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Should have no rejected proposals
+    expect(result.proposalsRejectedByThisApproval).toEqual([]);
+  });
 });

@@ -58,6 +58,7 @@ export default function ReviewConfigProposalPage() {
   );
 
   const proposal = proposalData.proposal;
+  const proposalsRejectedByThisApproval = proposalData.proposalsRejectedByThisApproval;
 
   // Fetch config to get other pending proposals
   const {data: configData} = useSuspenseQuery(
@@ -309,6 +310,76 @@ export default function ReviewConfigProposalPage() {
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Proposals rejected due to this approval */}
+          {proposal.status === 'approved' && proposalsRejectedByThisApproval.length > 0 && (
+            <div className="rounded-lg border border-green-200/50 bg-green-50/50 dark:border-green-900/30 dark:bg-green-950/20 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-md shrink-0 bg-green-100 dark:bg-green-900/50">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-foreground mb-2">
+                    {proposalsRejectedByThisApproval.length === 1
+                      ? 'One proposal was automatically rejected'
+                      : `${proposalsRejectedByThisApproval.length} proposals were automatically rejected`}
+                  </div>
+                  <p className="text-sm text-foreground/80 dark:text-foreground/70 mb-3">
+                    When this proposal was approved, other pending proposals for the same config
+                    were automatically rejected. Only one proposal can be applied at a time.
+                  </p>
+                  <div className="space-y-2 mb-3">
+                    {proposalsRejectedByThisApproval.map(
+                      (rejectedProposal: {id: string; proposerEmail: string | null}) => {
+                        const rejectedShortId = rejectedProposal.id.slice(-8);
+                        return (
+                          <Link
+                            key={rejectedProposal.id}
+                            href={`/app/projects/${project.id}/configs/${encodeURIComponent(proposal.configName)}/proposals/${rejectedProposal.id}`}
+                            className="flex items-center gap-2.5 rounded-md border bg-background/50 px-3 py-2 hover:bg-background/80 transition-colors"
+                          >
+                            <GitCommitVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium text-foreground">
+                              Proposal {rejectedShortId}
+                            </span>
+                            {rejectedProposal.proposerEmail && (
+                              <>
+                                <span className="text-sm text-muted-foreground">·</span>
+                                <span className="text-sm text-muted-foreground">
+                                  by {rejectedProposal.proposerEmail}
+                                </span>
+                              </>
+                            )}
+                            <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
+                          </Link>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Config updated - no other proposals rejected */}
+          {proposal.status === 'approved' && proposalsRejectedByThisApproval.length === 0 && (
+            <div className="rounded-lg border border-green-200/50 bg-green-50/50 dark:border-green-900/30 dark:bg-green-950/20 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-md shrink-0 bg-green-100 dark:bg-green-900/50">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-foreground mb-2">
+                    Config updated successfully
+                  </div>
+                  <p className="text-sm text-foreground/80 dark:text-foreground/70 mb-3">
+                    This proposal was approved and the changes have been applied to the config.
+                    There were no other pending proposals at the time of approval.
+                  </p>
                 </div>
               </div>
             </div>

@@ -548,11 +548,11 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      const {proposal} = await opts.ctx.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      const result = await opts.ctx.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
         proposalId: opts.input.proposalId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
-      return {proposal};
+      return result;
     }),
   getConfigProposalList: baseProcedure
     .input(
