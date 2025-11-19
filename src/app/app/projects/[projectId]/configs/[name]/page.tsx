@@ -321,7 +321,11 @@ export default function ConfigByNamePage() {
                       </AlertDialog>
                       <Button asChild size="sm" variant="default">
                         <Link
-                          href={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`}
+                          href={
+                            config.pendingProposals.length === 1
+                              ? `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${config.pendingProposals[0]!.id}`
+                              : `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`
+                          }
                         >
                           {config.pendingProposals.length === 1 ? 'Review proposal' : 'View all'}
                         </Link>
