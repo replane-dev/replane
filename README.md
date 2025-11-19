@@ -13,6 +13,7 @@ Status: early but usable. Expect changes to schemas and endpoints before v1.0.
 Replane is a small web app for managing JSON configs with:
 
 - Version history and instant rollback (append‑only snapshots)
+- Proposals (review/approve changes before applying)
 - Realtime updates via Server-Sent Events (SSE)
 - Audit log for who changed what and when
 - Optional JSON Schema validation
@@ -114,6 +115,7 @@ Basic usage:
 import {createReplaneClient} from 'replane-sdk';
 
 const client = createReplaneClient({
+  // Each API key is tied to one project only
   apiKey: process.env.REPLANE_API_KEY!,
   baseUrl: 'https://api.my-replane-host.com',
 });
@@ -152,9 +154,10 @@ client.close();
 
 Notes
 
-- Create an API key in the Replane UI. It’s shown once; store it securely.
+- Create an API key in the Replane UI. It's shown once; store it securely.
+- Each API key is tied to a specific project. If you need configs from multiple projects, create separate API keys and initialize separate clients for each project.
 - The client logs errors and returns the provided fallback if the request fails.
-- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn’t expose `fetch`.\
+- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn't expose `fetch`.\
 
 ## Backups
 
