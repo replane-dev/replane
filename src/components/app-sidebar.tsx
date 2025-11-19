@@ -1,7 +1,6 @@
 'use client';
 
-import {SiGithub} from '@icons-pack/react-simple-icons';
-import {FileCog, History, Key, LifeBuoy, Settings} from 'lucide-react';
+import {BookOpen, FileCog, History, Key, LifeBuoy, Settings} from 'lucide-react';
 import * as React from 'react';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
@@ -16,15 +15,15 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
   const data = {
     navSecondary: [
       {
-        title: 'Support',
-        url: 'https://github.com/replane-dev/replane/issues',
-        icon: LifeBuoy,
+        title: 'Documentation',
+        url: 'https://replane.dev/docs',
+        icon: BookOpen,
         target: '_blank' as const,
       },
       {
-        title: 'Replane',
-        url: 'https://github.com/replane-dev/replane',
-        icon: SiGithub,
+        title: 'Support',
+        url: 'https://github.com/replane-dev/replane/issues',
+        icon: LifeBuoy,
         target: '_blank' as const,
       },
     ],
