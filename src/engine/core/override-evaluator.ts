@@ -68,7 +68,7 @@ async function renderConditionInternal(
       operator: 'segmentation',
       property: condition.property,
       percentage: condition.percentage,
-      salt: condition.salt,
+      seed: condition.seed,
     };
   } else {
     assertNever(condition, `Unknown condition type: ${JSON.stringify(condition)}`);
@@ -280,7 +280,7 @@ function evaluateConditionWithDebug(
     }
 
     // Simple hash function: sum of char codes
-    const hashInput = String(segContextValue) + typedCondition.salt;
+    const hashInput = String(segContextValue) + typedCondition.seed;
     let hash = 0;
     for (let i = 0; i < hashInput.length; i++) {
       hash = ((hash << 5) - hash + hashInput.charCodeAt(i)) | 0;

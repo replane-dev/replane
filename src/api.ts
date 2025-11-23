@@ -186,7 +186,7 @@ honoApi.openapi(
 
     const engine = await getEngine();
 
-    const result: ConfigResponse | null = await engine.useCases.getConfigForApi(c.get('context'), {
+    const result = await engine.useCases.getConfigForApi(c.get('context'), {
       name,
       projectId: c.get('projectId'),
     });

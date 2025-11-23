@@ -1,5 +1,4 @@
 import type {ConfigsReplica} from '../configs-replica';
-import type {RenderedOverride} from '../override-evaluator';
 import type {UseCase} from '../use-case';
 
 export interface GetConfigForApiRequest {
@@ -10,7 +9,7 @@ export interface GetConfigForApiRequest {
 export interface GetConfigForApiResponse {
   name: string;
   value: unknown;
-  renderedOverrides: RenderedOverride[];
+  overrides: unknown;
   version: number;
 }
 
@@ -34,7 +33,7 @@ export function createGetConfigForApiUseCase(
     return {
       name: config.name,
       value: config.value,
-      renderedOverrides: config.renderedOverrides,
+      overrides: config.renderedOverrides,
       version: config.version,
     };
   };

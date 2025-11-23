@@ -76,8 +76,8 @@ const operatorDescriptions: Record<string, string> = {
   or: 'At least one nested condition must be true',
 };
 
-// Generate a random salt for segmentation
-function generateSalt(): string {
+// Generate a random seed for segmentation
+function generateSeed(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
@@ -329,7 +329,7 @@ export function ConditionEditor({
                         operator: 'segmentation',
                         property: 'property' in condition ? condition.property : '',
                         percentage: 50,
-                        salt: generateSalt(),
+                        seed: generateSeed(),
                       });
                     } else {
                       onChange({

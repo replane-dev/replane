@@ -56,7 +56,7 @@ const SegmentationConditionSchema = z.object({
   operator: z.literal('segmentation'),
   property: z.string(),
   percentage: z.number().min(0).max(100),
-  salt: z.string(),
+  seed: z.string(),
 });
 
 // Infer property-based condition types
@@ -180,7 +180,7 @@ export const RenderedSegmentationConditionSchema = z.object({
   operator: z.literal('segmentation'),
   property: z.string(),
   percentage: z.number().min(0).max(100),
-  salt: z.string(),
+  seed: z.string(),
 });
 
 // Infer rendered property-based condition types

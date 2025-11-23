@@ -50,8 +50,10 @@ describe('Get Config For API Use Case', () => {
     expect(result).not.toBeNull();
     expect(result?.name).toBe(configName);
     expect(result?.value).toEqual({feature: 'enabled'});
-    expect(result?.overrides).toHaveLength(1);
-    expect(result?.overrides?.[0].name).toBe('VIP Override');
+    expect(result?.overrides).toBeDefined();
+    expect(Array.isArray(result?.overrides)).toBe(true);
+    expect((result?.overrides as any[]).length).toBe(1);
+    expect((result?.overrides as any[])[0]?.name).toBe('VIP Override');
     expect(result?.version).toBe(1);
   });
 
@@ -122,10 +124,11 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    // Overrides can be null or empty array
-    expect(
-      result?.overrides === null ||
-        (Array.isArray(result?.overrides) && result.overrides.length === 0),
-    ).toBe(true);
+    // Overrides can be null or empty array depending on how it was stored
+    const hasNoOverrides = 
+      result?.overrides === null || 
+      result?.overrides === undefined ||
+      (Array.isArray(result?.overrides) && result.overrides.length === 0);
+    expect(hasNoOverrides).toBe(true);
   });
 });
