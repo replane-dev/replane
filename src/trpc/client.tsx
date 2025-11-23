@@ -9,7 +9,7 @@ import {makeQueryClient} from './query-client';
 import type {AppRouter} from './routers/_app';
 export const {TRPCProvider, useTRPC} = createTRPCContext<AppRouter>();
 let browserQueryClient: QueryClient;
-function getQueryClient() {
+export function getQueryClient() {
   if (typeof window === 'undefined') {
     // Server: always make a new query client
     return makeQueryClient();

@@ -1,6 +1,7 @@
 'use client';
 
 import {ConfigForm} from '@/components/config-form';
+import {OverrideTester} from '@/components/override-tester';
 import {PendingProposalsWarningDialog} from '@/components/pending-proposals-warning-dialog';
 import {
   AlertDialog,
@@ -35,13 +36,14 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
 import {useOrg} from '@/contexts/org-context';
 import type {ConfigUserRole} from '@/engine/core/db';
+import type {Override} from '@/engine/core/override-evaluator';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
 import {AlertTriangle, GitBranch, Info} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
-import {Fragment, useMemo, useState} from 'react';
+import {Fragment, useCallback, useMemo, useState} from 'react';
 import {useProject, useProjectId} from '../../utils';
 import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
 
@@ -69,8 +71,23 @@ export default function ConfigByNamePage() {
   const [pendingProposalData, setPendingProposalData] = useState<any>(null);
   const [showPendingWarning, setShowPendingWarning] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<any>(null);
+  const [liveValue, setLiveValue] = useState<any>(null);
+  const [liveOverrides, setLiveOverrides] = useState<any>(null);
+  const [showOverrideTester, setShowOverrideTester] = useState(false);
 
   const config = data.config;
+
+  const onValuesChange = useCallback(
+    (values: {value: string; overrides: Override[]}) => {
+      setLiveOverrides(values.overrides);
+      try {
+        setLiveValue(JSON.parse(values.value));
+      } catch {
+        setLiveValue(config?.config.value);
+      }
+    },
+    [config?.config.value],
+  );
 
   const defaultValue = useMemo(() => {
     if (!config) return '';
@@ -80,8 +97,9 @@ export default function ConfigByNamePage() {
   async function executePatchConfig(data: {
     value: unknown;
     schema: unknown | null;
+    overrides: unknown;
     description: string;
-    ownerEmails: string[];
+    maintainerEmails: string[];
     editorEmails: string[];
   }) {
     if (!config) return;
@@ -90,13 +108,17 @@ export default function ConfigByNamePage() {
       configId: config.config.id,
       prevVersion: config.config.version,
       value: {newValue: data.value},
-      schema: config.myRole === 'owner' ? {newSchema: data.schema} : undefined,
+      schema: config.myRole === 'maintainer' ? {newSchema: data.schema} : undefined,
+      overrides: config.myRole === 'maintainer' ? {newOverrides: data.overrides as any} : undefined,
       description: {newDescription: data.description},
       members:
-        config.myRole === 'owner'
+        config.myRole === 'maintainer'
           ? {
               newMembers: [
-                ...data.ownerEmails.map(email => ({email, role: 'owner' as ConfigUserRole})),
+                ...data.maintainerEmails.map(email => ({
+                  email,
+                  role: 'maintainer' as ConfigUserRole,
+                })),
                 ...data.editorEmails.map(email => ({email, role: 'editor' as ConfigUserRole})),
               ],
             }
@@ -150,8 +172,9 @@ export default function ConfigByNamePage() {
     name: string;
     value: unknown;
     schema: unknown | null;
+    overrides: unknown;
     description: string;
-    ownerEmails: string[];
+    maintainerEmails: string[];
     editorEmails: string[];
   }) {
     if (!config) {
@@ -164,28 +187,39 @@ export default function ConfigByNamePage() {
       const valueChanged = JSON.stringify(data.value) !== JSON.stringify(current.value);
       const descChanged = (data.description ?? '') !== (current.description ?? '');
       const schemaChanged = JSON.stringify(data.schema) !== JSON.stringify(current.schema);
+      const overridesChanged = JSON.stringify(data.overrides) !== JSON.stringify(current.overrides);
       // Members change detection
-      const currentOwners = (config.ownerEmails ?? []).slice().sort();
+      const currentMaintainers = (config.maintainerEmails ?? []).slice().sort();
       const currentEditors = (config.editorEmails ?? []).slice().sort();
-      const newOwners = (data.ownerEmails ?? []).slice().sort();
+      const newMaintainers = (data.maintainerEmails ?? []).slice().sort();
       const newEditors = (data.editorEmails ?? []).slice().sort();
-      const ownersChanged = JSON.stringify(currentOwners) !== JSON.stringify(newOwners);
+      const maintainersChanged =
+        JSON.stringify(currentMaintainers) !== JSON.stringify(newMaintainers);
       const editorsChanged = JSON.stringify(currentEditors) !== JSON.stringify(newEditors);
 
       const proposedValue = valueChanged ? {newValue: data.value} : undefined;
       const proposedDescription = descChanged ? {newDescription: data.description} : undefined;
       const proposedSchema = schemaChanged ? {newSchema: data.schema} : undefined;
+      const proposedOverrides = overridesChanged
+        ? {newOverrides: data.overrides as any}
+        : undefined;
       const proposedMembers =
-        ownersChanged || editorsChanged
+        maintainersChanged || editorsChanged
           ? {
               newMembers: [
-                ...newOwners.map(email => ({email, role: 'owner' as ConfigUserRole})),
+                ...newMaintainers.map(email => ({email, role: 'maintainer' as ConfigUserRole})),
                 ...newEditors.map(email => ({email, role: 'editor' as ConfigUserRole})),
               ],
             }
           : undefined;
 
-      if (!proposedValue && !proposedDescription && !proposedSchema && !proposedMembers) {
+      if (
+        !proposedValue &&
+        !proposedDescription &&
+        !proposedSchema &&
+        !proposedOverrides &&
+        !proposedMembers
+      ) {
         alert('No changes to propose.');
         return;
       }
@@ -196,6 +230,7 @@ export default function ConfigByNamePage() {
         proposedValue,
         proposedDescription,
         proposedSchema,
+        proposedOverrides,
         proposedMembers,
       });
       setShowProposalDialog(true);
@@ -365,8 +400,9 @@ export default function ConfigByNamePage() {
           )}
 
           <ConfigForm
+            onValuesChange={onValuesChange}
             mode={org.requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
-            role={org.requireProposals || config.myRole === 'viewer' ? 'owner' : config.myRole}
+            role={org.requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
             currentName={name}
             currentPendingProposalsCount={config.pendingProposals.length}
             defaultValue={defaultValue}
@@ -374,8 +410,9 @@ export default function ConfigByNamePage() {
             defaultSchema={
               config.config?.schema ? JSON.stringify(config.config.schema, null, 2) : ''
             }
+            defaultOverrides={config.config?.overrides as any}
             defaultDescription={config.config?.description ?? ''}
-            defaultOwnerEmails={config.ownerEmails}
+            defaultMaintainerEmails={config.maintainerEmails}
             defaultEditorEmails={config.editorEmails}
             editorIdPrefix={`edit-config-${name}`}
             createdAt={config.config.createdAt}
@@ -398,6 +435,15 @@ export default function ConfigByNamePage() {
               });
             }}
             onSubmit={handleSubmit}
+            onTestOverrides={() => setShowOverrideTester(true)}
+          />
+
+          {/* Override Tester Dialog */}
+          <OverrideTester
+            baseValue={liveValue || config.config.value}
+            overrides={liveOverrides || (config.config.overrides as any)}
+            open={showOverrideTester}
+            onOpenChange={setShowOverrideTester}
           />
         </div>
 

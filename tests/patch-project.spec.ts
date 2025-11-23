@@ -27,7 +27,7 @@ describe('patchProject', () => {
     return res.rows;
   }
 
-  it('updates name and description (owner/admin permission) and emits audit message', async () => {
+  it('updates name and description (owner/maintainer permission) and emits audit message', async () => {
     const projectId = fixture.projectId; // created in fixture
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
@@ -80,8 +80,8 @@ describe('patchProject', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       members: {
         users: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
-          {email: OTHER_OWNER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'admin'},
+          {email: OTHER_OWNER_EMAIL, role: 'admin'},
         ],
       },
     });
@@ -95,7 +95,7 @@ describe('patchProject', () => {
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
       currentUserEmail: CURRENT_USER_EMAIL,
-      members: {users: [{email: OTHER_OWNER_EMAIL, role: 'owner'}]},
+      members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
     members = await getMembers(projectId);
@@ -140,8 +140,8 @@ describe('patchProject', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       members: {
         users: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
-          {email: OTHER_OWNER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'admin'},
+          {email: OTHER_OWNER_EMAIL, role: 'admin'},
         ],
       },
     });
@@ -150,7 +150,7 @@ describe('patchProject', () => {
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
       currentUserEmail: CURRENT_USER_EMAIL,
-      members: {users: [{email: OTHER_OWNER_EMAIL, role: 'owner'}]},
+      members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
     // Now attempt member change again -> should be forbidden
@@ -160,8 +160,8 @@ describe('patchProject', () => {
         currentUserEmail: CURRENT_USER_EMAIL,
         members: {
           users: [
-            {email: OTHER_OWNER_EMAIL, role: 'owner'},
-            {email: 'third@example.com', role: 'owner'},
+            {email: OTHER_OWNER_EMAIL, role: 'admin'},
+            {email: 'third@example.com', role: 'admin'},
           ],
         },
       }),

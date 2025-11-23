@@ -28,20 +28,21 @@ describe('getConfig', () => {
 
   it('should return requested config', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'test-config',
       value: 'test-value',
       schema: {type: 'string'},
       description: 'A test config',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
     const {config} = await fixture.trpc.getConfig({
       name: 'test-config',
@@ -60,10 +61,11 @@ describe('getConfig', () => {
         id: expect.any(String),
         version: 1,
         projectId: fixture.projectId,
+        overrides: [],
       },
       editorEmails: [],
       myRole: 'viewer',
-      ownerEmails: [],
+      maintainerEmails: [],
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
@@ -79,21 +81,22 @@ describe('getConfig', () => {
 
   it('should reflect owner role and owner/editor lists', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'owner-role-config',
       value: 'x',
       schema: {type: 'string'},
       description: 'Owner role',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: ['editor@example.com'],
-      ownerEmails: [TEST_USER_EMAIL, 'owner2@example.com'],
+      maintainerEmails: [TEST_USER_EMAIL, 'owner2@example.com'],
       projectId: fixture.projectId,
     });
     const {config} = await fixture.trpc.getConfig({
       name: 'owner-role-config',
       projectId: fixture.projectId,
     });
-    expect(config?.myRole).toBe('owner');
-    expect(config?.ownerEmails.sort()).toEqual(
+    expect(config?.myRole).toBe('maintainer');
+    expect(config?.maintainerEmails.sort()).toEqual(
       [
         TEST_USER_EMAIL,
         expect.any(String), // normalized email of owner2
@@ -104,20 +107,21 @@ describe('getConfig', () => {
 
   it('should reflect editor role', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'editor-role-config',
       value: 'x',
       schema: {type: 'string'},
       description: 'Editor role',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL],
-      ownerEmails: ['another-owner@example.com'],
+      maintainerEmails: ['another-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
     const {config} = await fixture.trpc.getConfig({
       name: 'editor-role-config',
@@ -129,20 +133,21 @@ describe('getConfig', () => {
 
   it('should reflect viewer role when not a member', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'viewer-role-config',
       value: 'x',
       schema: {type: 'string'},
       description: 'Viewer role',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: ['different-owner@example.com'],
+      maintainerEmails: ['different-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
     const {config} = await fixture.trpc.getConfig({
       name: 'viewer-role-config',
@@ -153,13 +158,14 @@ describe('getConfig', () => {
 
   it('should include empty pending proposals when no proposals exist', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'no-proposals-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with no proposals',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -173,13 +179,14 @@ describe('getConfig', () => {
 
   it('should include pending proposals with proposer information', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'with-proposals-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with proposals',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -208,13 +215,14 @@ describe('getConfig', () => {
 
   it('should include multiple pending proposals ordered by creation date', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'multiple-proposals-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with multiple proposals',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -255,13 +263,14 @@ describe('getConfig', () => {
 
   it('should not include approved proposals in pending list', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approved-proposal-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with approved proposal',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -288,13 +297,14 @@ describe('getConfig', () => {
 
   it('should not include rejected proposals in pending list', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'rejected-proposal-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with rejected proposal',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -321,13 +331,14 @@ describe('getConfig', () => {
 
   it('should show only pending proposals when both approved and pending exist', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'mixed-proposals-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with mixed proposals',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -365,13 +376,14 @@ describe('getConfig', () => {
 
   it('should handle pending proposal with null proposerId', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'null-proposer-config',
       value: {enabled: false},
       schema: null,
       description: 'Config with null proposer',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -408,13 +420,14 @@ describe('getConfig', () => {
 
   it('should include correct base config version for proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version-tracking-config',
       value: {enabled: false},
       schema: null,
       description: 'Config for version tracking',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 

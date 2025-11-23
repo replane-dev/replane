@@ -42,8 +42,8 @@ export interface ProjectInfo {
   createdAt: Date;
   updatedAt: Date;
   isExample: boolean;
-  // role in the project if the current user is a member (owner | admin)
-  myRole?: 'owner' | 'admin';
+  // role in the project if the current user is a member (admin | maintainer)
+  myRole?: 'admin' | 'maintainer';
 }
 
 export class ProjectStore {
@@ -100,7 +100,7 @@ export class ProjectStore {
   async getById(params: {
     id: string;
     currentUserEmail: NormalizedEmail;
-  }): Promise<(Project & {myRole?: 'owner' | 'admin'}) | undefined> {
+  }): Promise<(Project & {myRole?: 'admin' | 'maintainer'}) | undefined> {
     const projectsQuery = this.db
       .selectFrom('projects')
       .orderBy('projects.name')

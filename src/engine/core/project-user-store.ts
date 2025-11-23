@@ -3,7 +3,7 @@ import type {DB} from './db';
 import {normalizeEmail} from './utils';
 import type {NormalizedEmail} from './zod';
 
-export type ProjectUserRole = 'owner' | 'admin';
+export type ProjectUserRole = 'admin' | 'maintainer';
 
 export interface NewProjectUser {
   projectId: string;

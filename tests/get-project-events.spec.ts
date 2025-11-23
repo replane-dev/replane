@@ -51,13 +51,14 @@ describe('getProjectEvents Integration', () => {
 
     // Create a config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'feature-flag',
       value: {enabled: true},
       description: 'Test config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -76,13 +77,14 @@ describe('getProjectEvents Integration', () => {
   it('should emit updated event when a config is updated', async () => {
     // Create initial config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'feature-flag',
       value: {enabled: true},
       description: 'Test config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -120,13 +122,14 @@ describe('getProjectEvents Integration', () => {
   it('should emit deleted event when a config is deleted', async () => {
     // Create initial config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'feature-flag',
       value: {enabled: true},
       description: 'Test config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -183,25 +186,27 @@ describe('getProjectEvents Integration', () => {
 
       // Create config in other project - should not emit
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId: otherProjectId,
         name: 'other-flag',
         value: {x: 1},
         description: 'Other config',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       });
 
       // Create config in target project - should emit
       const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'target-flag',
         value: {y: 2},
         description: 'Target config',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       });
 
@@ -241,13 +246,14 @@ describe('getProjectEvents Integration', () => {
 
     // Create a config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'shared-flag',
       value: {count: 42},
       description: 'Shared config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -293,33 +299,36 @@ describe('getProjectEvents Integration', () => {
     // Create multiple configs rapidly
     await Promise.all([
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'flag-1',
         value: {n: 1},
         description: 'Config 1',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       }),
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'flag-2',
         value: {n: 2},
         description: 'Config 2',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       }),
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'flag-3',
         value: {n: 3},
         description: 'Config 3',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ]);
@@ -405,17 +414,17 @@ describe('GetProjectEvents Integration', () => {
     await sleep(10);
 
     // Add first config
-    currentConfigs = [{...config1, value: 'v1'}];
+    currentConfigs = [{...config1, value: 'v1', overrides: []}];
     await mem!.notify({configId: config1.id});
     await sleep(10);
 
     // Add second config
-    currentConfigs.push({...config2, value: 'v2'});
+    currentConfigs.push({...config2, value: 'v2', overrides: []});
     await mem!.notify({configId: config2.id});
     await sleep(10);
 
     // Update first config
-    currentConfigs[0] = {...config1, value: 'v1-updated', version: 2};
+    currentConfigs[0] = {...config1, value: 'v1-updated', version: 2, overrides: []};
     await mem!.notify({configId: config1.id});
     await sleep(10);
 
@@ -485,12 +494,12 @@ describe('GetProjectEvents Integration', () => {
     await sleep(10);
 
     // Add config for project2 - should be filtered out
-    currentConfigs = [{...config2, value: 'v2'}];
+    currentConfigs = [{...config2, value: 'v2', overrides: []}];
     await mem!.notify({configId: config2.id});
     await sleep(10);
 
     // Add config for project1 - should be received
-    currentConfigs.push({...config1, value: 'v1'});
+    currentConfigs.push({...config1, value: 'v1', overrides: []});
     await mem!.notify({configId: config1.id});
     await sleep(10);
 
@@ -506,7 +515,14 @@ describe('GetProjectEvents Integration', () => {
 
   it('should stream delete events when configs are removed', async () => {
     const projectId = 'proj-1';
-    const config1 = {id: 'cfg-1', name: 'config1', projectId, version: 1, value: 'v1'};
+    const config1 = {
+      id: 'cfg-1',
+      name: 'config1',
+      projectId,
+      version: 1,
+      value: 'v1',
+      overrides: [],
+    };
 
     let currentConfigs: any[] = [config1];
 
@@ -644,12 +660,12 @@ describe('GetProjectEvents Integration', () => {
     await sleep(10);
 
     // Add config for project1
-    currentConfigs = [{...config1, value: 'v1'}];
+    currentConfigs = [{...config1, value: 'v1', overrides: []}];
     await mem!.notify({configId: config1.id});
     await sleep(10);
 
     // Add config for project2
-    currentConfigs.push({...config2, value: 'v2'});
+    currentConfigs.push({...config2, value: 'v2', overrides: []});
     await mem!.notify({configId: config2.id});
     await sleep(10);
 
@@ -668,8 +684,22 @@ describe('GetProjectEvents Integration', () => {
 
   it('should receive events from full refresh on initial load', async () => {
     const projectId = 'proj-1';
-    const config1 = {id: 'cfg-1', name: 'config1', projectId, version: 1, value: 'v1'};
-    const config2 = {id: 'cfg-2', name: 'config2', projectId, version: 1, value: 'v2'};
+    const config1 = {
+      id: 'cfg-1',
+      name: 'config1',
+      projectId,
+      version: 1,
+      value: 'v1',
+      overrides: [],
+    };
+    const config2 = {
+      id: 'cfg-2',
+      name: 'config2',
+      projectId,
+      version: 1,
+      value: 'v2',
+      overrides: [],
+    };
 
     const currentConfigs: any[] = [config1, config2];
 
@@ -788,6 +818,7 @@ describe('GetProjectEvents Integration', () => {
         projectId,
         version: 1,
         value: `v${i}`,
+        overrides: [],
       });
       await mem!.notify({configId: `cfg-${i}`});
     }

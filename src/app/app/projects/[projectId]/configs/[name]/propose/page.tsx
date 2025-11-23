@@ -78,8 +78,9 @@ export default function ProposeConfigChangesPage() {
     name: string;
     value: unknown;
     schema: unknown | null;
+    overrides: unknown;
     description: string;
-    ownerEmails: string[];
+    maintainerEmails: string[];
     editorEmails: string[];
   }) {
     if (!config) throw new Error('Config not loaded');
@@ -101,24 +102,36 @@ export default function ProposeConfigChangesPage() {
         ? {newSchema: data.schema}
         : undefined;
 
+    const proposedOverrides =
+      JSON.stringify(data.overrides) !== JSON.stringify(config.config.overrides)
+        ? {newOverrides: data.overrides as any}
+        : undefined;
+
     // Members change detection
-    const currentOwners = (config.ownerEmails ?? []).slice().sort();
+    const currentMaintainers = (config.maintainerEmails ?? []).slice().sort();
     const currentEditors = (config.editorEmails ?? []).slice().sort();
-    const newOwners = (data.ownerEmails ?? []).slice().sort();
+    const newMaintainers = (data.maintainerEmails ?? []).slice().sort();
     const newEditors = (data.editorEmails ?? []).slice().sort();
-    const ownersChanged = JSON.stringify(currentOwners) !== JSON.stringify(newOwners);
+    const maintainersChanged =
+      JSON.stringify(currentMaintainers) !== JSON.stringify(newMaintainers);
     const editorsChanged = JSON.stringify(currentEditors) !== JSON.stringify(newEditors);
     const proposedMembers =
-      ownersChanged || editorsChanged
+      maintainersChanged || editorsChanged
         ? {
             newMembers: [
-              ...newOwners.map(email => ({email, role: 'owner' as const})),
+              ...newMaintainers.map(email => ({email, role: 'maintainer' as const})),
               ...newEditors.map(email => ({email, role: 'editor' as const})),
             ],
           }
         : undefined;
 
-    if (!proposedValue && !proposedDescription && !proposedSchema && !proposedMembers) {
+    if (
+      !proposedValue &&
+      !proposedDescription &&
+      !proposedSchema &&
+      !proposedOverrides &&
+      !proposedMembers
+    ) {
       // Nothing to propose
       alert('No changes detected. Update a field to create a proposal.');
       return;
@@ -129,6 +142,7 @@ export default function ProposeConfigChangesPage() {
       proposedValue,
       proposedDescription,
       proposedSchema,
+      proposedOverrides,
       proposedMembers,
       baseVersion: config.config.version,
     });
@@ -170,8 +184,9 @@ export default function ProposeConfigChangesPage() {
             defaultSchema={
               config.config?.schema ? JSON.stringify(config.config.schema, null, 2) : ''
             }
+            defaultOverrides={config.config?.overrides as any}
             defaultDescription={config.config?.description ?? ''}
-            defaultOwnerEmails={config.ownerEmails}
+            defaultMaintainerEmails={config.maintainerEmails}
             defaultEditorEmails={config.editorEmails}
             editorIdPrefix={`propose-config-${name}`}
             createdAt={config.config.createdAt}

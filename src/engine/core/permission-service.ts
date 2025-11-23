@@ -20,12 +20,12 @@ export class PermissionService {
     const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
 
     const configOwnerEmails = configUsers
-      .filter(cu => cu.role === 'owner')
+      .filter(cu => cu.role === 'maintainer')
       .map(cu => cu.user_email_normalized)
       .filter(Boolean) as string[];
 
     const projectOwnerEmails = projectUsers
-      .filter(pu => pu.role === 'owner' || pu.role === 'admin')
+      .filter(pu => pu.role === 'admin' || pu.role === 'maintainer')
       .map(pu => pu.user_email_normalized)
       .filter(Boolean) as string[];
 
@@ -40,12 +40,12 @@ export class PermissionService {
     const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
 
     const configEditorEmails = configUsers
-      .filter(cu => cu.role === 'editor' || cu.role === 'owner')
+      .filter(cu => cu.role === 'editor' || cu.role === 'maintainer')
       .map(cu => cu.user_email_normalized)
       .filter(Boolean) as string[];
 
     const projectOwnerEmails = projectUsers
-      .filter(pu => pu.role === 'owner' || pu.role === 'admin')
+      .filter(pu => pu.role === 'admin' || pu.role === 'maintainer')
       .map(pu => pu.user_email_normalized)
       .filter(Boolean) as string[];
 
@@ -62,7 +62,7 @@ export class PermissionService {
     });
     return (
       configUser?.role === 'editor' ||
-      configUser?.role === 'owner' ||
+      configUser?.role === 'maintainer' ||
       (await this.canEditProjectConfigs(config.projectId, currentUserEmail))
     );
   }
@@ -76,7 +76,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     return (
-      user?.role === 'owner' ||
+      user?.role === 'maintainer' ||
       (await this.canManageProjectConfigs(config.projectId, currentUserEmail))
     );
   }
@@ -90,7 +90,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     if (!user) return false;
-    return user.role === 'owner' || user.role === 'admin';
+    return user.role === 'admin' || user.role === 'maintainer';
   }
 
   async canManageProject(projectId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
@@ -99,7 +99,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     if (!user) return false;
-    return user.role === 'owner' || user.role === 'admin';
+    return user.role === 'admin' || user.role === 'maintainer';
   }
 
   async canDeleteProject(projectId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
@@ -108,7 +108,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     if (!user) return false;
-    return user.role === 'owner';
+    return user.role === 'admin';
   }
 
   async canEditProjectConfigs(
@@ -120,7 +120,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     if (!user) return false;
-    return user.role === 'owner' || user.role === 'admin';
+    return user.role === 'admin' || user.role === 'maintainer';
   }
 
   async canManageProjectConfigs(
@@ -132,7 +132,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     if (!user) return false;
-    return user.role === 'owner' || user.role === 'admin';
+    return user.role === 'admin' || user.role === 'maintainer';
   }
 
   async canManageProjectUsers(
@@ -144,7 +144,7 @@ export class PermissionService {
       userEmail: currentUserEmail,
     });
     if (!user) return false;
-    return user.role === 'owner';
+    return user.role === 'admin';
   }
 
   async canCreateConfigInProject(

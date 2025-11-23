@@ -2,6 +2,8 @@ import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {Configs, DB} from './db';
 import type {EventBusClient} from './event-bus';
+import {ConditionSchema, OverrideSchema} from './override-condition-schemas';
+import type {Override} from './override-evaluator';
 import {fromJsonb, toJsonb} from './store-utils';
 import {isValidJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
@@ -50,6 +52,18 @@ export function ConfigDescription() {
   return z.string().max(1_000_000);
 }
 
+export function ConfigOverride() {
+  return OverrideSchema.extend({
+    name: z.string().min(1).max(100),
+    conditions: z.array(ConditionSchema).max(100),
+    value: ConfigValue(),
+  });
+}
+
+export function ConfigOverrides() {
+  return z.array(ConfigOverride()).max(100);
+}
+
 export function Config() {
   return z.object({
     id: Uuid(),
@@ -57,6 +71,7 @@ export function Config() {
     value: ConfigValue(),
     schema: ConfigSchema().nullable(),
     description: ConfigDescription(),
+    overrides: ConfigOverrides(),
     createdAt: z.date(),
     updatedAt: z.date(),
     creatorId: z.number(),
@@ -75,27 +90,39 @@ export class ConfigStore {
   ) {}
 
   async getReplicaDump(): Promise<
-    Array<{id: string; name: string; projectId: string; value: any; version: number}>
+    Array<{
+      id: string;
+      name: string;
+      projectId: string;
+      value: unknown;
+      overrides: Override[];
+      version: number;
+    }>
   > {
     const rows = await this.db
       .selectFrom('configs')
-      .select(['id', 'name', 'value', 'version', 'project_id'])
+      .select(['id', 'name', 'value', 'overrides', 'version', 'project_id'])
       .execute();
     return rows.map(row => ({
       id: row.id,
       name: row.name,
       value: fromJsonb(row.value),
+      overrides: fromJsonb(row.overrides) ?? [],
       version: row.version,
       projectId: row.project_id,
     }));
   }
 
-  async getReplicaConfig(
-    configId: string,
-  ): Promise<{name: string; projectId: string; value: any; version: number} | null> {
+  async getReplicaConfig(configId: string): Promise<{
+    name: string;
+    projectId: string;
+    value: unknown;
+    overrides: Override[];
+    version: number;
+  } | null> {
     const row = await this.db
       .selectFrom('configs')
-      .select(['name', 'value', 'version', 'project_id'])
+      .select(['name', 'value', 'overrides', 'version', 'project_id'])
       .where('id', '=', configId)
       .executeTakeFirst();
     if (!row) {
@@ -104,6 +131,7 @@ export class ConfigStore {
     return {
       name: row.name,
       value: fromJsonb(row.value),
+      overrides: fromJsonb(row.overrides) ?? [],
       version: row.version,
       projectId: row.project_id,
     };
@@ -132,6 +160,7 @@ export class ConfigStore {
         'configs.value',
         'configs.schema',
         'configs.description',
+        'configs.overrides',
         'configs.updated_at',
         'configs.creator_id',
         'config_users.role as myRole',
@@ -192,6 +221,7 @@ export class ConfigStore {
         creator_id: config.creatorId,
         value: toJsonb(config.value),
         schema: config.schema ? toJsonb(config.schema) : null,
+        overrides: config.overrides ? toJsonb(config.overrides) : null,
         version: 1,
         project_id: config.projectId,
       })
@@ -204,6 +234,7 @@ export class ConfigStore {
     id: string;
     value: unknown;
     schema: unknown;
+    overrides: unknown;
     updatedAt: Date;
     description: string;
     version: number;
@@ -214,6 +245,7 @@ export class ConfigStore {
         value: toJsonb(params.value),
         description: params.description,
         schema: params.schema ? toJsonb(params.schema) : null,
+        overrides: params.overrides ? toJsonb(params.overrides) : null,
         updated_at: params.updatedAt,
         version: params.version,
       })
@@ -247,6 +279,7 @@ function mapConfig(config: Selectable<Configs>): Config {
     name: config.name,
     value: fromJsonb(config.value),
     schema: fromJsonb(config.schema),
+    overrides: fromJsonb(config.overrides) ?? [],
     description: config.description,
     createdAt: config.created_at,
     updatedAt: config.updated_at,

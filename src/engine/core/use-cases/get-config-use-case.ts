@@ -20,8 +20,8 @@ export interface PendingProposalSummary {
 export interface ConfigDetails {
   config: Config;
   editorEmails: string[];
-  ownerEmails: string[];
-  myRole: 'owner' | 'editor' | 'viewer';
+  maintainerEmails: string[];
+  myRole: 'maintainer' | 'editor' | 'viewer';
   pendingProposals: PendingProposalSummary[];
 }
 
@@ -67,6 +67,7 @@ export function createGetConfigUseCase(
           projectId: config.projectId,
           description: config.description,
           schema: config.schema,
+          overrides: config.overrides,
           creatorId: config.creatorId,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
@@ -76,8 +77,8 @@ export function createGetConfigUseCase(
           .filter(cu => cu.role === 'editor')
           .map(cu => cu.user_email_normalized)
           .sort(),
-        ownerEmails: configUsers
-          .filter(cu => cu.role === 'owner')
+        maintainerEmails: configUsers
+          .filter(cu => cu.role === 'maintainer')
           .map(cu => cu.user_email_normalized)
           .sort(),
         myRole: myProjectRole

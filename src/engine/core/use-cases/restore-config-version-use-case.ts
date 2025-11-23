@@ -64,6 +64,7 @@ export function createRestoreConfigVersionUseCase(
       description: versionSnapshot.description,
       updatedAt: now,
       version: nextVersion,
+      overrides: versionSnapshot.overrides,
     });
 
     // Get current members (restore doesn't change members, only value/schema/description)
@@ -84,6 +85,7 @@ export function createRestoreConfigVersionUseCase(
       })),
       authorId: currentUser.id,
       proposalId: null,
+      overrides: versionSnapshot.overrides,
     });
 
     const afterConfig = await tx.configs.getById(config.id);
@@ -108,6 +110,7 @@ export function createRestoreConfigVersionUseCase(
           createdAt: beforeConfig.createdAt,
           updatedAt: beforeConfig.updatedAt,
           version: beforeConfig.version,
+          overrides: beforeConfig.overrides,
         },
         after: {
           id: afterConfig.id,
@@ -120,6 +123,7 @@ export function createRestoreConfigVersionUseCase(
           createdAt: afterConfig.createdAt,
           updatedAt: afterConfig.updatedAt,
           version: afterConfig.version,
+          overrides: afterConfig.overrides,
         },
       },
     });

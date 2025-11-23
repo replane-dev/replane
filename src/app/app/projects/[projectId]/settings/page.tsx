@@ -28,7 +28,7 @@ import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {toast} from 'sonner';
 
-type Role = 'owner' | 'admin';
+type Role = 'admin' | 'maintainer';
 
 export default function ProjectSettingsPage() {
   const projectId = useProjectId();
@@ -111,9 +111,9 @@ export default function ProjectSettingsPage() {
 
   const myRole = (detailsData.project.myRole ?? 'viewer') as Role | 'viewer';
   // Permissions
-  const canEditDetails = myRole === 'owner' || myRole === 'admin';
-  const canManageMembers = myRole === 'owner';
-  const canDeleteProject = myRole === 'owner';
+  const canEditDetails = myRole === 'admin' || myRole === 'maintainer';
+  const canManageMembers = myRole === 'admin';
+  const canDeleteProject = myRole === 'admin';
   const proposalsRequired = org?.requireProposals ?? false;
 
   return (
@@ -151,7 +151,7 @@ export default function ProjectSettingsPage() {
                 <div className="flex items-start gap-2">
                   <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                   <p className="text-xs text-muted-foreground">
-                    Only owners or admins can change project settings.
+                    Only admins or maintainers can change project settings.
                   </p>
                 </div>
               </div>
@@ -203,8 +203,8 @@ export default function ProjectSettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owner">Owner</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="maintainer">Maintainer</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -275,7 +275,7 @@ export default function ProjectSettingsPage() {
                       <Button
                         variant="destructive"
                         disabled={!canDeleteProject}
-                        title={!canDeleteProject ? 'Only owners can delete a project' : undefined}
+                        title={!canDeleteProject ? 'Only admins can delete a project' : undefined}
                       >
                         <Trash2 className="mr-2 h-4 w-4" /> Delete project
                       </Button>
@@ -369,13 +369,13 @@ function RoleLegend() {
             <div className="text-sm font-semibold text-foreground mb-2">Project member roles</div>
             <div className="space-y-2.5 text-sm text-muted-foreground">
               <div>
-                <span className="font-semibold text-foreground">Owner</span>:
+                <span className="font-semibold text-foreground">Admin</span>:
                 {requireProposals
                   ? ' Can approve all config change proposals. Can edit project details, manage members, and delete project. Must create proposals to change configs.'
                   : ' Can edit project details, manage project members, delete project, and manage all configs.'}
               </div>
               <div>
-                <span className="font-semibold text-foreground">Admin</span>:
+                <span className="font-semibold text-foreground">Maintainer</span>:
                 {requireProposals
                   ? ' Can approve all config change proposals. Can edit project details. Cannot manage members or delete project. Must create proposals to change configs.'
                   : ' Can edit project details and configs but cannot manage project members or delete the project.'}

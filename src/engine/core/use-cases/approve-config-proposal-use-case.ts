@@ -81,6 +81,7 @@ export function createApproveConfigProposalUseCase(
         proposedValue: proposal.proposedValue ?? undefined,
         proposedDescription: proposal.proposedDescription ?? undefined,
         proposedSchema: proposal.proposedSchema ?? undefined,
+        proposedOverrides: proposal.proposedOverrides ?? undefined,
         proposedMembers: proposal.proposedMembers ?? undefined,
       },
     });
@@ -99,6 +100,9 @@ export function createApproveConfigProposalUseCase(
         value: proposal.proposedValue ? {newValue: proposal.proposedValue.newValue} : undefined,
         schema: proposal.proposedSchema
           ? {newSchema: proposal.proposedSchema.newSchema}
+          : undefined,
+        overrides: proposal.proposedOverrides
+          ? {newOverrides: proposal.proposedOverrides.newOverrides}
           : undefined,
         description:
           proposal.proposedDescription !== null

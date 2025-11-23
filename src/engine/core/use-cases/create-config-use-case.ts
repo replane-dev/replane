@@ -14,9 +14,10 @@ export interface CreateConfigRequest {
   value: any;
   description: string;
   schema: unknown;
+  overrides: unknown | null;
   currentUserEmail: NormalizedEmail;
   editorEmails: string[];
-  ownerEmails: string[];
+  maintainerEmails: string[];
   projectId: string;
 }
 
@@ -35,9 +36,10 @@ export function createCreateConfigUseCase(
     await tx.permissionService.ensureCanCreateConfig(req.projectId, req.currentUserEmail);
 
     // Validate no user appears with multiple roles
+    // Map API names (ownerEmails/editorEmails) to database roles (maintainer/editor)
     const allMembers = [
       ...req.editorEmails.map(email => ({email, role: 'editor' as const})),
-      ...req.ownerEmails.map(email => ({email, role: 'owner' as const})),
+      ...req.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
     ];
     tx.configService.ensureUniqueMembers(allMembers);
 
@@ -68,6 +70,7 @@ export function createCreateConfigUseCase(
       projectId: req.projectId,
       value: req.value,
       schema: req.schema,
+      overrides: req.overrides as any,
       description: req.description,
       createdAt: deps.dateProvider.now(),
       updatedAt: deps.dateProvider.now(),
@@ -82,6 +85,7 @@ export function createCreateConfigUseCase(
       id: createConfigVersionId(),
       name: req.name,
       schema: req.schema,
+      overrides: req.overrides,
       value: req.value,
       version: 1,
       members: allMembers.map(m => ({normalizedEmail: normalizeEmail(m.email), role: m.role})),
@@ -101,10 +105,10 @@ export function createCreateConfigUseCase(
           }),
         )
         .concat(
-          req.ownerEmails.map(
+          req.maintainerEmails.map(
             (email): NewConfigUser => ({
               email,
-              role: 'owner',
+              role: 'maintainer', // owners map to maintainer role in database
               configId,
               createdAt: deps.dateProvider.now(),
               updatedAt: deps.dateProvider.now(),
@@ -131,6 +135,7 @@ export function createCreateConfigUseCase(
           name: fullConfig.name,
           value: fullConfig.value,
           schema: fullConfig.schema,
+          overrides: fullConfig.overrides,
           description: fullConfig.description,
           creatorId: fullConfig.creatorId,
           createdAt: fullConfig.createdAt,

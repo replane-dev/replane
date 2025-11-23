@@ -30,13 +30,13 @@ export interface ConfigProposalDetails {
   proposedMembers: {newMembers: Array<{email: string; role: string}>} | null;
   message: string | null;
   status: 'pending' | 'approved' | 'rejected';
-  approverRole: 'owners' | 'owners_and_editors';
+  approverRole: 'maintainers' | 'maintainers_and_editors';
   approverEmails: string[];
   approverReason: string;
   baseValue: unknown | null;
   baseDescription: string | null;
   baseSchema: unknown | null;
-  baseOwnerEmails: string[];
+  baseMaintainerEmails: string[];
   baseEditorEmails: string[];
 }
 
@@ -86,10 +86,10 @@ export function createGetConfigProposalUseCase(
         : 'pending';
 
     // Determine approval policy and eligible approvers
-    const ownerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
+    const maintainerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
     const editorEmails = await tx.permissionService.getConfigEditors(proposal.configId);
 
-    const ownersOnly =
+    const maintainersOnly =
       proposal.proposedDelete ||
       proposal.proposedSchema !== null ||
       proposal.proposedDescription !== null ||
@@ -97,21 +97,21 @@ export function createGetConfigProposalUseCase(
 
     let approverReason = '';
     if (proposal.proposedDelete) {
-      approverReason = 'Deletion requests require owner approval.';
+      approverReason = 'Deletion requests require maintainer approval.';
     } else if (proposal.proposedSchema !== null) {
-      approverReason = 'Schema changes require owner approval.';
+      approverReason = 'Schema changes require maintainer approval.';
     } else if (proposal.proposedDescription !== null) {
-      approverReason = 'Description changes require owner approval.';
+      approverReason = 'Description changes require maintainer approval.';
     } else if (proposal.proposedMembers !== null) {
-      approverReason = 'Membership changes require owner approval.';
+      approverReason = 'Membership changes require maintainer approval.';
     } else {
-      approverReason = 'Value-only changes can be approved by editors or owners.';
+      approverReason = 'Value-only changes can be approved by editors or maintainers.';
     }
 
-    const approverRole: 'owners' | 'owners_and_editors' = ownersOnly
-      ? 'owners'
-      : 'owners_and_editors';
-    const approverEmails = ownersOnly ? ownerEmails : editorEmails;
+    const approverRole: 'maintainers' | 'maintainers_and_editors' = maintainersOnly
+      ? 'maintainers'
+      : 'maintainers_and_editors';
+    const approverEmails = maintainersOnly ? maintainerEmails : editorEmails;
 
     // Get the base version of the config to show the diff against the original state
     const baseVersion = await tx.configVersions.getByConfigIdAndVersion(
@@ -129,10 +129,10 @@ export function createGetConfigProposalUseCase(
     const baseSchema = baseVersion.schema ?? null;
 
     // Get base members from the version snapshot, or fall back to current members if not versioned
-    const baseOwnerEmails =
+    const baseMaintainerEmails =
       baseVersion.members.length > 0
-        ? baseVersion.members.filter(m => m.role === 'owner').map(m => m.normalizedEmail)
-        : ownerEmails;
+        ? baseVersion.members.filter(m => m.role === 'maintainer').map(m => m.normalizedEmail)
+        : maintainerEmails;
     const baseEditorEmails =
       baseVersion.members.length > 0
         ? baseVersion.members.filter(m => m.role === 'editor').map(m => m.normalizedEmail)
@@ -178,7 +178,7 @@ export function createGetConfigProposalUseCase(
         baseValue,
         baseDescription,
         baseSchema,
-        baseOwnerEmails,
+        baseMaintainerEmails,
         baseEditorEmails,
       },
       proposalsRejectedByThisApproval,

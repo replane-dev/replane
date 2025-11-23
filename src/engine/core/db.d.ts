@@ -11,7 +11,7 @@ export type ConfigProposalRejectionReason =
   | 'config_edited'
   | 'rejected_explicitly';
 
-export type ConfigUserRole = 'editor' | 'owner';
+export type ConfigUserRole = 'editor' | 'maintainer';
 
 export type Generated<T> =
   T extends ColumnType<infer S, infer I, infer U>
@@ -32,7 +32,7 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
-export type ProjectUserRole = 'admin' | 'owner';
+export type ProjectUserRole = 'admin' | 'maintainer';
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
@@ -80,6 +80,7 @@ export interface ConfigProposals {
   proposed_delete: Generated<boolean>;
   proposed_description: string | null;
   proposed_members: Json | null;
+  proposed_overrides: Json | null;
   proposed_schema: Json | null;
   proposed_value: Json | null;
   proposer_id: number | null;
@@ -95,6 +96,7 @@ export interface Configs {
   description: string;
   id: string;
   name: string;
+  overrides: Json | null;
   project_id: string;
   schema: Json | null;
   updated_at: Timestamp;
@@ -123,6 +125,7 @@ export interface ConfigVersions {
   description: string;
   id: string;
   name: string;
+  overrides: Json | null;
   proposal_id: string | null;
   schema: Json | null;
   value: Json;

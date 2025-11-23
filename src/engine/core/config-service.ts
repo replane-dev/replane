@@ -21,6 +21,7 @@ export interface PatchConfigParams {
   configId: ConfigId;
   value?: {newValue: any};
   schema?: {newSchema: any};
+  overrides?: {newOverrides: any};
   description?: {newDescription: string};
   patchAuthor: User;
   reviewer: User;
@@ -68,7 +69,7 @@ export class ConfigService {
     assert(patchAuthor.email, 'Patch author must have an email');
     assert(reviewer.email, 'Reviewer must have an email');
 
-    if (params.members || params.schema || params.description) {
+    if (params.members || params.schema || params.description || params.overrides) {
       await this.permissionService.ensureCanManageConfig(
         existingConfig.id,
         normalizeEmail(reviewer.email),
@@ -91,6 +92,9 @@ export class ConfigService {
 
     const nextValue = params.value ? params.value.newValue : existingConfig.value;
     const nextSchema = params.schema ? params.schema.newSchema : existingConfig.schema;
+    const nextOverrides = params.overrides
+      ? params.overrides.newOverrides
+      : existingConfig.overrides;
     if (nextSchema !== null) {
       const result = validateAgainstJsonSchema(nextValue, nextSchema);
       if (!result.ok) {
@@ -110,6 +114,7 @@ export class ConfigService {
       id: existingConfig.id,
       value: nextValue,
       schema: nextSchema,
+      overrides: nextOverrides,
       description: nextDescription,
       updatedAt: this.dateProvider.now(),
       version: nextVersion,
@@ -118,7 +123,7 @@ export class ConfigService {
     // Capture members before any updates for versioning
     const configUsersBefore = await this.configUsers.getByConfigId(existingConfig.id);
     const ownerEmailsBefore = configUsersBefore
-      .filter(u => u.role === 'owner')
+      .filter(u => u.role === 'maintainer')
       .map(u => u.user_email_normalized);
     const editorEmailsBefore = configUsersBefore
       .filter(u => u.role === 'editor')
@@ -160,7 +165,7 @@ export class ConfigService {
     // Get final members for the version
     const configUsersAfter = await this.configUsers.getByConfigId(existingConfig.id);
     const ownerEmailsAfter = configUsersAfter
-      .filter(u => u.role === 'owner')
+      .filter(u => u.role === 'maintainer')
       .map(u => u.user_email_normalized);
     const editorEmailsAfter = configUsersAfter
       .filter(u => u.role === 'editor')
@@ -173,12 +178,13 @@ export class ConfigService {
       id: createConfigVersionId(),
       name: existingConfig.name,
       schema: nextSchema,
+      overrides: nextOverrides,
       value: nextValue,
       version: nextVersion,
       members: [
         ...ownerEmailsAfter.map(email => ({
           normalizedEmail: normalizeEmail(email),
-          role: 'owner' as const,
+          role: 'maintainer' as const,
         })),
         ...editorEmailsAfter.map(email => ({
           normalizedEmail: normalizeEmail(email),
@@ -207,6 +213,7 @@ export class ConfigService {
           name: beforeConfig.name,
           value: beforeConfig.value,
           schema: beforeConfig.schema,
+          overrides: beforeConfig.overrides,
           description: beforeConfig.description,
           creatorId: beforeConfig.creatorId,
           createdAt: beforeConfig.createdAt,
@@ -219,6 +226,7 @@ export class ConfigService {
           name: afterConfig.name,
           value: afterConfig.value,
           schema: afterConfig.schema,
+          overrides: afterConfig.overrides,
           description: afterConfig.description,
           creatorId: afterConfig.creatorId,
           createdAt: afterConfig.createdAt,
@@ -244,6 +252,7 @@ export class ConfigService {
             name: afterConfig.name,
             value: afterConfig.value,
             schema: afterConfig.schema,
+            overrides: afterConfig.overrides,
             description: afterConfig.description,
             creatorId: afterConfig.creatorId,
             createdAt: afterConfig.createdAt,
@@ -295,6 +304,7 @@ export class ConfigService {
           name: existingConfig.name,
           value: existingConfig.value,
           schema: existingConfig.schema,
+          overrides: existingConfig.overrides,
           description: existingConfig.description,
           creatorId: existingConfig.creatorId,
           createdAt: existingConfig.createdAt,
@@ -410,6 +420,7 @@ export class ConfigService {
           proposedValue: proposal.proposedValue ?? undefined,
           proposedDescription: proposal.proposedDescription ?? undefined,
           proposedSchema: proposal.proposedSchema ?? undefined,
+          proposedOverrides: proposal.proposedOverrides ?? undefined,
           proposedMembers: proposal.proposedMembers ?? undefined,
         },
       });

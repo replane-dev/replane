@@ -20,6 +20,7 @@ export interface AuditMessagePayloadConfig {
   projectId: string;
   description: string;
   schema: unknown;
+  overrides: unknown;
   creatorId: number;
   createdAt: Date;
   updatedAt: Date;
@@ -129,6 +130,7 @@ export interface ConfigProposalCreatedAuditMessagePayload
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
+  proposedOverrides?: {newOverrides: unknown};
   proposedMembers?: {newMembers: Array<{email: string; role: string}>};
   message?: string;
 }
@@ -142,6 +144,7 @@ export interface ConfigProposalRejectedAuditMessagePayload
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
+  proposedOverrides?: {newOverrides: unknown};
   proposedMembers?: {newMembers: Array<{email: string; role: string}>};
 }
 
@@ -153,6 +156,7 @@ export interface ConfigProposalApprovedAuditMessagePayload
   proposedValue?: {newValue: unknown};
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
+  proposedOverrides?: {newOverrides: unknown};
   proposedMembers?: {newMembers: Array<{email: string; role: string}>};
 }
 

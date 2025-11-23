@@ -12,24 +12,26 @@ describe('deleteConfig', () => {
   it('should delete an existing config', async () => {
     // Create two configs
     const {configId: deleteId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'config_to_delete',
       value: {enabled: true},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'To be deleted',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configId: keepId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'config_to_keep',
       value: 'keep',
       schema: {type: 'string'},
       description: 'Should remain',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -91,13 +93,14 @@ describe('deleteConfig', () => {
 
   it('should throw BadRequestError on double delete', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'double_delete',
       value: 1,
       schema: {type: 'number'},
       description: 'double delete case',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -118,20 +121,21 @@ describe('deleteConfig', () => {
 
   it('should forbid delete when current user is editor (not owner)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cannot_delete_as_editor',
       value: 123,
       schema: {type: 'number'},
       description: 'Editor cannot delete',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [TEST_USER_EMAIL],
-      ownerEmails: ['other-owner@example.com'],
+      maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     await expect(
@@ -152,20 +156,21 @@ describe('deleteConfig', () => {
 
   it('should forbid delete when current user is viewer (no membership)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cannot_delete_as_viewer',
       value: 'v',
       schema: {type: 'string'},
       description: 'Viewer cannot delete',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: ['other-owner@example.com'],
+      maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     await expect(
@@ -185,13 +190,14 @@ describe('deleteConfig', () => {
 
   it('creates audit messages (config_created & config_deleted)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'delete_audit',
       value: 'x',
       schema: {type: 'string'},
       description: 'audit',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -224,13 +230,14 @@ describe('deleteConfig (requireProposals=true)', () => {
 
   it('should forbid direct delete when requireProposals is enabled', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cannot_delete_when_require_proposals',
       value: 42,
       schema: {type: 'number'},
       description: 'Test',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -245,13 +252,14 @@ describe('deleteConfig (requireProposals=true)', () => {
 
   it('should forbid deletion if version mismatch', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version_mismatch_delete',
       value: 'test',
       schema: {type: 'string'},
       description: 'Test',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 

@@ -30,11 +30,11 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
     const configs = {
       async getReplicaDump() {
-        return [{id, name, projectId, value: currentValue, version: 1}];
+        return [{id, name, projectId, value: currentValue, version: 1, overrides: []}];
       },
       async getReplicaConfig(cfgId: string) {
         if (cfgId !== id) return null;
-        return {name, projectId, value: currentValue, version: 1};
+        return {name, projectId, value: currentValue, version: 1, overrides: []};
       },
     };
 
@@ -77,11 +77,11 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
     const configs = {
       async getReplicaDump() {
-        return exists ? [{id, name, projectId, value: 1, version: 1}] : [];
+        return exists ? [{id, name, projectId, value: 1, version: 1, overrides: []}] : [];
       },
       async getReplicaConfig(cfgId: string) {
         if (cfgId !== id) return null;
-        return exists ? {name, projectId, value: 1, version: 1} : null;
+        return exists ? {name, projectId, value: 1, version: 1, overrides: []} : null;
       },
     };
 
@@ -125,9 +125,9 @@ describe('ConfigsReplica with InMemoryListener', () => {
       },
       async getReplicaConfig(cfgId: string) {
         if (cfgId === a.id)
-          return {name: a.name, projectId: a.projectId, value: valueA, version: a.version};
+          return {name: a.name, projectId: a.projectId, value: valueA, version: a.version, overrides: []};
         if (cfgId === b.id)
-          return {name: b.name, projectId: b.projectId, value: valueB, version: b.version};
+          return {name: b.name, projectId: b.projectId, value: valueB, version: b.version, overrides: []};
         return null;
       },
     };
@@ -186,7 +186,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
       async getReplicaConfig(cfgId: string) {
         if (cfgId !== id) return null;
         if (!exists) return null;
-        return {name, projectId, value: currentValue, version: currentVersion};
+        return {name, projectId, value: currentValue, version: currentVersion, overrides: []};
       },
     };
 
@@ -230,6 +230,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
         projectId,
         value: {enabled: false},
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -248,6 +249,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
         projectId,
         value: {enabled: true},
         version: 2,
+        renderedOverrides: [],
       },
     });
 
@@ -265,6 +267,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
         projectId,
         value: {enabled: true},
         version: 2,
+        renderedOverrides: [],
       },
     });
 
@@ -282,7 +285,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
       },
       async getReplicaConfig(cfgId: string) {
         if (cfgId !== id) return null;
-        return {name, projectId, value: 1, version: 1};
+        return {name, projectId, value: 1, version: 1, overrides: []};
       },
     };
 
@@ -315,8 +318,8 @@ describe('ConfigsReplica with InMemoryListener', () => {
   });
 
   it('publishes created events during initial full refresh', async () => {
-    const config1 = {id: 'cfg-1', name: 'config1', projectId: 'proj', version: 1, value: 'v1'};
-    const config2 = {id: 'cfg-2', name: 'config2', projectId: 'proj', version: 1, value: 'v2'};
+    const config1 = {id: 'cfg-1', name: 'config1', projectId: 'proj', version: 1, value: 'v1', overrides: []};
+    const config2 = {id: 'cfg-2', name: 'config2', projectId: 'proj', version: 1, value: 'v2', overrides: []};
 
     const configs = {
       async getReplicaDump() {
@@ -358,11 +361,25 @@ describe('ConfigsReplica with InMemoryListener', () => {
     expect(eventsSpy).toHaveBeenCalledTimes(2);
     expect(eventsSpy).toHaveBeenCalledWith({
       type: 'created',
-      config: config1,
+      config: {
+        id: config1.id,
+        name: config1.name,
+        projectId: config1.projectId,
+        value: config1.value,
+        version: config1.version,
+        renderedOverrides: [],
+      },
     });
     expect(eventsSpy).toHaveBeenCalledWith({
       type: 'created',
-      config: config2,
+      config: {
+        id: config2.id,
+        name: config2.name,
+        projectId: config2.projectId,
+        value: config2.value,
+        version: config2.version,
+        renderedOverrides: [],
+      },
     });
 
     await replica.stop();

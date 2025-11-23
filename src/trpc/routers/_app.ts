@@ -1,8 +1,14 @@
-import {ConfigDescription, ConfigName, ConfigSchema, ConfigValue} from '@/engine/core/config-store';
+import {
+  ConfigDescription,
+  ConfigName,
+  ConfigOverrides,
+  ConfigSchema,
+  ConfigValue,
+} from '@/engine/core/config-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ProjectDescription, ProjectName} from '@/engine/core/project-store';
 import {getOrganizationConfig} from '@/engine/core/utils';
-import {ConfigMember, EditorArray, Email, OwnerArray, Uuid} from '@/engine/core/zod';
+import {ConfigMember, EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
@@ -49,8 +55,9 @@ export const appRouter = createTRPCRouter({
         value: ConfigValue(),
         description: ConfigDescription(),
         schema: ConfigSchema(),
+        overrides: ConfigOverrides(),
         editorEmails: EditorArray(),
-        ownerEmails: OwnerArray(),
+        maintainerEmails: MaintainerArray(),
         projectId: Uuid(),
       }),
     )
@@ -71,6 +78,7 @@ export const appRouter = createTRPCRouter({
         configId: Uuid(),
         value: z.object({newValue: ConfigValue()}).optional(),
         schema: z.object({newSchema: ConfigSchema()}).optional(),
+        overrides: z.object({newOverrides: ConfigOverrides()}).optional(),
         description: z.object({newDescription: ConfigDescription()}).optional(),
         prevVersion: z.number(),
         members: z
@@ -254,7 +262,7 @@ export const appRouter = createTRPCRouter({
             users: z.array(
               z.object({
                 email: Email(),
-                role: z.enum(['owner', 'admin']),
+                role: z.enum(['maintainer', 'admin']),
               }),
             ),
           })
@@ -331,7 +339,7 @@ export const appRouter = createTRPCRouter({
         users: z.array(
           z.object({
             email: Email(),
-            role: z.enum(['owner', 'admin']),
+            role: z.enum(['maintainer', 'admin']),
           }),
         ),
       }),
@@ -462,6 +470,7 @@ export const appRouter = createTRPCRouter({
         proposedValue: z.object({newValue: ConfigValue()}).optional(),
         proposedDescription: z.object({newDescription: ConfigDescription()}).optional(),
         proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
+        proposedOverrides: z.object({newOverrides: ConfigOverrides()}).optional(),
         proposedMembers: z
           .object({
             newMembers: z.array(ConfigMember()),
@@ -483,6 +492,9 @@ export const appRouter = createTRPCRouter({
           proposedValue: opts.input.proposedValue,
           proposedDescription: opts.input.proposedDescription,
           proposedSchema: opts.input.proposedSchema,
+          proposedOverrides: opts.input.proposedOverrides
+            ? {newOverrides: opts.input.proposedOverrides.newOverrides}
+            : undefined,
           proposedMembers: opts.input.proposedMembers,
           message: opts.input.message,
           currentUserEmail: opts.ctx.currentUserEmail,

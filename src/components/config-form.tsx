@@ -1,8 +1,10 @@
 'use client';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
-import {ConfigMaintainersList} from '@/components/config-maintainers-list';
+import {ConfigMemberList} from '@/components/config-member-list';
+import {ConfigMetadataHeader} from '@/components/config-metadata-header';
 import {JsonEditor} from '@/components/json-editor';
+import {OverrideBuilder} from '@/components/override-builder';
 import {Button} from '@/components/ui/button';
 import {
   Form,
@@ -18,35 +20,27 @@ import {Label} from '@/components/ui/label';
 import {Switch} from '@/components/ui/switch';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
+import {ConfigOverrides} from '@/engine/core/config-store';
+import type {Override} from '@/engine/core/override-evaluator';
 import {zodResolver} from '@hookform/resolvers/zod';
 import Ajv from 'ajv';
-import {format, formatDistanceToNow} from 'date-fns';
-import {CalendarDays, CircleHelp, Clock3, Copy, GitBranch, GitCommitVertical} from 'lucide-react';
-import Link from 'next/link';
+import {CircleHelp} from 'lucide-react';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
-import {toast} from 'sonner';
 import {z} from 'zod';
-
-function formatTimezoneOffset(date: Date): string {
-  const offsetMinutes = -date.getTimezoneOffset();
-  const hours = Math.floor(Math.abs(offsetMinutes) / 60);
-  const minutes = Math.abs(offsetMinutes) % 60;
-  const sign = offsetMinutes >= 0 ? '+' : '-';
-  return `UTC${sign}${hours}${minutes > 0 ? `:${minutes.toString().padStart(2, '0')}` : ''}`;
-}
 
 type Mode = 'new' | 'edit' | 'proposal';
 
 export interface ConfigFormProps {
   mode: Mode;
-  role: 'viewer' | 'owner' | 'editor';
+  role: 'viewer' | 'maintainer' | 'editor';
   currentName?: string; // used in edit mode (read-only display)
   defaultValue: string; // JSON string
   defaultDescription?: string;
   defaultSchemaEnabled?: boolean;
   defaultSchema?: string; // JSON string
-  defaultOwnerEmails?: string[];
+  defaultOverrides?: Override[];
+  defaultMaintainerEmails?: string[];
   defaultEditorEmails?: string[];
   proposing?: boolean;
   saving?: boolean;
@@ -63,10 +57,13 @@ export interface ConfigFormProps {
     name: string;
     value: unknown;
     schema: unknown | null;
+    overrides: Override[];
     description: string;
-    ownerEmails: string[];
+    maintainerEmails: string[];
     editorEmails: string[];
   }) => Promise<void> | void;
+  onValuesChange?: (values: {value: string; overrides: Override[]}) => void;
+  onTestOverrides?: () => void;
 }
 
 export function ConfigForm(props: ConfigFormProps) {
@@ -79,7 +76,8 @@ export function ConfigForm(props: ConfigFormProps) {
     defaultDescription = '',
     defaultSchemaEnabled = false,
     defaultSchema = '',
-    defaultOwnerEmails = [],
+    defaultOverrides = [],
+    defaultMaintainerEmails = [],
     defaultEditorEmails = [],
     proposing,
     saving,
@@ -91,6 +89,8 @@ export function ConfigForm(props: ConfigFormProps) {
     onCancel,
     onDelete,
     onSubmit,
+    onValuesChange,
+    onTestOverrides,
   } = props;
 
   const defaultName = currentName ?? '';
@@ -98,19 +98,20 @@ export function ConfigForm(props: ConfigFormProps) {
   const projectId = useProjectId();
 
   // Normalize role, tolerate common typo "editor"
-  const role: 'viewer' | 'owner' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
+  const role: 'viewer' | 'maintainer' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
 
   // Permissions
   // - new: fully editable
   // - edit: respect role-based restrictions
   // - proposal: allow proposing value/description/schema and members regardless of role
   const isProposal = mode === 'proposal';
-  const canEditDescription = mode === 'new' ? true : isProposal ? true : role === 'owner';
+  const canEditDescription = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
   const canEditValue = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
-  const canEditSchema = mode === 'new' ? true : isProposal ? true : role === 'owner';
-  const canEditOwnersEditors = mode === 'new' ? true : isProposal ? true : role === 'owner';
+  const canEditSchema = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
+  const canEditOverrides = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
+  const canEditMembers = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
   const canSubmit = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
-  const showOwnersEditors = true;
+  const showMembers = true;
 
   const ajv = React.useMemo(
     () => new Ajv({allErrors: true, strict: false, allowUnionTypes: true}),
@@ -151,23 +152,24 @@ export function ConfigForm(props: ConfigFormProps) {
           ctx.addIssue({code: 'custom', message: 'Schema must be valid JSON'});
         }
       }),
-    maintainers: z
+    overrides: ConfigOverrides(),
+    members: z
       .array(
         z.object({
           email: z.string().min(1, 'Email is required'),
-          role: z.enum(['owner', 'editor']),
+          role: z.enum(['maintainer', 'editor']),
         }),
       )
       .default([])
-      .superRefine((maintainers, ctx) => {
+      .superRefine((members, ctx) => {
         // Validate email format
-        for (let i = 0; i < maintainers.length; i++) {
-          const maintainer = maintainers[i];
-          if (!maintainer.email) continue;
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(maintainer.email.trim())) {
+        for (let i = 0; i < members.length; i++) {
+          const member = members[i];
+          if (!member.email) continue;
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())) {
             ctx.addIssue({
               code: 'custom',
-              message: `Invalid email: ${maintainer.email}`,
+              message: `Invalid email: ${member.email}`,
               path: [i, 'email'],
             });
           }
@@ -175,8 +177,8 @@ export function ConfigForm(props: ConfigFormProps) {
 
         // Check for duplicates
         const emailSet = new Set<string>();
-        for (let i = 0; i < maintainers.length; i++) {
-          const email = maintainers[i].email.trim().toLowerCase();
+        for (let i = 0; i < members.length; i++) {
+          const email = members[i].email.trim().toLowerCase();
           if (!email) continue;
           if (emailSet.has(email)) {
             ctx.addIssue({
@@ -212,8 +214,9 @@ export function ConfigForm(props: ConfigFormProps) {
       description: defaultDescription,
       schemaEnabled: defaultSchemaEnabled,
       schema: defaultSchema,
-      maintainers: [
-        ...defaultOwnerEmails.map(email => ({email, role: 'owner' as const})),
+      overrides: defaultOverrides,
+      members: [
+        ...defaultMaintainerEmails.map(email => ({email, role: 'maintainer' as const})),
         ...defaultEditorEmails.map(email => ({email, role: 'editor' as const})),
       ],
     },
@@ -251,17 +254,20 @@ export function ConfigForm(props: ConfigFormProps) {
       }
     }
 
+    // Handle overrides - overrides are enabled if they exist
+    const overrides = values.overrides;
+
     // Determine action: use tracked action, or default based on mode
     const action: 'save' | 'propose' =
       submitActionRef.current ?? (mode === 'proposal' ? 'propose' : 'save');
 
-    // Transform maintainers array back to ownerEmails and editorEmails
+    // Transform member array back to maintainerEmails and editorEmails
     // Filter out entries with empty emails
-    const maintainers = (values.maintainers ?? []).filter(m => m.email.trim());
-    const ownerEmails = maintainers
-      .filter(m => m.role === 'owner')
+    const members = (values.members ?? []).filter(m => m.email.trim());
+    const maintainerEmails = members
+      .filter(m => m.role === 'maintainer')
       .map(m => m.email.trim().toLowerCase());
-    const editorEmails = maintainers
+    const editorEmails = members
       .filter(m => m.role === 'editor')
       .map(m => m.email.trim().toLowerCase());
 
@@ -270,8 +276,9 @@ export function ConfigForm(props: ConfigFormProps) {
       name: values.name ?? defaultName,
       value: payloadValue,
       schema: values.schemaEnabled ? parsedSchema : null,
+      overrides: overrides as Override[],
       description: values.description ?? '',
-      ownerEmails,
+      maintainerEmails: maintainerEmails,
       editorEmails,
     });
 
@@ -285,7 +292,21 @@ export function ConfigForm(props: ConfigFormProps) {
   const watchedDescription = useWatch({control: form.control, name: 'description'});
   const watchedSchemaEnabled = useWatch({control: form.control, name: 'schemaEnabled'});
   const watchedSchema = useWatch({control: form.control, name: 'schema'});
-  const watchedMaintainers = useWatch({control: form.control, name: 'maintainers'});
+  const watchedOverrides = useWatch({control: form.control, name: 'overrides'}) as
+    | Override[]
+    | undefined;
+  const watchedMembers = useWatch({control: form.control, name: 'members'});
+
+  // Notify parent of value changes for live testing
+  React.useEffect(() => {
+    if (onValuesChange && watchedOverrides) {
+      onValuesChange({
+        value: watchedValue ?? defaultValue,
+        overrides: watchedOverrides,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValue, watchedOverrides]);
 
   // Reactive schema for Value editor (useWatch ensures defaults are considered before inputs mount)
   const enabled = (watchedSchemaEnabled ?? form.getValues('schemaEnabled')) as boolean;
@@ -312,11 +333,11 @@ export function ConfigForm(props: ConfigFormProps) {
     const currentDescription = (watchedDescription ?? '').trim();
     const currentSchemaEnabled = watchedSchemaEnabled ?? false;
     const currentSchema = (watchedSchema ?? '').trim();
-    const currentMaintainers = (watchedMaintainers ?? []).filter(m => m.email.trim());
+    const currentMembers = (watchedMembers ?? []).filter(m => m.email.trim());
 
     // Normalize maintainers for comparison
-    const normalizeMaintainers = (maintainers: typeof currentMaintainers) => {
-      const normalized = maintainers
+    const normalizeMembers = (members: typeof currentMembers) => {
+      const normalized = members
         .filter(m => m.email.trim())
         .map(m => ({email: m.email.trim().toLowerCase(), role: m.role}))
         .sort((a, b) => {
@@ -326,19 +347,25 @@ export function ConfigForm(props: ConfigFormProps) {
       return normalized;
     };
 
-    const defaultMaintainers = [
-      ...defaultOwnerEmails.map(email => ({email: email.toLowerCase(), role: 'owner' as const})),
-      ...defaultEditorEmails.map(email => ({email: email.toLowerCase(), role: 'editor' as const})),
+    const defaultMembers = [
+      ...defaultMaintainerEmails.map(email => ({
+        email: email.toLowerCase(),
+        role: 'maintainer' as const,
+      })),
+      ...defaultEditorEmails.map(email => ({
+        email: email.toLowerCase(),
+        role: 'editor' as const,
+      })),
     ].sort((a, b) => {
       if (a.email !== b.email) return a.email.localeCompare(b.email);
       return a.role.localeCompare(b.role);
     });
 
-    const normalizedCurrent = normalizeMaintainers(currentMaintainers);
-    const normalizedDefault = normalizeMaintainers(defaultMaintainers);
+    const normalizedCurrent = normalizeMembers(currentMembers);
+    const normalizedDefault = normalizeMembers(defaultMembers);
 
-    // Compare maintainers
-    const maintainersChanged =
+    // Compare members
+    const membersChanged =
       normalizedCurrent.length !== normalizedDefault.length ||
       normalizedCurrent.some(
         (m, i) => m.email !== normalizedDefault[i]?.email || m.role !== normalizedDefault[i]?.role,
@@ -350,12 +377,17 @@ export function ConfigForm(props: ConfigFormProps) {
     const schemaEnabledChanged = currentSchemaEnabled !== defaultSchemaEnabled;
     const schemaChanged = currentSchema !== (defaultSchema ?? '').trim();
 
+    // Compare overrides
+    const currentOverrides = watchedOverrides ?? null;
+    const overridesChanged = JSON.stringify(currentOverrides) !== JSON.stringify(defaultOverrides);
+
     return (
       valueChanged ||
       descriptionChanged ||
       schemaEnabledChanged ||
       schemaChanged ||
-      maintainersChanged
+      overridesChanged ||
+      membersChanged
     );
   }, [
     mode,
@@ -364,12 +396,14 @@ export function ConfigForm(props: ConfigFormProps) {
     watchedDescription,
     watchedSchemaEnabled,
     watchedSchema,
-    watchedMaintainers,
+    watchedOverrides,
+    watchedMembers,
     defaultValue,
     defaultDescription,
     defaultSchemaEnabled,
     defaultSchema,
-    defaultOwnerEmails,
+    defaultOverrides,
+    defaultMaintainerEmails,
     defaultEditorEmails,
   ]);
 
@@ -409,133 +443,15 @@ export function ConfigForm(props: ConfigFormProps) {
             )}
           />
         ) : (
-          <>
-            <div className="space-y-2">
-              <div className="group flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-foreground">{defaultName}</h2>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(defaultName);
-                        toast.success('Copied config name', {description: defaultName});
-                      }}
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Copy config name</TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {typeof currentName === 'string' &&
-                  typeof currentPendingProposalsCount === 'number' && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={`/app/projects/${projectId}/configs/${encodeURIComponent(currentName)}/proposals`}
-                          className="inline-flex items-center gap-1.5 rounded-md border bg-card/50 px-3 py-1.5 text-sm hover:bg-card/80 transition-colors"
-                        >
-                          <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="font-medium">{currentPendingProposalsCount}</span>
-                          <span className="text-muted-foreground">proposals</span>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        {currentPendingProposalsCount === 1
-                          ? '1 pending proposal waiting for review'
-                          : `${currentPendingProposalsCount} pending proposals waiting for review`}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
-                {typeof currentVersion === 'number' && versionsLink && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={versionsLink}
-                        className="inline-flex items-center gap-1.5 rounded-md border bg-card/50 px-3 py-1.5 text-sm hover:bg-card/80 transition-colors"
-                      >
-                        <GitCommitVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="font-medium">v{currentVersion}</span>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      Config version {currentVersion}. Click to view version history.
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {typeof currentVersion === 'number' && !versionsLink && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="inline-flex items-center gap-1.5 rounded-md border bg-card/50 px-3 py-1.5 text-sm cursor-help">
-                        <GitCommitVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="font-medium">v{currentVersion}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      Config version {currentVersion}. The version number increments each time the
-                      config is updated.
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                {(() => {
-                  const c = createdAt ? new Date(createdAt) : undefined;
-                  const u = updatedAt ? new Date(updatedAt) : undefined;
-                  const hasC = !!c && !isNaN(c.getTime());
-                  const hasU = !!u && !isNaN(u.getTime());
-                  const showU = hasU && (!hasC || u!.getTime() !== c!.getTime());
-
-                  return (
-                    <>
-                      {hasC && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="inline-flex items-center gap-1.5 rounded-md border bg-card/50 px-3 py-1.5 text-sm cursor-help">
-                              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-muted-foreground">Created</span>
-                              <span className="font-medium">
-                                {formatDistanceToNow(c!, {addSuffix: true})}
-                              </span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <span>
-                              {format(c!, 'yyyy-MM-dd HH:mm:ss')} {formatTimezoneOffset(c!)}
-                            </span>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-
-                      {showU && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="inline-flex items-center gap-1.5 rounded-md border bg-card/50 px-3 py-1.5 text-sm cursor-help">
-                              <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-muted-foreground">Updated</span>
-                              <span className="font-medium">
-                                {formatDistanceToNow(u!, {addSuffix: true})}
-                              </span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <span>
-                              {format(u!, 'yyyy-MM-dd HH:mm:ss')} {formatTimezoneOffset(u!)}
-                            </span>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </>
+          <ConfigMetadataHeader
+            name={defaultName}
+            version={currentVersion}
+            createdAt={createdAt}
+            updatedAt={updatedAt}
+            pendingProposalsCount={currentPendingProposalsCount}
+            versionsLink={versionsLink}
+            projectId={projectId}
+          />
         )}
 
         <FormField
@@ -576,13 +492,58 @@ export function ConfigForm(props: ConfigFormProps) {
 
         <FormField
           control={form.control}
+          name="overrides"
+          render={({field}) => (
+            <FormItem>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 cursor-help">
+                    <FormLabel>Value overrides</FormLabel>
+                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    Overrides allow you to conditionally return different values based on context
+                    properties like user email, tier, country, etc.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <FormControl>
+                <OverrideBuilder
+                  overrides={field.value as Override[]}
+                  onChange={field.onChange}
+                  readOnly={!canEditOverrides}
+                  schema={liveSchema}
+                  projectId={projectId}
+                  defaultValue={(() => {
+                    try {
+                      return JSON.parse(watchedValue ?? defaultValue);
+                    } catch {
+                      return null;
+                    }
+                  })()}
+                />
+              </FormControl>
+              {!canEditOverrides && (
+                <FormDescription>You do not have permission to edit overrides.</FormDescription>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="value"
           render={({field}) => (
             <FormItem>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1.5 cursor-help">
-                    <FormLabel>JSON value</FormLabel>
+                    <FormLabel>
+                      {form.getValues('overrides').length > 0 ? 'Default Value' : 'Value'}
+                    </FormLabel>
                     <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                 </TooltipTrigger>
@@ -619,15 +580,8 @@ export function ConfigForm(props: ConfigFormProps) {
             control={form.control}
             name="schemaEnabled"
             render={({field}) => (
-              <div className="flex items-start gap-3">
-                <Switch
-                  id={`${editorIdPrefix ?? 'config'}-use-schema`}
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={!canEditSchema}
-                  className="mt-0.5"
-                />
-                <div className="flex-1 min-w-0 space-y-1">
+              <FormItem>
+                <div className="flex items-center justify-between space-x-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1.5 cursor-help">
@@ -654,13 +608,21 @@ export function ConfigForm(props: ConfigFormProps) {
                       </p>
                     </TooltipContent>
                   </Tooltip>
-                  {!canEditSchema && (
-                    <p className="text-xs text-muted-foreground">
-                      Only owners can change schema enforcement.
-                    </p>
-                  )}
+                  <FormControl>
+                    <Switch
+                      id={`${editorIdPrefix ?? 'config'}-use-schema`}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={!canEditSchema}
+                    />
+                  </FormControl>
                 </div>
-              </div>
+                {!canEditSchema && (
+                  <p className="text-xs text-muted-foreground">
+                    Only maintainers can change schema enforcement.
+                  </p>
+                )}
+              </FormItem>
             )}
           />
 
@@ -692,37 +654,37 @@ export function ConfigForm(props: ConfigFormProps) {
           )}
         </div>
 
-        {showOwnersEditors && (
+        {showMembers && (
           <FormField
             control={form.control}
-            name="maintainers"
+            name="members"
             render={({field}) => (
               <FormItem>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1.5 cursor-help">
-                      <FormLabel>Maintainers (can approve proposals)</FormLabel>
+                      <FormLabel>Members (can approve proposals)</FormLabel>
                       <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p>
-                      Config-level maintainers who can approve proposals for this config. Project
-                      members (owners and admins) can also approve proposals and are treated like
-                      config owners.
+                      Config-level members who can approve proposals for this config. Project
+                      members (admins and maintainers) can also approve proposals and are treated
+                      like config members.
                     </p>
                   </TooltipContent>
                 </Tooltip>
                 <FormControl>
-                  <ConfigMaintainersList
-                    maintainers={field.value ?? []}
+                  <ConfigMemberList
+                    members={field.value ?? []}
                     onChange={field.onChange}
-                    disabled={!canEditOwnersEditors}
-                    errors={form.formState.errors.maintainers as any}
+                    disabled={!canEditMembers}
+                    errors={form.formState.errors.members as any}
                   />
                 </FormControl>
-                {mode === 'edit' && !canEditOwnersEditors && (
-                  <FormDescription>Only owners can modify maintainers.</FormDescription>
+                {mode === 'edit' && !canEditMembers && (
+                  <FormDescription>Only maintainers can modify maintainers.</FormDescription>
                 )}
                 <FormMessage />
               </FormItem>
@@ -795,7 +757,12 @@ export function ConfigForm(props: ConfigFormProps) {
               Cancel
             </Button>
           )}
-          {mode !== 'proposal' && onDelete && role === 'owner' && (
+          {onTestOverrides && watchedOverrides && (watchedOverrides as any[])?.length > 0 && (
+            <Button type="button" variant="outline" onClick={onTestOverrides}>
+              Test Overrides
+            </Button>
+          )}
+          {mode !== 'proposal' && onDelete && role === 'maintainer' && (
             <div className="ml-auto">
               <Button
                 variant="outline"

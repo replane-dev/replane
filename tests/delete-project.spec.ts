@@ -89,8 +89,8 @@ describe('deleteProject', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
       members: {
         users: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
-          {email: OTHER_OWNER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'admin'},
+          {email: OTHER_OWNER_EMAIL, role: 'admin'},
         ],
       },
     });
@@ -98,7 +98,7 @@ describe('deleteProject', () => {
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
       currentUserEmail: CURRENT_USER_EMAIL,
-      members: {users: [{email: OTHER_OWNER_EMAIL, role: 'owner'}]},
+      members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
     await expect(
