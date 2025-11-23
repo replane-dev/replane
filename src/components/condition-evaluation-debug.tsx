@@ -1,11 +1,12 @@
 import {Badge} from '@/components/ui/badge';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
-import type {Condition, ConditionEvaluation} from '@/engine/core/override-evaluator';
-import {AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Info} from 'lucide-react';
+import type {ConditionEvaluation, RenderedCondition} from '@/engine/core/override-evaluator';
+import {AlertCircle, CheckCircle2, ChevronDown, ChevronRight, HelpCircle, Info} from 'lucide-react';
 import {useState} from 'react';
+import {match} from 'ts-pattern';
 
 interface ConditionEvaluationDebugProps {
-  condition: Condition;
+  condition: RenderedCondition;
   evaluation: ConditionEvaluation;
   depth?: number;
 }
@@ -23,11 +24,22 @@ export function ConditionEvaluationDebug({
     <div style={{marginLeft: `${indent}px`}}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div
-          className={`flex items-start gap-2 p-2 rounded-md ${
-            evaluation.matched
-              ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900'
-              : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900'
-          }`}
+          className={`flex items-start gap-2 p-2 rounded-md ${match(evaluation.result)
+            .with(
+              'matched',
+              () =>
+                'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900',
+            )
+            .with(
+              'not_matched',
+              () => 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900',
+            )
+            .with(
+              'unknown',
+              () =>
+                'bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900',
+            )
+            .exhaustive()}`}
         >
           {hasNested && (
             <CollapsibleTrigger asChild>
@@ -44,11 +56,17 @@ export function ConditionEvaluationDebug({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {evaluation.matched ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
-              ) : (
-                <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
-              )}
+              {match(evaluation.result)
+                .with('matched', () => (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                ))
+                .with('not_matched', () => (
+                  <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
+                ))
+                .with('unknown', () => (
+                  <HelpCircle className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+                ))
+                .exhaustive()}
 
               <code className="text-xs font-mono bg-background/50 px-1.5 py-0.5 rounded">
                 {condition.operator}

@@ -4,7 +4,7 @@ import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {ConfigMemberList} from '@/components/config-member-list';
 import {ConfigMetadataHeader} from '@/components/config-metadata-header';
 import {JsonEditor} from '@/components/json-editor';
-import {OverrideBuilder, type Override} from '@/components/override-builder';
+import {OverrideBuilder} from '@/components/override-builder';
 import {Button} from '@/components/ui/button';
 import {
   Form,
@@ -21,6 +21,7 @@ import {Switch} from '@/components/ui/switch';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {ConfigOverrides} from '@/engine/core/config-store';
+import type {Override} from '@/engine/core/override-evaluator';
 import {zodResolver} from '@hookform/resolvers/zod';
 import Ajv from 'ajv';
 import {CircleHelp} from 'lucide-react';
@@ -61,7 +62,7 @@ export interface ConfigFormProps {
     maintainerEmails: string[];
     editorEmails: string[];
   }) => Promise<void> | void;
-  onValuesChange?: (values: {value: string; overrides: any}) => void;
+  onValuesChange?: (values: {value: string; overrides: Override[]}) => void;
   onTestOverrides?: () => void;
 }
 
@@ -291,18 +292,21 @@ export function ConfigForm(props: ConfigFormProps) {
   const watchedDescription = useWatch({control: form.control, name: 'description'});
   const watchedSchemaEnabled = useWatch({control: form.control, name: 'schemaEnabled'});
   const watchedSchema = useWatch({control: form.control, name: 'schema'});
-  const watchedOverrides = useWatch({control: form.control, name: 'overrides'});
+  const watchedOverrides = useWatch({control: form.control, name: 'overrides'}) as
+    | Override[]
+    | undefined;
   const watchedMembers = useWatch({control: form.control, name: 'members'});
 
   // Notify parent of value changes for live testing
   React.useEffect(() => {
-    if (onValuesChange) {
+    if (onValuesChange && watchedOverrides) {
       onValuesChange({
         value: watchedValue ?? defaultValue,
         overrides: watchedOverrides,
       });
     }
-  }, [watchedValue, watchedOverrides, onValuesChange, defaultValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValue, watchedOverrides]);
 
   // Reactive schema for Value editor (useWatch ensures defaults are considered before inputs mount)
   const enabled = (watchedSchemaEnabled ?? form.getValues('schemaEnabled')) as boolean;
@@ -511,6 +515,7 @@ export function ConfigForm(props: ConfigFormProps) {
                   onChange={field.onChange}
                   readOnly={!canEditOverrides}
                   schema={liveSchema}
+                  projectId={projectId}
                   defaultValue={(() => {
                     try {
                       return JSON.parse(watchedValue ?? defaultValue);

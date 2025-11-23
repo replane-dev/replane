@@ -36,13 +36,14 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
 import {useOrg} from '@/contexts/org-context';
 import type {ConfigUserRole} from '@/engine/core/db';
+import type {Override} from '@/engine/core/override-evaluator';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
 import {AlertTriangle, GitBranch, Info} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
-import {Fragment, useMemo, useState} from 'react';
+import {Fragment, useCallback, useMemo, useState} from 'react';
 import {useProject, useProjectId} from '../../utils';
 import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
 
@@ -75,6 +76,18 @@ export default function ConfigByNamePage() {
   const [showOverrideTester, setShowOverrideTester] = useState(false);
 
   const config = data.config;
+
+  const onValuesChange = useCallback(
+    (values: {value: string; overrides: Override[]}) => {
+      setLiveOverrides(values.overrides);
+      try {
+        setLiveValue(JSON.parse(values.value));
+      } catch {
+        setLiveValue(config?.config.value);
+      }
+    },
+    [config?.config.value],
+  );
 
   const defaultValue = useMemo(() => {
     if (!config) return '';
@@ -387,15 +400,7 @@ export default function ConfigByNamePage() {
           )}
 
           <ConfigForm
-            onValuesChange={(values) => {
-              // Update live values for the tester
-              setLiveOverrides(values.overrides);
-              try {
-                setLiveValue(JSON.parse(values.value));
-              } catch {
-                setLiveValue(config.config.value);
-              }
-            }}
+            onValuesChange={onValuesChange}
             mode={org.requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
             role={org.requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
             currentName={name}

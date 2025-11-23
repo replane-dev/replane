@@ -7,21 +7,18 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
+import type {Condition} from '@/engine/core/override-condition-schemas';
+import type {Override} from '@/engine/core/override-evaluator';
 import {ChevronDown, ChevronRight, CircleHelp, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
 import {useState} from 'react';
-import type {Condition} from '@/engine/core/override-evaluator';
-import type {Override} from './override-builder';
 import {ConditionEditor} from './condition-editor';
 
 interface OverrideCardProps {
   override: Override;
   index: number;
-  isExpanded: boolean;
-  viewMode: 'form' | 'json';
   readOnly?: boolean;
   schema?: any;
-  onToggleExpand: () => void;
-  onViewModeChange: (mode: 'form' | 'json') => void;
+  projectId?: string;
   onUpdate: (field: keyof Override, value: any) => void;
   onRemove: () => void;
   onAddCondition: () => void;
@@ -32,25 +29,28 @@ interface OverrideCardProps {
 export function OverrideCard({
   override,
   index,
-  isExpanded,
-  viewMode,
   readOnly,
   schema,
-  onToggleExpand,
-  onViewModeChange,
+  projectId,
   onUpdate,
   onRemove,
   onAddCondition,
   onUpdateCondition,
   onRemoveCondition,
 }: OverrideCardProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [viewMode, setViewMode] = useState<'form' | 'json'>('form');
   return (
-    <Tabs value={viewMode} onValueChange={v => onViewModeChange(v as 'form' | 'json')}>
+    <Tabs
+      value={viewMode}
+      onValueChange={v => setViewMode(v as 'form' | 'json')}
+      className="w-full"
+    >
       <div className="rounded-lg border-2 bg-card shadow-sm">
         {/* Header */}
         <div
           className="flex items-center gap-2 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
-          onClick={onToggleExpand}
+          onClick={() => setIsExpanded(!isExpanded)}
         >
           <Button
             type="button"
@@ -59,10 +59,14 @@ export function OverrideCard({
             className="h-8 w-8 p-0 shrink-0"
             onClick={e => {
               e.stopPropagation();
-              onToggleExpand();
+              setIsExpanded(!isExpanded);
             }}
           >
-            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </Button>
           <Badge variant="outline" className="shrink-0 font-mono text-xs">
             #{index + 1}
@@ -159,8 +163,8 @@ export function OverrideCard({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-xs">
-                          All conditions must be true for this override to apply. Define conditions based
-                          on context properties.
+                          All conditions must be true for this override to apply. Define conditions
+                          based on context properties.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -178,6 +182,7 @@ export function OverrideCard({
                       onChange={c => onUpdateCondition(conditionIndex, c)}
                       onRemove={() => onRemoveCondition(conditionIndex)}
                       readOnly={readOnly}
+                      projectId={projectId}
                     />
                   ))}
                   {!readOnly && (
@@ -222,4 +227,3 @@ export function OverrideCard({
     </Tabs>
   );
 }
-

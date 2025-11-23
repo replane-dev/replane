@@ -2,6 +2,14 @@
 
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {ScrollArea} from '@/components/ui/scroll-area';
@@ -13,9 +21,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
-import type {Condition} from '@/engine/core/override-evaluator';
-import {ChevronDown, ChevronRight, CircleHelp, Plus, Trash2} from 'lucide-react';
-import {useState} from 'react';
+import {formatJsonPath, getValueByPath, parseJsonPath} from '@/engine/core/json-path';
+import type {Condition} from '@/engine/core/override-condition-schemas';
+import {useDebounce} from '@/hooks/use-debounce';
+import {useTRPC} from '@/trpc/client';
+import {useQueryClient} from '@tanstack/react-query';
+import {
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  Eye,
+  Link2,
+  Link2Off,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+import Link from 'next/link';
+import {useEffect, useState} from 'react';
 
 interface ConditionEditorProps {
   condition: Condition;
@@ -23,6 +45,7 @@ interface ConditionEditorProps {
   onRemove: () => void;
   readOnly?: boolean;
   depth?: number;
+  projectId?: string;
 }
 
 const operatorLabels: Record<string, string> = {
@@ -64,17 +87,110 @@ export function ConditionEditor({
   onRemove,
   readOnly,
   depth = 0,
+  projectId,
 }: ConditionEditorProps) {
   const isComposite =
     condition.operator === 'and' || condition.operator === 'or' || condition.operator === 'not';
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showReferenceModal, setShowReferenceModal] = useState(false);
+  const [tempConfigName, setTempConfigName] = useState('');
+  const [tempPath, setTempPath] = useState('');
+  const [previewValue, setPreviewValue] = useState<{
+    loading: boolean;
+    value?: unknown;
+    error?: string;
+  }>({
+    loading: false,
+  });
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+
+  // Track reference validation state
+  const [referenceValidation, setReferenceValidation] = useState<{
+    valid: boolean;
+    checking: boolean;
+    error?: string;
+  }>({valid: true, checking: false});
+
+  // Debounce the config name and path for auto-preview
+  const debouncedConfigName = useDebounce(tempConfigName, 500);
+  const debouncedPath = useDebounce(tempPath, 500);
+
+  // Auto-preview when modal is open and values change
+  useEffect(() => {
+    if (showReferenceModal && debouncedConfigName.trim()) {
+      handlePreview(debouncedConfigName, debouncedPath);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showReferenceModal, debouncedConfigName, debouncedPath]);
+
+  // Eagerly validate reference in condition editor
+  useEffect(() => {
+    if (!isComposite && 'value' in condition && condition.value.type === 'reference') {
+      const reference = condition.value;
+
+      if (!projectId || !reference.configName.trim()) {
+        setReferenceValidation({valid: false, checking: false, error: 'Missing config name'});
+        return;
+      }
+
+      setReferenceValidation({valid: true, checking: true});
+
+      const validate = async () => {
+        try {
+          const config = await queryClient.fetchQuery(
+            trpc.getConfig.queryOptions({projectId, name: reference.configName.trim()}),
+          );
+
+          if (!config?.config?.config) {
+            setReferenceValidation({valid: false, checking: false, error: 'Config not found'});
+            return;
+          }
+
+          const resolvedValue =
+            reference.path.length > 0
+              ? getValueByPath(config.config.config.value, reference.path)
+              : config.config.config.value;
+
+          if (resolvedValue === undefined) {
+            setReferenceValidation({
+              valid: false,
+              checking: false,
+              error:
+                reference.path.length > 0
+                  ? `Path not found in config`
+                  : 'Config value is undefined',
+            });
+            return;
+          }
+
+          setReferenceValidation({valid: true, checking: false});
+        } catch (error) {
+          setReferenceValidation({
+            valid: false,
+            checking: false,
+            error: 'Failed to fetch config',
+          });
+        }
+      };
+
+      // Debounce validation to avoid too many requests
+      const timeoutId = setTimeout(validate, 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setReferenceValidation({valid: true, checking: false});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComposite, 'value' in condition ? condition.value : null, projectId]);
 
   const handleAddSubcondition = () => {
     if (condition.operator === 'and' || condition.operator === 'or') {
       const newCondition: Condition = {
         operator: 'equals',
         property: '',
-        value: '',
+        value: {type: 'literal', value: ''},
       };
       onChange({
         ...condition,
@@ -97,6 +213,50 @@ export function ConditionEditor({
     if (condition.operator === 'and' || condition.operator === 'or') {
       const updated = condition.conditions.filter((_, i) => i !== index);
       onChange({...condition, conditions: updated});
+    }
+  };
+
+  const handlePreview = async (configName: string, path: string) => {
+    if (!projectId || !configName.trim()) {
+      setPreviewValue({loading: false});
+      return;
+    }
+
+    setPreviewValue({loading: true});
+    try {
+      const config = await queryClient.fetchQuery(
+        trpc.getConfig.queryOptions({projectId, name: configName.trim()}),
+      );
+
+      if (!config?.config?.config) {
+        setPreviewValue({loading: false, error: 'Config not found'});
+        return;
+      }
+
+      const parsedPath = path.trim() ? parseJsonPath(path.trim()) : [];
+      const resolvedValue =
+        parsedPath.length > 0
+          ? getValueByPath(config.config.config.value, parsedPath)
+          : config.config.config.value;
+
+      // Check if the resolved value is undefined (bad reference/path)
+      if (resolvedValue === undefined) {
+        setPreviewValue({
+          loading: false,
+          error:
+            parsedPath.length > 0
+              ? `Path "${formatJsonPath(parsedPath)}" not found in config`
+              : 'Config value is undefined',
+        });
+        return;
+      }
+
+      setPreviewValue({loading: false, value: resolvedValue});
+    } catch (error) {
+      setPreviewValue({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch config',
+      });
     }
   };
 
@@ -158,7 +318,11 @@ export function ConditionEditor({
                     } else if (newOperator === 'not') {
                       onChange({
                         operator: 'not',
-                        condition: {operator: 'equals', property: '', value: ''},
+                        condition: {
+                          operator: 'equals',
+                          property: '',
+                          value: {type: 'literal', value: ''},
+                        },
                       } as Condition);
                     } else if (newOperator === 'segmentation') {
                       onChange({
@@ -171,7 +335,8 @@ export function ConditionEditor({
                       onChange({
                         operator: newOperator,
                         property: 'property' in condition ? condition.property : '',
-                        value: 'value' in condition ? condition.value : '',
+                        value:
+                          'value' in condition ? condition.value : {type: 'literal', value: ''},
                       } as Condition);
                     }
                   }}
@@ -195,7 +360,7 @@ export function ConditionEditor({
                 condition.operator !== 'not_in' &&
                 condition.operator !== 'segmentation' &&
                 'value' in condition && (
-                  <div className="flex-1">
+                  <div className="flex-[2]">
                     <div className="flex items-center gap-1 mb-1">
                       <Label className="text-xs font-medium">Value</Label>
                       <Tooltip>
@@ -204,28 +369,106 @@ export function ConditionEditor({
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
                           <p className="text-xs">
-                            The value to compare against. Can be a string, number, or boolean.
+                            The value to compare against. Can be a literal value or a reference to
+                            another config.
                           </p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    <Input
-                      className="h-9 text-xs font-mono w-full"
-                      value={
-                        'value' in condition
-                          ? typeof condition.value === 'string'
-                            ? condition.value
-                            : JSON.stringify(condition.value)
-                          : ''
-                      }
-                      onChange={e => {
-                        if ('value' in condition) {
-                          onChange({...condition, value: e.target.value});
+                    {condition.value.type === 'literal' ? (
+                      <Input
+                        className="h-9 text-xs font-mono w-full"
+                        value={
+                          typeof condition.value.value === 'string'
+                            ? condition.value.value
+                            : JSON.stringify(condition.value.value)
                         }
-                      }}
-                      disabled={readOnly}
-                      placeholder={`premium, 100, true...`}
-                    />
+                        onChange={e => {
+                          onChange({
+                            ...condition,
+                            value: {type: 'literal', value: e.target.value},
+                          });
+                        }}
+                        disabled={readOnly}
+                        placeholder={`premium, 100, true...`}
+                      />
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={`flex items-center gap-1.5 h-9 px-3 rounded-md border ${
+                              !referenceValidation.valid
+                                ? 'border-destructive/50 bg-destructive/10'
+                                : 'bg-muted/30'
+                            }`}
+                          >
+                            <Link2
+                              className={`h-3 w-3 shrink-0 ${
+                                !referenceValidation.valid ? 'text-destructive' : 'text-primary'
+                              }`}
+                            />
+                            <div className="text-xs font-mono flex-1 truncate">
+                              {projectId ? (
+                                <Link
+                                  href={`/app/projects/${projectId}/configs/${encodeURIComponent(condition.value.configName)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`hover:underline font-medium ${
+                                    !referenceValidation.valid ? 'text-destructive' : 'text-primary'
+                                  }`}
+                                >
+                                  {condition.value.configName}
+                                </Link>
+                              ) : (
+                                <span
+                                  className={`font-medium ${
+                                    !referenceValidation.valid ? 'text-destructive' : 'text-primary'
+                                  }`}
+                                >
+                                  {condition.value.configName}
+                                </span>
+                              )}
+                              {condition.value.path.length > 0 && (
+                                <span className="text-foreground/80">
+                                  .{formatJsonPath(condition.value.path)}
+                                </span>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={e => {
+                                e.preventDefault();
+                                if (condition.value.type === 'reference') {
+                                  handlePreview(
+                                    condition.value.configName,
+                                    formatJsonPath(condition.value.path),
+                                  );
+                                  setShowPreviewDialog(true);
+                                }
+                              }}
+                              className="h-6 w-6 p-0 shrink-0"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {referenceValidation.checking ? (
+                            <>Checking reference...</>
+                          ) : !referenceValidation.valid ? (
+                            <>⚠️ {referenceValidation.error || 'Invalid reference'}</>
+                          ) : (
+                            <>
+                              Reference to {condition.value.configName}
+                              {condition.value.path.length > 0 &&
+                                ` at ${formatJsonPath(condition.value.path)}`}
+                            </>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                 )}
 
@@ -260,6 +503,58 @@ export function ConditionEditor({
                     placeholder="50"
                   />
                 </div>
+              )}
+
+              {/* Link/Unlink Reference Button */}
+              {!readOnly &&
+                'value' in condition &&
+                condition.value.type === 'literal' &&
+                condition.operator !== 'in' &&
+                condition.operator !== 'not_in' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setTempConfigName('');
+                          setTempPath('');
+                          setShowReferenceModal(true);
+                        }}
+                        className="h-9 w-9 p-0 hover:bg-accent"
+                      >
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs">Create reference to another config</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+              {!readOnly && 'value' in condition && condition.value.type === 'reference' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        onChange({
+                          ...condition,
+                          value: {type: 'literal', value: ''},
+                        });
+                      }}
+                      className="h-9 w-9 p-0 hover:bg-accent"
+                    >
+                      <Link2Off className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Remove reference</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
 
               {!readOnly && (
@@ -322,7 +617,10 @@ export function ConditionEditor({
                               onChange={e => {
                                 const newValues = [...values];
                                 newValues[idx] = e.target.value;
-                                onChange({...condition, value: newValues});
+                                onChange({
+                                  ...condition,
+                                  value: {type: 'literal', value: newValues[idx]},
+                                });
                               }}
                               disabled={readOnly}
                               placeholder={`Value ${idx + 1}`}
@@ -338,7 +636,10 @@ export function ConditionEditor({
                                       const newValues = values.filter((_, i) => i !== idx);
                                       onChange({
                                         ...condition,
-                                        value: newValues.length > 0 ? newValues : [],
+                                        value: {
+                                          type: 'literal',
+                                          value: newValues.length > 0 ? newValues : [],
+                                        },
                                       });
                                     }}
                                     className="h-8 w-8 p-0 shrink-0 hover:bg-destructive/10 hover:text-destructive"
@@ -364,7 +665,7 @@ export function ConditionEditor({
                       onClick={() => {
                         const values = Array.isArray(condition.value) ? condition.value : [];
                         const newValues = [...values, ''];
-                        onChange({...condition, value: newValues});
+                        onChange({...condition, value: {type: 'literal', value: newValues}});
                       }}
                       className="w-full h-8 text-xs mt-2"
                     >
@@ -449,7 +750,7 @@ export function ConditionEditor({
                       onChange({
                         operator: newOperator,
                         property: '',
-                        value: '',
+                        value: {type: 'literal', value: ''},
                       } as Condition);
                     }
                   }}
@@ -498,6 +799,7 @@ export function ConditionEditor({
                     }}
                     readOnly={readOnly}
                     depth={depth + 1}
+                    projectId={projectId}
                   />
                 ) : (
                   <>
@@ -509,6 +811,7 @@ export function ConditionEditor({
                         onRemove={() => handleRemoveSubcondition(index)}
                         readOnly={readOnly}
                         depth={depth + 1}
+                        projectId={projectId}
                       />
                     ))}
                     {!readOnly && (
@@ -530,6 +833,161 @@ export function ConditionEditor({
           </div>
         )}
       </div>
+
+      {/* Reference Creation Modal */}
+      <Dialog open={showReferenceModal} onOpenChange={setShowReferenceModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create Config Reference</DialogTitle>
+            <DialogDescription>
+              Reference a value from another config in this project. The value will be resolved at
+              evaluation time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ref-config-name">Config Name</Label>
+              <Input
+                id="ref-config-name"
+                value={tempConfigName}
+                onChange={e => setTempConfigName(e.target.value)}
+                placeholder="e.g., pricing-tiers"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ref-path">JSON Path (optional)</Label>
+              <Input
+                id="ref-path"
+                value={tempPath}
+                onChange={e => setTempPath(e.target.value)}
+                placeholder="e.g., tier.premium or [0].value"
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to reference the entire config value
+              </p>
+            </div>
+
+            {/* Preview Section */}
+            <div className="space-y-2">
+              <Label>Preview</Label>
+              {previewValue.loading && (
+                <div className="rounded-md border bg-muted p-3 flex items-center justify-center">
+                  <p className="text-xs text-muted-foreground">Loading...</p>
+                </div>
+              )}
+              {previewValue.error && !previewValue.loading && (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3">
+                  <p className="text-xs text-destructive">{previewValue.error}</p>
+                </div>
+              )}
+              {previewValue.value !== undefined && !previewValue.error && !previewValue.loading && (
+                <div className="rounded-md border bg-muted p-3">
+                  <pre className="text-xs font-mono overflow-auto max-h-32">
+                    {JSON.stringify(previewValue.value, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {!previewValue.loading &&
+                !previewValue.error &&
+                previewValue.value === undefined &&
+                tempConfigName.trim() && (
+                  <div className="rounded-md border border-dashed bg-muted/30 p-3 flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground">
+                      Enter a config name to see preview
+                    </p>
+                  </div>
+                )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowReferenceModal(false);
+                setPreviewValue({loading: false});
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!tempConfigName.trim()}
+              onClick={() => {
+                if (!tempConfigName.trim()) {
+                  alert('Config name is required');
+                  return;
+                }
+                if ('value' in condition) {
+                  onChange({
+                    ...condition,
+                    value: {
+                      type: 'reference',
+                      projectId: projectId || '',
+                      configName: tempConfigName.trim(),
+                      path: tempPath.trim() ? parseJsonPath(tempPath.trim()) : [],
+                    },
+                  });
+                }
+                setShowReferenceModal(false);
+                setTempConfigName('');
+                setTempPath('');
+                setPreviewValue({loading: false});
+              }}
+            >
+              Create Reference
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Value Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Referenced Value Preview</DialogTitle>
+            <DialogDescription>
+              {'value' in condition && condition.value.type === 'reference' && (
+                <code className="text-xs font-mono">
+                  {condition.value.configName}
+                  {condition.value.path.length > 0 && `.${formatJsonPath(condition.value.path)}`}
+                </code>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {previewValue.loading && (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            )}
+            {previewValue.error && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+                <p className="text-sm text-destructive">{previewValue.error}</p>
+              </div>
+            )}
+            {previewValue.value !== undefined && !previewValue.error && !previewValue.loading && (
+              <div className="rounded-md border bg-muted p-4">
+                <pre className="text-xs font-mono overflow-auto max-h-64">
+                  {JSON.stringify(previewValue.value, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => {
+                setShowPreviewDialog(false);
+                setPreviewValue({loading: false});
+              }}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

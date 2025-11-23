@@ -1,31 +1,151 @@
+import {match} from 'ts-pattern';
+import {getValueByPath} from './json-path';
 import type {
-  AndCondition,
   Condition,
-  EqualsCondition,
-  GreaterThanCondition,
-  GreaterThanOrEqualCondition,
-  InCondition,
-  LessThanCondition,
-  LessThanOrEqualCondition,
   NotCondition,
-  NotInCondition,
-  OrCondition,
   SegmentationCondition,
+  Value,
 } from './override-condition-schemas';
+import {assertNever} from './utils';
 
-export type {
-  AndCondition,
-  Condition,
-  EqualsCondition,
-  GreaterThanCondition,
-  GreaterThanOrEqualCondition,
-  InCondition,
-  LessThanCondition,
-  LessThanOrEqualCondition,
-  NotCondition,
-  NotInCondition,
-  OrCondition,
-};
+interface RenderedEqualsCondition {
+  operator: 'equals';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedInCondition {
+  operator: 'in';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedNotInCondition {
+  operator: 'not_in';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedLessThanCondition {
+  operator: 'less_than';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedLessThanOrEqualCondition {
+  operator: 'less_than_or_equal';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedGreaterThanCondition {
+  operator: 'greater_than';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedGreaterThanOrEqualCondition {
+  operator: 'greater_than_or_equal';
+  property: string;
+  value: unknown;
+}
+
+interface RenderedSegmentationCondition {
+  operator: 'segmentation';
+  property: string;
+  percentage: number;
+  salt: string;
+}
+
+interface RenderedAndCondition {
+  operator: 'and';
+  conditions: RenderedCondition[];
+}
+
+interface RenderedOrCondition {
+  operator: 'or';
+  conditions: RenderedCondition[];
+}
+
+interface RenderedNotCondition {
+  operator: 'not';
+  condition: RenderedCondition;
+}
+
+export type RenderedCondition =
+  | RenderedEqualsCondition
+  | RenderedInCondition
+  | RenderedNotInCondition
+  | RenderedLessThanCondition
+  | RenderedLessThanOrEqualCondition
+  | RenderedGreaterThanCondition
+  | RenderedGreaterThanOrEqualCondition
+  | RenderedSegmentationCondition
+  | RenderedAndCondition
+  | RenderedOrCondition
+  | RenderedNotCondition;
+
+export type ConfigValueResolver = (params: {
+  projectId: string;
+  configName: string;
+}) => Promise<unknown | undefined> | unknown | undefined;
+
+async function renderValue(
+  value: Value,
+  configResolver: ConfigValueResolver,
+): Promise<unknown | undefined> {
+  if (value.type === 'literal') {
+    return value.value;
+  } else if (value.type === 'reference') {
+    const config = await configResolver({projectId: value.projectId, configName: value.configName});
+    return getValueByPath(config, value.path);
+  } else {
+    console.warn(`Unknown value type: ${JSON.stringify(value)}`);
+    return undefined;
+  }
+}
+
+async function renderConditionInternal(
+  condition: Condition,
+  configResolver: ConfigValueResolver,
+): Promise<RenderedCondition> {
+  if (
+    condition.operator === 'equals' ||
+    condition.operator === 'in' ||
+    condition.operator === 'not_in' ||
+    condition.operator === 'less_than' ||
+    condition.operator === 'less_than_or_equal' ||
+    condition.operator === 'greater_than' ||
+    condition.operator === 'greater_than_or_equal'
+  ) {
+    return {
+      operator: condition.operator,
+      property: condition.property,
+      value: await renderValue(condition.value, configResolver),
+    };
+  } else if (condition.operator === 'and' || condition.operator === 'or') {
+    return {
+      operator: condition.operator,
+      conditions: await Promise.all(
+        condition.conditions.map(c => renderConditionInternal(c, configResolver)),
+      ),
+    };
+  } else if (condition.operator === 'not') {
+    return {
+      operator: 'not',
+      condition: await renderConditionInternal(condition.condition, configResolver),
+    };
+  } else if (condition.operator === 'segmentation') {
+    return {
+      operator: 'segmentation',
+      property: condition.property,
+      percentage: condition.percentage,
+      salt: condition.salt,
+    };
+  } else {
+    assertNever(condition, `Unknown condition type: ${JSON.stringify(condition)}`);
+  }
+}
 
 export type EvaluationContext = Record<string, unknown>;
 
@@ -35,10 +155,39 @@ export interface Override {
   value: unknown;
 }
 
+export interface RenderedOverride {
+  __rendered: true | undefined;
+  name: string;
+  conditions: RenderedCondition[];
+  value: unknown;
+}
+
+export type ConditionEvaluationResult = 'matched' | 'not_matched' | 'unknown';
+
+/**
+ * Render overrides by resolving all config references to literal values.
+ * This must be called before evaluateConfigValue.
+ */
+export async function renderOverrides(
+  overrides: Override[],
+  configResolver: ConfigValueResolver,
+): Promise<RenderedOverride[]> {
+  return Promise.all(
+    overrides.map(async override => ({
+      __rendered: undefined,
+      name: override.name,
+      value: override.value,
+      conditions: await Promise.all(
+        override.conditions.map(c => renderConditionInternal(c, configResolver)),
+      ),
+    })),
+  );
+}
+
 // Debug result types
 export interface ConditionEvaluation {
-  condition: Condition;
-  matched: boolean;
+  condition: RenderedCondition;
+  result: ConditionEvaluationResult;
   reason: string;
   contextValue?: unknown;
   expectedValue?: unknown;
@@ -46,14 +195,14 @@ export interface ConditionEvaluation {
 }
 
 export interface OverrideEvaluation {
-  override: Override;
-  matched: boolean;
+  override: RenderedOverride;
+  result: ConditionEvaluationResult;
   conditionEvaluations: ConditionEvaluation[];
 }
 
 export interface EvaluationResult {
   finalValue: unknown;
-  matchedOverride: Override | null;
+  matchedOverride: RenderedOverride | null;
   overrideEvaluations: OverrideEvaluation[];
 }
 
@@ -105,36 +254,36 @@ function castArrayToContextType(conditionValue: unknown, contextValue: unknown):
  * This is the main evaluation function that returns both the result and detailed breakdown.
  */
 export function evaluateConfigValue(
-  config: {value: unknown; overrides: Override[] | null},
+  config: {value: unknown; overrides: RenderedOverride[] | null},
   context: EvaluationContext,
 ): EvaluationResult {
   const overrideEvaluations: OverrideEvaluation[] = [];
-  let matchedOverride: Override | null = null;
+  let matchedOverride: RenderedOverride | null = null;
   let finalValue = config.value;
 
-  if (!config.overrides || config.overrides.length === 0) {
-    return {finalValue, matchedOverride, overrideEvaluations};
-  }
-
-  for (const override of config.overrides) {
+  for (const override of config.overrides ?? []) {
     const conditionEvaluations: ConditionEvaluation[] = [];
-    let allMatched = true;
+    let result: ConditionEvaluationResult = 'matched';
 
     for (const condition of override.conditions) {
       const evaluation = evaluateConditionWithDebug(condition, context);
       conditionEvaluations.push(evaluation);
-      if (!evaluation.matched) {
-        allMatched = false;
+      if (evaluation.result === 'not_matched') {
+        result = 'not_matched';
+        break;
+      } else if (evaluation.result === 'unknown') {
+        result = 'unknown';
+        break;
       }
     }
 
     overrideEvaluations.push({
       override,
-      matched: allMatched,
+      result,
       conditionEvaluations,
     });
 
-    if (allMatched && !matchedOverride) {
+    if (result === 'matched' && !matchedOverride) {
       matchedOverride = override;
       finalValue = override.value;
     }
@@ -144,7 +293,7 @@ export function evaluateConfigValue(
 }
 
 function evaluateConditionWithDebug(
-  condition: Condition,
+  condition: RenderedCondition,
   context: EvaluationContext,
 ): ConditionEvaluation {
   const operator = condition.operator;
@@ -153,34 +302,50 @@ function evaluateConditionWithDebug(
   if (operator === 'not') {
     const notCondition = condition as NotCondition;
     const nestedEval = evaluateConditionWithDebug(notCondition.condition, context);
-    const matched = !nestedEval.matched;
+    const result = match(nestedEval.result)
+      .with('matched', (): ConditionEvaluationResult => 'not_matched')
+      .with('not_matched', (): ConditionEvaluationResult => 'matched')
+      .with('unknown', (): ConditionEvaluationResult => 'unknown')
+      .exhaustive();
 
     return {
       condition,
-      matched,
-      reason: matched
-        ? `NOT: Condition did not match (inverted)`
-        : `NOT: Condition matched (inverted to false)`,
+      result,
+      reason: match(result)
+        .with('matched', () => `NOT: Condition matched (inverted to false)`)
+        .with('not_matched', () => `NOT: Condition did not match (inverted)`)
+        .with('unknown', () => `NOT: Condition evaluation result is unknown`)
+        .exhaustive(),
       nestedEvaluations: [nestedEval],
     };
   }
 
-  // AND/OR conditions
-  if (operator === 'and' || operator === 'or') {
-    const nestedEvaluations = (condition as any).conditions.map((c: Condition) =>
-      evaluateConditionWithDebug(c, context),
-    );
-    const matched =
-      operator === 'and'
-        ? nestedEvaluations.every((e: ConditionEvaluation) => e.matched)
-        : nestedEvaluations.some((e: ConditionEvaluation) => e.matched);
-
+  if (operator === 'and') {
+    const nestedEvaluations = condition.conditions.map(c => evaluateConditionWithDebug(c, context));
+    let result: ConditionEvaluationResult = 'matched';
+    if (nestedEvaluations.some(x => x.result === 'not_matched')) {
+      result = 'not_matched';
+    } else if (nestedEvaluations.some(x => x.result === 'unknown')) {
+      result = 'unknown';
+    }
     return {
       condition,
-      matched,
-      reason: matched
-        ? `${operator.toUpperCase()}: ${nestedEvaluations.filter((e: ConditionEvaluation) => e.matched).length}/${nestedEvaluations.length} conditions matched`
-        : `${operator.toUpperCase()}: Required ${operator === 'and' ? 'all' : 'at least one'} to match`,
+      result,
+      reason: `AND: ${nestedEvaluations.filter(x => x.result === 'matched').length}/${nestedEvaluations.length} conditions matched`,
+      nestedEvaluations,
+    };
+  } else if (operator === 'or') {
+    const nestedEvaluations = condition.conditions.map(c => evaluateConditionWithDebug(c, context));
+    let result: ConditionEvaluationResult = 'not_matched';
+    if (nestedEvaluations.some(x => x.result === 'matched')) {
+      result = 'matched';
+    } else if (nestedEvaluations.some(x => x.result === 'unknown')) {
+      result = 'unknown';
+    }
+    return {
+      condition,
+      result,
+      reason: `OR: ${nestedEvaluations.filter(x => x.result === 'matched').length}/${nestedEvaluations.length} conditions matched`,
       nestedEvaluations,
     };
   }
@@ -194,7 +359,7 @@ function evaluateConditionWithDebug(
     if (segContextValue === undefined || segContextValue === null) {
       return {
         condition,
-        matched: false,
+        result: 'unknown',
         reason: `${segProperty} is missing from context`,
         contextValue: segContextValue,
       };
@@ -211,7 +376,7 @@ function evaluateConditionWithDebug(
 
     return {
       condition,
-      matched,
+      result: matched ? 'matched' : 'not_matched',
       reason: matched
         ? `${segProperty} (${segContextValue}) falls in ${typedCondition.percentage}% segment (bucket: ${bucket})`
         : `${segProperty} (${segContextValue}) not in ${typedCondition.percentage}% segment (bucket: ${bucket})`,
@@ -227,7 +392,7 @@ function evaluateConditionWithDebug(
   if (contextValue === undefined) {
     return {
       condition,
-      matched: false,
+      result: 'unknown',
       reason: `Property "${property}" not found in context`,
       contextValue: undefined,
       expectedValue,
@@ -335,12 +500,19 @@ function evaluateConditionWithDebug(
       break;
 
     default:
-      reason = `Unknown operator: ${operator}`;
+      const _: never = operator;
+      return {
+        condition,
+        result: 'unknown',
+        reason: `Unknown operator: ${JSON.stringify(operator)}`,
+        contextValue,
+        expectedValue: castedValue,
+      };
   }
 
   return {
     condition,
-    matched,
+    result: matched ? 'matched' : 'not_matched',
     reason,
     contextValue,
     expectedValue:

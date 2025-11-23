@@ -1,18 +1,11 @@
 'use client';
 
 import {Button} from '@/components/ui/button';
-import type {Condition} from '@/engine/core/override-evaluator';
+import type {Condition} from '@/engine/core/override-condition-schemas';
+import type {Override} from '@/engine/core/override-evaluator';
 import {Plus} from 'lucide-react';
 import {useState} from 'react';
 import {OverrideCard} from './override-card';
-
-export type {Condition};
-
-export interface Override {
-  name: string;
-  conditions: Condition[]; // All conditions must match (implicit AND)
-  value: any;
-}
 
 interface OverrideBuilderProps {
   overrides: Override[] | null;
@@ -20,6 +13,7 @@ interface OverrideBuilderProps {
   readOnly?: boolean;
   schema?: any;
   defaultValue?: any; // Current config value to use as default for new overrides
+  projectId?: string;
 }
 
 export function OverrideBuilder({
@@ -28,14 +22,9 @@ export function OverrideBuilder({
   readOnly,
   schema,
   defaultValue,
+  projectId,
 }: OverrideBuilderProps) {
   const [localOverrides, setLocalOverrides] = useState<Override[]>(overrides || []);
-  const [expandedOverrides, setExpandedOverrides] = useState<Set<number>>(
-    () => new Set(Array.from({length: (overrides || []).length}, (_, i) => i)),
-  );
-  const [overrideViewModes, setOverrideViewModes] = useState<Map<number, 'form' | 'json'>>(
-    new Map(),
-  );
 
   const handleAddOverride = () => {
     const newOverride: Override = {
@@ -44,7 +33,7 @@ export function OverrideBuilder({
         {
           operator: 'equals',
           property: '',
-          value: '',
+          value: {type: 'literal', value: ''},
         },
       ],
       value: defaultValue !== undefined ? defaultValue : null,
@@ -77,7 +66,7 @@ export function OverrideBuilder({
         const newCondition: Condition = {
           operator: 'equals',
           property: '',
-          value: '',
+          value: {type: 'literal', value: ''},
         };
         return {...o, conditions: [...o.conditions, newCondition]};
       }
@@ -115,24 +104,6 @@ export function OverrideBuilder({
     onChange(updated);
   };
 
-  const toggleOverride = (index: number) => {
-    setExpandedOverrides(prev => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
-
-  const getOverrideViewMode = (index: number) => overrideViewModes.get(index) || 'form';
-
-  const setOverrideViewMode = (index: number, mode: 'form' | 'json') => {
-    setOverrideViewModes(prev => new Map(prev).set(index, mode));
-  };
-
   return (
     <div className="space-y-4">
       {localOverrides.length > 0 && (
@@ -142,12 +113,9 @@ export function OverrideBuilder({
               key={overrideIndex}
               override={override}
               index={overrideIndex}
-              isExpanded={expandedOverrides.has(overrideIndex)}
-              viewMode={getOverrideViewMode(overrideIndex)}
               readOnly={readOnly}
               schema={schema}
-              onToggleExpand={() => toggleOverride(overrideIndex)}
-              onViewModeChange={mode => setOverrideViewMode(overrideIndex, mode)}
+              projectId={projectId}
               onUpdate={(field, value) => handleUpdateOverride(overrideIndex, field, value)}
               onRemove={() => handleRemoveOverride(overrideIndex)}
               onAddCondition={() => handleAddCondition(overrideIndex)}

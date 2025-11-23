@@ -1,9 +1,27 @@
 import {z} from 'zod';
+import {ConfigName} from './config-store';
+import {JsonPathSchema} from './json-path';
+
+const LiteralValueSchema = z.object({
+  type: z.literal('literal'),
+  value: z.unknown(),
+});
+
+const ReferenceValueSchema = z.object({
+  type: z.literal('reference'),
+  projectId: z.string(),
+  configName: ConfigName(),
+  path: JsonPathSchema,
+});
+
+const ValueSchema = z.discriminatedUnion('type', [LiteralValueSchema, ReferenceValueSchema]);
+
+export type Value = z.infer<typeof ValueSchema>;
 
 // Property-based condition schemas
 const PropertyConditionBase = z.object({
   property: z.string(),
-  value: z.unknown(),
+  value: ValueSchema,
 });
 
 export const EqualsConditionSchema = PropertyConditionBase.extend({

@@ -11,27 +11,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {Label} from '@/components/ui/label';
-import type {Condition, OverrideEvaluation} from '@/engine/core/override-evaluator';
-import {evaluateConfigValue} from '@/engine/core/override-evaluator';
-import {CheckCircle2, ChevronRight, PlayCircle, XCircle} from 'lucide-react';
+import type {Condition} from '@/engine/core/override-condition-schemas';
+import type {EvaluationResult, Override} from '@/engine/core/override-evaluator';
+import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
+import {useTRPC} from '@/trpc/client';
+import {useQueryClient} from '@tanstack/react-query';
+import {CheckCircle2, ChevronRight, HelpCircle, PlayCircle, XCircle} from 'lucide-react';
 import React, {useState} from 'react';
+import {match} from 'ts-pattern';
 import {ConditionEvaluationDebug} from './condition-evaluation-debug';
 import {JsonEditor} from './json-editor';
-import type {Override} from './override-builder';
 
 interface OverrideTesterProps {
   baseValue: any;
-  overrides: Override[] | null;
+  overrides: Override[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function OverrideTester({baseValue, overrides, open, onOpenChange}: OverrideTesterProps) {
-  const [testResult, setTestResult] = useState<{
-    finalValue: any;
-    matchedOverride: Override | null;
-    overrideEvaluations: OverrideEvaluation[];
-  } | null>(null);
+  const [testResult, setTestResult] = useState<EvaluationResult | null>(null);
 
   // Extract properties from override conditions
   const extractedProperties = React.useMemo(() => {
@@ -87,7 +86,17 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
     }
   }, [open, baseValue, overrides]);
 
-  const handleTest = () => {
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+
+  const configResolver = async (params: {projectId: string; configName: string}) => {
+    const config = await queryClient.fetchQuery(
+      trpc.getConfig.queryOptions({projectId: params.projectId, name: params.configName}),
+    );
+    return config.config?.config.value;
+  };
+
+  const handleTest = async () => {
     try {
       const context = JSON.parse(contextJson);
       if (typeof context !== 'object' || context === null) {
@@ -95,8 +104,11 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
         return;
       }
 
+      // Render overrides (resolve references)
+      const renderedOverrides = await renderOverrides(overrides, configResolver);
+
       // Evaluate with debug information
-      const config = {value: baseValue, overrides};
+      const config = {value: baseValue, overrides: renderedOverrides};
       const result = evaluateConfigValue(config, context);
 
       setTestResult(result);
@@ -175,23 +187,37 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
                 <Label className="text-sm font-semibold mb-2 block">Evaluation Details</Label>
                 <div className="space-y-3">
                   {testResult.overrideEvaluations.map((overrideEval, index) => (
-                    <Collapsible key={index} defaultOpen={!overrideEval.matched}>
+                    <Collapsible key={index} defaultOpen={overrideEval.result !== 'matched'}>
                       <div
-                        className={`rounded-lg border-2 ${
-                          overrideEval.matched
-                            ? 'border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/10'
-                            : 'border-border bg-muted/30'
-                        }`}
+                        className={`rounded-lg border-2 ${match(overrideEval.result)
+                          .with(
+                            'matched',
+                            () =>
+                              'border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/10',
+                          )
+                          .with(
+                            'unknown',
+                            () =>
+                              'border-yellow-200 dark:border-yellow-900 bg-yellow-50/50 dark:bg-yellow-950/10',
+                          )
+                          .with('not_matched', () => 'border-border bg-muted/30')
+                          .exhaustive()}`}
                       >
                         <CollapsibleTrigger className="w-full">
                           <div className="flex items-center justify-between p-3 hover:bg-muted/20">
                             <div className="flex items-center gap-2">
                               <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]_&]:rotate-90" />
-                              {overrideEval.matched ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-muted-foreground" />
-                              )}
+                              {match(overrideEval.result)
+                                .with('matched', () => (
+                                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                ))
+                                .with('not_matched', () => (
+                                  <XCircle className="h-4 w-4 text-muted-foreground" />
+                                ))
+                                .with('unknown', () => (
+                                  <HelpCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                                ))
+                                .exhaustive()}
                               <span className="text-sm font-medium">
                                 {overrideEval.override.name}
                               </span>
@@ -202,8 +228,12 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
                               )}
                             </div>
                             <Badge variant="secondary" className="text-xs">
-                              {overrideEval.conditionEvaluations.filter(r => r.matched).length}/
-                              {overrideEval.conditionEvaluations.length} conditions matched
+                              {
+                                overrideEval.conditionEvaluations.filter(
+                                  r => r.result === 'matched',
+                                ).length
+                              }
+                              /{overrideEval.conditionEvaluations.length} conditions matched
                             </Badge>
                           </div>
                         </CollapsibleTrigger>

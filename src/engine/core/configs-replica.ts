@@ -5,7 +5,13 @@ import {CONFIGS_REPLICA_PULL_INTERVAL_MS} from './constants';
 import {GLOBAL_CONTEXT} from './context';
 import type {EventBusClient} from './event-bus';
 import type {Logger} from './logger';
-import {evaluateConfigValue, type EvaluationContext, type Override, type EvaluationResult} from './override-evaluator';
+import {
+  evaluateConfigValue,
+  renderOverrides,
+  type EvaluationContext,
+  type EvaluationResult,
+  type RenderedOverride,
+} from './override-evaluator';
 import {type PgEventBusClientNotificationHandler} from './pg-event-bus-client';
 import type {Service} from './service';
 import {Subject} from './subject';
@@ -23,7 +29,7 @@ interface ConfigReplica {
   name: string;
   projectId: string;
   value: unknown;
-  overrides: Override[] | null;
+  overrides: RenderedOverride[];
   version: number;
 }
 
@@ -158,7 +164,13 @@ export class ConfigsReplica implements Service {
 
         const configReplica: ConfigReplica = {
           id: configId,
-          ...config,
+          name: config.name,
+          projectId: config.projectId,
+          value: config.value,
+          overrides: await renderOverrides(config.overrides, async ({projectId, configName}) => {
+            return this.getConfigValue({projectId, name: configName});
+          }),
+          version: config.version,
         };
 
         this.configsByKey.set(toConfigKey(config.projectId, config.name), configReplica);
@@ -201,7 +213,18 @@ export class ConfigsReplica implements Service {
   }
 
   private async refreshAllConfigs() {
-    const configs = await this.options.configs.getReplicaDump();
+    const rawConfigs = await this.options.configs.getReplicaDump();
+    const rawConfigsByKey = new Map(rawConfigs.map(c => [toConfigKey(c.projectId, c.name), c]));
+
+    const configs: ConfigReplica[] = [];
+    for (const rawConfig of rawConfigs) {
+      configs.push({
+        ...rawConfig,
+        overrides: await renderOverrides(rawConfig.overrides, async ({projectId, configName}) => {
+          return rawConfigsByKey.get(toConfigKey(projectId, configName))?.value;
+        }),
+      });
+    }
 
     // Track changes if eventsSubject is provided
     if (this.options.eventsSubject) {
@@ -225,13 +248,27 @@ export class ConfigsReplica implements Service {
           // New config created
           this.options.eventsSubject.next({
             type: 'created',
-            config: newConfig,
+            config: {
+              id: newConfig.id,
+              name: newConfig.name,
+              projectId: newConfig.projectId,
+              value: newConfig.value,
+              overrides: newConfig.overrides,
+              version: newConfig.version,
+            },
           });
         } else if (oldConfig.version !== newConfig.version) {
           // Config updated (version changed)
           this.options.eventsSubject.next({
             type: 'updated',
-            config: newConfig,
+            config: {
+              id: newConfig.id,
+              name: newConfig.name,
+              projectId: newConfig.projectId,
+              value: newConfig.value,
+              overrides: newConfig.overrides,
+              version: newConfig.version,
+            },
           });
         }
       }

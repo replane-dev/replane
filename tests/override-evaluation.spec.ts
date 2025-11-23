@@ -1,7 +1,7 @@
 import {type Config} from '@/engine/core/config-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {Override} from '@/engine/core/override-evaluator';
-import {evaluateConfigValue} from '@/engine/core/override-evaluator';
+import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
 import {normalizeEmail} from '@/engine/core/utils';
 import {v4 as uuidv4} from 'uuid';
 import {describe, expect, it} from 'vitest';
@@ -13,11 +13,20 @@ function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+// Helper to quickly create literal values
+const lit = (value: unknown) => ({type: 'literal' as const, value});
+
+// Helper to evaluate config with rendering
+async function evaluate(config: Config, context: Record<string, unknown>) {
+  const rendered = await renderOverrides(config.overrides, undefined);
+  return evaluateConfigValue({...config, overrides: rendered}, context);
+}
+
 describe('Override Evaluation', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   describe('Type Casting', () => {
-    it('should cast string rule value to number when context is number', () => {
+    it('should cast string rule value to number when context is number', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -36,7 +45,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'count',
-                value: '100', // String in rule
+
+                value: lit('100'), // String in rule
               },
             ],
             value: 1000,
@@ -44,10 +54,10 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {count: 100}).finalValue).toBe(1000);
+      expect((await evaluate(config, {count: 100})).finalValue).toBe(1000);
     });
 
-    it('should cast number rule value to string when context is string', () => {
+    it('should cast number rule value to string when context is string', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -66,7 +76,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'status',
-                value: 200, // Number in rule
+
+                value: lit(200), // Number in rule
               },
             ],
             value: 'success',
@@ -74,10 +85,10 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {status: '200'}).finalValue).toBe('success');
+      expect((await evaluate(config, {status: '200'})).finalValue).toBe('success');
     });
 
-    it('should cast boolean strings to boolean', () => {
+    it('should cast boolean strings to boolean', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -96,7 +107,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'enabled',
-                value: 'true', // String in rule
+
+                value: lit('true'), // String in rule
               },
             ],
             value: 'enabled',
@@ -104,12 +116,12 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {enabled: true}).finalValue).toBe('enabled');
+      expect((await evaluate(config, {enabled: true})).finalValue).toBe('enabled');
     });
   });
 
   describe('Operators', () => {
-    it('should work with equals operator', () => {
+    it('should work with equals operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -128,7 +140,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'country',
-                value: 'US',
+
+                value: lit('US'),
               },
             ],
             value: 'us-value',
@@ -136,11 +149,11 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {country: 'US'}).finalValue).toBe('us-value');
-      expect(evaluateConfigValue(config, {country: 'UK'}).finalValue).toBe('default');
+      expect((await evaluate(config, {country: 'US'})).finalValue).toBe('us-value');
+      expect((await evaluate(config, {country: 'UK'})).finalValue).toBe('default');
     });
 
-    it('should work with not_in operator', () => {
+    it('should work with not_in operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -159,7 +172,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'not_in',
                 property: 'country',
-                value: ['CN', 'RU', 'KP'],
+
+                value: lit(['CN', 'RU', 'KP']),
               },
             ],
             value: 'allowed',
@@ -167,11 +181,11 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {country: 'US'}).finalValue).toBe('allowed');
-      expect(evaluateConfigValue(config, {country: 'CN'}).finalValue).toBe('blocked');
+      expect((await evaluate(config, {country: 'US'})).finalValue).toBe('allowed');
+      expect((await evaluate(config, {country: 'CN'})).finalValue).toBe('blocked');
     });
 
-    it('should work with less_than operator', () => {
+    it('should work with less_than operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -190,7 +204,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'less_than',
                 property: 'accountAge',
-                value: 30,
+
+                value: lit(30),
               },
             ],
             value: 5,
@@ -198,12 +213,12 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {accountAge: 15}).finalValue).toBe(5);
-      expect(evaluateConfigValue(config, {accountAge: 45}).finalValue).toBe(10);
-      expect(evaluateConfigValue(config, {accountAge: 30}).finalValue).toBe(10);
+      expect((await evaluate(config, {accountAge: 15})).finalValue).toBe(5);
+      expect((await evaluate(config, {accountAge: 45})).finalValue).toBe(10);
+      expect((await evaluate(config, {accountAge: 30})).finalValue).toBe(10);
     });
 
-    it('should work with less_than_or_equal operator', () => {
+    it('should work with less_than_or_equal operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -222,7 +237,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'less_than_or_equal',
                 property: 'count',
-                value: 100,
+
+                value: lit(100),
               },
             ],
             value: 'ok',
@@ -230,12 +246,12 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {count: 50}).finalValue).toBe('ok');
-      expect(evaluateConfigValue(config, {count: 100}).finalValue).toBe('ok');
-      expect(evaluateConfigValue(config, {count: 101}).finalValue).toBe('over');
+      expect((await evaluate(config, {count: 50})).finalValue).toBe('ok');
+      expect((await evaluate(config, {count: 100})).finalValue).toBe('ok');
+      expect((await evaluate(config, {count: 101})).finalValue).toBe('over');
     });
 
-    it('should work with greater_than operator', () => {
+    it('should work with greater_than operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -254,7 +270,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'greater_than',
                 property: 'creditScore',
-                value: 700,
+
+                value: lit(700),
               },
             ],
             value: 'premium',
@@ -262,12 +279,12 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {creditScore: 750}).finalValue).toBe('premium');
-      expect(evaluateConfigValue(config, {creditScore: 650}).finalValue).toBe('standard');
-      expect(evaluateConfigValue(config, {creditScore: 700}).finalValue).toBe('standard');
+      expect((await evaluate(config, {creditScore: 750})).finalValue).toBe('premium');
+      expect((await evaluate(config, {creditScore: 650})).finalValue).toBe('standard');
+      expect((await evaluate(config, {creditScore: 700})).finalValue).toBe('standard');
     });
 
-    it('should work with greater_than_or_equal operator', () => {
+    it('should work with greater_than_or_equal operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -286,7 +303,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'greater_than_or_equal',
                 property: 'age',
-                value: 18,
+
+                value: lit(18),
               },
             ],
             value: 'adult',
@@ -294,14 +312,14 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {age: 25}).finalValue).toBe('adult');
-      expect(evaluateConfigValue(config, {age: 18}).finalValue).toBe('adult');
-      expect(evaluateConfigValue(config, {age: 17}).finalValue).toBe('junior');
+      expect((await evaluate(config, {age: 25})).finalValue).toBe('adult');
+      expect((await evaluate(config, {age: 18})).finalValue).toBe('adult');
+      expect((await evaluate(config, {age: 17})).finalValue).toBe('junior');
     });
   });
 
   describe('Composite Operators', () => {
-    it('should work with AND operator', () => {
+    it('should work with AND operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -323,12 +341,14 @@ describe('Override Evaluation', () => {
                   {
                     operator: 'equals',
                     property: 'userEmail',
-                    value: 'vip@example.com',
+
+                    value: lit('vip@example.com'),
                   },
                   {
                     operator: 'equals',
                     property: 'tier',
-                    value: 'premium',
+
+                    value: lit('premium'),
                   },
                 ],
               },
@@ -339,14 +359,14 @@ describe('Override Evaluation', () => {
       };
 
       expect(
-        evaluateConfigValue(config, {userEmail: 'vip@example.com', tier: 'premium'}).finalValue,
+        (await evaluate(config, {userEmail: 'vip@example.com', tier: 'premium'})).finalValue,
       ).toBe('vip-premium');
       expect(
-        evaluateConfigValue(config, {userEmail: 'vip@example.com', tier: 'free'}).finalValue,
+        (await evaluate(config, {userEmail: 'vip@example.com', tier: 'free'})).finalValue,
       ).toBe('base');
     });
 
-    it('should work with OR operator', () => {
+    it('should work with OR operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -368,12 +388,14 @@ describe('Override Evaluation', () => {
                   {
                     operator: 'equals',
                     property: 'userEmail',
-                    value: 'admin@example.com',
+
+                    value: lit('admin@example.com'),
                   },
                   {
                     operator: 'equals',
                     property: 'role',
-                    value: 'admin',
+
+                    value: lit('admin'),
                   },
                 ],
               },
@@ -384,17 +406,17 @@ describe('Override Evaluation', () => {
       };
 
       expect(
-        evaluateConfigValue(config, {userEmail: 'admin@example.com', role: 'user'}).finalValue,
+        (await evaluate(config, {userEmail: 'admin@example.com', role: 'user'})).finalValue,
       ).toBe('admin-access');
       expect(
-        evaluateConfigValue(config, {userEmail: 'user@example.com', role: 'admin'}).finalValue,
+        (await evaluate(config, {userEmail: 'user@example.com', role: 'admin'})).finalValue,
       ).toBe('admin-access');
       expect(
-        evaluateConfigValue(config, {userEmail: 'user@example.com', role: 'user'}).finalValue,
+        (await evaluate(config, {userEmail: 'user@example.com', role: 'user'})).finalValue,
       ).toBe('limited');
     });
 
-    it('should work with NOT operator', () => {
+    it('should work with NOT operator', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -415,7 +437,8 @@ describe('Override Evaluation', () => {
                 condition: {
                   operator: 'equals',
                   property: 'status',
-                  value: 'banned',
+
+                  value: lit('banned'),
                 },
               },
             ],
@@ -424,11 +447,11 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {status: 'active'}).finalValue).toBe('active');
-      expect(evaluateConfigValue(config, {status: 'banned'}).finalValue).toBe('normal');
+      expect((await evaluate(config, {status: 'active'})).finalValue).toBe('active');
+      expect((await evaluate(config, {status: 'banned'})).finalValue).toBe('normal');
     });
 
-    it('should handle nested composite rules', () => {
+    it('should handle nested composite rules', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -453,19 +476,22 @@ describe('Override Evaluation', () => {
                       {
                         operator: 'equals',
                         property: 'country',
-                        value: 'US',
+
+                        value: lit('US'),
                       },
                       {
                         operator: 'equals',
                         property: 'tier',
-                        value: 'premium',
+
+                        value: lit('premium'),
                       },
                     ],
                   },
                   {
                     operator: 'equals',
                     property: 'userEmail',
-                    value: 'vip@example.com',
+
+                    value: lit('vip@example.com'),
                   },
                 ],
               },
@@ -476,25 +502,23 @@ describe('Override Evaluation', () => {
       };
 
       // US premium users get special
-      expect(evaluateConfigValue(config, {country: 'US', tier: 'premium'}).finalValue).toBe(
-        'special',
-      );
+      expect((await evaluate(config, {country: 'US', tier: 'premium'})).finalValue).toBe('special');
 
       // VIP users get special
       expect(
-        evaluateConfigValue(config, {userEmail: 'vip@example.com', tier: 'free'}).finalValue,
+        (await evaluate(config, {userEmail: 'vip@example.com', tier: 'free'})).finalValue,
       ).toBe('special');
 
       // US free users don't get special
-      expect(evaluateConfigValue(config, {country: 'US', tier: 'free'}).finalValue).toBe('base');
+      expect((await evaluate(config, {country: 'US', tier: 'free'})).finalValue).toBe('base');
 
       // Non-US premium users don't get special
-      expect(evaluateConfigValue(config, {country: 'UK', tier: 'premium'}).finalValue).toBe('base');
+      expect((await evaluate(config, {country: 'UK', tier: 'premium'})).finalValue).toBe('base');
     });
   });
 
   describe('Multiple Conditions (Implicit AND)', () => {
-    it('should require all conditions to match', () => {
+    it('should require all conditions to match', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -513,12 +537,14 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'userEmail',
-                value: 'vip@example.com',
+
+                value: lit('vip@example.com'),
               },
               {
                 operator: 'equals',
                 property: 'tier',
-                value: 'premium',
+
+                value: lit('premium'),
               },
             ],
             value: 'vip-premium',
@@ -528,23 +554,23 @@ describe('Override Evaluation', () => {
 
       // Both conditions match
       expect(
-        evaluateConfigValue(config, {userEmail: 'vip@example.com', tier: 'premium'}).finalValue,
+        (await evaluate(config, {userEmail: 'vip@example.com', tier: 'premium'})).finalValue,
       ).toBe('vip-premium');
 
       // Only first condition matches
       expect(
-        evaluateConfigValue(config, {userEmail: 'vip@example.com', tier: 'free'}).finalValue,
+        (await evaluate(config, {userEmail: 'vip@example.com', tier: 'free'})).finalValue,
       ).toBe('base');
 
       // Neither condition matches
       expect(
-        evaluateConfigValue(config, {userEmail: 'user@example.com', tier: 'free'}).finalValue,
+        (await evaluate(config, {userEmail: 'user@example.com', tier: 'free'})).finalValue,
       ).toBe('base');
     });
   });
 
   describe('Multiple Overrides (Priority)', () => {
-    it('should return first matching override', () => {
+    it('should return first matching override', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -563,7 +589,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'userEmail',
-                value: 'admin@example.com',
+
+                value: lit('admin@example.com'),
               },
             ],
             value: 'admin-override',
@@ -574,7 +601,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'tier',
-                value: 'premium',
+
+                value: lit('premium'),
               },
             ],
             value: 'premium-override',
@@ -584,23 +612,23 @@ describe('Override Evaluation', () => {
 
       // First override matches
       expect(
-        evaluateConfigValue(config, {userEmail: 'admin@example.com', tier: 'premium'}).finalValue,
+        (await evaluate(config, {userEmail: 'admin@example.com', tier: 'premium'})).finalValue,
       ).toBe('admin-override');
 
       // Second override matches
       expect(
-        evaluateConfigValue(config, {userEmail: 'user@example.com', tier: 'premium'}).finalValue,
+        (await evaluate(config, {userEmail: 'user@example.com', tier: 'premium'})).finalValue,
       ).toBe('premium-override');
 
       // No override matches
       expect(
-        evaluateConfigValue(config, {userEmail: 'user@example.com', tier: 'free'}).finalValue,
+        (await evaluate(config, {userEmail: 'user@example.com', tier: 'free'})).finalValue,
       ).toBe('base');
     });
   });
 
   describe('Edge Cases', () => {
-    it('should return base value when no overrides defined', () => {
+    it('should return base value when no overrides defined', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -615,10 +643,10 @@ describe('Override Evaluation', () => {
         overrides: [],
       };
 
-      expect(evaluateConfigValue(config, {userEmail: 'test@example.com'}).finalValue).toBe('base');
+      expect((await evaluate(config, {userEmail: 'test@example.com'})).finalValue).toBe('base');
     });
 
-    it('should return base value when overrides array is empty', () => {
+    it('should return base value when overrides array is empty', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -633,10 +661,10 @@ describe('Override Evaluation', () => {
         overrides: [],
       };
 
-      expect(evaluateConfigValue(config, {userEmail: 'test@example.com'}).finalValue).toBe('base');
+      expect((await evaluate(config, {userEmail: 'test@example.com'})).finalValue).toBe('base');
     });
 
-    it('should handle missing context properties', () => {
+    it('should handle missing context properties', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -655,7 +683,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'country',
-                value: 'US',
+
+                value: lit('US'),
               },
             ],
             value: 'override',
@@ -663,13 +692,13 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      expect(evaluateConfigValue(config, {userEmail: 'test@example.com'}).finalValue).toBe('base');
-      expect(evaluateConfigValue(config, {}).finalValue).toBe('base');
+      expect((await evaluate(config, {userEmail: 'test@example.com'})).finalValue).toBe('base');
+      expect((await evaluate(config, {})).finalValue).toBe('base');
     });
   });
 
   describe('Debug Information', () => {
-    it('should provide detailed evaluation results', () => {
+    it('should provide detailed evaluation results', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -688,7 +717,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'tier',
-                value: 'premium',
+
+                value: lit('premium'),
               },
             ],
             value: 'premium-value',
@@ -696,17 +726,17 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      const result = evaluateConfigValue(config, {tier: 'premium'});
+      const result = await evaluate(config, {tier: 'premium'});
 
       expect(result.finalValue).toBe('premium-value');
-      expect(result.matchedOverride).toEqual(config.overrides![0]);
+      // matchedOverride is now RenderedOverride, not Override;
       expect(result.overrideEvaluations).toHaveLength(1);
-      expect(result.overrideEvaluations[0].matched).toBe(true);
+      expect(result.overrideEvaluations[0].result).toBe('matched');
       expect(result.overrideEvaluations[0].conditionEvaluations).toHaveLength(1);
-      expect(result.overrideEvaluations[0].conditionEvaluations[0].matched).toBe(true);
+      expect(result.overrideEvaluations[0].conditionEvaluations[0].result).toBe('matched');
     });
 
-    it('should show why conditions failed', () => {
+    it('should show why conditions failed', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -725,7 +755,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'tier',
-                value: 'premium',
+
+                value: lit('premium'),
               },
             ],
             value: 'premium-value',
@@ -733,16 +764,16 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      const result = evaluateConfigValue(config, {tier: 'free'});
+      const result = await evaluate(config, {tier: 'free'});
 
       expect(result.finalValue).toBe('base');
       expect(result.matchedOverride).toBeNull();
-      expect(result.overrideEvaluations[0].matched).toBe(false);
-      expect(result.overrideEvaluations[0].conditionEvaluations[0].matched).toBe(false);
+      expect(result.overrideEvaluations[0].result).toBe('not_matched');
+      expect(result.overrideEvaluations[0].conditionEvaluations[0].result).toBe('not_matched');
       expect(result.overrideEvaluations[0].conditionEvaluations[0].reason).toContain('expected');
     });
 
-    it('should provide nested evaluation details', () => {
+    it('should provide nested evaluation details', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -764,12 +795,14 @@ describe('Override Evaluation', () => {
                   {
                     operator: 'equals',
                     property: 'country',
-                    value: 'US',
+
+                    value: lit('US'),
                   },
                   {
                     operator: 'equals',
                     property: 'tier',
-                    value: 'premium',
+
+                    value: lit('premium'),
                   },
                 ],
               },
@@ -779,22 +812,22 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      const result = evaluateConfigValue(config, {country: 'US', tier: 'free'});
+      const result = await evaluate(config, {country: 'US', tier: 'free'});
 
       expect(result.matchedOverride).toBeNull();
-      expect(result.overrideEvaluations[0].matched).toBe(false);
+      expect(result.overrideEvaluations[0].result).toBe('not_matched');
       expect(result.overrideEvaluations[0].conditionEvaluations[0].nestedEvaluations).toHaveLength(
         2,
       );
       expect(
-        result.overrideEvaluations[0].conditionEvaluations[0].nestedEvaluations![0].matched,
-      ).toBe(true); // country matches
+        result.overrideEvaluations[0].conditionEvaluations[0].nestedEvaluations![0].result,
+      ).toBe('matched'); // country matches
       expect(
-        result.overrideEvaluations[0].conditionEvaluations[0].nestedEvaluations![1].matched,
-      ).toBe(false); // tier doesn't match
+        result.overrideEvaluations[0].conditionEvaluations[0].nestedEvaluations![1].result,
+      ).toBe('not_matched'); // tier doesn't match
     });
 
-    it('should show type casting in debug output', () => {
+    it('should show type casting in debug output', async () => {
       const config: Config = {
         id: uuidv4(),
         name: 'test',
@@ -813,7 +846,8 @@ describe('Override Evaluation', () => {
               {
                 operator: 'equals',
                 property: 'count',
-                value: '100', // String
+
+                value: lit('100'), // String
               },
             ],
             value: 'matched',
@@ -821,7 +855,7 @@ describe('Override Evaluation', () => {
         ],
       };
 
-      const result = evaluateConfigValue(config, {count: 100}); // Number
+      const result = await evaluate(config, {count: 100}); // Number
 
       expect(result.finalValue).toBe('matched');
       expect(result.overrideEvaluations[0].conditionEvaluations[0].reason).toContain('casted');
@@ -837,7 +871,8 @@ describe('Override Evaluation', () => {
             {
               operator: 'equals',
               property: 'userEmail',
-              value: 'vip@example.com',
+
+              value: lit('vip@example.com'),
             },
           ],
           value: {maxItems: 100},
@@ -848,7 +883,8 @@ describe('Override Evaluation', () => {
             {
               operator: 'equals',
               property: 'tier',
-              value: 'premium',
+
+              value: lit('premium'),
             },
           ],
           value: {maxItems: 50},
@@ -921,7 +957,8 @@ describe('Override Evaluation', () => {
             {
               operator: 'equals',
               property: 'enabled',
-              value: true,
+
+              value: lit(true),
             },
           ],
           value: true,
@@ -961,7 +998,8 @@ describe('Override Evaluation', () => {
             {
               operator: 'greater_than',
               property: 'age',
-              value: '18', // String in rule
+
+              value: lit('18'), // String in rule
             },
           ],
           value: {access: 'adult'},
