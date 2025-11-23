@@ -18,14 +18,6 @@ export const NotInConditionSchema = PropertyConditionBase.extend({
   operator: z.literal('not_in'),
 });
 
-export const ContainsConditionSchema = PropertyConditionBase.extend({
-  operator: z.literal('contains'),
-});
-
-export const NotContainsConditionSchema = PropertyConditionBase.extend({
-  operator: z.literal('not_contains'),
-});
-
 export const LessThanConditionSchema = PropertyConditionBase.extend({
   operator: z.literal('less_than'),
 });
@@ -53,8 +45,6 @@ const SegmentationConditionSchema = z.object({
 export type EqualsCondition = z.infer<typeof EqualsConditionSchema>;
 export type InCondition = z.infer<typeof InConditionSchema>;
 export type NotInCondition = z.infer<typeof NotInConditionSchema>;
-export type ContainsCondition = z.infer<typeof ContainsConditionSchema>;
-export type NotContainsCondition = z.infer<typeof NotContainsConditionSchema>;
 export type LessThanCondition = z.infer<typeof LessThanConditionSchema>;
 export type LessThanOrEqualCondition = z.infer<typeof LessThanOrEqualConditionSchema>;
 export type GreaterThanCondition = z.infer<typeof GreaterThanConditionSchema>;
@@ -82,8 +72,6 @@ export type Condition =
   | EqualsCondition
   | InCondition
   | NotInCondition
-  | ContainsCondition
-  | NotContainsCondition
   | LessThanCondition
   | LessThanOrEqualCondition
   | GreaterThanCondition
@@ -121,12 +109,11 @@ export const ConfigOverrideConditionSchema: z.ZodType<Condition> = z.lazy(() =>
     EqualsConditionSchema,
     InConditionSchema,
     NotInConditionSchema,
-    ContainsConditionSchema,
-    NotContainsConditionSchema,
     LessThanConditionSchema,
     LessThanOrEqualConditionSchema,
     GreaterThanConditionSchema,
     GreaterThanOrEqualConditionSchema,
+    SegmentationConditionSchema,
     AndConditionSchema as any,
     OrConditionSchema as any,
     NotConditionSchema as any,

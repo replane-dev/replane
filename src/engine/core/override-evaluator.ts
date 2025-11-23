@@ -1,7 +1,6 @@
 import type {
   AndCondition,
   Condition,
-  ContainsCondition,
   EqualsCondition,
   GreaterThanCondition,
   GreaterThanOrEqualCondition,
@@ -9,7 +8,6 @@ import type {
   LessThanCondition,
   LessThanOrEqualCondition,
   NotCondition,
-  NotContainsCondition,
   NotInCondition,
   OrCondition,
   SegmentationCondition,
@@ -18,7 +16,6 @@ import type {
 export type {
   AndCondition,
   Condition,
-  ContainsCondition,
   EqualsCondition,
   GreaterThanCondition,
   GreaterThanOrEqualCondition,
@@ -26,7 +23,6 @@ export type {
   LessThanCondition,
   LessThanOrEqualCondition,
   NotCondition,
-  NotContainsCondition,
   NotInCondition,
   OrCondition,
 };
@@ -272,20 +268,6 @@ function evaluateConditionWithDebug(
           : `Expected value must be an array`;
       break;
     }
-
-    case 'contains':
-      matched = String(contextValue).includes(String(castedValue));
-      reason = matched
-        ? `${property} contains ${JSON.stringify(castedValue)}`
-        : `${property} (${JSON.stringify(contextValue)}) does not contain ${JSON.stringify(castedValue)}`;
-      break;
-
-    case 'not_contains':
-      matched = !String(contextValue).includes(String(castedValue));
-      reason = matched
-        ? `${property} does not contain ${JSON.stringify(castedValue)}`
-        : `${property} (${JSON.stringify(contextValue)}) contains ${JSON.stringify(castedValue)}`;
-      break;
 
     case 'less_than':
       // Support both numbers and strings
