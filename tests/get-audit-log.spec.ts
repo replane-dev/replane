@@ -25,6 +25,7 @@ describe('getAuditLog', () => {
   it('lists messages with pagination & cursor', async () => {
     // create two configs (each generates an audit entry)
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cfg_a',
       value: 1,
       description: 'A',
@@ -36,6 +37,7 @@ describe('getAuditLog', () => {
     });
     advance(fixture, 10);
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cfg_b',
       value: 2,
       description: 'B',
@@ -103,6 +105,7 @@ describe('getAuditLog', () => {
     });
 
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cfg_c',
       value: 3,
       description: 'C',
@@ -123,6 +126,7 @@ describe('getAuditLog', () => {
 
   it('filters by config names', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cfg_filter_me',
       value: 3,
       description: 'C',
@@ -133,6 +137,7 @@ describe('getAuditLog', () => {
       projectId: fixture.projectId,
     });
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cfg_dont_filter_me',
       value: 4,
       description: 'D',
@@ -152,6 +157,7 @@ describe('getAuditLog', () => {
 
   it('returns empty when filters resolve to no user/config', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'cfg_exists',
       value: 5,
       description: 'E',

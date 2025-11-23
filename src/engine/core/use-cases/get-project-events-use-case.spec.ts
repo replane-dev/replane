@@ -41,6 +41,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -52,6 +53,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v2',
         version: 2,
+        renderedOverrides: [],
       },
     });
 
@@ -93,6 +95,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-2',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -105,6 +108,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -144,6 +148,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -155,6 +160,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v2',
         version: 2,
+        renderedOverrides: [],
       },
     });
 
@@ -166,6 +172,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v2',
         version: 2,
+        renderedOverrides: [],
       },
     });
 
@@ -208,6 +215,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -224,6 +232,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -264,6 +273,7 @@ describe('GetProjectEventsUseCase', () => {
           projectId: 'proj-1',
           value: `v${i}`,
           version: 1,
+          renderedOverrides: [],
         },
       });
     }
@@ -301,6 +311,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 
@@ -339,6 +350,7 @@ describe('GetProjectEventsUseCase', () => {
         projectId: 'proj-1',
         value: 'v1',
         version: 1,
+        renderedOverrides: [],
       },
     });
 

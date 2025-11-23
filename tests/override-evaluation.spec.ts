@@ -18,7 +18,7 @@ const lit = (value: unknown) => ({type: 'literal' as const, value});
 
 // Helper to evaluate config with rendering
 async function evaluate(config: Config, context: Record<string, unknown>) {
-  const rendered = await renderOverrides(config.overrides, undefined);
+  const rendered = await renderOverrides(config.overrides, () => Promise.resolve(undefined));
   return evaluateConfigValue({...config, overrides: rendered}, context);
 }
 

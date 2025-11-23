@@ -30,6 +30,7 @@ describe('rejectConfigProposal', () => {
 
   it('should reject a proposal with value change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_value',
       value: {enabled: false},
       schema: null,
@@ -83,6 +84,7 @@ describe('rejectConfigProposal', () => {
 
   it('should reject a proposal with description change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_description',
       value: {enabled: false},
       schema: null,
@@ -134,6 +136,7 @@ describe('rejectConfigProposal', () => {
 
   it('should reject a proposal with schema change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_schema',
       value: {enabled: false},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
@@ -187,6 +190,7 @@ describe('rejectConfigProposal', () => {
 
   it('should reject a proposal with multiple changes', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_multiple',
       value: {enabled: false},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
@@ -243,6 +247,7 @@ describe('rejectConfigProposal', () => {
 
   it('should set rejectedInFavorOfProposalId to undefined (explicit rejection)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_explicit',
       value: {enabled: false},
       schema: null,
@@ -284,6 +289,7 @@ describe('rejectConfigProposal', () => {
   it('should allow anyone to reject a proposal (no permission check)', async () => {
     // Create config with CURRENT_USER as owner, OTHER_USER as editor
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_no_permission',
       value: {enabled: false},
       schema: null,
@@ -316,6 +322,7 @@ describe('rejectConfigProposal', () => {
 
   it('should allow multiple users to reject different proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_multiple_users',
       value: {enabled: false},
       schema: null,
@@ -379,6 +386,7 @@ describe('rejectConfigProposal', () => {
 
   it('should throw BadRequestError when rejecting already rejected proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_already_rejected',
       value: {enabled: false},
       schema: null,
@@ -413,6 +421,7 @@ describe('rejectConfigProposal', () => {
 
   it('should throw BadRequestError when rejecting already approved proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_already_approved',
       value: {enabled: false},
       schema: null,
@@ -447,6 +456,7 @@ describe('rejectConfigProposal', () => {
 
   it('should set reviewerId when rejecting a proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_reviewer_id',
       value: {enabled: false},
       schema: null,
@@ -478,6 +488,7 @@ describe('rejectConfigProposal', () => {
 
   it('should not apply any changes to the config when rejecting', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_no_changes',
       value: {enabled: false},
       schema: null,
@@ -520,6 +531,7 @@ describe('rejectConfigProposal', () => {
 
   it('should record the correct user as the rejector in audit message', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_correct_user',
       value: {enabled: false},
       schema: null,

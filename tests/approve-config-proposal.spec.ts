@@ -33,6 +33,7 @@ describe('approveConfigProposal', () => {
 
   it('should approve a proposal with proposed value only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_value_only',
       value: {count: 1},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
@@ -72,6 +73,7 @@ describe('approveConfigProposal', () => {
 
   it('should approve a proposal with proposed description only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_description_only',
       value: {x: 1},
       schema: null,
@@ -106,6 +108,7 @@ describe('approveConfigProposal', () => {
 
   it('should approve a proposal with proposed schema only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_schema_only',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
@@ -140,6 +143,7 @@ describe('approveConfigProposal', () => {
 
   it('should approve a proposal with multiple fields', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_multiple',
       value: {count: 1},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
@@ -175,6 +179,7 @@ describe('approveConfigProposal', () => {
 
   it('should reject all other pending proposals when approving one', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_rejects_others',
       value: {x: 1},
       schema: null,
@@ -261,6 +266,7 @@ describe('approveConfigProposal', () => {
 
   it('should create rejection audit messages for other proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_audit_rejection',
       value: {x: 1},
       schema: null,
@@ -351,6 +357,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if proposal was already approved', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'already_approved',
       value: {x: 1},
       schema: null,
@@ -385,6 +392,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if proposal was already rejected', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'already_rejected',
       value: {x: 1},
       schema: null,
@@ -432,6 +440,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if user does not have edit permission', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'no_permission',
       value: {x: 1},
       schema: null,
@@ -460,6 +469,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if config version has changed since proposal was created', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version_conflict',
       value: {count: 1},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
@@ -496,6 +506,7 @@ describe('approveConfigProposal', () => {
 
   it('should handle schema removal proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'schema_removal',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
@@ -529,6 +540,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if proposer tries to approve their own proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'self_approval_not_allowed',
       value: {x: 1},
       schema: null,
@@ -578,6 +590,7 @@ describe('approveConfigProposal', () => {
 
   it('should set approvedAt timestamp on the approved proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approved_at_set',
       value: {x: 1},
       schema: null,
@@ -616,6 +629,7 @@ describe('approveConfigProposal', () => {
 
   it('should create approval audit message', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approval_audit_message',
       value: {count: 1},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
@@ -676,6 +690,7 @@ describe('approveConfigProposal', () => {
 
   it('should create approval audit message with schema', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approval_audit_with_schema',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
@@ -721,6 +736,7 @@ describe('approveConfigProposal', () => {
 
   it('should approve a deletion proposal and delete the config (owner required)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_delete_proposal',
       value: {x: 1},
       schema: null,
@@ -762,6 +778,7 @@ describe('approveConfigProposal', () => {
 
   it('should approve a proposal with member changes (owner required)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approve_member_changes',
       value: {x: 1},
       schema: null,
@@ -805,6 +822,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if non-editor tries to approve proposal with value change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'value_change_requires_editor',
       value: {count: 1},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
@@ -850,6 +868,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if non-owner tries to approve proposal with schema change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'schema_change_requires_owner',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
@@ -885,6 +904,7 @@ describe('approveConfigProposal', () => {
 
   it('should allow owner to approve proposal with schema change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'owner_can_approve_schema',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
@@ -922,6 +942,7 @@ describe('approveConfigProposal', () => {
 
   it('should throw error if editor tries to approve proposal with schema removal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'schema_removal_requires_owner',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
@@ -955,6 +976,7 @@ describe('approveConfigProposal', () => {
 
   it('should allow owner to approve proposal with description change only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'editor_can_approve_description',
       value: {x: 1},
       schema: null,
@@ -990,6 +1012,7 @@ describe('approveConfigProposal', () => {
 
   it('should not allow editor to approve proposal with description change only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'editor_can_approve_description',
       value: {x: 1},
       schema: null,
@@ -1046,6 +1069,7 @@ describe('approveConfigProposal with allowSelfApprovals enabled', () => {
 
   it('should allow proposer to approve their own proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'self_approve_test',
       value: {count: 1},
       schema: null,

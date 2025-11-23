@@ -41,6 +41,7 @@ describe('getConfigProposalList', () => {
     // Create config A with OTHER_USER as editor (so they can approve value/description changes)
     fixture.setNow(T1);
     const {configId: configAId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'config_a',
       value: {a: 1},
       schema: {type: 'object', properties: {a: {type: 'number'}}},
@@ -78,6 +79,7 @@ describe('getConfigProposalList', () => {
     // Create config B at T3 and its proposal (P3) at T4
     fixture.setNow(T3);
     const {configId: configBId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'config_b',
       value: {b: 1},
       schema: {type: 'object', properties: {b: {type: 'number'}}},

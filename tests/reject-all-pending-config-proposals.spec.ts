@@ -30,6 +30,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should reject all pending proposals for a config', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_test',
       value: {enabled: false},
       schema: null,
@@ -113,6 +114,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should create audit messages for all rejected proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_audit',
       value: {enabled: false},
       schema: null,
@@ -185,6 +187,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should handle proposals with different change types', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_types',
       value: {enabled: false},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
@@ -299,6 +302,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should handle deletion proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_delete',
       value: {enabled: false},
       schema: null,
@@ -362,6 +366,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should return successfully when there are no pending proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_empty',
       value: {enabled: false},
       schema: null,
@@ -405,6 +410,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should skip already approved proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_skip_approved',
       value: {enabled: false},
       schema: null,
@@ -462,6 +468,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should skip already rejected proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_skip_rejected',
       value: {enabled: false},
       schema: null,
@@ -517,6 +524,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
   it('should work via tRPC endpoint', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'reject_all_trpc',
       value: {enabled: false},
       schema: null,

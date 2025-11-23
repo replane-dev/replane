@@ -51,6 +51,7 @@ describe('getProjectEvents Integration', () => {
 
     // Create a config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'feature-flag',
       value: {enabled: true},
@@ -76,6 +77,7 @@ describe('getProjectEvents Integration', () => {
   it('should emit updated event when a config is updated', async () => {
     // Create initial config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'feature-flag',
       value: {enabled: true},
@@ -120,6 +122,7 @@ describe('getProjectEvents Integration', () => {
   it('should emit deleted event when a config is deleted', async () => {
     // Create initial config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'feature-flag',
       value: {enabled: true},
@@ -183,6 +186,7 @@ describe('getProjectEvents Integration', () => {
 
       // Create config in other project - should not emit
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId: otherProjectId,
         name: 'other-flag',
         value: {x: 1},
@@ -195,6 +199,7 @@ describe('getProjectEvents Integration', () => {
 
       // Create config in target project - should emit
       const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'target-flag',
         value: {y: 2},
@@ -241,6 +246,7 @@ describe('getProjectEvents Integration', () => {
 
     // Create a config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       projectId,
       name: 'shared-flag',
       value: {count: 42},
@@ -293,6 +299,7 @@ describe('getProjectEvents Integration', () => {
     // Create multiple configs rapidly
     await Promise.all([
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'flag-1',
         value: {n: 1},
@@ -303,6 +310,7 @@ describe('getProjectEvents Integration', () => {
         currentUserEmail: TEST_USER_EMAIL,
       }),
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'flag-2',
         value: {n: 2},
@@ -313,6 +321,7 @@ describe('getProjectEvents Integration', () => {
         currentUserEmail: TEST_USER_EMAIL,
       }),
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         projectId,
         name: 'flag-3',
         value: {n: 3},

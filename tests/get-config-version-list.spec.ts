@@ -10,6 +10,7 @@ describe('getConfigVersionList', () => {
 
   it('should list versions in descending order', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'versions-test',
       value: {foo: 1},
       schema: {type: 'object'},
