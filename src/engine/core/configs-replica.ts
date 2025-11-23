@@ -5,6 +5,7 @@ import {CONFIGS_REPLICA_PULL_INTERVAL_MS} from './constants';
 import {GLOBAL_CONTEXT} from './context';
 import type {EventBusClient} from './event-bus';
 import type {Logger} from './logger';
+import {evaluateConfigValue, type EvaluationContext, type Override, type EvaluationResult} from './override-evaluator';
 import {type PgEventBusClientNotificationHandler} from './pg-event-bus-client';
 import type {Service} from './service';
 import {Subject} from './subject';
@@ -22,6 +23,7 @@ interface ConfigReplica {
   name: string;
   projectId: string;
   value: unknown;
+  overrides: Override[] | null;
   version: number;
 }
 
@@ -97,8 +99,26 @@ export class ConfigsReplica implements Service {
     });
   }
 
-  getConfigValue<T>(params: {projectId: string; name: string}): T | undefined {
+  getConfigValue<T>(params: {
+    projectId: string;
+    name: string;
+    context?: EvaluationContext;
+  }): T | undefined {
     const config = this.configsByKey.get(toConfigKey(params.projectId, params.name));
+    if (!config) {
+      return undefined;
+    }
+
+    // Evaluate overrides if context is provided
+    if (params.context) {
+      const result: EvaluationResult = evaluateConfigValue(
+        {value: config.value, overrides: config.overrides},
+        params.context,
+      );
+      return result.finalValue as T;
+    }
+
+    // Return base value if no context
     return config?.value as T | undefined;
   }
 

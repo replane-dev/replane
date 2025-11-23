@@ -12,7 +12,7 @@ const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 describe('createProject', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
-  it('creates a project with current user as owner and emits audit message', async () => {
+  it('creates a project with current user as admin and emits audit message', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Another Project',
@@ -33,7 +33,7 @@ describe('createProject', () => {
       [projectId],
     );
     expect(members.rows.map((r: any) => r.user_email_normalized)).toContain(CURRENT_USER_EMAIL);
-    expect(members.rows[0].role).toBe('owner');
+    expect(members.rows[0].role).toBe('admin');
 
     // audit messages: project_created for default + project_created for this one => at least 2 messages overall, we filter by projectId
     const messages = await fixture.engine.testing.auditMessages.list({

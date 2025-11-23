@@ -57,7 +57,7 @@ describe('getProjectEvents Integration', () => {
       description: 'Test config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -82,7 +82,7 @@ describe('getProjectEvents Integration', () => {
       description: 'Test config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -126,7 +126,7 @@ describe('getProjectEvents Integration', () => {
       description: 'Test config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -189,7 +189,7 @@ describe('getProjectEvents Integration', () => {
         description: 'Other config',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       });
 
@@ -201,7 +201,7 @@ describe('getProjectEvents Integration', () => {
         description: 'Target config',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       });
 
@@ -247,7 +247,7 @@ describe('getProjectEvents Integration', () => {
       description: 'Shared config',
       schema: {},
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -299,7 +299,7 @@ describe('getProjectEvents Integration', () => {
         description: 'Config 1',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       }),
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -309,7 +309,7 @@ describe('getProjectEvents Integration', () => {
         description: 'Config 2',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       }),
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -319,7 +319,7 @@ describe('getProjectEvents Integration', () => {
         description: 'Config 3',
         schema: {},
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         currentUserEmail: TEST_USER_EMAIL,
       }),
     ]);

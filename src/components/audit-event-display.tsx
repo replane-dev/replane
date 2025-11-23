@@ -202,6 +202,11 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
             language="plaintext"
           />
           <DiffRow label="Schema" before={payload.before.schema} after={payload.after.schema} />
+          <DiffRow
+            label="Overrides"
+            before={payload.before.overrides}
+            after={payload.after.overrides}
+          />
         </div>
       </div>
     );
@@ -279,6 +284,7 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
               {payload.proposedValue && <li>• Value change</li>}
               {payload.proposedDescription !== undefined && <li>• Description change</li>}
               {payload.proposedSchema && <li>• Schema change</li>}
+              {payload.proposedOverrides && <li>• Overrides change</li>}
               {payload.proposedMembers && <li>• Members change</li>}
             </ul>
           </div>
@@ -312,6 +318,7 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
               {payload.proposedValue && <li>• Value updated</li>}
               {payload.proposedDescription !== undefined && <li>• Description updated</li>}
               {payload.proposedSchema && <li>• Schema updated</li>}
+              {payload.proposedOverrides && <li>• Overrides updated</li>}
               {payload.proposedMembers && <li>• Members updated</li>}
             </ul>
           </div>
@@ -475,6 +482,11 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
             language="plaintext"
           />
           <DiffRow label="Schema" before={payload.before.schema} after={payload.after.schema} />
+          <DiffRow
+            label="Overrides"
+            before={payload.before.overrides}
+            after={payload.after.overrides}
+          />
         </div>
       </div>
     );

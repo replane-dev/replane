@@ -36,7 +36,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -119,7 +119,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -191,7 +191,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -305,7 +305,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -368,7 +368,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -411,7 +411,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -468,7 +468,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -523,7 +523,7 @@ describe('rejectAllPendingConfigProposals', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 

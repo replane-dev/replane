@@ -43,7 +43,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       {
         projectId,
         email: req.currentUserEmail,
-        role: 'owner',
+        role: 'admin',
         createdAt: now,
         updatedAt: now,
       },

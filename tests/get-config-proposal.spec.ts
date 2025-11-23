@@ -29,13 +29,14 @@ describe('getConfigProposal', () => {
 
   it('should get a pending proposal with value change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_value',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -69,9 +70,9 @@ describe('getConfigProposal', () => {
     expect(result.proposal.createdAt).toBeDefined();
     expect(result.proposal.baseConfigVersion).toBe(1);
     // Value-only changes can be approved by editors or owners
-    expect(result.proposal.approverRole).toBe('owners_and_editors');
+    expect(result.proposal.approverRole).toBe('maintainers_and_editors');
     expect(result.proposal.approverReason).toBe(
-      'Value-only changes can be approved by editors or owners.',
+      'Value-only changes can be approved by editors or maintainers.',
     );
     expect(result.proposal.approverEmails).toEqual(
       expect.arrayContaining([CURRENT_USER_EMAIL, OTHER_USER_EMAIL]),
@@ -80,13 +81,14 @@ describe('getConfigProposal', () => {
 
   it('should indicate owners as approvers for member changes', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_members',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [OTHER_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -102,8 +104,8 @@ describe('getConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    expect(result.proposal.approverRole).toBe('owners');
-    expect(result.proposal.approverReason).toBe('Membership changes require owner approval.');
+    expect(result.proposal.approverRole).toBe('maintainers');
+    expect(result.proposal.approverReason).toBe('Membership changes require maintainer approval.');
     expect(result.proposal.approverEmails).toHaveLength(2);
     expect(result.proposal.approverEmails).toEqual(
       expect.arrayContaining([OTHER_USER_EMAIL, CURRENT_USER_EMAIL]),
@@ -112,13 +114,14 @@ describe('getConfigProposal', () => {
 
   it('should get a pending proposal with description change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_description',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -147,13 +150,14 @@ describe('getConfigProposal', () => {
 
   it('should get a pending proposal with schema change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_schema',
       value: {enabled: false},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [OTHER_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -190,13 +194,14 @@ describe('getConfigProposal', () => {
 
   it('should get a pending proposal with multiple changes', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_multiple',
       value: {enabled: false},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [OTHER_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -234,13 +239,14 @@ describe('getConfigProposal', () => {
 
   it('should get an approved proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_approved',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -271,13 +277,14 @@ describe('getConfigProposal', () => {
 
   it('should get a rejected proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_rejected',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -309,13 +316,14 @@ describe('getConfigProposal', () => {
 
   it('should get a rejected proposal with rejectedInFavorOfProposalId', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_rejected_in_favor',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -359,13 +367,14 @@ describe('getConfigProposal', () => {
 
   it('should include proposer email when proposer exists', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_proposer',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -387,13 +396,14 @@ describe('getConfigProposal', () => {
 
   it('should include reviewer email when proposal is reviewed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_reviewer',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -420,13 +430,14 @@ describe('getConfigProposal', () => {
 
   it('should include config name in response', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'my_special_config',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -458,13 +469,14 @@ describe('getConfigProposal', () => {
 
   it('should allow any user to get a proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_any_user',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -486,13 +498,14 @@ describe('getConfigProposal', () => {
 
   it('should return correct base config version', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_version',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -533,13 +546,14 @@ describe('getConfigProposal', () => {
 
   it('should handle proposal with null proposerId', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'get_proposal_null_proposer',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -572,13 +586,14 @@ describe('getConfigProposal', () => {
   it('should return base members from version snapshot', async () => {
     // Create a config with initial members
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'base_members_test',
       value: {count: 1},
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [OTHER_USER_EMAIL],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -595,7 +610,7 @@ describe('getConfigProposal', () => {
       configId,
       members: {
         newMembers: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'maintainer'},
           {email: THIRD_USER_EMAIL, role: 'editor'}, // THIRD_USER instead of OTHER_USER
         ],
       },
@@ -610,7 +625,7 @@ describe('getConfigProposal', () => {
     });
 
     // Base members should be from version 1
-    expect(result.proposal.baseOwnerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(result.proposal.baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
     expect(result.proposal.baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
 
     // Current members would be different (OTHER_USER removed, THIRD_USER added)
@@ -620,13 +635,14 @@ describe('getConfigProposal', () => {
   it('should handle member changes in proposal diff correctly', async () => {
     // Create config with initial members
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'member_diff_test',
       value: {x: 1},
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [OTHER_USER_EMAIL],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -636,7 +652,7 @@ describe('getConfigProposal', () => {
       configId,
       proposedMembers: {
         newMembers: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'maintainer'},
           {email: THIRD_USER_EMAIL, role: 'editor'}, // Replace OTHER_USER with THIRD_USER
         ],
       },
@@ -649,12 +665,12 @@ describe('getConfigProposal', () => {
     });
 
     // Verify base members match the original config
-    expect(result.proposal.baseOwnerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(result.proposal.baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
     expect(result.proposal.baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
 
     // Verify the proposed members
     expect(result.proposal.proposedMembers?.newMembers).toEqual([
-      {email: CURRENT_USER_EMAIL, role: 'owner'},
+      {email: CURRENT_USER_EMAIL, role: 'maintainer'},
       {email: THIRD_USER_EMAIL, role: 'editor'},
     ]);
   });
@@ -662,13 +678,14 @@ describe('getConfigProposal', () => {
   it('should fallback to current members for old versions without member data', async () => {
     // This test simulates an old version that was created before members were versioned
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'old_version_test',
       value: {x: 1},
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [OTHER_USER_EMAIL],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -701,7 +718,7 @@ describe('getConfigProposal', () => {
     });
 
     // Should fallback to current members when version doesn't have member data
-    expect(result.proposal.baseOwnerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(result.proposal.baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
     // getConfigEditors includes both editors and owners, so it will include both
     expect(result.proposal.baseEditorEmails).toEqual(
       expect.arrayContaining([OTHER_USER_EMAIL, CURRENT_USER_EMAIL]),
@@ -710,13 +727,14 @@ describe('getConfigProposal', () => {
 
   it('should return empty proposalsRejectedByThisApproval for pending proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'pending_rejected_list',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -737,13 +755,14 @@ describe('getConfigProposal', () => {
 
   it('should return empty proposalsRejectedByThisApproval for rejected proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'rejected_rejected_list',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -769,13 +788,14 @@ describe('getConfigProposal', () => {
 
   it('should return proposalsRejectedByThisApproval when proposal is approved', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approved_with_rejected',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -834,13 +854,14 @@ describe('getConfigProposal', () => {
 
   it('should return proposalsRejectedByThisApproval with null proposerEmail when proposer was deleted', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approved_with_null_proposer',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -897,13 +918,14 @@ describe('getConfigProposal', () => {
 
   it('should return empty proposalsRejectedByThisApproval when no other proposals were rejected', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'approved_no_others',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 

@@ -396,9 +396,9 @@ export default function ReviewConfigProposalPage() {
                       Who can approve
                     </div>
                     <p className="text-sm text-foreground/80 dark:text-foreground/70 mb-2">
-                      {proposal.approverRole === 'owners'
-                        ? 'Only config owners can approve this proposal.'
-                        : 'Config owners and editors can approve this proposal.'}
+                      {proposal.approverRole === 'maintainers'
+                        ? 'Only config maintainers can approve this proposal.'
+                        : 'Config maintainers and editors can approve this proposal.'}
                     </p>
                     <p className="text-sm text-foreground/70 dark:text-foreground/60 mb-4">
                       {proposal.approverReason}
@@ -468,7 +468,7 @@ export default function ReviewConfigProposalPage() {
                 value: proposal.baseValue,
                 description: proposal.baseDescription ?? '',
                 schema: proposal.baseSchema,
-                owners: proposal.baseOwnerEmails,
+                maintainers: proposal.baseMaintainerEmails,
                 editors: proposal.baseEditorEmails,
               }}
               proposed={{

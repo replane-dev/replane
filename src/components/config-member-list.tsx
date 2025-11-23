@@ -17,54 +17,55 @@ import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {ChevronDown, Info, Plus, Trash2, Users} from 'lucide-react';
 
-export type Maintainer = {
+export type ConfigMember = {
   email: string;
-  role: 'owner' | 'editor';
+  role: 'maintainer' | 'editor';
 };
 
-export interface ConfigMaintainersListProps {
-  maintainers: Maintainer[];
-  onChange: (maintainers: Maintainer[]) => void;
+export interface ConfigMemberListProps {
+  members: ConfigMember[];
+  onChange: (members: ConfigMember[]) => void;
   disabled?: boolean;
   errors?: Array<{email?: {message?: string}; role?: {message?: string}} | undefined>;
 }
 
-export function ConfigMaintainersList({
-  maintainers,
+export function ConfigMemberList({
+  members,
   onChange,
   disabled = false,
   errors = [],
-}: ConfigMaintainersListProps) {
+}: ConfigMemberListProps) {
   const {requireProposals} = useOrg();
   const projectId = useProjectId();
   const trpc = useTRPC();
   const projectUsersQuery = trpc.getProjectUsers.queryOptions({projectId});
   const {data: projectUsersData} = useSuspenseQuery({...projectUsersQuery});
 
-  // Filter to only owners and admins (project maintainers who can approve)
+  // Filter to only admins and members (project members who can approve)
   const projectMaintainers = (projectUsersData.users ?? []).filter(
-    (u: {email: string; role: 'owner' | 'admin'}) => u.role === 'owner' || u.role === 'admin',
+    (u: {email: string; role: 'admin' | 'maintainer'}) =>
+      u.role === 'admin' || u.role === 'maintainer',
   );
 
   const handleEmailChange = (idx: number, email: string) => {
-    const updated = [...maintainers];
+    const updated = [...members];
     updated[idx] = {...updated[idx], email};
     onChange(updated);
   };
 
-  const handleRoleChange = (idx: number, role: 'owner' | 'editor') => {
-    const updated = [...maintainers];
+  const handleRoleChange = (idx: number, role: 'maintainer' | 'editor') => {
+    const updated = [...members];
     updated[idx] = {...updated[idx], role};
     onChange(updated);
   };
 
   const handleRemove = (idx: number) => {
-    const updated = maintainers.filter((_, i) => i !== idx);
+    const updated = members.filter((_, i) => i !== idx);
     onChange(updated);
   };
 
   const handleAdd = () => {
-    const updated = [...maintainers, {email: '', role: 'editor' as const}];
+    const updated = [...members, {email: '', role: 'editor' as const}];
     onChange(updated);
   };
 
@@ -99,7 +100,7 @@ export function ConfigMaintainersList({
           <CollapsibleContent>
             <div className="rounded-md border bg-card/50 p-4 mt-3 space-y-2">
               {projectMaintainers.map(
-                (maintainer: {email: string; role: 'owner' | 'admin'}, idx: number) => (
+                (maintainer: {email: string; role: 'admin' | 'maintainer'}, idx: number) => (
                   <div
                     key={maintainer.email || idx}
                     className="flex items-center justify-between gap-3 py-2 px-2 rounded-md hover:bg-accent/50 transition-colors"
@@ -120,12 +121,10 @@ export function ConfigMaintainersList({
           <Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0 space-y-3">
             <div>
-              <div className="text-sm font-semibold text-foreground mb-2">
-                Config maintainer roles
-              </div>
+              <div className="text-sm font-semibold text-foreground mb-2">Config member roles</div>
               <div className="space-y-2.5 text-sm text-muted-foreground">
                 <div>
-                  <span className="font-semibold text-foreground">Owner</span>:
+                  <span className="font-semibold text-foreground">Maintainer</span>:
                   {requireProposals
                     ? ' Can approve all proposals. Can edit config value, description, schema, and manage maintainers.'
                     : ' Full access. Can edit config value, description, schema, and manage maintainers.'}
@@ -145,9 +144,9 @@ export function ConfigMaintainersList({
           </div>
         </div>
       </div>
-      {maintainers.length > 0 && (
+      {members.length > 0 && (
         <div className="space-y-3">
-          {maintainers.map((maintainer, idx) => {
+          {members.map((maintainer, idx) => {
             const fieldError = errors[idx];
             const hasEmailError = !!fieldError?.email?.message;
 
@@ -169,14 +168,14 @@ export function ConfigMaintainersList({
                   />
                   <Select
                     value={maintainer.role}
-                    onValueChange={(val: 'owner' | 'editor') => handleRoleChange(idx, val)}
+                    onValueChange={(val: 'maintainer' | 'editor') => handleRoleChange(idx, val)}
                     disabled={disabled}
                   >
                     <SelectTrigger className="w-[160px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="maintainer">Maintainer</SelectItem>
                       <SelectItem value="editor">Editor</SelectItem>
                     </SelectContent>
                   </Select>

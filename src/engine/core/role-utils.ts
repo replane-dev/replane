@@ -5,10 +5,11 @@ export function combineConfigAndProjectRoles(
   myProjectUserRole: ProjectUserRole,
   _myConfigUserRole: ConfigUserRole | 'viewer',
 ): ConfigUserRole {
-  if (myProjectUserRole === 'owner') {
-    return 'owner';
-  } else if (myProjectUserRole === 'admin') {
-    return 'owner';
+  // Project admin and maintainer both get full config maintainer access
+  if (myProjectUserRole === 'admin') {
+    return 'maintainer';
+  } else if (myProjectUserRole === 'maintainer') {
+    return 'maintainer';
   } else {
     assertNever(myProjectUserRole, 'Unknown project user role');
   }

@@ -9,6 +9,7 @@ export interface PatchConfigRequest {
   configId: ConfigId;
   value?: {newValue: any};
   schema?: {newSchema: any};
+  overrides?: {newOverrides: any};
   description?: {newDescription: string};
   currentUserEmail: NormalizedEmail;
   members?: {newMembers: ConfigMember[]};

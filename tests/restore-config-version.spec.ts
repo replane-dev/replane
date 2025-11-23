@@ -11,11 +11,12 @@ describe('restore-config-version', () => {
 
   it('restores an old version creating a new version with same contents', async () => {
     await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'restore-demo',
       description: 'initial',
       value: {a: 1},
       schema: null,
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       editorEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
       projectId: fx.projectId,
@@ -56,11 +57,12 @@ describe('restore-config-version', () => {
 
   it('creates audit message (config_version_restored)', async () => {
     await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'restore-audit',
       description: 'initial',
       value: {a: 1},
       schema: null,
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       editorEmails: [],
       currentUserEmail: TEST_USER_EMAIL,
       projectId: fx.projectId,
@@ -107,25 +109,26 @@ describe('restore-config-version', () => {
 
     // Create config with initial members
     await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'restore-members',
       description: 'initial',
       value: {x: 1},
       schema: null,
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       editorEmails: [otherUser],
       currentUserEmail: TEST_USER_EMAIL,
       projectId: fx.projectId,
     });
 
     const v1 = await fx.trpc.getConfig({name: 'restore-members', projectId: fx.projectId});
-    
+
     // Update to version 2 with different members
     await fx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
       configId: v1.config!.config.id,
       prevVersion: v1.config!.config.version,
       members: {
         newMembers: [
-          {email: TEST_USER_EMAIL, role: 'owner'},
+          {email: TEST_USER_EMAIL, role: 'maintainer'},
           {email: thirdUser, role: 'editor'}, // Changed from otherUser to thirdUser
         ],
       },
@@ -144,11 +147,11 @@ describe('restore-config-version', () => {
     });
 
     const v3 = await fx.trpc.getConfig({name: 'restore-members', projectId: fx.projectId});
-    
+
     // Restore doesn't change members, only value/schema/description
     expect(v3.config!.config.version).toBe(3);
     expect(v3.config!.editorEmails).toEqual([thirdUser]); // Members not restored
-    
+
     // Verify the version snapshot has CURRENT members (thirdUser), not v1 members (otherUser)
     const version3Id = await fx.engine.testing.pool.query(
       `SELECT id FROM config_versions WHERE config_id = $1 AND version = 3`,
@@ -160,8 +163,12 @@ describe('restore-config-version', () => {
       `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1`,
       [v3Id],
     );
-    const v3Owners = v3Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
-    const v3Editors = v3Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+    const v3Owners = v3Members.rows
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.user_email_normalized);
+    const v3Editors = v3Members.rows
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
 
     expect(v3Owners).toEqual([TEST_USER_EMAIL]);
     expect(v3Editors).toEqual([thirdUser]); // Current members, not restored from v1
@@ -172,11 +179,12 @@ describe('restore-config-version', () => {
     const editor2 = normalizeEmail('editor2@example.com');
 
     await fx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version-members-test',
       description: 'test',
       value: {x: 1},
       schema: null,
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       editorEmails: [editor1],
       currentUserEmail: TEST_USER_EMAIL,
       projectId: fx.projectId,
@@ -190,7 +198,7 @@ describe('restore-config-version', () => {
       prevVersion: v1.config!.config.version,
       members: {
         newMembers: [
-          {email: TEST_USER_EMAIL, role: 'owner'},
+          {email: TEST_USER_EMAIL, role: 'maintainer'},
           {email: editor2, role: 'editor'},
         ],
       },
@@ -210,8 +218,12 @@ describe('restore-config-version', () => {
     );
 
     expect(v2Members.rows.length).toBeGreaterThan(0);
-    const v2Owners = v2Members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
-    const v2Editors = v2Members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
+    const v2Owners = v2Members.rows
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.user_email_normalized);
+    const v2Editors = v2Members.rows
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
 
     expect(v2Owners).toEqual([TEST_USER_EMAIL]);
     expect(v2Editors).toEqual([editor2]);

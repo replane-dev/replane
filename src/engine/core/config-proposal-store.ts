@@ -1,5 +1,6 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
+import {ConfigOverrides} from './config-store';
 import type {ConfigProposalRejectionReason, ConfigProposals, DB} from './db';
 import {fromJsonb, toJsonb} from './store-utils';
 import {createUuidV7} from './uuid';
@@ -29,6 +30,7 @@ export function ConfigProposal() {
     proposedDescription: z.string().nullable(),
     proposedValue: z.object({newValue: z.unknown()}).nullable(),
     proposedSchema: z.object({newSchema: z.unknown()}).nullable(),
+    proposedOverrides: z.object({newOverrides: ConfigOverrides()}).nullable(),
     proposedMembers: z.object({newMembers: z.array(ConfigMember())}).nullable(),
     message: z.string().nullable(),
   });
@@ -299,6 +301,7 @@ export class ConfigProposalStore {
         proposed_value: proposal.proposedValue ? toJsonb(proposal.proposedValue) : null,
         proposed_description: proposal.proposedDescription,
         proposed_schema: proposal.proposedSchema ? toJsonb(proposal.proposedSchema) : null,
+        proposed_overrides: proposal.proposedOverrides ? toJsonb(proposal.proposedOverrides) : null,
         proposed_members: proposal.proposedMembers ? toJsonb(proposal.proposedMembers) : null,
         message: proposal.message,
       })
@@ -310,6 +313,7 @@ export class ConfigProposalStore {
     proposedValue?: unknown;
     proposedDescription?: string;
     proposedSchema?: unknown;
+    proposedOverrides?: unknown;
     proposedMembers?: ConfigMember[];
     proposedDelete?: boolean;
     approvedAt?: Date;
@@ -328,6 +332,12 @@ export class ConfigProposalStore {
           params.proposedSchema !== undefined
             ? params.proposedSchema
               ? toJsonb(params.proposedSchema)
+              : null
+            : undefined,
+        proposed_overrides:
+          params.proposedOverrides !== undefined
+            ? params.proposedOverrides
+              ? toJsonb(params.proposedOverrides)
               : null
             : undefined,
         proposed_members:
@@ -368,6 +378,7 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     proposedValue: fromJsonb(proposal.proposed_value),
     proposedDescription: proposal.proposed_description,
     proposedSchema: fromJsonb(proposal.proposed_schema),
+    proposedOverrides: fromJsonb(proposal.proposed_overrides),
     proposedMembers: fromJsonb(proposal.proposed_members),
     message: proposal.message,
   };

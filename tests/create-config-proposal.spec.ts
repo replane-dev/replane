@@ -13,13 +13,14 @@ describe('createConfigProposal', () => {
   it('should create a proposal with new value', async () => {
     // Create a config first
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'test_config',
       value: {flag: true},
       schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -51,6 +52,7 @@ describe('createConfigProposal', () => {
       proposedValue: {newValue: {flag: false}},
       proposedDescription: null,
       proposedSchema: null,
+      proposedOverrides: null,
       proposedMembers: null,
       message: null,
     });
@@ -58,13 +60,14 @@ describe('createConfigProposal', () => {
 
   it('should create a proposal with new schema', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'schema_test_config',
       value: {count: 5},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
       description: 'Schema test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -87,13 +90,14 @@ describe('createConfigProposal', () => {
 
   it('should create a proposal with new description only', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'desc_test_config',
       value: 'test',
       schema: null,
       description: 'Old description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -112,13 +116,14 @@ describe('createConfigProposal', () => {
 
   it('should create a proposal with value, schema, and description', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'all_fields_config',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'Original',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -143,13 +148,14 @@ describe('createConfigProposal', () => {
 
   it('should create a deletion proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'deletion_proposal_config',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'To be deleted',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -170,13 +176,14 @@ describe('createConfigProposal', () => {
 
   it('should create a proposal with member changes', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'members_proposal_config',
       value: {x: 1},
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'Members test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -184,7 +191,7 @@ describe('createConfigProposal', () => {
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedMembers: {newMembers: [{email: newMemberEmail, role: 'owner'}]},
+      proposedMembers: {newMembers: [{email: newMemberEmail, role: 'maintainer'}]},
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
@@ -192,19 +199,20 @@ describe('createConfigProposal', () => {
 
     const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
     expect(proposal?.proposedMembers).toEqual({
-      newMembers: [{email: newMemberEmail, role: 'owner'}],
+      newMembers: [{email: newMemberEmail, role: 'maintainer'}],
     });
   });
 
   it('should create audit message including proposedMembers', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'audit_members_config',
       value: {x: 1},
       schema: {type: 'object'},
       description: 'Audit members test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -235,13 +243,14 @@ describe('createConfigProposal', () => {
 
   it('should validate new value against new schema when both are proposed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'validation_test_1',
       value: {count: 5},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -261,13 +270,14 @@ describe('createConfigProposal', () => {
 
   it('should validate new value against current schema when only value is proposed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'validation_test_2',
       value: {flag: true},
       schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -284,13 +294,14 @@ describe('createConfigProposal', () => {
 
   it('should validate current value against new schema when only schema is proposed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'validation_test_3',
       value: {count: 150},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -312,13 +323,14 @@ describe('createConfigProposal', () => {
 
   it('should allow proposing schema removal (null)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'schema_removal_config',
       value: {anything: 'goes'},
       schema: {type: 'object'},
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -335,13 +347,14 @@ describe('createConfigProposal', () => {
 
   it('should not validate when schema is removed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'no_validation_config',
       value: {count: 5},
       schema: {type: 'object', properties: {count: {type: 'number'}}},
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -371,13 +384,14 @@ describe('createConfigProposal', () => {
 
   it('should throw BadRequestError when no fields are proposed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'empty_proposal_config',
       value: 'test',
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -394,13 +408,14 @@ describe('createConfigProposal', () => {
     const otherUserEmail = normalizeEmail('other@example.com');
 
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'permission_test_config',
       value: 'test',
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -430,13 +445,14 @@ describe('createConfigProposal', () => {
 
   it('should create audit message (config_proposal_created)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'audit_proposal_config',
       value: {x: 1},
       schema: {type: 'object'},
       description: 'Audit test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -469,13 +485,14 @@ describe('createConfigProposal', () => {
 
   it('should track the config version in the proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version_tracking_config',
       value: 1,
       schema: null,
       description: 'Version 1',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -501,13 +518,14 @@ describe('createConfigProposal', () => {
 
   it('should throw error if config version has changed', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version_check_config',
       value: {x: 1},
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 

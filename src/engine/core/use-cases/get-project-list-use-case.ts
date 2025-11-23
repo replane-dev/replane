@@ -12,7 +12,7 @@ export interface GetProjectListResponse {
     descriptionPreview: string;
     createdAt: Date;
     updatedAt: Date;
-    myRole?: 'owner' | 'admin';
+    myRole?: 'admin' | 'maintainer';
     isExample: boolean;
   }>;
 }

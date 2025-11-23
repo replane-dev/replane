@@ -8,7 +8,7 @@ export interface ProjectSummary {
   id: string;
   name: string;
   isExample: boolean;
-  myRole: 'owner' | 'admin' | undefined;
+  myRole: 'admin' | 'maintainer' | undefined;
 }
 
 interface ProjectContextValue {

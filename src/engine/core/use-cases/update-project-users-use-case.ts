@@ -6,7 +6,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectUsersRequest {
   projectId: string;
-  users: Array<{email: string; role: 'owner' | 'admin'}>;
+  users: Array<{email: string; role: 'admin' | 'maintainer'}>;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -25,17 +25,17 @@ export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
     const existing = await tx.projectUsers.getByProjectId(req.projectId);
     const now = new Date();
 
-    const norm = (arr: Array<{email: string; role: 'owner' | 'admin'}>) =>
-      arr.map(x => ({email: x.email.toLowerCase(), role: x.role as 'owner' | 'admin'}));
+    const norm = (arr: Array<{email: string; role: 'admin' | 'maintainer'}>) =>
+      arr.map(x => ({email: x.email.toLowerCase(), role: x.role as 'admin' | 'maintainer'}));
 
     const next = norm(req.users);
     const prev = existing.map(u => ({
       email: u.user_email_normalized,
-      role: u.role as 'owner' | 'admin',
+      role: u.role as 'admin' | 'maintainer',
     }));
 
-    if (next.filter(u => u.role === 'owner').length === 0) {
-      throw new BadRequestError('At least one owner is required');
+    if (next.filter(u => u.role === 'admin').length === 0) {
+      throw new BadRequestError('At least one admin is required');
     }
 
     const key = (u: {email: string; role: string}) => `${u.email}@@${u.role}`;

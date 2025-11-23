@@ -15,7 +15,7 @@ export function Email() {
   return z.string().regex(EMAIL_REGEX);
 }
 
-export function OwnerArray() {
+export function MaintainerArray() {
   return z.array(Email()).max(100);
 }
 
@@ -26,7 +26,7 @@ export function EditorArray() {
 export function ConfigMember() {
   return z.object({
     email: Email(),
-    role: z.enum(['owner', 'editor']),
+    role: z.enum(['maintainer', 'editor']),
   });
 }
 
@@ -39,7 +39,7 @@ export function ConfigInfo() {
     descriptionPreview: z.string(),
     createdAt: z.date(),
     updatedAt: z.date(),
-    myRole: z.enum(['owner', 'editor', 'viewer']),
+    myRole: z.enum(['maintainer', 'editor', 'viewer']),
     version: z.number(),
     projectId: Uuid(),
   });

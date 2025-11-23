@@ -372,6 +372,70 @@ export const migrations: Migration[] = [
       ADD COLUMN message TEXT NULL;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Add overrides column to configs table for conditional value overrides
+      ALTER TABLE configs
+      ADD COLUMN overrides JSONB NULL;
+
+      -- Add overrides column to config_versions table for version history
+      ALTER TABLE config_versions
+      ADD COLUMN overrides JSONB NULL;
+
+      -- Add proposed_overrides column to config_proposals table for override proposals
+      ALTER TABLE config_proposals
+      ADD COLUMN proposed_overrides JSONB NULL;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Unified three-tier role system migration
+      -- Project: 'owner' → 'admin', 'admin' → 'maintainer'
+      -- Config: 'owner' → 'maintainer'
+
+      -- Step 1: Update project_user_role enum
+      CREATE TYPE project_user_role_v2 AS ENUM ('admin', 'maintainer');
+
+      -- Update existing project_users data
+      ALTER TABLE project_users
+        ALTER COLUMN role TYPE TEXT;
+
+      UPDATE project_users SET role = 'maintainer' WHERE role = 'admin';
+      UPDATE project_users SET role = 'admin' WHERE role = 'owner';
+
+      ALTER TABLE project_users
+        ALTER COLUMN role TYPE project_user_role_v2 USING role::text::project_user_role_v2;
+
+      DROP TYPE project_user_role;
+      ALTER TYPE project_user_role_v2 RENAME TO project_user_role;
+
+      -- Step 2: Update config_user_role enum
+      CREATE TYPE config_user_role_v3 AS ENUM ('maintainer', 'editor');
+
+      -- Update existing config_users data
+      ALTER TABLE config_users
+        ALTER COLUMN role TYPE TEXT;
+
+      UPDATE config_users SET role = 'maintainer' WHERE role = 'owner';
+      -- 'editor' stays as 'editor'
+
+      ALTER TABLE config_users
+        ALTER COLUMN role TYPE config_user_role_v3 USING role::text::config_user_role_v3;
+
+      -- Update config_version_members data
+      ALTER TABLE config_version_members
+        ALTER COLUMN role TYPE TEXT;
+
+      UPDATE config_version_members SET role = 'maintainer' WHERE role = 'owner';
+      -- 'editor' stays as 'editor'
+
+      ALTER TABLE config_version_members
+        ALTER COLUMN role TYPE config_user_role_v3 USING role::text::config_user_role_v3;
+
+      DROP TYPE config_user_role;
+      ALTER TYPE config_user_role_v3 RENAME TO config_user_role;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

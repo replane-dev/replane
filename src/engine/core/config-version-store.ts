@@ -18,7 +18,8 @@ export interface ConfigLike {
   name: string;
   value: unknown;
   schema: unknown;
-  members: Array<{normalizedEmail: NormalizedEmail; role: 'owner' | 'editor'}>;
+  overrides: unknown;
+  members: Array<{normalizedEmail: NormalizedEmail; role: 'maintainer' | 'editor'}>;
 }
 
 export interface ConfigVersion extends ConfigLike {
@@ -45,6 +46,9 @@ export class ConfigVersionStore {
           version: configVersion.version,
           schema: configVersion.schema
             ? ({value: configVersion.schema} as unknown as JsonValue)
+            : (null as JsonValue),
+          overrides: configVersion.overrides
+            ? ({value: configVersion.overrides} as unknown as JsonValue)
             : (null as JsonValue),
           value: {value: configVersion.value} as JsonValue,
           author_id: configVersion.authorId,
@@ -101,7 +105,8 @@ export class ConfigVersionStore {
         description: string;
         value: unknown;
         schema: unknown;
-        members: Array<{normalizedEmail: string; role: 'owner' | 'editor'}>;
+        overrides: unknown;
+        members: Array<{normalizedEmail: string; role: 'maintainer' | 'editor'}>;
         authorEmail: string | null;
         proposalId: ConfigProposalId | null;
       }
@@ -117,6 +122,7 @@ export class ConfigVersionStore {
         'config_versions.description as description',
         'config_versions.value as value',
         'config_versions.schema as schema',
+        'config_versions.overrides as overrides',
         'users.email as author_email',
         'config_versions.proposal_id as proposal_id',
       ])
@@ -143,7 +149,7 @@ export class ConfigVersionStore {
 
     const members = memberRows.map(m => ({
       normalizedEmail: m.user_email_normalized,
-      role: m.role as 'owner' | 'editor',
+      role: m.role as 'maintainer' | 'editor',
     }));
 
     return {
@@ -153,6 +159,7 @@ export class ConfigVersionStore {
       description: row.description,
       value: extractJsonWrapper(row.value),
       schema: row.schema === null ? null : extractJsonWrapper(row.schema),
+      overrides: row.overrides === null ? null : extractJsonWrapper(row.overrides),
       members,
       authorEmail: (row as unknown as {author_email: string | null}).author_email,
       proposalId: (row as unknown as {proposal_id: ConfigProposalId | null}).proposal_id,

@@ -31,7 +31,7 @@ describe('getAuditLog', () => {
       schema: {type: 'number'},
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
     advance(fixture, 10);
@@ -42,7 +42,7 @@ describe('getAuditLog', () => {
       schema: {type: 'number'},
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -109,7 +109,7 @@ describe('getAuditLog', () => {
       schema: {type: 'number'},
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -129,7 +129,7 @@ describe('getAuditLog', () => {
       schema: {type: 'number'},
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -139,7 +139,7 @@ describe('getAuditLog', () => {
       schema: {type: 'number'},
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -158,7 +158,7 @@ describe('getAuditLog', () => {
       schema: {type: 'number'},
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 

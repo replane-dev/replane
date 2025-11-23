@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import type {Override} from '@/engine/core/override-evaluator';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
@@ -38,17 +39,19 @@ export default function NewConfigPage() {
     name: string;
     value: unknown;
     schema: unknown | null;
+    overrides: Override[];
     description: string;
-    ownerEmails: string[];
+    maintainerEmails: string[];
     editorEmails: string[];
   }) {
     await createConfig.mutateAsync({
       name: data.name,
       schema: data.schema,
       value: data.value,
+      overrides: data.overrides,
       description: data.description ?? '',
       editorEmails: data.editorEmails,
-      ownerEmails: data.ownerEmails,
+      maintainerEmails: data.maintainerEmails,
       projectId,
     });
     router.push(`/app/projects/${projectId}/configs`);
@@ -79,11 +82,11 @@ export default function NewConfigPage() {
         <div className="max-w-2xl">
           <ConfigForm
             mode="new"
-            role="owner"
+            role="maintainer"
             defaultValue={''}
             defaultSchemaEnabled={false}
             defaultSchema={''}
-            defaultOwnerEmails={[userEmail!]}
+            defaultMaintainerEmails={[userEmail!]}
             defaultEditorEmails={[]}
             defaultDescription={''}
             editorIdPrefix="new-config"

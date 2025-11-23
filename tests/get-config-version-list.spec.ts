@@ -16,7 +16,7 @@ describe('getConfigVersionList', () => {
       description: 'initial',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [TEST_USER_EMAIL],
+      maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
 

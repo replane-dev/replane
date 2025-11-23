@@ -3,6 +3,7 @@ import {createAuditMessageId} from '../audit-message-store';
 import {createConfigProposalId, type ConfigProposalId} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import type {Override} from '../override-evaluator';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import type {NormalizedEmail} from '../zod';
@@ -14,7 +15,8 @@ export interface CreateConfigProposalRequest {
   proposedValue?: {newValue: unknown};
   proposedDescription?: {newDescription: string};
   proposedSchema?: {newSchema: unknown};
-  proposedMembers?: {newMembers: Array<{email: string; role: 'owner' | 'editor'}>};
+  proposedOverrides?: {newOverrides: Override[]};
+  proposedMembers?: {newMembers: Array<{email: string; role: 'maintainer' | 'editor'}>};
   message?: string;
   currentUserEmail: NormalizedEmail;
 }
@@ -96,6 +98,9 @@ export function createCreateConfigProposalUseCase(
       proposedValue: req.proposedValue ? {newValue: req.proposedValue.newValue} : null,
       proposedDescription: req.proposedDescription ? req.proposedDescription.newDescription : null,
       proposedSchema: req.proposedSchema ? {newSchema: req.proposedSchema.newSchema} : null,
+      proposedOverrides: req.proposedOverrides
+        ? {newOverrides: req.proposedOverrides.newOverrides}
+        : null,
       proposedMembers: req.proposedMembers ? {newMembers: req.proposedMembers.newMembers} : null,
       message: req.message ?? null,
     });
@@ -114,6 +119,9 @@ export function createCreateConfigProposalUseCase(
         proposedValue: {newValue: req.proposedValue?.newValue},
         proposedDescription: req.proposedDescription?.newDescription,
         proposedSchema: {newSchema: req.proposedSchema?.newSchema},
+        proposedOverrides: req.proposedOverrides
+          ? {newOverrides: req.proposedOverrides.newOverrides}
+          : undefined,
         proposedMembers: req.proposedMembers
           ? {newMembers: req.proposedMembers.newMembers}
           : undefined,

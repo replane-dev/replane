@@ -12,20 +12,21 @@ describe('createConfig', () => {
 
   it('should create a new config', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'new_config',
       value: {flag: true},
       schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
       description: 'A new config for testing',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -35,6 +36,7 @@ describe('createConfig', () => {
 
     expect(config).toEqual({
       config: {
+        overrides: [],
         name: 'new_config',
         value: {flag: true},
         schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
@@ -47,7 +49,7 @@ describe('createConfig', () => {
         projectId: fixture.projectId,
       },
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       myRole: 'viewer',
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
@@ -56,13 +58,14 @@ describe('createConfig', () => {
   it('should allow letters (any case), numbers and hyphen in name', async () => {
     const name = 'FeatureFlag-123';
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name,
       value: {enabled: true},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Mixed case + digits + hyphen',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -72,25 +75,27 @@ describe('createConfig', () => {
 
   it('should throw BadRequestError when config with this name already exists', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'dup_config',
       value: 'v1',
       schema: {type: 'string'},
       description: 'A duplicate config for testing v1',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
     await expect(
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         name: 'dup_config',
         value: 'v2',
         schema: {type: 'string'},
         description: 'A duplicate config for testing v2',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -98,7 +103,7 @@ describe('createConfig', () => {
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -108,6 +113,7 @@ describe('createConfig', () => {
 
     expect(config).toEqual({
       config: {
+        overrides: [],
         name: 'dup_config',
         value: 'v1',
         schema: {type: 'string'},
@@ -120,7 +126,7 @@ describe('createConfig', () => {
         projectId: fixture.projectId,
       },
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       pendingProposals: [],
       myRole: 'viewer',
     } satisfies GetConfigResponse['config']);
@@ -128,20 +134,21 @@ describe('createConfig', () => {
 
   it('should accept config without a schema', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'no_schema_config',
       value: 'v1',
       schema: null,
       description: 'A config without a schema',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -151,6 +158,7 @@ describe('createConfig', () => {
 
     expect(config).toEqual({
       config: {
+        overrides: [],
         name: 'no_schema_config',
         value: 'v1',
         schema: null,
@@ -163,7 +171,7 @@ describe('createConfig', () => {
         projectId: fixture.projectId,
       },
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       myRole: 'viewer',
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
@@ -172,13 +180,14 @@ describe('createConfig', () => {
   it('should reject creation when value does not match schema', async () => {
     await expect(
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         name: 'schema_mismatch_on_create',
         value: {flag: 'not_boolean'},
         schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
         description: 'Invalid create schema',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [],
-        ownerEmails: [],
+        maintainerEmails: [],
         projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -186,13 +195,14 @@ describe('createConfig', () => {
 
   it('should create config with members and set myRole=owner', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'config_with_members_owner',
       value: 1,
       schema: {type: 'number'},
       description: 'Members test owner',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: ['editor1@example.com', 'editor2@example.com'],
-      ownerEmails: [CURRENT_USER_EMAIL, 'owner2@example.com'],
+      maintainerEmails: [CURRENT_USER_EMAIL, 'owner2@example.com'],
       projectId: fixture.projectId,
     });
 
@@ -204,6 +214,7 @@ describe('createConfig', () => {
     // Structural checks (excluding ownerEmails order)
     expect(config).toEqual({
       config: {
+        overrides: [],
         name: 'config_with_members_owner',
         value: 1,
         schema: {type: 'number'},
@@ -216,28 +227,29 @@ describe('createConfig', () => {
         projectId: fixture.projectId,
       },
       editorEmails: ['editor1@example.com', 'editor2@example.com'].map(normalizeEmail),
-      ownerEmails: [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
-      myRole: 'owner',
+      maintainerEmails: [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
+      myRole: 'maintainer',
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
 
   it('should set myRole=editor when current user only an editor', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'config_with_editor_role',
       value: 'x',
       schema: {type: 'string'},
       description: 'Members test editor',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: ['other-owner@example.com'],
+      maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -246,6 +258,7 @@ describe('createConfig', () => {
     });
     expect(config).toEqual({
       config: {
+        overrides: [],
         name: 'config_with_editor_role',
         value: 'x',
         schema: {type: 'string'},
@@ -258,7 +271,7 @@ describe('createConfig', () => {
         projectId: fixture.projectId,
       },
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [normalizeEmail('other-owner@example.com')],
+      maintainerEmails: [normalizeEmail('other-owner@example.com')],
       myRole: 'editor',
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
@@ -266,13 +279,14 @@ describe('createConfig', () => {
 
   it('creates audit message (config_created)', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'audit_config_created',
       value: 123,
       schema: {type: 'number'},
       description: 'audit test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -302,13 +316,14 @@ describe('createConfig', () => {
 
     await expect(
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         name: 'duplicate_user_config',
         value: {x: 1},
         schema: null,
         description: 'Test duplicate user',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [duplicateEmail, 'editor@example.com'],
-        ownerEmails: [duplicateEmail, 'owner@example.com'],
+        maintainerEmails: [duplicateEmail, 'owner@example.com'],
         projectId: fixture.projectId,
       }),
     ).rejects.toThrow(BadRequestError);
@@ -317,13 +332,14 @@ describe('createConfig', () => {
   it('should throw BadRequestError for duplicate users (case insensitive)', async () => {
     await expect(
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         name: 'case_insensitive_duplicate',
         value: {x: 1},
         schema: null,
         description: 'Test case insensitive duplicate',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: ['User@Example.com'],
-        ownerEmails: ['user@example.com'],
+        maintainerEmails: ['user@example.com'],
         projectId: fixture.projectId,
       }),
     ).rejects.toThrow(BadRequestError);
@@ -332,13 +348,14 @@ describe('createConfig', () => {
   it('should throw BadRequestError for duplicate users in the same role', async () => {
     await expect(
       fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        overrides: [],
         name: 'case_insensitive_duplicate',
         value: {x: 1},
         schema: null,
         description: 'Test case insensitive duplicate',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: ['User@Example.com', 'User@Example.com'],
-        ownerEmails: [],
+        maintainerEmails: [],
         projectId: fixture.projectId,
       }),
     ).rejects.toThrow(BadRequestError);
@@ -349,13 +366,14 @@ describe('createConfig', () => {
     const editor2 = normalizeEmail('editor2@example.com');
 
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
       name: 'version_members_on_create',
       value: {x: 1},
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [editor1, editor2],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -371,7 +389,9 @@ describe('createConfig', () => {
       [versionId],
     );
 
-    const owners = members.rows.filter(m => m.role === 'owner').map(m => m.user_email_normalized);
+    const owners = members.rows
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.user_email_normalized);
     const editors = members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
 
     expect(owners).toEqual([CURRENT_USER_EMAIL]);

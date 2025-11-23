@@ -2,6 +2,7 @@ import assert from 'assert';
 import {createAuditMessageId} from '../audit-message-store';
 import {BadRequestError} from '../errors';
 import {diffMembers} from '../member-diff';
+import type {ProjectUserRole} from '../project-user-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -13,7 +14,7 @@ export interface PatchProjectRequest {
     description: string;
   };
   members?: {
-    users: Array<{email: string; role: 'owner' | 'admin'}>;
+    users: Array<{email: string; role: ProjectUserRole}>;
   };
 }
 
@@ -81,8 +82,8 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
       const prev = prevUsers.map(u => ({email: u.user_email_normalized, role: u.role}));
       const next = req.members.users.map(u => ({email: u.email.toLowerCase(), role: u.role}));
 
-      if (next.filter(u => u.role === 'owner').length === 0) {
-        throw new BadRequestError('At least one owner is required');
+      if (next.filter(u => u.role === 'admin').length === 0) {
+        throw new BadRequestError('At least one maintainer is required');
       }
 
       const {added, removed} = diffMembers(prev, next);

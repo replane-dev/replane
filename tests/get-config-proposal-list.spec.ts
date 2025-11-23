@@ -47,7 +47,7 @@ describe('getConfigProposalList', () => {
       description: 'A',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
@@ -84,7 +84,7 @@ describe('getConfigProposalList', () => {
       description: 'B',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
     });
 

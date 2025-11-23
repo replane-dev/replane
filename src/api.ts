@@ -66,7 +66,18 @@ honoApi.openapi(
     path: '/configs/{name}/value',
     operationId: 'getConfigValue',
     request: {
-      params: z.object({name: ConfigName()}),
+      params: z
+        .object({name: ConfigName()})
+        .openapi({
+          description:
+            'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
+        }),
+      query: z.object({
+        context: z
+          .string()
+          .optional()
+          .openapi({description: 'A JSON string of context (like userEmail, tier, etc.)'}),
+      }),
     },
     responses: {
       200: {
@@ -84,11 +95,28 @@ honoApi.openapi(
   },
   async c => {
     const {name} = c.req.valid('param');
+    const {context: contextStr} = c.req.valid('query');
+
     try {
       const engine = await getEngine();
+
+      // Parse context if provided
+      let context: Record<string, unknown> | undefined;
+      if (contextStr) {
+        try {
+          context = JSON.parse(contextStr);
+          if (typeof context !== 'object' || context === null) {
+            return c.json({msg: 'context must be a JSON object'}, 400);
+          }
+        } catch {
+          return c.json({msg: 'Invalid JSON in context parameter'}, 400);
+        }
+      }
+
       const result = await engine.useCases.getConfigValue(c.get('context'), {
         name,
         projectId: c.get('projectId'),
+        context,
       });
 
       if (typeof result.value === 'undefined') return c.json({msg: 'Not found'}, 404);

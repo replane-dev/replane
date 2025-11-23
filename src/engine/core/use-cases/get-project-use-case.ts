@@ -13,7 +13,7 @@ export interface GetProjectResponse {
     description: string;
     createdAt: Date;
     updatedAt: Date;
-    myRole: 'owner' | 'admin' | null;
+    myRole: 'admin' | 'maintainer' | null;
   } | null;
 }
 

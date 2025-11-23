@@ -19,6 +19,50 @@ const NEW_EDITOR_EMAIL = normalizeEmail('new-editor@example.com');
 describe('patchConfig', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
+  it('should patch overrides', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'patch_overrides',
+      value: {maxItems: 10},
+      schema: null,
+      overrides: null,
+      description: 'Test config',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    const newOverrides = [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        name: 'Premium Users',
+        rules: [
+          {
+            operator: 'equals',
+            property: 'tier',
+            value: 'premium',
+          },
+        ],
+        value: {maxItems: 100},
+      },
+    ];
+
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      overrides: {newOverrides},
+      currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
+    });
+
+    const {config} = await fixture.trpc.getConfig({
+      name: 'patch_overrides',
+      projectId: fixture.projectId,
+    });
+
+    expect(config?.config.overrides).toEqual(newOverrides);
+    expect(config?.config.version).toBe(2);
+  });
+
   it('should patch value and description (editor permission)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: 'patch_basic',
@@ -27,8 +71,9 @@ describe('patchConfig', () => {
       description: 'Initial description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // capture initial creation time before advancing time
@@ -47,7 +92,7 @@ describe('patchConfig', () => {
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -67,9 +112,10 @@ describe('patchConfig', () => {
         id: expect.any(String),
         version: 2,
         projectId: fixture.projectId,
+        overrides: [],
       },
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       myRole: 'editor',
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
@@ -83,8 +129,9 @@ describe('patchConfig', () => {
       description: 'Schema test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+      maintainerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     fixture.setNow(new Date('2020-01-03T00:00:00Z'));
@@ -119,8 +166,9 @@ describe('patchConfig', () => {
       description: 'Invalid schema test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+      maintainerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     await expect(
@@ -142,8 +190,9 @@ describe('patchConfig', () => {
       description: 'Version conflict test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     await expect(
@@ -164,14 +213,15 @@ describe('patchConfig', () => {
       description: 'Members perm test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'owner'}]},
+      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
 
     await expect(
@@ -192,8 +242,9 @@ describe('patchConfig', () => {
       description: 'Members success test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [OTHER_EDITOR_EMAIL],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Remove OTHER_EDITOR_EMAIL, add NEW_EDITOR_EMAIL
@@ -201,7 +252,7 @@ describe('patchConfig', () => {
       configId,
       members: {
         newMembers: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'maintainer'},
           {email: NEW_EDITOR_EMAIL, role: 'editor'},
         ],
       },
@@ -226,10 +277,11 @@ describe('patchConfig', () => {
         id: expect.any(String),
         version: 2,
         projectId: fixture.projectId,
+        overrides: [],
       },
       editorEmails: [NEW_EDITOR_EMAIL],
-      ownerEmails: [CURRENT_USER_EMAIL],
-      myRole: 'owner',
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      myRole: 'maintainer',
       pendingProposals: [],
     } satisfies GetConfigResponse['config']);
   });
@@ -242,8 +294,9 @@ describe('patchConfig', () => {
       description: 'Remove schema test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
-      ownerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
+      maintainerEmails: [CURRENT_USER_EMAIL], // need manage permission to change schema
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -269,8 +322,9 @@ describe('patchConfig', () => {
       description: 'audit',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
@@ -305,15 +359,16 @@ describe('patchConfig', () => {
       description: 'members audit',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: ['editor1@example.com'],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
       configId,
       members: {
         newMembers: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'maintainer'},
           {email: 'editor2@example.com', role: 'editor'},
         ],
       },
@@ -351,8 +406,9 @@ describe('patchConfig', () => {
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Create three proposals
@@ -439,8 +495,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Create a proposal
@@ -489,8 +546,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Create three proposals
@@ -606,8 +664,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     const duplicateEmail = 'duplicate@example.com';
@@ -619,7 +678,7 @@ describe('patchConfig', () => {
         members: {
           newMembers: [
             {email: duplicateEmail, role: 'editor'},
-            {email: duplicateEmail, role: 'owner'},
+            {email: duplicateEmail, role: 'maintainer'},
             {email: 'other@example.com', role: 'editor'},
           ],
         },
@@ -644,8 +703,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Try to patch with user in both roles (different case)
@@ -655,7 +715,7 @@ describe('patchConfig', () => {
         members: {
           newMembers: [
             {email: 'User@Example.com', role: 'editor'},
-            {email: 'user@example.com', role: 'owner'},
+            {email: 'user@example.com', role: 'maintainer'},
           ],
         },
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -679,8 +739,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
-      ownerEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Patch with unique members
@@ -690,8 +751,8 @@ describe('patchConfig', () => {
         newMembers: [
           {email: 'editor1@example.com', role: 'editor'},
           {email: 'editor2@example.com', role: 'editor'},
-          {email: 'owner1@example.com', role: 'owner'},
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: 'owner1@example.com', role: 'maintainer'},
+          {email: CURRENT_USER_EMAIL, role: 'maintainer'},
         ],
       },
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -706,8 +767,8 @@ describe('patchConfig', () => {
     expect(config?.config.version).toBe(2);
     expect(config?.editorEmails).toContain(normalizeEmail('editor1@example.com'));
     expect(config?.editorEmails).toContain(normalizeEmail('editor2@example.com'));
-    expect(config?.ownerEmails).toContain(normalizeEmail('owner1@example.com'));
-    expect(config?.ownerEmails).toContain(CURRENT_USER_EMAIL);
+    expect(config?.maintainerEmails).toContain(normalizeEmail('owner1@example.com'));
+    expect(config?.maintainerEmails).toContain(CURRENT_USER_EMAIL);
   });
 
   it('should version members when patching', async () => {
@@ -721,8 +782,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [editor1],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Verify version 1 has initial members
@@ -737,7 +799,7 @@ describe('patchConfig', () => {
       [v1Id],
     );
     const v1Owners = v1Members.rows
-      .filter(m => m.role === 'owner')
+      .filter(m => m.role === 'maintainer')
       .map(m => m.user_email_normalized);
     const v1Editors = v1Members.rows
       .filter(m => m.role === 'editor')
@@ -752,7 +814,7 @@ describe('patchConfig', () => {
       value: {newValue: {x: 2}},
       members: {
         newMembers: [
-          {email: CURRENT_USER_EMAIL, role: 'owner'},
+          {email: CURRENT_USER_EMAIL, role: 'maintainer'},
           {email: editor2, role: 'editor'},
         ],
       },
@@ -772,7 +834,7 @@ describe('patchConfig', () => {
       [v2Id],
     );
     const v2Owners = v2Members.rows
-      .filter(m => m.role === 'owner')
+      .filter(m => m.role === 'maintainer')
       .map(m => m.user_email_normalized);
     const v2Editors = v2Members.rows
       .filter(m => m.role === 'editor')
@@ -792,8 +854,9 @@ describe('patchConfig', () => {
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [editor],
-      ownerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
+      overrides: [],
     });
 
     // Patch only the value (not members)
@@ -818,7 +881,7 @@ describe('patchConfig', () => {
 
     expect(v2Members.rows.length).toBeGreaterThan(0);
     const v2Owners = v2Members.rows
-      .filter(m => m.role === 'owner')
+      .filter(m => m.role === 'maintainer')
       .map(m => m.user_email_normalized);
     const v2Editors = v2Members.rows
       .filter(m => m.role === 'editor')

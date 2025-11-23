@@ -7,7 +7,7 @@ export interface GetProjectUsersRequest {
 }
 
 export interface GetProjectUsersResponse {
-  users: Array<{email: string; role: 'owner' | 'admin'}>;
+  users: Array<{email: string; role: 'admin' | 'maintainer'}>;
 }
 
 export function createGetProjectUsersUseCase(): TransactionalUseCase<
@@ -17,7 +17,10 @@ export function createGetProjectUsersUseCase(): TransactionalUseCase<
   return async (_ctx, tx, req) => {
     const users = await tx.projectUsers.getByProjectId(req.projectId);
     return {
-      users: users.map(u => ({email: u.user_email_normalized, role: u.role as 'owner' | 'admin'})),
+      users: users.map(u => ({
+        email: u.user_email_normalized,
+        role: u.role as 'admin' | 'maintainer',
+      })),
     };
   };
 }

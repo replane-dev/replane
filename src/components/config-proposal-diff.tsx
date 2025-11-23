@@ -57,7 +57,7 @@ export interface ConfigProposalDiffProps {
     value: unknown;
     description: string;
     schema: unknown | null;
-    owners?: string[];
+    maintainers?: string[];
     editors?: string[];
   };
   proposed: {
@@ -91,7 +91,7 @@ export function ConfigProposalDiff({current, proposed}: ConfigProposalDiffProps)
   const memberChanges: MemberChange[] = [];
   if (proposed.members && proposed.members.newMembers) {
     const currentMap = new Map<string, 'owner' | 'editor'>();
-    (current.owners ?? []).forEach(e => currentMap.set(e, 'owner'));
+    (current.maintainers ?? []).forEach(e => currentMap.set(e, 'owner'));
     (current.editors ?? []).forEach(e => currentMap.set(e, 'editor'));
 
     const proposedMap = new Map<string, 'owner' | 'editor'>();
