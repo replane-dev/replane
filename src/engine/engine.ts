@@ -46,6 +46,11 @@ import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-c
 import {createGetConfigProposalListUseCase} from './core/use-cases/get-config-proposal-list-use-case';
 import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
+import {
+  createGetConfigForApiUseCase,
+  type GetConfigForApiRequest,
+  type GetConfigForApiResponse,
+} from './core/use-cases/get-config-for-api-use-case';
 import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
 import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
 import {createGetConfigVersionUseCase} from './core/use-cases/get-config-version-use-case';
@@ -285,6 +290,7 @@ export async function createEngine(options: EngineOptions) {
     useCases: {
       ...engineUseCases,
       getConfigValue: createGetConfigValueUseCase({configsReplica}),
+      getConfigForApi: createGetConfigForApiUseCase({configsReplica}),
       getHealth: createGetHealthUseCase(),
       getProjectEvents: createGetProjectEventsUseCase({
         configEventsObservable: configEventsSubject,

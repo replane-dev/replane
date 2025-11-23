@@ -29,7 +29,7 @@ interface ConfigReplica {
   name: string;
   projectId: string;
   value: unknown;
-  overrides: RenderedOverride[];
+  renderedOverrides: RenderedOverride[];
   version: number;
 }
 
@@ -118,7 +118,7 @@ export class ConfigsReplica implements Service {
     // Evaluate overrides if context is provided
     if (params.context) {
       const result: EvaluationResult = evaluateConfigValue(
-        {value: config.value, overrides: config.overrides},
+        {value: config.value, overrides: config.renderedOverrides},
         params.context,
       );
       return result.finalValue as T;
@@ -126,6 +126,10 @@ export class ConfigsReplica implements Service {
 
     // Return base value if no context
     return config?.value as T | undefined;
+  }
+
+  getConfig(params: {projectId: string; name: string}): ConfigReplica | undefined {
+    return this.configsByKey.get(toConfigKey(params.projectId, params.name));
   }
 
   async start(): Promise<void> {
@@ -167,9 +171,12 @@ export class ConfigsReplica implements Service {
           name: config.name,
           projectId: config.projectId,
           value: config.value,
-          overrides: await renderOverrides(config.overrides, async ({projectId, configName}) => {
-            return this.getConfigValue({projectId, name: configName});
-          }),
+          renderedOverrides: await renderOverrides(
+            config.overrides,
+            async ({projectId, configName}) => {
+              return this.getConfigValue({projectId, name: configName});
+            },
+          ),
           version: config.version,
         };
 
@@ -220,9 +227,12 @@ export class ConfigsReplica implements Service {
     for (const rawConfig of rawConfigs) {
       configs.push({
         ...rawConfig,
-        overrides: await renderOverrides(rawConfig.overrides, async ({projectId, configName}) => {
-          return rawConfigsByKey.get(toConfigKey(projectId, configName))?.value;
-        }),
+        renderedOverrides: await renderOverrides(
+          rawConfig.overrides,
+          async ({projectId, configName}) => {
+            return rawConfigsByKey.get(toConfigKey(projectId, configName))?.value;
+          },
+        ),
       });
     }
 
@@ -253,7 +263,7 @@ export class ConfigsReplica implements Service {
               name: newConfig.name,
               projectId: newConfig.projectId,
               value: newConfig.value,
-              overrides: newConfig.overrides,
+              renderedOverrides: newConfig.renderedOverrides,
               version: newConfig.version,
             },
           });
@@ -266,7 +276,7 @@ export class ConfigsReplica implements Service {
               name: newConfig.name,
               projectId: newConfig.projectId,
               value: newConfig.value,
-              overrides: newConfig.overrides,
+              renderedOverrides: newConfig.renderedOverrides,
               version: newConfig.version,
             },
           });

@@ -5,7 +5,9 @@ import {createUuidV4} from '@/engine/core/uuid';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';
 import {cors} from 'hono/cors';
+import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
+import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
 
 async function getEngine() {
   return getEngineSingleton();
@@ -26,6 +28,35 @@ const ConfigValueResponse = z
     value: z.unknown(),
   })
   .openapi('ConfigValueResponse');
+
+const ConfigResponse = z
+  .object({
+    name: ConfigName(),
+    value: z.unknown(),
+    renderedOverrides: z.array(RenderedOverrideSchema),
+    version: z.number(),
+  })
+  .openapi('ConfigResponse');
+
+type ConfigResponse = z.infer<typeof ConfigResponse>;
+
+// Global error handler
+honoApi.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return err.getResponse();
+  }
+
+  if (err instanceof BadRequestError) {
+    return c.json({msg: err.message}, 400);
+  }
+
+  if (err instanceof ForbiddenError) {
+    return c.json({msg: 'Forbidden'}, 403);
+  }
+
+  console.error('API error:', err);
+  return c.json({msg: 'Internal server error'}, 500);
+});
 
 honoApi.use(
   '*',
@@ -66,12 +97,10 @@ honoApi.openapi(
     path: '/configs/{name}/value',
     operationId: 'getConfigValue',
     request: {
-      params: z
-        .object({name: ConfigName()})
-        .openapi({
-          description:
-            'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
-        }),
+      params: z.object({name: ConfigName()}).openapi({
+        description:
+          'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
+      }),
       query: z.object({
         context: z
           .string()
@@ -97,36 +126,76 @@ honoApi.openapi(
     const {name} = c.req.valid('param');
     const {context: contextStr} = c.req.valid('query');
 
-    try {
-      const engine = await getEngine();
+    const engine = await getEngine();
 
-      // Parse context if provided
-      let context: Record<string, unknown> | undefined;
-      if (contextStr) {
-        try {
-          context = JSON.parse(contextStr);
-          if (typeof context !== 'object' || context === null) {
-            return c.json({msg: 'context must be a JSON object'}, 400);
-          }
-        } catch {
-          return c.json({msg: 'Invalid JSON in context parameter'}, 400);
+    // Parse context if provided
+    let context: Record<string, unknown> | undefined;
+    if (contextStr) {
+      try {
+        context = JSON.parse(contextStr);
+        if (typeof context !== 'object' || context === null) {
+          throw new HTTPException(400, {message: 'context must be a JSON object'});
         }
+      } catch (e) {
+        if (e instanceof HTTPException) throw e;
+        throw new HTTPException(400, {message: 'Invalid JSON in context parameter'});
       }
-
-      const result = await engine.useCases.getConfigValue(c.get('context'), {
-        name,
-        projectId: c.get('projectId'),
-        context,
-      });
-
-      if (typeof result.value === 'undefined') return c.json({msg: 'Not found'}, 404);
-
-      return c.json(result.value, 200);
-    } catch (err: unknown) {
-      if (err instanceof BadRequestError) return c.json({msg: err.message}, 400);
-      if (err instanceof ForbiddenError) return c.json({msg: 'Forbidden'}, 403);
-      return c.json({msg: 'Internal server error'}, 500);
     }
+
+    const result = await engine.useCases.getConfigValue(c.get('context'), {
+      name,
+      projectId: c.get('projectId'),
+      context,
+    });
+
+    if (typeof result.value === 'undefined') {
+      throw new HTTPException(404, {message: 'Not found'});
+    }
+
+    return c.json(result.value, 200);
+  },
+);
+
+honoApi.openapi(
+  {
+    method: 'get',
+    path: '/configs/{name}',
+    operationId: 'getConfig',
+    request: {
+      params: z.object({name: ConfigName()}).openapi({
+        description:
+          'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
+      }),
+    },
+    responses: {
+      200: {
+        description: 'Config details',
+        content: {
+          'application/json': {
+            schema: ConfigResponse,
+          },
+        },
+      },
+      404: {description: 'Config not found'},
+      400: {description: 'Bad request'},
+      403: {description: 'Forbidden'},
+    },
+  },
+  async c => {
+    const {name} = c.req.valid('param');
+
+    const engine = await getEngine();
+
+    const result: ConfigResponse | null = await engine.useCases.getConfigForApi(c.get('context'), {
+      name,
+      projectId: c.get('projectId'),
+    });
+
+    if (!result) {
+      throw new HTTPException(404, {message: 'Not found'});
+    }
+
+    return c.json(result, 200);
   },
 );
 

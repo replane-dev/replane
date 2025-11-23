@@ -2,7 +2,7 @@ import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {Configs, DB} from './db';
 import type {EventBusClient} from './event-bus';
-import {ConfigOverrideCondition} from './override-condition-schemas';
+import {ConditionSchema, OverrideSchema} from './override-condition-schemas';
 import type {Override} from './override-evaluator';
 import {fromJsonb, toJsonb} from './store-utils';
 import {isValidJsonSchema} from './utils';
@@ -53,9 +53,9 @@ export function ConfigDescription() {
 }
 
 export function ConfigOverride() {
-  return z.object({
+  return OverrideSchema.extend({
     name: z.string().min(1).max(100),
-    conditions: z.array(ConfigOverrideCondition()).max(100),
+    conditions: z.array(ConditionSchema).max(100),
     value: ConfigValue(),
   });
 }

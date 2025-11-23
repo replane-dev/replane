@@ -3,87 +3,15 @@ import {getValueByPath} from './json-path';
 import type {
   Condition,
   NotCondition,
+  Override,
+  RenderedCondition,
+  RenderedOverride,
   SegmentationCondition,
   Value,
 } from './override-condition-schemas';
 import {assertNever} from './utils';
 
-interface RenderedEqualsCondition {
-  operator: 'equals';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedInCondition {
-  operator: 'in';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedNotInCondition {
-  operator: 'not_in';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedLessThanCondition {
-  operator: 'less_than';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedLessThanOrEqualCondition {
-  operator: 'less_than_or_equal';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedGreaterThanCondition {
-  operator: 'greater_than';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedGreaterThanOrEqualCondition {
-  operator: 'greater_than_or_equal';
-  property: string;
-  value: unknown;
-}
-
-interface RenderedSegmentationCondition {
-  operator: 'segmentation';
-  property: string;
-  percentage: number;
-  salt: string;
-}
-
-interface RenderedAndCondition {
-  operator: 'and';
-  conditions: RenderedCondition[];
-}
-
-interface RenderedOrCondition {
-  operator: 'or';
-  conditions: RenderedCondition[];
-}
-
-interface RenderedNotCondition {
-  operator: 'not';
-  condition: RenderedCondition;
-}
-
-export type RenderedCondition =
-  | RenderedEqualsCondition
-  | RenderedInCondition
-  | RenderedNotInCondition
-  | RenderedLessThanCondition
-  | RenderedLessThanOrEqualCondition
-  | RenderedGreaterThanCondition
-  | RenderedGreaterThanOrEqualCondition
-  | RenderedSegmentationCondition
-  | RenderedAndCondition
-  | RenderedOrCondition
-  | RenderedNotCondition;
+export type {Override, RenderedCondition, RenderedOverride};
 
 export type ConfigValueResolver = (params: {
   projectId: string;
@@ -149,19 +77,6 @@ async function renderConditionInternal(
 
 export type EvaluationContext = Record<string, unknown>;
 
-export interface Override {
-  name: string;
-  conditions: Condition[]; // All conditions must match (implicit AND)
-  value: unknown;
-}
-
-export interface RenderedOverride {
-  __rendered: true | undefined;
-  name: string;
-  conditions: RenderedCondition[];
-  value: unknown;
-}
-
 export type ConditionEvaluationResult = 'matched' | 'not_matched' | 'unknown';
 
 /**
@@ -174,7 +89,6 @@ export async function renderOverrides(
 ): Promise<RenderedOverride[]> {
   return Promise.all(
     overrides.map(async override => ({
-      __rendered: undefined,
       name: override.name,
       value: override.value,
       conditions: await Promise.all(

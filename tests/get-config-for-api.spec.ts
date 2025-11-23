@@ -1,0 +1,131 @@
+import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {normalizeEmail} from '@/engine/core/utils';
+import {v4 as uuidv4} from 'uuid';
+import {describe, expect, it} from 'vitest';
+import {useAppFixture} from './fixtures/trpc-fixture';
+
+const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
+
+function sleep(ms: number) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+describe('Get Config For API Use Case', () => {
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
+
+  it('should return config with name, value, overrides, and version', async () => {
+    const configName = `test-config-${uuidv4()}`;
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: configName,
+      value: {feature: 'enabled'},
+      schema: null,
+      overrides: [
+        {
+          name: 'VIP Override',
+          conditions: [
+            {
+              operator: 'equals',
+              property: 'tier',
+              value: {type: 'literal', value: 'vip'},
+            },
+          ],
+          value: {feature: 'premium'},
+        },
+      ],
+      description: 'Test config',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    await sleep(50); // Wait for replica sync
+
+    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+      name: configName,
+      projectId: fixture.projectId,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.name).toBe(configName);
+    expect(result?.value).toEqual({feature: 'enabled'});
+    expect(result?.overrides).toHaveLength(1);
+    expect(result?.overrides?.[0].name).toBe('VIP Override');
+    expect(result?.version).toBe(1);
+  });
+
+  it('should return null for non-existent config', async () => {
+    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+      name: 'non-existent-config',
+      projectId: fixture.projectId,
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('should return updated version after patch', async () => {
+    const configName = `test-config-${uuidv4()}`;
+
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: configName,
+      value: {count: 1},
+      schema: null,
+      overrides: null,
+      description: 'Test config',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    await sleep(50);
+
+    // Patch the config
+    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      configId,
+      prevVersion: 1,
+      value: {newValue: {count: 2}},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    await sleep(50);
+
+    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+      name: configName,
+      projectId: fixture.projectId,
+    });
+
+    expect(result?.value).toEqual({count: 2});
+    expect(result?.version).toBe(2);
+  });
+
+  it('should include null overrides when none are defined', async () => {
+    const configName = `test-config-${uuidv4()}`;
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: configName,
+      value: 'simple-value',
+      schema: null,
+      overrides: null,
+      description: 'Config without overrides',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    await sleep(50);
+
+    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+      name: configName,
+      projectId: fixture.projectId,
+    });
+
+    // Overrides can be null or empty array
+    expect(
+      result?.overrides === null ||
+        (Array.isArray(result?.overrides) && result.overrides.length === 0),
+    ).toBe(true);
+  });
+});
