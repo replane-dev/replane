@@ -43,28 +43,38 @@ const replane = createReplaneClient({
   baseUrl: '${baseUrl}',
 });
 
-// One-off fetch
-const featureFlag = await replane
-  .getConfigValue<boolean>('new-onboarding')
-  .catch(() => false);`;
+// Watch a config (receives realtime updates)
+const featureFlag = await replane.watchConfig<boolean>('new-onboarding');
+
+// Get the current value
+if (featureFlag.getValue()) {
+  console.log('New onboarding enabled!');
+}`;
 
   const typedExampleSnippet = `interface PasswordRequirements {
   minLength: number;
   requireSymbol: boolean;
 }
 
-const passwordReqs = await replane
-  .getConfigValue<PasswordRequirements>('password-requirements')
-  .catch(() => ({ minLength: 8, requireSymbol: false }));`;
-
-  const realtimeSnippet = `// Watch for realtime updates via SSE
-const billingEnabled = await replane.watchConfigValue<boolean>(
-  'billing-enabled'
+const passwordReqs = await replane.watchConfig<PasswordRequirements>(
+  'password-requirements'
 );
 
-// Read the latest value
-if (billingEnabled.get()) {
-  console.log('Billing enabled!');
+// Read value anytime (always up-to-date via realtime updates)
+const { minLength } = passwordReqs.getValue();`;
+
+  const realtimeSnippet = `// Watch with context for override evaluation
+const billingEnabled = await replane.watchConfig<boolean>('billing-enabled');
+
+// Evaluate with user context - overrides apply automatically
+const enabled = billingEnabled.getValue({
+  userId: 'user-123',
+  plan: 'premium',
+  region: 'us-east',
+});
+
+if (enabled) {
+  console.log('Billing enabled for this user!');
 }
 
 // Clean up when done
@@ -137,11 +147,11 @@ billingEnabled.close();`;
           <CodeSnippet code={typedExampleSnippet} language="typescript" />
         </div>
 
-        {/* Realtime Updates */}
+        {/* Context-based Overrides */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-foreground">
-              4. Realtime updates (optional)
+              4. Context-based overrides (optional)
             </h4>
             <Button
               variant="ghost"
@@ -154,7 +164,8 @@ billingEnabled.close();`;
           </div>
           <CodeSnippet code={realtimeSnippet} language="typescript" />
           <p className="text-xs text-muted-foreground">
-            Get instant updates via Server-Sent Events when configs change.
+            All watchers automatically receive realtime updates via SSE. Use context to evaluate
+            overrides for feature flags, A/B testing, and gradual rollouts.
           </p>
         </div>
       </div>
