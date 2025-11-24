@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it} from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
 import {validateOverrideReferences} from '../src/engine/core/validate-override-references';
@@ -64,7 +64,7 @@ describe('validateOverrideReferences', () => {
               type: 'reference',
               projectId: projectId, // same as config
               configName: 'vip-user-list',
-              path: '$.users',
+              path: ['users'],
             },
           },
         ],
@@ -92,7 +92,7 @@ describe('validateOverrideReferences', () => {
               type: 'reference',
               projectId: 'different-project', // different from config
               configName: 'vip-user-list',
-              path: '$.users',
+              path: ['users'],
             },
           },
         ],
@@ -139,7 +139,7 @@ describe('validateOverrideReferences', () => {
                   type: 'reference',
                   projectId: 'wrong-project',
                   configName: 'user-list',
-                  path: '$.ids',
+                  path: ['ids'],
                 },
               },
             ],
@@ -171,7 +171,7 @@ describe('validateOverrideReferences', () => {
                 type: 'reference',
                 projectId: 'wrong-project',
                 configName: 'blocked-users',
-                path: '$.users',
+                path: ['users'],
               },
             },
           },
@@ -200,7 +200,7 @@ describe('validateOverrideReferences', () => {
               type: 'reference',
               projectId: 'project-A',
               configName: 'list-a',
-              path: '$.items',
+              path: ['items'],
             },
           },
         ],
@@ -216,7 +216,7 @@ describe('validateOverrideReferences', () => {
               type: 'reference',
               projectId: 'project-B',
               configName: 'flag-value',
-              path: '$.value',
+              path: ['value'],
             },
           },
         ],
@@ -248,7 +248,8 @@ describe('validateOverrideReferences', () => {
           {
             operator: 'segmentation',
             property: 'userId',
-            percentage: 50,
+            fromPercentage: 0,
+            toPercentage: 50,
             seed: 'experiment-1',
           },
         ],
@@ -279,7 +280,7 @@ describe('validateOverrideReferences', () => {
                   type: 'reference',
                   projectId: projectId, // correct
                   configName: 'vip-users',
-                  path: '$.users',
+                  path: ['users'],
                 },
               },
               {
@@ -289,7 +290,7 @@ describe('validateOverrideReferences', () => {
                   type: 'reference',
                   projectId: projectId, // correct
                   configName: 'beta-testers',
-                  path: '$.users',
+                  path: ['users'],
                 },
               },
             ],
@@ -307,4 +308,3 @@ describe('validateOverrideReferences', () => {
     ).not.toThrow();
   });
 });
-

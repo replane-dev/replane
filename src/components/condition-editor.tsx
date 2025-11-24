@@ -71,7 +71,7 @@ const operatorDescriptions: Record<string, string> = {
   less_than_or_equal: 'Property must be less than or equal to the value (numbers or strings)',
   greater_than: 'Property must be greater than the value (numbers or strings)',
   greater_than_or_equal: 'Property must be greater than or equal to the value (numbers or strings)',
-  segmentation: 'Deterministically segments users by percentage using hash-based bucketing',
+  segmentation: 'Deterministically segments users into buckets (0-100) using hash-based bucketing',
   not: 'Inverts the nested condition result',
   and: 'All nested conditions must be true',
   or: 'At least one nested condition must be true',
@@ -290,7 +290,9 @@ export function ConditionEditor({
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs">
                       <p className="text-xs">
-                        The context property to evaluate. Examples: userEmail, tier, country, userId
+                        {condition.operator === 'segmentation'
+                          ? 'The context property to hash for bucketing. Use userId or sessionId to ensure each user gets consistent bucket assignment (same user always in same bucket).'
+                          : 'The context property to evaluate. Examples: userEmail, tier, country, userId'}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -341,7 +343,8 @@ export function ConditionEditor({
                       onChange({
                         operator: 'segmentation',
                         property: 'property' in condition ? condition.property : '',
-                        percentage: 50,
+                        fromPercentage: 0,
+                        toPercentage: 50,
                         seed: generateSeed(),
                       });
                     } else {
@@ -509,37 +512,73 @@ export function ConditionEditor({
                 </div>
               )}
 
-              {/* Percentage column - only for segmentation */}
-              {condition.operator === 'segmentation' && 'percentage' in condition && (
-                <div className="flex-1">
-                  <div className="flex items-center gap-1 mb-1">
-                    <Label className="text-xs font-medium">Percentage</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-xs">
-                          Percentage of users to include (0-100). Uses consistent hash-based
-                          bucketing.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+              {/* Percentage range columns - only for segmentation */}
+              {condition.operator === 'segmentation' && (
+                <>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Label className="text-xs font-medium">From %</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">
+                            Starting bucket (0-100). Users are hashed into buckets 0-100.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="h-9 text-xs font-mono w-full"
+                      value={'fromPercentage' in condition ? condition.fromPercentage : 0}
+                      onChange={e => {
+                        const fromPercentage = Math.min(
+                          100,
+                          Math.max(0, Number(e.target.value) || 0),
+                        );
+                        onChange({...condition, fromPercentage});
+                      }}
+                      disabled={readOnly}
+                      placeholder="0"
+                    />
                   </div>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="h-9 text-xs font-mono w-full"
-                    value={condition.percentage}
-                    onChange={e => {
-                      const percentage = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                      onChange({...condition, percentage});
-                    }}
-                    disabled={readOnly}
-                    placeholder="50"
-                  />
-                </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Label className="text-xs font-medium">To %</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">
+                            Ending bucket (0-100). Inclusive range: users in buckets [from, to)
+                            match.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="h-9 text-xs font-mono w-full"
+                      value={'toPercentage' in condition ? condition.toPercentage : 50}
+                      onChange={e => {
+                        const toPercentage = Math.min(
+                          100,
+                          Math.max(0, Number(e.target.value) || 0),
+                        );
+                        onChange({...condition, toPercentage});
+                      }}
+                      disabled={readOnly}
+                      placeholder="50"
+                    />
+                  </div>
+                </>
               )}
 
               {/* Link/Unlink Reference Button */}
@@ -611,6 +650,57 @@ export function ConditionEditor({
                 </Tooltip>
               )}
             </div>
+
+            {/* Seed field for segmentation - shown below main row */}
+            {condition.operator === 'segmentation' && 'seed' in condition && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs font-medium">Seed</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">
+                        Seed string for consistent hashing. Same seed ensures users always get the
+                        same bucket. Change seed to reshuffle users into different buckets.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    className="h-9 text-xs font-mono flex-1"
+                    value={condition.seed}
+                    onChange={e => {
+                      onChange({...condition, seed: e.target.value});
+                    }}
+                    disabled={readOnly}
+                    placeholder="experiment-1"
+                  />
+                  {!readOnly && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            onChange({...condition, seed: generateSeed()});
+                          }}
+                          className="h-9 px-3"
+                        >
+                          Regenerate
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p className="text-xs">Generate a new random seed</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Multi-value input for in/not_in - shown below for literal values */}
             {(condition.operator === 'in' || condition.operator === 'not_in') &&

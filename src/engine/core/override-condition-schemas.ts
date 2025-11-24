@@ -55,7 +55,8 @@ export const GreaterThanOrEqualConditionSchema = PropertyConditionBase.extend({
 const SegmentationConditionSchema = z.object({
   operator: z.literal('segmentation'),
   property: z.string(),
-  percentage: z.number().min(0).max(100),
+  fromPercentage: z.number().min(0).max(100),
+  toPercentage: z.number().min(0).max(100),
   seed: z.string(),
 });
 
@@ -179,7 +180,8 @@ export const RenderedGreaterThanOrEqualConditionSchema = RenderedPropertyConditi
 export const RenderedSegmentationConditionSchema = z.object({
   operator: z.literal('segmentation'),
   property: z.string(),
-  percentage: z.number().min(0).max(100),
+  fromPercentage: z.number().min(0).max(100),
+  toPercentage: z.number().min(0).max(100),
   seed: z.string(),
 });
 

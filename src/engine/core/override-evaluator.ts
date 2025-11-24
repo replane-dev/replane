@@ -67,7 +67,8 @@ async function renderConditionInternal(
     return {
       operator: 'segmentation',
       property: condition.property,
-      percentage: condition.percentage,
+      fromPercentage: condition.fromPercentage,
+      toPercentage: condition.toPercentage,
       seed: condition.seed,
     };
   } else {
@@ -286,14 +287,14 @@ function evaluateConditionWithDebug(
       hash = ((hash << 5) - hash + hashInput.charCodeAt(i)) | 0;
     }
     const bucket = Math.abs(hash) % 100;
-    const matched = bucket < typedCondition.percentage;
+    const matched = bucket >= typedCondition.fromPercentage && bucket < typedCondition.toPercentage;
 
     return {
       condition,
       result: matched ? 'matched' : 'not_matched',
       reason: matched
-        ? `${segProperty} (${segContextValue}) falls in ${typedCondition.percentage}% segment (bucket: ${bucket})`
-        : `${segProperty} (${segContextValue}) not in ${typedCondition.percentage}% segment (bucket: ${bucket})`,
+        ? `${segProperty} (${segContextValue}) in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (bucket: ${bucket})`
+        : `${segProperty} (${segContextValue}) not in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (bucket: ${bucket})`,
       contextValue: segContextValue,
     };
   }
