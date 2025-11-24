@@ -141,6 +141,7 @@ export default function NewApiKeyPage() {
                         await navigator.clipboard.writeText(createdToken);
                         toast.success('Copied to clipboard');
                       } catch (e) {
+                        console.error(e);
                         toast.error('Failed to copy');
                       }
                     }}

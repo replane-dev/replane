@@ -317,7 +317,7 @@ export function AuditLogTable({
       observer.observe(el);
       return () => observer.disconnect();
     },
-    [query],
+    [query, projectId],
   );
 
   const applyDateRange = (partial: Partial<FilterState>) =>

@@ -244,6 +244,7 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
   };
 
   private async restart(reason: string, cause?: Error): Promise<void> {
+    console.warn('restart', reason, cause);
     if (this.stopping) return;
     await this.teardownClient();
     await this.ensureConnected(reason);

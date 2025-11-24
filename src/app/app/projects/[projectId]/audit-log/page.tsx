@@ -30,6 +30,8 @@ export default function AuditLogPage() {
 
   const [filters, setFilters] = React.useState<FilterState>(initial);
 
+  const projectId = useProjectId();
+
   // Push updated query params when filters change
   const updateQueryString = React.useCallback(
     (f: FilterState) => {
@@ -41,7 +43,7 @@ export default function AuditLogPage() {
       const qs = params.toString();
       router.replace(`/app/projects/${projectId}/audit-log${qs ? `?${qs}` : ''}`);
     },
-    [router],
+    [router, projectId],
   );
 
   const handleFiltersChange = React.useCallback(
@@ -51,8 +53,6 @@ export default function AuditLogPage() {
     },
     [updateQueryString],
   );
-
-  const projectId = useProjectId();
 
   return (
     <Fragment>

@@ -303,7 +303,7 @@ export function ConfigForm(props: ConfigFormProps) {
     } catch {
       return null;
     }
-  }, [watchedValue]);
+  }, [watchedValue, defaultValue]);
 
   // Notify parent of value changes for live testing
   React.useEffect(() => {
@@ -413,6 +413,7 @@ export function ConfigForm(props: ConfigFormProps) {
     defaultOverrides,
     defaultMaintainerEmails,
     defaultEditorEmails,
+    projectId,
   ]);
 
   return (

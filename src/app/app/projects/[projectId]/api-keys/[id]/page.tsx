@@ -171,6 +171,7 @@ export default function ApiKeyDetailPage() {
                                 toast.success('API key deleted');
                                 router.push(`/app/projects/${projectId}/api-keys`);
                               } catch (e) {
+                                console.error(e);
                                 toast.error('Failed to delete');
                               }
                             }}

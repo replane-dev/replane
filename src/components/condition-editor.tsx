@@ -181,6 +181,7 @@ export function ConditionEditor({
 
           setReferenceValidation({valid: true, checking: false});
         } catch (error) {
+          console.error(error);
           setReferenceValidation({
             valid: false,
             checking: false,

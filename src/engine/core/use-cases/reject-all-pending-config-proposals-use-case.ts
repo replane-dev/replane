@@ -11,9 +11,7 @@ export interface RejectAllPendingConfigProposalsResponse {}
 
 export interface RejectAllPendingConfigProposalsUseCaseDeps {}
 
-export function createRejectAllPendingConfigProposalsUseCase(
-  deps: RejectAllPendingConfigProposalsUseCaseDeps,
-): TransactionalUseCase<
+export function createRejectAllPendingConfigProposalsUseCase({}: RejectAllPendingConfigProposalsUseCaseDeps): TransactionalUseCase<
   RejectAllPendingConfigProposalsRequest,
   RejectAllPendingConfigProposalsResponse
 > {

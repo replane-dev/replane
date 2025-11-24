@@ -1,9 +1,10 @@
+import {getAuthOptions} from '@/app/auth-options';
+import {ReplaneIcon} from '@/components/replane-icon';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {ReplaneIcon} from '@/components/replane-icon';
-import {getAuthOptions} from '@/app/auth-options';
 import {LogOut} from 'lucide-react';
 import {getServerSession} from 'next-auth';
+import Link from 'next/link';
 import {redirect} from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -26,12 +27,12 @@ export default async function SignOutPage({searchParams}: SignOutPageProps) {
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        <a href="/" className="flex items-center gap-2 self-center font-medium">
+        <Link href="/" className="flex items-center gap-2 self-center font-medium">
           <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
             <ReplaneIcon className="size-4" />
           </div>
           Replane
-        </a>
+        </Link>
 
         <Card>
           <CardHeader className="text-center">
@@ -72,4 +73,3 @@ export default async function SignOutPage({searchParams}: SignOutPageProps) {
     </div>
   );
 }
-

@@ -248,7 +248,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
       if (selection && selection.toString().length > 0) return;
       router.push(`/app/projects/${projectId}/api-keys/${id}`);
     },
-    [router],
+    [router, projectId],
   );
 
   return (

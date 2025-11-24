@@ -20,7 +20,8 @@ export function ApiKeySdkGuide({apiKey}: ApiKeySdkGuideProps) {
       toast.success('Copied to clipboard');
       setTimeout(() => setCopiedSnippet(null), 2000);
     } catch (e) {
-      toast.error('Failed to copy');
+      console.error(e);
+      toast.error('Failed to copy code snippet');
     }
   };
 

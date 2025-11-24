@@ -20,7 +20,7 @@ import {format, formatDistanceToNow} from 'date-fns';
 import {Calendar, FileText, User} from 'lucide-react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
-import {Fragment, useMemo, useState} from 'react';
+import {Fragment, useMemo} from 'react';
 import {useProjectId} from '../../utils';
 
 export default function AuditLogMessagePage() {
@@ -29,7 +29,6 @@ export default function AuditLogMessagePage() {
   const {data} = useSuspenseQuery(trpc.getAuditLogMessage.queryOptions({id}));
   const message = data.message;
   const projectId = useProjectId();
-  const [showRawJson, setShowRawJson] = useState(false);
 
   const payloadJson = useMemo(
     () => (message ? JSON.stringify(message.payload, null, 2) : ''),

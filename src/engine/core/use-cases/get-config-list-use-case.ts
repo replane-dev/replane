@@ -13,9 +13,10 @@ export interface GetConfigListResponse {
 
 export interface GetConfigListUseCasesDeps {}
 
-export function createGetConfigListUseCase(
-  deps: GetConfigListUseCasesDeps,
-): TransactionalUseCase<GetConfigListRequest, GetConfigListResponse> {
+export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): TransactionalUseCase<
+  GetConfigListRequest,
+  GetConfigListResponse
+> {
   return async (ctx, tx, req) => {
     const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
       projectId: req.projectId,

@@ -50,9 +50,10 @@ export interface GetConfigProposalResponse {
 
 export interface GetConfigProposalUseCaseDeps {}
 
-export function createGetConfigProposalUseCase(
-  deps: GetConfigProposalUseCaseDeps,
-): TransactionalUseCase<GetConfigProposalRequest, GetConfigProposalResponse> {
+export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps): TransactionalUseCase<
+  GetConfigProposalRequest,
+  GetConfigProposalResponse
+> {
   return async (ctx, tx, req) => {
     const proposal = await tx.configProposals.getById(req.proposalId);
     if (!proposal) {

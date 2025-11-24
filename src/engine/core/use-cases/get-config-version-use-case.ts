@@ -24,9 +24,10 @@ export interface GetConfigVersionResponse {
 
 export interface GetConfigVersionUseCasesDeps {}
 
-export function createGetConfigVersionUseCase(
-  _deps: GetConfigVersionUseCasesDeps,
-): TransactionalUseCase<GetConfigVersionRequest, GetConfigVersionResponse> {
+export function createGetConfigVersionUseCase({}: GetConfigVersionUseCasesDeps): TransactionalUseCase<
+  GetConfigVersionRequest,
+  GetConfigVersionResponse
+> {
   return async (_ctx, tx, req) => {
     const config = await tx.configs.getByName({name: req.name, projectId: req.projectId});
     if (!config) return {version: undefined};
