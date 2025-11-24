@@ -2,6 +2,7 @@
 
 import Editor, {type OnChange, type OnMount} from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
+import {useTheme} from 'next-themes';
 import * as React from 'react';
 
 // Global registry of active JSON schemas keyed by model path.
@@ -44,6 +45,9 @@ export function JsonEditor({
   id,
   ...rest
 }: JsonEditorProps) {
+  const {resolvedTheme} = useTheme();
+  const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
+
   const handleChange: OnChange = val => {
     onChange(val ?? '');
   };
@@ -103,6 +107,7 @@ export function JsonEditor({
         {...rest}
         language="json"
         defaultLanguage="json"
+        theme={editorTheme}
         path={path}
         value={value}
         onChange={handleChange}

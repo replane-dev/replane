@@ -1,7 +1,8 @@
 'use client';
 
-import {ChevronsUpDown, History, LogOut} from 'lucide-react';
+import {ChevronsUpDown, History, LogOut, Monitor, Moon, Sun} from 'lucide-react';
 import {signOut, useSession} from 'next-auth/react';
+import {useTheme} from 'next-themes';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
@@ -12,6 +13,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
@@ -20,6 +24,7 @@ import Link from 'next/link';
 export function NavUser() {
   const {isMobile} = useSidebar();
   const {data: session} = useSession();
+  const {theme, setTheme} = useTheme();
   const sessionUser = session?.user;
   const projectId = useProjectId();
   const user = {
@@ -34,6 +39,13 @@ export function NavUser() {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  const ThemeIcon =
+    {
+      light: Sun,
+      dark: Moon,
+      system: Monitor,
+    }[theme || 'system'] || Monitor;
 
   return (
     <SidebarMenu>
@@ -87,6 +99,29 @@ export function NavUser() {
                   My activity
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <ThemeIcon />
+                  Theme
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setTheme('light')}>
+                    <Sun />
+                    Light
+                    {theme === 'light' && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('dark')}>
+                    <Moon />
+                    Dark
+                    {theme === 'dark' && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('system')}>
+                    <Monitor />
+                    System
+                    {theme === 'system' && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => signOut({callbackUrl: '/'})} aria-label="Log out">

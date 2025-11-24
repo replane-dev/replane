@@ -1,6 +1,7 @@
 import {AuthSession} from '@/components/auth-session';
 import {DelayedFullscreenSpinner} from '@/components/delayed-fullscreen-spinner';
 import {ErrorFallback} from '@/components/error-fallback';
+import {ThemeProvider} from '@/components/theme-provider';
 import {Toaster} from '@/components/ui/sonner';
 import {OrgProvider} from '@/contexts/org-context';
 import {TRPCReactProvider} from '@/trpc/client';
@@ -44,25 +45,27 @@ export default function RootLayout({
 }>) {
   return (
     <TRPCReactProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <AuthSession>
-            <HydrateClient>
-              <ErrorBoundary FallbackComponent={ErrorFallback}>
-                <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>
-                  <OrgProvider>{children}</OrgProvider>
-                </Suspense>
-              </ErrorBoundary>
-            </HydrateClient>
-          </AuthSession>
-          <Toaster
-            toastOptions={{
-              classNames: {
-                error: '!text-destructive ![&>svg]:text-destructive',
-                description: '!text-foreground',
-              },
-            }}
-          />
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <AuthSession>
+              <HydrateClient>
+                <ErrorBoundary FallbackComponent={ErrorFallback}>
+                  <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>
+                    <OrgProvider>{children}</OrgProvider>
+                  </Suspense>
+                </ErrorBoundary>
+              </HydrateClient>
+            </AuthSession>
+            <Toaster
+              toastOptions={{
+                classNames: {
+                  error: '!text-destructive ![&>svg]:text-destructive',
+                  description: '!text-foreground',
+                },
+              }}
+            />
+          </ThemeProvider>
         </body>
       </html>
     </TRPCReactProvider>
