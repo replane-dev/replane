@@ -4,6 +4,8 @@ import {getDatabaseUrl} from '@/engine/engine-singleton';
 import PostgresAdapter from '@auth/pg-adapter';
 import {type AuthOptions} from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
+import GitlabProvider from 'next-auth/providers/gitlab';
+import GoogleProvider from 'next-auth/providers/google';
 import OktaProvider from 'next-auth/providers/okta';
 
 // Lazily construct AuthOptions at request-time to avoid requiring DB env at build-time
@@ -28,6 +30,11 @@ export function getAuthOptions(): AuthOptions {
     // Provide a stable secret so both middleware (edge) and server can verify tokens
     secret: ensureDefined(process.env.NEXTAUTH_SECRET, 'NEXTAUTH_SECRET is not defined'),
     adapter: PostgresAdapter(pool),
+    pages: {
+      signIn: '/auth/signin',
+      signOut: '/auth/signout',
+      error: '/auth/error',
+    },
     providers: [
       process.env.GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_SECRET
         ? [
@@ -39,6 +46,34 @@ export function getAuthOptions(): AuthOptions {
               clientSecret: ensureDefined(
                 process.env.GITHUB_CLIENT_SECRET,
                 'GITHUB_CLIENT_SECRET is not defined',
+              ),
+            }),
+          ]
+        : [],
+      process.env.GITLAB_CLIENT_ID || process.env.GITLAB_CLIENT_SECRET
+        ? [
+            GitlabProvider({
+              clientId: ensureDefined(
+                process.env.GITLAB_CLIENT_ID,
+                'GITLAB_CLIENT_ID is not defined',
+              ),
+              clientSecret: ensureDefined(
+                process.env.GITLAB_CLIENT_SECRET,
+                'GITLAB_CLIENT_SECRET is not defined',
+              ),
+            }),
+          ]
+        : [],
+      process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_SECRET
+        ? [
+            GoogleProvider({
+              clientId: ensureDefined(
+                process.env.GOOGLE_CLIENT_ID,
+                'GOOGLE_CLIENT_ID is not defined',
+              ),
+              clientSecret: ensureDefined(
+                process.env.GOOGLE_CLIENT_SECRET,
+                'GOOGLE_CLIENT_SECRET is not defined',
               ),
             }),
           ]

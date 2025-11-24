@@ -36,7 +36,7 @@ Non‑engineering teammates (product, operations, support) can safely change val
 
 - PostgreSQL (tested with 17; 14+ should work)
 - Node.js 22+ and pnpm (for running from source)
-- One OAuth provider for sign‑in (GitHub or Okta)
+- One or more OAuth providers for sign‑in (GitHub, GitLab, Google, or Okta)
 
 ## Self‑hosting with Docker
 
@@ -60,10 +60,18 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
       BASE_URL: http://localhost:3000
-      SECRET_KEY_BASE: change-me
-      # Pick one provider (GitHub example below)
-      GITHUB_CLIENT_ID: your-client-id
-      GITHUB_CLIENT_SECRET: your-client-secret
+      SECRET_KEY_BASE: change-me-to-a-long-random-string
+      # Pick one or more providers (GitHub example below)
+      GITHUB_CLIENT_ID: your-github-client-id
+      GITHUB_CLIENT_SECRET: your-github-client-secret
+      # Optional: add more providers
+      # GITLAB_CLIENT_ID: your-gitlab-client-id
+      # GITLAB_CLIENT_SECRET: your-gitlab-client-secret
+      # GOOGLE_CLIENT_ID: your-google-client-id
+      # GOOGLE_CLIENT_SECRET: your-google-client-secret
+      # OKTA_CLIENT_ID: your-okta-client-id
+      # OKTA_CLIENT_SECRET: your-okta-client-secret
+      # OKTA_ISSUER: https://your-domain.okta.com
     ports:
       - '3000:3000'
 
@@ -80,21 +88,49 @@ Notes
 
 ## Environment variables
 
-Minimum required:
+### Required
 
-- DATABASE_URL – Postgres connection string
-- BASE_URL – e.g. http://localhost:3000 or your external URL
-- SECRET_KEY_BASE – long random string (used to sign sessions)
-- Authentication provider (choose one):
-  - GitHub: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
-  - Okta: OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_ISSUER
+- `DATABASE_URL` – Postgres connection string
+- `BASE_URL` – e.g. http://localhost:3000 or your external URL
+- `SECRET_KEY_BASE` – long random string (used to sign sessions)
 
-Optional:
+### Authentication Providers
 
-- ORGANIZATION_NAME – display name shown in the UI (e.g. sidebar project switcher). If not set, the label is omitted.
-- ALLOW_SELF_APPROVALS – if set to `true`, allows proposers to approve their own proposals. By default (false), self-approvals are not allowed.
+Configure at least one OAuth provider. You can enable multiple providers simultaneously:
 
-See `.env.example` for a working template.
+**GitHub**
+
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
+
+[Create OAuth App](https://github.com/settings/developers) with callback URL: `{BASE_URL}/api/auth/callback/github`
+
+**GitLab**
+
+- `GITLAB_CLIENT_ID`
+- `GITLAB_CLIENT_SECRET`
+
+[Create OAuth Application](https://gitlab.com/-/profile/applications) with redirect URI: `{BASE_URL}/api/auth/callback/gitlab`
+
+**Google**
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+[Create OAuth credentials](https://console.cloud.google.com/apis/credentials) with authorized redirect URI: `{BASE_URL}/api/auth/callback/google`
+
+**Okta**
+
+- `OKTA_CLIENT_ID`
+- `OKTA_CLIENT_SECRET`
+- `OKTA_ISSUER` (e.g. https://your-domain.okta.com)
+
+[Create OAuth 2.0 Application](https://developer.okta.com/docs/guides/implement-oauth-for-okta/main/) with redirect URI: `{BASE_URL}/api/auth/callback/okta`
+
+### Optional
+
+- `ORGANIZATION_NAME` – display name shown in the UI (e.g. sidebar project switcher). If not set, the label is omitted.
+- `ALLOW_SELF_APPROVALS` – if set to `true`, allows proposers to approve their own proposals. By default (false), self-approvals are not allowed.
 
 ## JavaScript SDK
 
@@ -163,11 +199,13 @@ Notes
 
 All state is in Postgres. Use your standard backup/restore process for the database (e.g. `pg_dump`/`pg_restore`).
 
-## Security notes
+## Security
 
 - Always set a strong `SECRET_KEY_BASE`.
 - Run behind HTTPS in production (via reverse proxy or platform LB).
 - Restrict database network access to the app only.
+
+For detailed security guidelines and to report vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Related
 

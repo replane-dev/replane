@@ -12,7 +12,10 @@ export default async function middleware(req: NextRequest, event: any) {
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next/static') ||
     pathname.startsWith('/_next/image') ||
-    pathname === '/favicon.ico'
+    pathname.startsWith('/auth') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/terms' ||
+    pathname === '/privacy'
   ) {
     return NextResponse.next();
   }
