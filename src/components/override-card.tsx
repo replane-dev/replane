@@ -10,7 +10,7 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
 import {ChevronDown, ChevronRight, CircleHelp, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {ConditionEditor} from './condition-editor';
 
 interface OverrideCardProps {
@@ -23,7 +23,7 @@ interface OverrideCardProps {
   onRemove: () => void;
 }
 
-export function OverrideCard({
+const OverrideCardComponent = ({
   override,
   index,
   readOnly,
@@ -31,7 +31,7 @@ export function OverrideCard({
   projectId,
   onUpdate,
   onRemove,
-}: OverrideCardProps) {
+}: OverrideCardProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [viewMode, setViewMode] = useState<'form' | 'json'>('form');
 
@@ -47,24 +47,27 @@ export function OverrideCard({
     prevViewModeRef.current = viewMode;
   }, [viewMode, override]);
 
-  const handleJsonChange = (newJson: string) => {
-    // Update local state for smooth editing
-    setLocalJsonValue(newJson);
+  const handleJsonChange = useCallback(
+    (newJson: string) => {
+      // Update local state for smooth editing
+      setLocalJsonValue(newJson);
 
-    // Only update parent if JSON is valid
-    try {
-      const parsed = JSON.parse(newJson);
-      onUpdate({
-        name: parsed.name ?? override.name,
-        conditions: parsed.conditions ?? override.conditions,
-        value: parsed.value ?? override.value,
-      });
-    } catch {
-      // Invalid JSON - don't update parent, user still typing
-    }
-  };
+      // Only update parent if JSON is valid
+      try {
+        const parsed = JSON.parse(newJson);
+        onUpdate({
+          name: parsed.name ?? override.name,
+          conditions: parsed.conditions ?? override.conditions,
+          value: parsed.value ?? override.value,
+        });
+      } catch {
+        // Invalid JSON - don't update parent, user still typing
+      }
+    },
+    [override, onUpdate],
+  );
 
-  const handleAddCondition = () => {
+  const handleAddCondition = useCallback(() => {
     onUpdate({
       ...override,
       conditions: [
@@ -76,23 +79,29 @@ export function OverrideCard({
         },
       ],
     });
-  };
+  }, [override, onUpdate]);
 
-  const handleUpdateCondition = (conditionIndex: number, condition: Condition) => {
-    const newConditions = [...override.conditions];
-    newConditions[conditionIndex] = condition;
-    onUpdate({
-      ...override,
-      conditions: newConditions,
-    });
-  };
+  const handleUpdateCondition = useCallback(
+    (conditionIndex: number, condition: Condition) => {
+      const newConditions = [...override.conditions];
+      newConditions[conditionIndex] = condition;
+      onUpdate({
+        ...override,
+        conditions: newConditions,
+      });
+    },
+    [override, onUpdate],
+  );
 
-  const handleRemoveCondition = (conditionIndex: number) => {
-    onUpdate({
-      ...override,
-      conditions: override.conditions.filter((_, i) => i !== conditionIndex),
-    });
-  };
+  const handleRemoveCondition = useCallback(
+    (conditionIndex: number) => {
+      onUpdate({
+        ...override,
+        conditions: override.conditions.filter((_, i) => i !== conditionIndex),
+      });
+    },
+    [override, onUpdate],
+  );
 
   return (
     <Tabs
@@ -271,4 +280,7 @@ export function OverrideCard({
       </div>
     </Tabs>
   );
-}
+};
+
+// Memoize to prevent re-renders when props haven't changed
+export const OverrideCard = React.memo(OverrideCardComponent);

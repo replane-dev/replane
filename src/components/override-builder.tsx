@@ -3,6 +3,7 @@
 import {Button} from '@/components/ui/button';
 import type {Override} from '@/engine/core/override-evaluator';
 import {Plus} from 'lucide-react';
+import {useCallback} from 'react';
 import {OverrideCard} from './override-card';
 
 interface OverrideBuilderProps {
@@ -22,7 +23,7 @@ export function OverrideBuilder({
   defaultValue,
   projectId,
 }: OverrideBuilderProps) {
-  const handleAddOverride = () => {
+  const handleAddOverride = useCallback(() => {
     const newOverride: Override = {
       name: `Override ${overrides.length + 1}`,
       conditions: [
@@ -35,15 +36,21 @@ export function OverrideBuilder({
       value: defaultValue !== undefined ? defaultValue : null,
     };
     onChange([...overrides, newOverride]);
-  };
+  }, [overrides, onChange, defaultValue]);
 
-  const handleRemoveOverride = (overrideIndex: number) => {
-    onChange(overrides.filter((_, i) => i !== overrideIndex));
-  };
+  const handleRemoveOverride = useCallback(
+    (overrideIndex: number) => {
+      onChange(overrides.filter((_, i) => i !== overrideIndex));
+    },
+    [overrides, onChange],
+  );
 
-  const handleUpdateOverride = (overrideIndex: number, updatedOverride: Override) => {
-    onChange(overrides.map((o, i) => (i === overrideIndex ? updatedOverride : o)));
-  };
+  const handleUpdateOverride = useCallback(
+    (overrideIndex: number, updatedOverride: Override) => {
+      onChange(overrides.map((o, i) => (i === overrideIndex ? updatedOverride : o)));
+    },
+    [overrides, onChange],
+  );
 
   return (
     <div className="space-y-4">

@@ -516,13 +516,13 @@ export function ConfigForm(props: ConfigFormProps) {
                   readOnly={!canEditOverrides}
                   schema={liveSchema}
                   projectId={projectId}
-                  defaultValue={(() => {
+                  defaultValue={React.useMemo(() => {
                     try {
                       return JSON.parse(watchedValue ?? defaultValue);
                     } catch {
                       return null;
                     }
-                  })()}
+                  }, [watchedValue])}
                 />
               </FormControl>
               {!canEditOverrides && (
