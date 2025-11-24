@@ -1,6 +1,7 @@
 'use client';
 
 import Editor from '@monaco-editor/react';
+import {useTheme} from 'next-themes';
 
 interface CodeSnippetProps {
   code: string;
@@ -8,6 +9,9 @@ interface CodeSnippetProps {
 }
 
 export function CodeSnippet({code, language}: CodeSnippetProps) {
+  const {resolvedTheme} = useTheme();
+  const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
+
   // Calculate editor height based on number of lines (line height ~19px + padding)
   const calculateHeight = (text: string) => {
     const lines = text.split('\n').length;
@@ -19,6 +23,7 @@ export function CodeSnippet({code, language}: CodeSnippetProps) {
       <Editor
         value={code}
         language={language}
+        theme={editorTheme}
         height={calculateHeight(code)}
         options={{
           readOnly: true,
