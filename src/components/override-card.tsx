@@ -10,7 +10,7 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
 import {ChevronDown, ChevronRight, CircleHelp, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
-import {useState} from 'react';
+import React, {useState} from 'react';
 import {ConditionEditor} from './condition-editor';
 
 interface OverrideCardProps {
@@ -19,11 +19,8 @@ interface OverrideCardProps {
   readOnly?: boolean;
   schema?: any;
   projectId?: string;
-  onUpdate: (field: keyof Override, value: any) => void;
+  onUpdate: (updatedOverride: Override) => void;
   onRemove: () => void;
-  onAddCondition: () => void;
-  onUpdateCondition: (conditionIndex: number, condition: Condition) => void;
-  onRemoveCondition: (conditionIndex: number) => void;
 }
 
 export function OverrideCard({
@@ -34,12 +31,69 @@ export function OverrideCard({
   projectId,
   onUpdate,
   onRemove,
-  onAddCondition,
-  onUpdateCondition,
-  onRemoveCondition,
 }: OverrideCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [viewMode, setViewMode] = useState<'form' | 'json'>('form');
+
+  // Local JSON state for editing (only while in JSON view)
+  const [localJsonValue, setLocalJsonValue] = useState('');
+
+  // When switching to JSON view, initialize local JSON
+  const prevViewModeRef = React.useRef(viewMode);
+  React.useEffect(() => {
+    if (prevViewModeRef.current === 'form' && viewMode === 'json') {
+      setLocalJsonValue(JSON.stringify(override, null, 2));
+    }
+    prevViewModeRef.current = viewMode;
+  }, [viewMode, override]);
+
+  const handleJsonChange = (newJson: string) => {
+    // Update local state for smooth editing
+    setLocalJsonValue(newJson);
+
+    // Only update parent if JSON is valid
+    try {
+      const parsed = JSON.parse(newJson);
+      onUpdate({
+        name: parsed.name ?? override.name,
+        conditions: parsed.conditions ?? override.conditions,
+        value: parsed.value ?? override.value,
+      });
+    } catch {
+      // Invalid JSON - don't update parent, user still typing
+    }
+  };
+
+  const handleAddCondition = () => {
+    onUpdate({
+      ...override,
+      conditions: [
+        ...override.conditions,
+        {
+          operator: 'equals',
+          property: '',
+          value: {type: 'literal', value: ''},
+        },
+      ],
+    });
+  };
+
+  const handleUpdateCondition = (conditionIndex: number, condition: Condition) => {
+    const newConditions = [...override.conditions];
+    newConditions[conditionIndex] = condition;
+    onUpdate({
+      ...override,
+      conditions: newConditions,
+    });
+  };
+
+  const handleRemoveCondition = (conditionIndex: number) => {
+    onUpdate({
+      ...override,
+      conditions: override.conditions.filter((_, i) => i !== conditionIndex),
+    });
+  };
+
   return (
     <Tabs
       value={viewMode}
@@ -75,7 +129,7 @@ export function OverrideCard({
             value={override.name}
             onChange={e => {
               e.stopPropagation();
-              onUpdate('name', e.target.value);
+              onUpdate({...override, name: e.target.value});
             }}
             onClick={e => e.stopPropagation()}
             disabled={readOnly}
@@ -142,7 +196,7 @@ export function OverrideCard({
                   onChange={(value: string) => {
                     try {
                       const parsed = JSON.parse(value);
-                      onUpdate('value', parsed);
+                      onUpdate({...override, value: parsed});
                     } catch {
                       // Keep current value if parsing fails
                     }
@@ -179,8 +233,8 @@ export function OverrideCard({
                     <ConditionEditor
                       key={conditionIndex}
                       condition={condition}
-                      onChange={c => onUpdateCondition(conditionIndex, c)}
-                      onRemove={() => onRemoveCondition(conditionIndex)}
+                      onChange={c => handleUpdateCondition(conditionIndex, c)}
+                      onRemove={() => handleRemoveCondition(conditionIndex)}
                       readOnly={readOnly}
                       projectId={projectId}
                     />
@@ -190,7 +244,7 @@ export function OverrideCard({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={onAddCondition}
+                      onClick={handleAddCondition}
                       className="w-full h-9"
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -206,17 +260,8 @@ export function OverrideCard({
               <JsonEditor
                 id={`override-json-${index}`}
                 height={400}
-                value={JSON.stringify(override, null, 2)}
-                onChange={(value: string) => {
-                  try {
-                    const parsed = JSON.parse(value);
-                    if (parsed.name) onUpdate('name', parsed.name);
-                    if (parsed.conditions) onUpdate('conditions', parsed.conditions);
-                    if (parsed.value !== undefined) onUpdate('value', parsed.value);
-                  } catch {
-                    // Invalid JSON, don't update
-                  }
-                }}
+                value={viewMode === 'json' ? localJsonValue : JSON.stringify(override, null, 2)}
+                onChange={handleJsonChange}
                 aria-label={`Override ${index + 1} JSON`}
                 readOnly={readOnly}
               />
