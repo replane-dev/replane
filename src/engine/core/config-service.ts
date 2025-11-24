@@ -12,16 +12,18 @@ import type {DateProvider} from './date-provider';
 import type {ConfigProposalRejectionReason} from './db';
 import {BadRequestError} from './errors';
 import {diffMembers} from './member-diff';
+import type {Override} from './override-condition-schemas';
 import type {PermissionService} from './permission-service';
 import type {User} from './user-store';
 import {normalizeEmail, validateAgainstJsonSchema} from './utils';
+import {validateOverrideReferences} from './validate-override-references';
 import type {ConfigMember} from './zod';
 
 export interface PatchConfigParams {
   configId: ConfigId;
   value?: {newValue: any};
   schema?: {newSchema: any};
-  overrides?: {newOverrides: any};
+  overrides?: {newOverrides: Override[]};
   description?: {newDescription: string};
   patchAuthor: User;
   reviewer: User;
@@ -103,6 +105,13 @@ export class ConfigService {
         );
       }
     }
+
+    // Validate override references use the same project ID
+    validateOverrideReferences({
+      overrides: nextOverrides,
+      configProjectId: existingConfig.projectId,
+    });
+
     const nextDescription = params.description
       ? params.description.newDescription
       : existingConfig.description;

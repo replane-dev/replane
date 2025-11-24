@@ -1,10 +1,12 @@
-import {getAuthOptions} from '@/app/auth-options';
+'use client';
+
 import {SignInForm} from '@/components/auth/sign-in-form';
 import {ReplaneIcon} from '@/components/replane-icon';
-import {getServerSession} from 'next-auth';
+import {useTRPC} from '@/trpc/client';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {useSession} from 'next-auth/react';
 import {redirect} from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
+import {use} from 'react';
 
 interface SignInPageProps {
   searchParams: Promise<{
@@ -13,17 +15,20 @@ interface SignInPageProps {
   }>;
 }
 
-export default async function SignInPage({searchParams}: SignInPageProps) {
-  const session = await getServerSession(getAuthOptions());
-  const params = await searchParams;
+export default function SignInPage({searchParams}: SignInPageProps) {
+  const {data: session} = useSession();
+  const params = use(searchParams);
+  const trpc = useTRPC();
+  const {data} = useSuspenseQuery(trpc.getAuthProviders.queryOptions());
 
   // If already signed in, redirect to callback URL or home
   if (session) {
     redirect(params.callbackUrl || '/app');
   }
 
-  const authOptions = getAuthOptions();
-  const providers = authOptions.providers.map(p => ({id: p.id, name: p.name}));
+  const providers = data.providers;
+
+  console.log('providers', providers);
 
   const errorMessages: Record<string, string> = {
     OAuthSignin: 'Error constructing authorization URL.',
@@ -41,7 +46,7 @@ export default async function SignInPage({searchParams}: SignInPageProps) {
   const errorMessage = params.error ? errorMessages[params.error] || errorMessages.default : null;
 
   return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+    <div className="bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col gap-2 text-center">
           <a href="/" className="flex items-center gap-2 self-center font-medium">

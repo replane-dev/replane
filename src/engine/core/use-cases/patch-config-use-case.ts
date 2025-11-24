@@ -2,6 +2,7 @@ import assert from 'assert';
 import type {ConfigId} from '../config-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigMember, NormalizedEmail} from '../zod';
 
@@ -9,7 +10,7 @@ export interface PatchConfigRequest {
   configId: ConfigId;
   value?: {newValue: any};
   schema?: {newSchema: any};
-  overrides?: {newOverrides: any};
+  overrides?: {newOverrides: Override[]};
   description?: {newDescription: string};
   currentUserEmail: NormalizedEmail;
   members?: {newMembers: ConfigMember[]};

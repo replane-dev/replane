@@ -1,5 +1,6 @@
 'use client';
 
+import {ReferenceValuePreviewDialog} from '@/components/reference-value-preview-dialog';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {
@@ -943,51 +944,24 @@ export function ConditionEditor({
       </Dialog>
 
       {/* Preview Value Dialog */}
-      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Referenced Value Preview</DialogTitle>
-            <DialogDescription>
-              {'value' in condition && condition.value.type === 'reference' && (
-                <code className="text-xs font-mono">
-                  {condition.value.configName}
-                  {condition.value.path.length > 0 && `.${formatJsonPath(condition.value.path)}`}
-                </code>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {previewValue.loading && (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-sm text-muted-foreground">Loading...</p>
-              </div>
-            )}
-            {previewValue.error && (
-              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
-                <p className="text-sm text-destructive">{previewValue.error}</p>
-              </div>
-            )}
-            {previewValue.value !== undefined && !previewValue.error && !previewValue.loading && (
-              <div className="rounded-md border bg-muted p-4">
-                <pre className="text-xs font-mono overflow-auto max-h-64">
-                  {JSON.stringify(previewValue.value, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => {
-                setShowPreviewDialog(false);
-                setPreviewValue({loading: false});
-              }}
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ReferenceValuePreviewDialog
+        open={showPreviewDialog}
+        onOpenChange={setShowPreviewDialog}
+        configName={
+          'value' in condition && condition.value.type === 'reference'
+            ? condition.value.configName
+            : undefined
+        }
+        path={
+          'value' in condition &&
+          condition.value.type === 'reference' &&
+          condition.value.path.length > 0
+            ? formatJsonPath(condition.value.path)
+            : undefined
+        }
+        previewState={previewValue}
+        projectId={projectId}
+      />
     </div>
   );
 }

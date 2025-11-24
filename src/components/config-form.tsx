@@ -510,11 +510,23 @@ export function ConfigForm(props: ConfigFormProps) {
                     <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>
-                    Overrides allow you to conditionally return different values based on context
-                    properties like user email, tier, country, etc.
-                  </p>
+                <TooltipContent className="max-w-sm">
+                  <div className="space-y-2">
+                    <p className="text-sm">
+                      Overrides allow you to conditionally return different values based on context
+                      properties like user email, tier, country, etc.
+                    </p>
+                    <div className="space-y-1.5 text-xs">
+                      <p className="font-medium">Examples:</p>
+                      <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
+                        <li>Premium users get higher rate limits</li>
+                        <li>VIP customers see beta features</li>
+                        <li>Regional pricing based on country</li>
+                        <li>A/B testing by user ID</li>
+                        <li>Internal employees bypass restrictions</li>
+                      </ul>
+                    </div>
+                  </div>
                 </TooltipContent>
               </Tooltip>
               <FormControl>

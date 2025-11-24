@@ -6,6 +6,7 @@ import {BadRequestError} from '../errors';
 import type {Override} from '../override-evaluator';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
+import {validateOverrideReferences} from '../validate-override-references';
 import type {NormalizedEmail} from '../zod';
 
 export interface CreateConfigProposalRequest {
@@ -51,6 +52,7 @@ export function createCreateConfigProposalUseCase(
       req.proposedValue === undefined &&
       req.proposedDescription === undefined &&
       req.proposedSchema === undefined &&
+      req.proposedOverrides === undefined &&
       req.proposedMembers === undefined
     ) {
       throw new BadRequestError('At least one field must be proposed');
@@ -77,6 +79,15 @@ export function createCreateConfigProposalUseCase(
           throw new BadRequestError(`Value does not match schema: ${result.errors.join('; ')}`);
         }
       }
+
+      // Validate override references use the same project ID
+      const finalOverrides = req.proposedOverrides
+        ? req.proposedOverrides.newOverrides
+        : config.overrides;
+      validateOverrideReferences({
+        overrides: finalOverrides as Override[] | null,
+        configProjectId: config.projectId,
+      });
     }
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);

@@ -123,6 +123,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-sidebar text-foreground min-h-svh;
   }
 }

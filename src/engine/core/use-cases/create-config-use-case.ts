@@ -5,8 +5,10 @@ import type {NewConfigUser} from '../config-user-store';
 import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
 import {normalizeEmail, validateAgainstJsonSchema} from '../utils';
+import {validateOverrideReferences} from '../validate-override-references';
 import type {NormalizedEmail} from '../zod';
 
 export interface CreateConfigRequest {
@@ -59,6 +61,12 @@ export function createCreateConfigUseCase(
         );
       }
     }
+
+    // Validate override references use the same project ID
+    validateOverrideReferences({
+      overrides: req.overrides as Override[] | null,
+      configProjectId: req.projectId,
+    });
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');

@@ -5,6 +5,7 @@ import type {
 } from '@/engine/core/audit-message-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
+import type {Override} from '@/engine/core/override-condition-schemas';
 import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, describe, expect, it} from 'vitest';
@@ -32,15 +33,14 @@ describe('patchConfig', () => {
       projectId: fixture.projectId,
     });
 
-    const newOverrides = [
+    const newOverrides: Override[] = [
       {
-        id: '550e8400-e29b-41d4-a716-446655440001',
         name: 'Premium Users',
-        rules: [
+        conditions: [
           {
             operator: 'equals',
             property: 'tier',
-            value: 'premium',
+            value: {type: 'literal', value: 'premium'},
           },
         ],
         value: {maxItems: 100},

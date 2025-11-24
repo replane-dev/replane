@@ -1,3 +1,4 @@
+import {getAuthOptions} from '@/app/auth-options';
 import {
   ConfigDescription,
   ConfigName,
@@ -16,6 +17,15 @@ import {baseProcedure, createTRPCRouter} from '../init';
 export const appRouter = createTRPCRouter({
   getOrganization: baseProcedure.query(async () => {
     return getOrganizationConfig();
+  }),
+  getAuthProviders: baseProcedure.query(async () => {
+    const authOptions = getAuthOptions();
+    return {
+      providers: authOptions.providers.map(p => ({
+        id: p.id,
+        name: p.name,
+      })),
+    };
   }),
   hello: baseProcedure
     .input(
