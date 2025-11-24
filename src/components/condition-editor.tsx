@@ -121,11 +121,23 @@ export function ConditionEditor({
 
   // Auto-preview when modal is open and values change
   useEffect(() => {
-    if (showReferenceModal && debouncedConfigName.trim()) {
-      handlePreview(debouncedConfigName, debouncedPath);
+    if (showReferenceModal) {
+      if (debouncedConfigName.trim()) {
+        handlePreview(debouncedConfigName, debouncedPath);
+      } else {
+        // Reset preview when config name is empty
+        setPreviewValue({loading: false});
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showReferenceModal, debouncedConfigName, debouncedPath]);
+
+  // Reset preview when dialog closes
+  useEffect(() => {
+    if (!showReferenceModal) {
+      setPreviewValue({loading: false});
+    }
+  }, [showReferenceModal]);
 
   // Eagerly validate reference in condition editor
   useEffect(() => {
@@ -356,27 +368,49 @@ export function ConditionEditor({
                 </Select>
               </div>
 
-              {/* Value column - show for simple comparison operators */}
-              {condition.operator !== 'in' &&
-                condition.operator !== 'not_in' &&
-                condition.operator !== 'segmentation' &&
-                'value' in condition && (
-                  <div className="flex-[2]">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Label className="text-xs font-medium">Value</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">
-                            The value to compare against. Can be a literal value or a reference to
-                            another config.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    {condition.value.type === 'literal' ? (
+              {/* Value column - show for all operators except segmentation */}
+              {condition.operator !== 'segmentation' && 'value' in condition && (
+                <div className="flex-[2]">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Label className="text-xs font-medium">
+                      {condition.operator === 'in' || condition.operator === 'not_in'
+                        ? 'Values'
+                        : 'Value'}
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">
+                          {condition.operator === 'in' || condition.operator === 'not_in'
+                            ? 'List of values or reference to an array in another config'
+                            : 'The value to compare against. Can be a literal value or a reference to another config'}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {condition.value.type === 'literal' ? (
+                    condition.operator === 'in' || condition.operator === 'not_in' ? (
+                      /* Multi-value button that opens the list below */
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 w-full justify-start font-mono text-xs"
+                        onClick={() => {}}
+                        disabled={readOnly}
+                      >
+                        {(() => {
+                          const values = Array.isArray(condition.value.value)
+                            ? condition.value.value
+                            : [];
+                          return values.length === 0
+                            ? 'No values'
+                            : `${values.length} ${values.length === 1 ? 'value' : 'values'}`;
+                        })()}
+                      </Button>
+                    ) : (
                       <Input
                         className="h-9 text-xs font-mono w-full"
                         value={
@@ -393,85 +427,87 @@ export function ConditionEditor({
                         disabled={readOnly}
                         placeholder={`premium, 100, true...`}
                       />
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            className={`flex items-center gap-1.5 h-9 px-3 rounded-md border ${
-                              !referenceValidation.valid
-                                ? 'border-destructive/50 bg-destructive/10'
-                                : 'bg-muted/30'
+                    )
+                  ) : (
+                    /* Reference display - same for all operators */
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={`flex items-center gap-1.5 h-9 px-3 rounded-md border ${
+                            !referenceValidation.valid
+                              ? 'border-destructive/50 bg-destructive/10'
+                              : 'bg-muted/30'
+                          }`}
+                        >
+                          <Link2
+                            className={`h-3 w-3 shrink-0 ${
+                              !referenceValidation.valid ? 'text-destructive' : 'text-primary'
                             }`}
-                          >
-                            <Link2
-                              className={`h-3 w-3 shrink-0 ${
-                                !referenceValidation.valid ? 'text-destructive' : 'text-primary'
-                              }`}
-                            />
-                            <div className="text-xs font-mono flex-1 truncate">
-                              {projectId ? (
-                                <Link
-                                  href={`/app/projects/${projectId}/configs/${encodeURIComponent(condition.value.configName)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`hover:underline font-medium ${
-                                    !referenceValidation.valid ? 'text-destructive' : 'text-primary'
-                                  }`}
-                                >
-                                  {condition.value.configName}
-                                </Link>
-                              ) : (
-                                <span
-                                  className={`font-medium ${
-                                    !referenceValidation.valid ? 'text-destructive' : 'text-primary'
-                                  }`}
-                                >
-                                  {condition.value.configName}
-                                </span>
-                              )}
-                              {condition.value.path.length > 0 && (
-                                <span className="text-foreground/80">
-                                  .{formatJsonPath(condition.value.path)}
-                                </span>
-                              )}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={e => {
-                                e.preventDefault();
-                                if (condition.value.type === 'reference') {
-                                  handlePreview(
-                                    condition.value.configName,
-                                    formatJsonPath(condition.value.path),
-                                  );
-                                  setShowPreviewDialog(true);
-                                }
-                              }}
-                              className="h-6 w-6 p-0 shrink-0"
-                            >
-                              <Eye className="h-3 w-3" />
-                            </Button>
+                          />
+                          <div className="text-xs font-mono flex-1 truncate">
+                            {projectId ? (
+                              <Link
+                                href={`/app/projects/${projectId}/configs/${encodeURIComponent(condition.value.configName)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`hover:underline font-medium ${
+                                  !referenceValidation.valid ? 'text-destructive' : 'text-primary'
+                                }`}
+                              >
+                                {condition.value.configName}
+                              </Link>
+                            ) : (
+                              <span
+                                className={`font-medium ${
+                                  !referenceValidation.valid ? 'text-destructive' : 'text-primary'
+                                }`}
+                              >
+                                {condition.value.configName}
+                              </span>
+                            )}
+                            {condition.value.path.length > 0 && (
+                              <span className="text-foreground/80">
+                                .{formatJsonPath(condition.value.path)}
+                              </span>
+                            )}
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          {referenceValidation.checking ? (
-                            <>Checking reference...</>
-                          ) : !referenceValidation.valid ? (
-                            <>⚠️ {referenceValidation.error || 'Invalid reference'}</>
-                          ) : (
-                            <>
-                              Reference to {condition.value.configName}
-                              {condition.value.path.length > 0 &&
-                                ` at ${formatJsonPath(condition.value.path)}`}
-                            </>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={e => {
+                              e.preventDefault();
+                              if (condition.value.type === 'reference') {
+                                handlePreview(
+                                  condition.value.configName,
+                                  formatJsonPath(condition.value.path),
+                                );
+                                setShowPreviewDialog(true);
+                              }
+                            }}
+                            className="h-6 w-6 p-0 shrink-0"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {referenceValidation.checking ? (
+                          <>Checking reference...</>
+                        ) : !referenceValidation.valid ? (
+                          <>⚠️ {referenceValidation.error || 'Invalid reference'}</>
+                        ) : (
+                          <>
+                            Reference to {condition.value.configName}
+                            {condition.value.path.length > 0 &&
+                              ` at ${formatJsonPath(condition.value.path)}`}
+                          </>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
 
               {/* Percentage column - only for segmentation */}
               {condition.operator === 'segmentation' && 'percentage' in condition && (
@@ -507,32 +543,28 @@ export function ConditionEditor({
               )}
 
               {/* Link/Unlink Reference Button */}
-              {!readOnly &&
-                'value' in condition &&
-                condition.value.type === 'literal' &&
-                condition.operator !== 'in' &&
-                condition.operator !== 'not_in' && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setTempConfigName('');
-                          setTempPath('');
-                          setShowReferenceModal(true);
-                        }}
-                        className="h-9 w-9 p-0 hover:bg-accent"
-                      >
-                        <Link2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <p className="text-xs">Create reference to another config</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+              {!readOnly && 'value' in condition && condition.value.type === 'literal' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setTempConfigName('');
+                        setTempPath('');
+                        setShowReferenceModal(true);
+                      }}
+                      className="h-9 w-9 p-0 hover:bg-accent"
+                    >
+                      <Link2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Create reference to another config</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
 
               {!readOnly && 'value' in condition && condition.value.type === 'reference' && (
                 <Tooltip>
@@ -542,9 +574,11 @@ export function ConditionEditor({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
+                        const defaultValue =
+                          condition.operator === 'in' || condition.operator === 'not_in' ? [] : '';
                         onChange({
                           ...condition,
-                          value: {type: 'literal', value: ''},
+                          value: {type: 'literal', value: defaultValue},
                         });
                       }}
                       className="h-9 w-9 p-0 hover:bg-accent"
@@ -578,105 +612,115 @@ export function ConditionEditor({
               )}
             </div>
 
-            {/* Multi-value input for in/not_in - shown below */}
-            {(condition.operator === 'in' || condition.operator === 'not_in') && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Values</Label>
-                  <Badge variant="secondary" className="text-xs">
-                    {(() => {
-                      const values = Array.isArray(condition.value) ? condition.value : [];
-                      return `${values.length} ${values.length === 1 ? 'value' : 'values'}`;
-                    })()}
-                  </Badge>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-2">
-                  <ScrollArea className="h-40">
-                    <div className="space-y-1.5 pr-3">
+            {/* Multi-value input for in/not_in - shown below for literal values */}
+            {(condition.operator === 'in' || condition.operator === 'not_in') &&
+              'value' in condition &&
+              condition.value.type === 'literal' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Values</Label>
+                    <Badge variant="secondary" className="text-xs">
                       {(() => {
-                        const values = Array.isArray(condition.value) ? condition.value : [];
-
-                        if (values.length === 0) {
-                          return (
-                            <div className="text-center py-3 text-xs text-muted-foreground">
-                              No values added yet
-                            </div>
-                          );
-                        }
-
-                        return values.map((val: unknown, idx: number) => (
-                          <div key={idx} className="flex gap-1.5 items-center">
-                            <Badge
-                              variant="outline"
-                              className="shrink-0 font-mono text-xs w-6 justify-center"
-                            >
-                              {idx + 1}
-                            </Badge>
-                            <Input
-                              className="h-8 text-xs font-mono flex-1"
-                              value={typeof val === 'string' ? val : JSON.stringify(val)}
-                              onChange={e => {
-                                const newValues = [...values];
-                                newValues[idx] = e.target.value;
-                                onChange({
-                                  ...condition,
-                                  value: {type: 'literal', value: newValues[idx]},
-                                });
-                              }}
-                              disabled={readOnly}
-                              placeholder={`Value ${idx + 1}`}
-                            />
-                            {!readOnly && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const newValues = values.filter((_, i) => i !== idx);
-                                      onChange({
-                                        ...condition,
-                                        value: {
-                                          type: 'literal',
-                                          value: newValues.length > 0 ? newValues : [],
-                                        },
-                                      });
-                                    }}
-                                    className="h-8 w-8 p-0 shrink-0 hover:bg-destructive/10 hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                  <p className="text-xs">Remove this value</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        ));
+                        const values = Array.isArray(condition.value.value)
+                          ? condition.value.value
+                          : [];
+                        return `${values.length} ${values.length === 1 ? 'value' : 'values'}`;
                       })()}
-                    </div>
-                  </ScrollArea>
-                  {!readOnly && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const values = Array.isArray(condition.value) ? condition.value : [];
-                        const newValues = [...values, ''];
-                        onChange({...condition, value: {type: 'literal', value: newValues}});
-                      }}
-                      className="w-full h-8 text-xs mt-2"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1.5" />
-                      Add Value
-                    </Button>
-                  )}
+                    </Badge>
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    <ScrollArea className="h-40">
+                      <div className="space-y-1.5 pr-3">
+                        {(() => {
+                          const values = Array.isArray(condition.value.value)
+                            ? condition.value.value
+                            : [];
+
+                          if (values.length === 0) {
+                            return (
+                              <div className="text-center py-3 text-xs text-muted-foreground">
+                                No values added yet
+                              </div>
+                            );
+                          }
+
+                          return values.map((val: unknown, idx: number) => (
+                            <div key={idx} className="flex gap-1.5 items-center">
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 font-mono text-xs w-6 justify-center"
+                              >
+                                {idx + 1}
+                              </Badge>
+                              <Input
+                                className="h-8 text-xs font-mono flex-1 bg-background"
+                                value={typeof val === 'string' ? val : JSON.stringify(val)}
+                                onChange={e => {
+                                  const newValues = [...values];
+                                  newValues[idx] = e.target.value;
+                                  onChange({
+                                    ...condition,
+                                    value: {type: 'literal', value: newValues},
+                                  });
+                                }}
+                                disabled={readOnly}
+                                placeholder={`Value ${idx + 1}`}
+                              />
+                              {!readOnly && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newValues = values.filter((_, i) => i !== idx);
+                                        onChange({
+                                          ...condition,
+                                          value: {
+                                            type: 'literal',
+                                            value: newValues.length > 0 ? newValues : [],
+                                          },
+                                        });
+                                      }}
+                                      className="h-8 w-8 p-0 shrink-0 hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="text-xs">Remove this value</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </ScrollArea>
+                    {!readOnly && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if ('value' in condition && condition.value.type === 'literal') {
+                            const values = Array.isArray(condition.value.value)
+                              ? condition.value.value
+                              : [];
+                            const newValues = [...values, ''];
+                            onChange({...condition, value: {type: 'literal', value: newValues}});
+                          }
+                        }}
+                        className="w-full h-8 text-xs mt-2"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        Add Value
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         )}
 
@@ -907,6 +951,8 @@ export function ConditionEditor({
               variant="outline"
               onClick={() => {
                 setShowReferenceModal(false);
+                setTempConfigName('');
+                setTempPath('');
                 setPreviewValue({loading: false});
               }}
             >

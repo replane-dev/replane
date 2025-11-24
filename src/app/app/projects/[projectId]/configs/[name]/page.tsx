@@ -44,6 +44,7 @@ import {AlertTriangle, GitBranch, Info} from 'lucide-react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {Fragment, useCallback, useMemo, useState} from 'react';
+import {toast} from 'sonner';
 import {useProject, useProjectId} from '../../utils';
 import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
 
@@ -124,7 +125,8 @@ export default function ConfigByNamePage() {
             }
           : undefined,
     });
-    router.push(`/app/projects/${projectId}/configs`);
+
+    toast.success('Config updated successfully');
   }
 
   if (!config) {

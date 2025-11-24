@@ -28,8 +28,6 @@ export default function SignInPage({searchParams}: SignInPageProps) {
 
   const providers = data.providers;
 
-  console.log('providers', providers);
-
   const errorMessages: Record<string, string> = {
     OAuthSignin: 'Error constructing authorization URL.',
     OAuthCallback: 'Error handling OAuth callback.',
