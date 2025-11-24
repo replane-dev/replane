@@ -297,6 +297,14 @@ export function ConfigForm(props: ConfigFormProps) {
     | undefined;
   const watchedMembers = useWatch({control: form.control, name: 'members'});
 
+  const overrideBuilderDefaultValue = React.useMemo(() => {
+    try {
+      return JSON.parse(watchedValue ?? defaultValue);
+    } catch {
+      return null;
+    }
+  }, [watchedValue]);
+
   // Notify parent of value changes for live testing
   React.useEffect(() => {
     if (onValuesChange && watchedOverrides) {
@@ -516,13 +524,7 @@ export function ConfigForm(props: ConfigFormProps) {
                   readOnly={!canEditOverrides}
                   schema={liveSchema}
                   projectId={projectId}
-                  defaultValue={(() => {
-                    try {
-                      return JSON.parse(watchedValue ?? defaultValue);
-                    } catch {
-                      return null;
-                    }
-                  })()}
+                  defaultValue={overrideBuilderDefaultValue}
                 />
               </FormControl>
               {!canEditOverrides && (
