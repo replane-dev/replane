@@ -262,7 +262,7 @@ export function ConditionEditor({
 
   return (
     <div className="space-y-2">
-      <div className={`p-3 rounded-lg border-2 ${isComposite ? 'bg-muted/30' : 'bg-background'}`}>
+      <div className={`p-3 rounded-lg border-1 ${isComposite ? 'bg-muted/30' : 'bg-background'}`}>
         {/* Property-based conditions */}
         {!isComposite && (
           <div className="space-y-2">

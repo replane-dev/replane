@@ -109,7 +109,7 @@ const OverrideCardComponent = ({
       onValueChange={v => setViewMode(v as 'form' | 'json')}
       className="w-full"
     >
-      <div className="rounded-lg border-2 bg-card shadow-sm">
+      <div className="rounded-lg border-1 bg-card shadow-sm">
         {/* Header */}
         <div
           className="flex items-center gap-2 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
@@ -142,7 +142,7 @@ const OverrideCardComponent = ({
             }}
             onClick={e => e.stopPropagation()}
             disabled={readOnly}
-            className="flex-1 font-semibold h-8 border-0 bg-transparent focus-visible:ring-1"
+            className="flex-1 font-semibold h-8 bg-background border focus-visible:ring-1"
             placeholder="Override name"
           />
           <TabsList className="h-8 shrink-0" onClick={e => e.stopPropagation()}>
