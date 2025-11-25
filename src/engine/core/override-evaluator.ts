@@ -318,8 +318,8 @@ function evaluateConditionWithDebug(
       condition,
       result: matched ? 'matched' : 'not_matched',
       reason: matched
-        ? `${segProperty} (${segContextValue}) in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (bucket: ${bucket})`
-        : `${segProperty} (${segContextValue}) not in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (bucket: ${bucket})`,
+        ? `${segProperty} (${segContextValue}) in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (unit value: ${unitValue})`
+        : `${segProperty} (${segContextValue}) not in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (unit value: ${unitValue})`,
       contextValue: segContextValue,
     };
   }
