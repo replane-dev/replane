@@ -114,7 +114,10 @@ export default async function AuthErrorPage({searchParams}: ErrorPageProps) {
 
         <div className="text-muted-foreground text-center text-xs">
           Need help?{' '}
-          <a href="#" className="underline underline-offset-4 hover:text-foreground">
+          <a
+            href="mailto:tilyut@gmail.com"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
             Contact support
           </a>
         </div>
