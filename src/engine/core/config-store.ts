@@ -4,7 +4,7 @@ import type {Configs, DB} from './db';
 import type {EventBusClient} from './event-bus';
 import {ConditionSchema, OverrideSchema} from './override-condition-schemas';
 import type {Override} from './override-evaluator';
-import {fromJsonb, toJsonb} from './store-utils';
+import {deserializeJson, serializeJson} from './store-utils';
 import {isValidJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {ConfigInfo, Uuid, type NormalizedEmail} from './zod';
@@ -106,8 +106,8 @@ export class ConfigStore {
     return rows.map(row => ({
       id: row.id,
       name: row.name,
-      value: fromJsonb(row.value),
-      overrides: fromJsonb(row.overrides) ?? [],
+      value: deserializeJson(row.value),
+      overrides: deserializeJson(row.overrides) ?? [],
       version: row.version,
       projectId: row.project_id,
     }));
@@ -130,8 +130,8 @@ export class ConfigStore {
     }
     return {
       name: row.name,
-      value: fromJsonb(row.value),
-      overrides: fromJsonb(row.overrides) ?? [],
+      value: deserializeJson(row.value),
+      overrides: deserializeJson(row.overrides) ?? [],
       version: row.version,
       projectId: row.project_id,
     };
@@ -219,9 +219,9 @@ export class ConfigStore {
         name: config.name,
         description: config.description,
         creator_id: config.creatorId,
-        value: toJsonb(config.value),
-        schema: config.schema ? toJsonb(config.schema) : null,
-        overrides: config.overrides ? toJsonb(config.overrides) : null,
+        value: serializeJson(config.value),
+        schema: config.schema ? serializeJson(config.schema) : null,
+        overrides: config.overrides ? serializeJson(config.overrides) : null,
         version: 1,
         project_id: config.projectId,
       })
@@ -242,10 +242,10 @@ export class ConfigStore {
     await this.db
       .updateTable('configs')
       .set({
-        value: toJsonb(params.value),
+        value: serializeJson(params.value),
         description: params.description,
-        schema: params.schema ? toJsonb(params.schema) : null,
-        overrides: params.overrides ? toJsonb(params.overrides) : null,
+        schema: params.schema ? serializeJson(params.schema) : null,
+        overrides: params.overrides ? serializeJson(params.overrides) : null,
         updated_at: params.updatedAt,
         version: params.version,
       })
@@ -277,9 +277,9 @@ function mapConfig(config: Selectable<Configs>): Config {
     id: config.id,
     creatorId: config.creator_id,
     name: config.name,
-    value: fromJsonb(config.value),
-    schema: fromJsonb(config.schema),
-    overrides: fromJsonb(config.overrides) ?? [],
+    value: deserializeJson(config.value),
+    schema: deserializeJson(config.schema),
+    overrides: deserializeJson(config.overrides) ?? [],
     description: config.description,
     createdAt: config.created_at,
     updatedAt: config.updated_at,

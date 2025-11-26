@@ -20,18 +20,6 @@ export type Generated<T> =
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
-export type Json = JsonValue;
-
-export type JsonArray = JsonValue[];
-
-export type JsonObject = {
-  [x: string]: JsonValue | undefined;
-};
-
-export type JsonPrimitive = boolean | number | string | null;
-
-export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
-
 export type ProjectUserRole = 'admin' | 'maintainer';
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
@@ -65,7 +53,7 @@ export interface AuditMessages {
   config_id: string | null;
   created_at: Timestamp;
   id: string;
-  payload: Json;
+  payload: string;
   project_id: string | null;
   user_id: number | null;
 }
@@ -79,10 +67,10 @@ export interface ConfigProposals {
   message: string | null;
   proposed_delete: Generated<boolean>;
   proposed_description: string | null;
-  proposed_members: Json | null;
-  proposed_overrides: Json | null;
-  proposed_schema: Json | null;
-  proposed_value: Json | null;
+  proposed_members: string | null;
+  proposed_overrides: string | null;
+  proposed_schema: string | null;
+  proposed_value: string | null;
   proposer_id: number | null;
   rejected_at: Timestamp | null;
   rejected_in_favor_of_proposal_id: string | null;
@@ -96,11 +84,11 @@ export interface Configs {
   description: string;
   id: string;
   name: string;
-  overrides: Json | null;
+  overrides: string | null;
   project_id: string;
-  schema: Json | null;
+  schema: string | null;
   updated_at: Timestamp;
-  value: Json;
+  value: string;
   version: number;
 }
 
@@ -125,10 +113,10 @@ export interface ConfigVersions {
   description: string;
   id: string;
   name: string;
-  overrides: Json | null;
+  overrides: string | null;
   proposal_id: string | null;
-  schema: Json | null;
-  value: Json;
+  schema: string | null;
+  value: string;
   version: number;
 }
 

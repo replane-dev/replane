@@ -1,6 +1,7 @@
 import type {Kysely, Selectable} from 'kysely';
 import type {ConfigId} from './config-store';
-import type {AuditMessages, DB, JsonValue} from './db';
+import type {AuditMessages, DB} from './db';
+import {serializeJson, deserializeJson} from './store-utils';
 import {createUuidV7} from './uuid';
 
 export type AuditMessageId = string;
@@ -261,7 +262,7 @@ export class AuditMessageStore {
           id: message.id,
           created_at: message.createdAt,
           config_id: message.configId,
-          payload: message.payload as unknown as JsonValue,
+          payload: serializeJson(message.payload),
           user_id: message.userId,
           project_id: message.projectId,
         },
@@ -284,7 +285,7 @@ function toAuditMessage(message: Selectable<AuditMessages>): AuditMessage {
     configId: message.config_id,
     createdAt: message.created_at,
     id: message.id,
-    payload: message.payload as unknown as AuditMessagePayload,
+    payload: deserializeJson(message.payload) as AuditMessagePayload,
     userId: message.user_id,
     projectId: message.project_id,
   };

@@ -22,8 +22,8 @@ import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {ConfigOverrides} from '@/engine/core/config-store';
 import type {Override} from '@/engine/core/override-evaluator';
+import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
 import {zodResolver} from '@hookform/resolvers/zod';
-import Ajv from 'ajv';
 import {CircleHelp} from 'lucide-react';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
@@ -112,11 +112,6 @@ export function ConfigForm(props: ConfigFormProps) {
   const canEditMembers = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
   const canSubmit = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
   const showMembers = true;
-
-  const ajv = React.useMemo(
-    () => new Ajv({allErrors: true, strict: false, allowUnionTypes: true}),
-    [],
-  );
 
   // Track which action button was clicked
   const submitActionRef = React.useRef<'save' | 'propose' | null>(null);
@@ -233,22 +228,17 @@ export function ConfigForm(props: ConfigFormProps) {
         form.setError('schema', {message: 'Schema must be valid JSON'});
         return;
       }
-      if (!ajv.validateSchema(parsedSchema)) {
+
+      // Validate that the schema itself is a valid JSON Schema
+      if (!isValidJsonSchema(parsedSchema)) {
         form.setError('schema', {message: 'Invalid JSON Schema'});
         return;
       }
-      let validateFn;
-      try {
-        validateFn = ajv.compile(parsedSchema);
-      } catch {
-        form.setError('schema', {message: 'Invalid JSON Schema'});
-        return;
-      }
-      if (!validateFn(payloadValue)) {
-        const errors = (validateFn.errors ?? [])
-          .map(e => e?.message)
-          .filter(Boolean)
-          .join('; ');
+
+      // Validate the value against the schema
+      const validationResult = validateAgainstJsonSchema(payloadValue, parsedSchema);
+      if (!validationResult.ok) {
+        const errors = validationResult.errors.join('; ');
         form.setError('value', {message: `Does not match schema: ${errors || 'Invalid value'}`});
         return;
       }
@@ -323,7 +313,9 @@ export function ConfigForm(props: ConfigFormProps) {
   if (enabled && schemaText) {
     try {
       const parsed = JSON.parse(schemaText);
-      if (ajv.validateSchema(parsed)) liveSchema = parsed;
+      if (isValidJsonSchema(parsed)) {
+        liveSchema = parsed;
+      }
     } catch {}
   }
 

@@ -1,14 +1,10 @@
-import assert from 'assert';
-import type {JsonValue} from './db';
-
-export function fromJsonb<T>(jsonb: JsonValue | null): T | null {
-  if (jsonb === null) {
+export function deserializeJson<T>(text: string | null): T | null {
+  if (text === null) {
     return null;
   }
-  assert(typeof jsonb === 'object' && jsonb !== null && 'value' in jsonb);
-  return jsonb.value as T;
+  return JSON.parse(text) as T;
 }
 
-export function toJsonb<T>(value: T): JsonValue {
-  return {value} as unknown as JsonValue;
+export function serializeJson<T>(value: T): string {
+  return JSON.stringify(value);
 }

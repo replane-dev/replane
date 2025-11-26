@@ -1,4 +1,9 @@
 import Ajv, {type ErrorObject, type JSONSchemaType} from 'ajv';
+import AjvDraft04 from 'ajv-draft-04';
+import addFormats from 'ajv-formats';
+import Ajv2019 from 'ajv/dist/2019';
+import Ajv2020 from 'ajv/dist/2020';
+import draft06MetaSchema from 'ajv/dist/refs/json-schema-draft-06.json';
 import assert from 'assert';
 import type {NormalizedEmail} from './zod';
 
@@ -126,7 +131,65 @@ export async function mapConcurrently<T, R>(options: {
 
 // JSON Schema validation
 // Lightweight wrapper around Ajv with a stable, testable return shape.
-const __ajv = new Ajv({allErrors: true, strict: false, allowUnionTypes: true});
+// Supports all JSON Schema drafts: draft-04, draft-06, draft-07, 2019-09, 2020-12
+
+type SchemaVersion = 'draft-04' | 'draft-06' | 'draft-07' | '2019-09' | '2020-12';
+
+/**
+ * Creates a fresh Ajv instance for the specified schema version.
+ * This ensures validation runs are isolated and not polluted by previous compilations.
+ */
+function createAjvInstance(version: SchemaVersion): Ajv {
+  let ajv: Ajv;
+
+  switch (version) {
+    case 'draft-04':
+      ajv = new AjvDraft04({allErrors: true, strict: false, allowUnionTypes: true});
+      break;
+    case '2019-09':
+      ajv = new Ajv2019({allErrors: true, strict: false, allowUnionTypes: true});
+      break;
+    case '2020-12':
+      ajv = new Ajv2020({allErrors: true, strict: false, allowUnionTypes: true});
+      break;
+    case 'draft-06':
+    case 'draft-07':
+    default:
+      // Default Ajv instance supports draft-07 by default
+      ajv = new Ajv({allErrors: true, strict: false, allowUnionTypes: true});
+      // Add draft-06 meta-schema support (Ajv 8 only includes draft-07 by default)
+      ajv.addMetaSchema(draft06MetaSchema);
+      break;
+  }
+
+  // Add format validators (email, uri, date-time, etc.) to all instances
+  addFormats(ajv);
+
+  return ajv;
+}
+
+/**
+ * Determines the JSON Schema version from the $schema field.
+ */
+function getSchemaVersion(schema: unknown): SchemaVersion {
+  if (typeof schema === 'object' && schema !== null && '$schema' in schema) {
+    const schemaVersion = String(schema.$schema);
+    if (schemaVersion.includes('draft-04') || schemaVersion.includes('draft/4')) {
+      return 'draft-04';
+    }
+    if (schemaVersion.includes('draft-06') || schemaVersion.includes('draft/6')) {
+      return 'draft-06';
+    }
+    if (schemaVersion.includes('2019-09') || schemaVersion.includes('draft/2019-09')) {
+      return '2019-09';
+    }
+    if (schemaVersion.includes('2020-12') || schemaVersion.includes('draft/2020-12')) {
+      return '2020-12';
+    }
+  }
+  // Default to draft-07
+  return 'draft-07';
+}
 
 export type JsonSchema = JSONSchemaType<any> | Record<string, unknown>;
 
@@ -145,7 +208,12 @@ export function validateAgainstJsonSchema<T = unknown>(
   } else {
     schema = inputSchema;
   }
-  const validate = __ajv.compile<T>(schema as JSONSchemaType<T>);
+
+  // Create a fresh Ajv instance for this validation to avoid pollution
+  const version = getSchemaVersion(inputSchema);
+  const ajv = createAjvInstance(version);
+
+  const validate = ajv.compile<T>(schema as JSONSchemaType<T>);
   const valid = validate(value);
 
   if (valid) {
@@ -169,7 +237,11 @@ export function isValidJsonSchema(schema: unknown): boolean {
   if (schema === null) return true;
   if (!(typeof schema === 'object' || typeof schema === 'boolean')) return false;
   try {
-    return __ajv.validateSchema(schema) as boolean;
+    // Create a fresh Ajv instance for this validation to avoid pollution
+    const version = getSchemaVersion(schema);
+    const ajv = createAjvInstance(version);
+
+    return ajv.validateSchema(schema) as boolean;
   } catch {
     return false;
   }

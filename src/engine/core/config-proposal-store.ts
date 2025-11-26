@@ -2,7 +2,7 @@ import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import {ConfigOverrides} from './config-store';
 import type {ConfigProposalRejectionReason, ConfigProposals, DB} from './db';
-import {fromJsonb, toJsonb} from './store-utils';
+import {deserializeJson, serializeJson} from './store-utils';
 import {createUuidV7} from './uuid';
 import {ConfigMember, Uuid} from './zod';
 
@@ -298,11 +298,11 @@ export class ConfigProposalStore {
         rejection_reason: proposal.rejectionReason,
         base_config_version: proposal.baseConfigVersion,
         proposed_delete: proposal.proposedDelete,
-        proposed_value: proposal.proposedValue ? toJsonb(proposal.proposedValue) : null,
+        proposed_value: proposal.proposedValue ? serializeJson(proposal.proposedValue) : null,
         proposed_description: proposal.proposedDescription,
-        proposed_schema: proposal.proposedSchema ? toJsonb(proposal.proposedSchema) : null,
-        proposed_overrides: proposal.proposedOverrides ? toJsonb(proposal.proposedOverrides) : null,
-        proposed_members: proposal.proposedMembers ? toJsonb(proposal.proposedMembers) : null,
+        proposed_schema: proposal.proposedSchema ? serializeJson(proposal.proposedSchema) : null,
+        proposed_overrides: proposal.proposedOverrides ? serializeJson(proposal.proposedOverrides) : null,
+        proposed_members: proposal.proposedMembers ? serializeJson(proposal.proposedMembers) : null,
         message: proposal.message,
       })
       .execute();
@@ -326,24 +326,24 @@ export class ConfigProposalStore {
       .updateTable('config_proposals')
       .set({
         proposed_value:
-          params.proposedValue !== undefined ? toJsonb(params.proposedValue) : undefined,
+          params.proposedValue !== undefined ? serializeJson(params.proposedValue) : undefined,
         proposed_description: params.proposedDescription,
         proposed_schema:
           params.proposedSchema !== undefined
             ? params.proposedSchema
-              ? toJsonb(params.proposedSchema)
+              ? serializeJson(params.proposedSchema)
               : null
             : undefined,
         proposed_overrides:
           params.proposedOverrides !== undefined
             ? params.proposedOverrides
-              ? toJsonb(params.proposedOverrides)
+              ? serializeJson(params.proposedOverrides)
               : null
             : undefined,
         proposed_members:
           params.proposedMembers !== undefined
             ? params.proposedMembers
-              ? toJsonb(params.proposedMembers)
+              ? serializeJson(params.proposedMembers)
               : null
             : undefined,
         proposed_delete: params.proposedDelete,
@@ -375,11 +375,11 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     rejectionReason: proposal.rejection_reason,
     baseConfigVersion: proposal.base_config_version,
     proposedDelete: proposal.proposed_delete,
-    proposedValue: fromJsonb(proposal.proposed_value),
+    proposedValue: deserializeJson(proposal.proposed_value),
     proposedDescription: proposal.proposed_description,
-    proposedSchema: fromJsonb(proposal.proposed_schema),
-    proposedOverrides: fromJsonb(proposal.proposed_overrides),
-    proposedMembers: fromJsonb(proposal.proposed_members),
+    proposedSchema: deserializeJson(proposal.proposed_schema),
+    proposedOverrides: deserializeJson(proposal.proposed_overrides),
+    proposedMembers: deserializeJson(proposal.proposed_members),
     message: proposal.message,
   };
 }

@@ -1,8 +1,8 @@
 import type {Kysely} from 'kysely';
-import type {JsonValue} from 'next-auth/adapters';
 import type {ConfigProposalId} from './config-proposal-store';
 import type {ConfigId} from './config-store';
 import type {DB} from './db';
+import {deserializeJson, serializeJson} from './store-utils';
 import {createUuidV7} from './uuid';
 import type {NormalizedEmail} from './zod';
 
@@ -44,13 +44,9 @@ export class ConfigVersionStore {
           description: configVersion.description,
           name: configVersion.name,
           version: configVersion.version,
-          schema: configVersion.schema
-            ? ({value: configVersion.schema} as unknown as JsonValue)
-            : (null as JsonValue),
-          overrides: configVersion.overrides
-            ? ({value: configVersion.overrides} as unknown as JsonValue)
-            : (null as JsonValue),
-          value: {value: configVersion.value} as JsonValue,
+          schema: configVersion.schema ? serializeJson(configVersion.schema) : null,
+          overrides: configVersion.overrides ? serializeJson(configVersion.overrides) : null,
+          value: serializeJson(configVersion.value),
           author_id: configVersion.authorId,
           proposal_id: configVersion.proposalId,
         },
@@ -132,14 +128,6 @@ export class ConfigVersionStore {
 
     if (!row) return undefined;
 
-    // value & schema columns stored as { value: ... }
-    const extractJsonWrapper = (input: unknown): unknown => {
-      if (input && typeof input === 'object' && 'value' in (input as Record<string, unknown>)) {
-        return (input as Record<string, unknown>).value;
-      }
-      return input;
-    };
-
     // Fetch members from the separate table
     const memberRows = await this.db
       .selectFrom('config_version_members')
@@ -157,9 +145,9 @@ export class ConfigVersionStore {
       version: row.version,
       createdAt: row.created_at,
       description: row.description,
-      value: extractJsonWrapper(row.value),
-      schema: row.schema === null ? null : extractJsonWrapper(row.schema),
-      overrides: row.overrides === null ? null : extractJsonWrapper(row.overrides),
+      value: deserializeJson(row.value),
+      schema: row.schema === null ? null : deserializeJson(row.schema),
+      overrides: row.overrides === null ? null : deserializeJson(row.overrides),
       members,
       authorEmail: (row as unknown as {author_email: string | null}).author_email,
       proposalId: (row as unknown as {proposal_id: ConfigProposalId | null}).proposal_id,

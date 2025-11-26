@@ -16,7 +16,8 @@
     "release": "bumpp",
     "migrate": "pnpm run migrate:migrate && pnpm run migrate:codegen",
     "migrate:migrate": "dotenv -- tsx ./src/engine/scripts/migrate.ts",
-    "migrate:codegen": "dotenv -- kysely-codegen --out-file ./src/engine/core/db.d.ts && prettier --write ./src/engine/core/db.d.ts && eslint ./src/engine/core/db.d.ts --fix"
+    "migrate:cleanup": "dotenv -- tsx ./src/engine/scripts/cleanup-database.ts",
+    "migrate:codegen": "pnpm run migrate:cleanup && dotenv -- kysely-codegen --out-file ./src/engine/core/db.d.ts && prettier --write ./src/engine/core/db.d.ts && eslint ./src/engine/core/db.d.ts --fix"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.10.0",
@@ -55,6 +56,8 @@
     "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
     "ajv": "^8.17.1",
+    "ajv-draft-04": "^1.0.0",
+    "ajv-formats": "^3.0.1",
     "assert": "^2.1.0",
     "async-channel": "^0.2.0",
     "class-variance-authority": "^0.7.1",

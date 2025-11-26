@@ -223,7 +223,7 @@ export const migrations: Migration[] = [
         gen_random_uuid(),
         'example_config',
         '{ "value": {"key":"value"} }'::JSONB,
-        'This is an example config.',
+        'This is an example config demonstrating JSON Schema support.',
         '{"value":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}'::JSONB,
         ${EXAMPLE_USER_ID},
         NOW(),
@@ -235,7 +235,7 @@ export const migrations: Migration[] = [
         gen_random_uuid(),
         'example_feature_enabled',
         '{ "value": true }'::JSONB,
-        'This is a feature flags config.',
+        'This is a feature flag config. Supports all JSON Schema versions (draft-04, draft-06, draft-07, 2019-09, 2020-12).',
         '{"value":{"$schema":"http://json-schema.org/draft-07/schema#","type":"boolean"}}'::JSONB,
         ${EXAMPLE_USER_ID},
         NOW(),
@@ -434,6 +434,33 @@ export const migrations: Migration[] = [
 
       DROP TYPE config_user_role;
       ALTER TYPE config_user_role_v3 RENAME TO config_user_role;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Convert JSONB columns to TEXT columns
+      -- Migrate configs table
+      ALTER TABLE configs
+        ALTER COLUMN value TYPE TEXT USING COALESCE((value->'value')::TEXT, value::TEXT),
+        ALTER COLUMN schema TYPE TEXT USING CASE WHEN schema IS NULL THEN NULL ELSE COALESCE((schema->'value')::TEXT, schema::TEXT) END,
+        ALTER COLUMN overrides TYPE TEXT USING CASE WHEN overrides IS NULL THEN NULL ELSE COALESCE((overrides->'value')::TEXT, overrides::TEXT) END;
+
+      -- Migrate config_versions table
+      ALTER TABLE config_versions
+        ALTER COLUMN value TYPE TEXT USING COALESCE((value->'value')::TEXT, value::TEXT),
+        ALTER COLUMN schema TYPE TEXT USING CASE WHEN schema IS NULL THEN NULL ELSE COALESCE((schema->'value')::TEXT, schema::TEXT) END,
+        ALTER COLUMN overrides TYPE TEXT USING CASE WHEN overrides IS NULL THEN NULL ELSE COALESCE((overrides->'value')::TEXT, overrides::TEXT) END;
+
+      -- Migrate config_proposals table
+      ALTER TABLE config_proposals
+        ALTER COLUMN proposed_value TYPE TEXT USING CASE WHEN proposed_value IS NULL THEN NULL ELSE COALESCE((proposed_value->'value')::TEXT, proposed_value::TEXT) END,
+        ALTER COLUMN proposed_schema TYPE TEXT USING CASE WHEN proposed_schema IS NULL THEN NULL ELSE COALESCE((proposed_schema->'value')::TEXT, proposed_schema::TEXT) END,
+        ALTER COLUMN proposed_overrides TYPE TEXT USING CASE WHEN proposed_overrides IS NULL THEN NULL ELSE COALESCE((proposed_overrides->'value')::TEXT, proposed_overrides::TEXT) END,
+        ALTER COLUMN proposed_members TYPE TEXT USING CASE WHEN proposed_members IS NULL THEN NULL ELSE COALESCE((proposed_members->'value')::TEXT, proposed_members::TEXT) END;
+
+      -- Migrate audit_messages table
+      ALTER TABLE audit_messages
+        ALTER COLUMN payload TYPE TEXT USING COALESCE((payload->'value')::TEXT, payload::TEXT);
     `,
   },
 ];

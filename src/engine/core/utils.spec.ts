@@ -187,6 +187,441 @@ describe('validateAgainstJsonSchema', () => {
       expect(res.errors.join(' ')).toMatch(/id|required/);
     }
   });
+
+  it('validates using draft-04 when $schema specifies it', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {
+        name: {type: 'string'},
+        age: {type: 'integer', minimum: 0},
+      },
+      required: ['name'],
+    };
+
+    const validData = {name: 'Alice', age: 30};
+    const invalidData = {age: 30}; // missing required 'name'
+
+    const validRes = validateAgainstJsonSchema(validData, schema);
+    expect(validRes.ok).toBe(true);
+
+    const invalidRes = validateAgainstJsonSchema(invalidData, schema);
+    expect(invalidRes.ok).toBe(false);
+  });
+
+  it('validates using draft-07 with const keyword', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        role: {const: 'admin'},
+      },
+      required: ['role'],
+    };
+
+    const validData = {role: 'admin'};
+    const invalidData = {role: 'user'};
+
+    const validRes = validateAgainstJsonSchema(validData, schema);
+    expect(validRes.ok).toBe(true);
+
+    const invalidRes = validateAgainstJsonSchema(invalidData, schema);
+    expect(invalidRes.ok).toBe(false);
+  });
+
+  it('validates using 2019-09 schema', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      type: 'object',
+      properties: {
+        email: {type: 'string', format: 'email'},
+      },
+    };
+
+    const validData = {email: 'user@example.com'};
+    const invalidData = {email: 'not-an-email'};
+
+    const validRes = validateAgainstJsonSchema(validData, schema);
+    expect(validRes.ok).toBe(true);
+
+    const invalidRes = validateAgainstJsonSchema(invalidData, schema);
+    expect(invalidRes.ok).toBe(false);
+  });
+
+  it('validates using 2020-12 schema', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        url: {type: 'string', format: 'uri'},
+      },
+    };
+
+    const validData = {url: 'https://example.com'};
+    const invalidData = {url: 'not a url'};
+
+    const validRes = validateAgainstJsonSchema(validData, schema);
+    expect(validRes.ok).toBe(true);
+
+    const invalidRes = validateAgainstJsonSchema(invalidData, schema);
+    expect(invalidRes.ok).toBe(false);
+  });
+
+  it('rejects draft-04 data violating minimum constraint', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {
+        age: {type: 'integer', minimum: 18},
+      },
+    };
+
+    const invalidData = {age: 15};
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/>=|18/);
+    }
+  });
+
+  it('rejects draft-04 data violating pattern constraint', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {
+        code: {type: 'string', pattern: '^[A-Z]{3}$'},
+      },
+    };
+
+    const invalidData = {code: 'abc'}; // lowercase instead of uppercase
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/pattern/i);
+    }
+  });
+
+  it('rejects draft-06 data violating const constraint', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-06/schema#',
+      type: 'object',
+      properties: {
+        status: {const: 'active'},
+      },
+    };
+
+    const invalidData = {status: 'inactive'};
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/equal|active/);
+    }
+  });
+
+  it('rejects draft-07 data violating if-then-else logic', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        country: {type: 'string'},
+        postalCode: {type: 'string'},
+      },
+      if: {
+        properties: {country: {const: 'US'}},
+      },
+      then: {
+        properties: {
+          postalCode: {pattern: '^[0-9]{5}$'},
+        },
+        required: ['postalCode'],
+      },
+    };
+
+    const invalidData = {country: 'US', postalCode: 'ABC'}; // Invalid US postal code
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('rejects draft-07 data with invalid email format', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        email: {type: 'string', format: 'email'},
+      },
+    };
+
+    const invalidData = {email: 'not-valid-email'};
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/email/);
+    }
+  });
+
+  it('rejects 2019-09 data with invalid date-time format', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      type: 'object',
+      properties: {
+        timestamp: {type: 'string', format: 'date-time'},
+      },
+    };
+
+    const invalidData = {timestamp: '2023-13-45T99:99:99Z'}; // Invalid date
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/date-time/);
+    }
+  });
+
+  it('rejects 2020-12 data violating minLength and maxLength', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        username: {type: 'string', minLength: 3, maxLength: 10},
+      },
+    };
+
+    const tooShort = {username: 'ab'};
+    const tooLong = {username: 'thisusernameistoolong'};
+
+    const shortRes = validateAgainstJsonSchema(tooShort, schema);
+    expect(shortRes.ok).toBe(false);
+    if (!shortRes.ok) {
+      expect(shortRes.errors.join(' ')).toMatch(/3|characters|longer/);
+    }
+
+    const longRes = validateAgainstJsonSchema(tooLong, schema);
+    expect(longRes.ok).toBe(false);
+    if (!longRes.ok) {
+      expect(longRes.errors.join(' ')).toMatch(/10|characters|longer/);
+    }
+  });
+
+  it('rejects data violating array constraints', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        tags: {
+          type: 'array',
+          items: {type: 'string'},
+          minItems: 1,
+          maxItems: 3,
+          uniqueItems: true,
+        },
+      },
+    };
+
+    const emptyArray = {tags: []};
+    const tooManyItems = {tags: ['a', 'b', 'c', 'd']};
+    const duplicateItems = {tags: ['a', 'b', 'a']};
+    const wrongType = {tags: ['a', 123, 'c']};
+
+    const emptyRes = validateAgainstJsonSchema(emptyArray, schema);
+    expect(emptyRes.ok).toBe(false);
+    if (!emptyRes.ok) {
+      expect(emptyRes.errors.join(' ')).toMatch(/1|item/);
+    }
+
+    const tooManyRes = validateAgainstJsonSchema(tooManyItems, schema);
+    expect(tooManyRes.ok).toBe(false);
+    if (!tooManyRes.ok) {
+      expect(tooManyRes.errors.join(' ')).toMatch(/3|items/);
+    }
+
+    const duplicateRes = validateAgainstJsonSchema(duplicateItems, schema);
+    expect(duplicateRes.ok).toBe(false);
+    if (!duplicateRes.ok) {
+      expect(duplicateRes.errors.join(' ')).toMatch(/unique|duplicate/);
+    }
+
+    const wrongTypeRes = validateAgainstJsonSchema(wrongType, schema);
+    expect(wrongTypeRes.ok).toBe(false);
+    if (!wrongTypeRes.ok) {
+      expect(wrongTypeRes.errors.join(' ')).toMatch(/string/);
+    }
+  });
+
+  it('rejects data with missing required fields', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        firstName: {type: 'string'},
+        lastName: {type: 'string'},
+        email: {type: 'string', format: 'email'},
+      },
+      required: ['firstName', 'lastName', 'email'],
+    };
+
+    const incompleteData = {firstName: 'John'};
+    const res = validateAgainstJsonSchema(incompleteData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/lastName|email|required/i);
+    }
+  });
+
+  it('rejects data with additional properties when not allowed', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        id: {type: 'number'},
+        name: {type: 'string'},
+      },
+      additionalProperties: false,
+    };
+
+    const dataWithExtra = {id: 1, name: 'Test', extra: 'field'};
+    const res = validateAgainstJsonSchema(dataWithExtra, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/additional|extra/);
+    }
+  });
+
+  it('rejects data violating enum constraint', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        color: {type: 'string', enum: ['red', 'green', 'blue']},
+      },
+    };
+
+    const invalidData = {color: 'yellow'};
+    const res = validateAgainstJsonSchema(invalidData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/equal|allowed/);
+    }
+  });
+
+  it('rejects nested object validation failures', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        user: {
+          type: 'object',
+          properties: {
+            profile: {
+              type: 'object',
+              properties: {
+                age: {type: 'integer', minimum: 0},
+              },
+              required: ['age'],
+            },
+          },
+          required: ['profile'],
+        },
+      },
+    };
+
+    const invalidNestedData = {
+      user: {
+        profile: {
+          age: -5, // negative age
+        },
+      },
+    };
+
+    const res = validateAgainstJsonSchema(invalidNestedData, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/>=|0/);
+    }
+  });
+
+  it('rejects data with wrong type', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        count: {type: 'number'},
+        active: {type: 'boolean'},
+        tags: {type: 'array'},
+      },
+    };
+
+    const wrongTypes = {
+      count: 'not a number',
+      active: 'not a boolean',
+      tags: 'not an array',
+    };
+
+    const res = validateAgainstJsonSchema(wrongTypes, schema);
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors.length).toBeGreaterThan(0);
+      expect(res.errors.join(' ')).toMatch(/number|boolean|array/);
+    }
+  });
+
+  it('rejects draft-06 data violating exclusiveMinimum/Maximum', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-06/schema#',
+      type: 'object',
+      properties: {
+        score: {
+          type: 'number',
+          exclusiveMinimum: 0,
+          exclusiveMaximum: 100,
+        },
+      },
+    };
+
+    const atMin = {score: 0};
+    const atMax = {score: 100};
+    const belowMin = {score: -1};
+    const aboveMax = {score: 101};
+
+    // At boundaries should fail (exclusive)
+    const minRes = validateAgainstJsonSchema(atMin, schema);
+    expect(minRes.ok).toBe(false);
+
+    const maxRes = validateAgainstJsonSchema(atMax, schema);
+    expect(maxRes.ok).toBe(false);
+
+    // Outside boundaries should fail
+    const belowRes = validateAgainstJsonSchema(belowMin, schema);
+    expect(belowRes.ok).toBe(false);
+
+    const aboveRes = validateAgainstJsonSchema(aboveMax, schema);
+    expect(aboveRes.ok).toBe(false);
+
+    // Within boundaries should pass
+    const validRes = validateAgainstJsonSchema({score: 50}, schema);
+    expect(validRes.ok).toBe(true);
+  });
 });
 
 describe('isValidJsonSchema', () => {
@@ -214,14 +649,106 @@ describe('isValidJsonSchema', () => {
     expect(isValidJsonSchema(schema)).toBe(true);
   });
 
-  it('honors $schema draft-04: same schema is not valid under draft-04', () => {
+  it('honors $schema draft-04: valid draft-04 schema is accepted', () => {
     const schema = {
       $schema: 'http://json-schema.org/draft-04/schema#',
       type: 'object',
-      properties: {role: {const: 'admin'}},
+      properties: {name: {type: 'string'}},
+      required: ['name'],
     } as const;
 
-    // Ajv v8 does not include draft-04 meta by default and const is not a draft-04 keyword
+    // Now draft-04 is supported via ajv-draft-04
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('validates draft-04 schema structure (meta-schema validation)', () => {
+    // Note: Meta-schema validation checks if the schema is structurally valid,
+    // not if keywords are appropriate for the draft version
+    const schema = {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {role: {enum: ['admin', 'user']}}, // enum is valid in draft-04
+    } as const;
+
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('supports draft-06 schemas with const keyword', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-06/schema#',
+      type: 'object',
+      properties: {role: {const: 'admin'}}, // 'const' was added in draft-06
+    } as const;
+
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('supports 2019-09 schemas', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      type: 'object',
+      properties: {name: {type: 'string'}},
+    } as const;
+
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('supports 2020-12 schemas', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {name: {type: 'string'}},
+    } as const;
+
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('accepts schema with unknown keywords when strict mode is disabled', () => {
+    const schema = {
+      type: 'object',
+      customKeyword: 'this is allowed with strict: false',
+    };
+
+    // With strict: false, unknown keywords are allowed
+    expect(isValidJsonSchema(schema)).toBe(true);
+  });
+
+  it('rejects schema with invalid type value', () => {
+    const schema = {
+      type: 'invalidType', // not a valid JSON Schema type
+    };
+
+    expect(isValidJsonSchema(schema)).toBe(false);
+  });
+
+  it('rejects draft-04 schema with invalid additionalItems usage', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'array',
+      items: [{type: 'string'}],
+      additionalItems: 'invalid', // should be boolean or object
+    };
+
+    expect(isValidJsonSchema(schema)).toBe(false);
+  });
+
+  it('rejects draft-07 schema with malformed if-then-else', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      if: {type: 'string'},
+      then: 'invalid', // should be a schema object
+    };
+
+    expect(isValidJsonSchema(schema)).toBe(false);
+  });
+
+  it('rejects 2019-09 schema with invalid dependentSchemas', () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      type: 'object',
+      dependentSchemas: 'invalid', // should be an object
+    };
+
     expect(isValidJsonSchema(schema)).toBe(false);
   });
 });
