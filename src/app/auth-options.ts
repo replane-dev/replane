@@ -5,7 +5,7 @@ import PostgresAdapter from '@auth/pg-adapter';
 import {type AuthOptions} from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
 import GitlabProvider from 'next-auth/providers/gitlab';
-import GoogleProvider from 'next-auth/providers/google';
+import GoogleProvider, {type GoogleProfile} from 'next-auth/providers/google';
 import OktaProvider from 'next-auth/providers/okta';
 
 // Lazily construct AuthOptions at request-time to avoid requiring DB env at build-time
@@ -91,6 +91,14 @@ export function getAuthOptions(): AuthOptions {
           ]
         : [],
     ].flat(),
+    callbacks: {
+      async signIn({account, profile}) {
+        if (account?.provider === 'google') {
+          return !!(profile as GoogleProfile | undefined)?.email_verified;
+        }
+        return true;
+      },
+    },
   } satisfies AuthOptions;
 
   return cached;
