@@ -42,7 +42,7 @@ import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
 import {AlertTriangle, GitBranch, Info} from 'lucide-react';
 import Link from 'next/link';
-import {useParams, useRouter} from 'next/navigation';
+import {notFound, useParams, useRouter} from 'next/navigation';
 import {Fragment, useCallback, useMemo, useState} from 'react';
 import {toast} from 'sonner';
 import {useProject, useProjectId} from '../../utils';
@@ -130,43 +130,7 @@ export default function ConfigByNamePage() {
   }
 
   if (!config) {
-    return (
-      <Fragment>
-        <header className="flex h-16 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href="/app/projects">Projects</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href={`/app/projects/${project.id}`}>{project.name}</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href={`/app/projects/${project.id}/configs`}>Configs</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Not found</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          Config &quot;{name}&quot; not found.
-        </div>
-      </Fragment>
-    );
+    notFound();
   }
 
   async function handleSubmit(data: {

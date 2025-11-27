@@ -15,7 +15,7 @@ import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {useOrg} from '@/contexts/org-context';
-import {assertNever} from '@/engine/core/utils';
+import {assertNever, isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import {useSession} from 'next-auth/react';
 import Link from 'next/link';
-import {useParams, useRouter} from 'next/navigation';
+import {notFound, useParams, useRouter} from 'next/navigation';
 import {Fragment, useState} from 'react';
 import {useProject} from '../../../../utils';
 
@@ -49,16 +49,25 @@ function formatTimezoneOffset(date: Date): string {
 export default function ReviewConfigProposalPage() {
   const router = useRouter();
   const {proposalId} = useParams<{proposalId: string}>();
+
+  // Validate UUID format before making any requests
+  if (!proposalId || !isValidUuid(proposalId)) {
+    notFound();
+  }
+
   const trpc = useTRPC();
   const project = useProject();
   const org = useOrg();
 
-  const {data: proposalData} = useSuspenseQuery(
-    trpc.getConfigProposal.queryOptions({proposalId: proposalId!}),
-  );
+  const {data: proposalData} = useSuspenseQuery(trpc.getConfigProposal.queryOptions({proposalId}));
 
   const proposal = proposalData.proposal;
   const proposalsRejectedByThisApproval = proposalData.proposalsRejectedByThisApproval;
+
+  // Trigger 404 page if proposal doesn't exist
+  if (!proposal) {
+    notFound();
+  }
 
   // Fetch config to get other pending proposals
   const {data: configData} = useSuspenseQuery(

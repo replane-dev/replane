@@ -18,7 +18,7 @@ import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
 import {AlignLeft, Calendar, Code2, FileText, User} from 'lucide-react';
 import Link from 'next/link';
-import {useParams, useRouter} from 'next/navigation';
+import {notFound, useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
 import {toast} from 'sonner';
 import {useProjectId} from '../../../../utils';
@@ -38,13 +38,15 @@ export default function ConfigVersionDetailsPage() {
   const router = useRouter();
   const version = data.version;
 
-  const valueJson = useMemo(
-    () => (version ? JSON.stringify(version.value, null, 2) : ''),
-    [version],
-  );
+  // Trigger 404 page if version doesn't exist
+  if (!version) {
+    notFound();
+  }
+
+  const valueJson = useMemo(() => JSON.stringify(version.value, null, 2), [version]);
   const schemaJson = useMemo(
     () =>
-      version && version.schema !== null && version.schema !== undefined
+      version.schema !== null && version.schema !== undefined
         ? JSON.stringify(version.schema, null, 2)
         : null,
     [version],
@@ -91,13 +93,6 @@ export default function ConfigVersionDetailsPage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-4xl space-y-6">
-          {!version && (
-            <div className="rounded-lg border bg-card/50 p-6">
-              <p className="text-center text-muted-foreground">
-                Version {versionNumber} not found.
-              </p>
-            </div>
-          )}
           {version && (
             <>
               {/* Version Info */}

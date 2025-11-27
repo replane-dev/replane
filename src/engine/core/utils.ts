@@ -250,3 +250,15 @@ export function isValidJsonSchema(schema: unknown): boolean {
 export function normalizeEmail(email: string): NormalizedEmail {
   return email.trim().toLowerCase() as NormalizedEmail;
 }
+
+// UUID validation regex matching all UUID versions (v1-v7)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-7][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Validates if a string is a valid UUID (versions 1-7).
+ * @param value - The string to validate
+ * @returns true if the value is a valid UUID, false otherwise
+ */
+export function isValidUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
+}

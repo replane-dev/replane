@@ -14,7 +14,7 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
-import {useParams, useRouter} from 'next/navigation';
+import {notFound, useParams, useRouter} from 'next/navigation';
 import {Fragment, useMemo} from 'react';
 import {useProject} from '../../../utils';
 
@@ -29,50 +29,14 @@ export default function ProposeConfigChangesPage() {
 
   const config = data.config;
 
+  // Trigger 404 page if config doesn't exist
+  if (!config) {
+    notFound();
+  }
+
   const defaultValue = useMemo(() => {
-    if (!config) return '';
     return JSON.stringify(config.config.value, null, 2);
   }, [config]);
-
-  if (!config) {
-    return (
-      <Fragment>
-        <header className="flex h-16 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href="/app/projects">Projects</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href={`/app/projects/${project.id}`}>{project.name}</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href={`/app/projects/${project.id}/configs`}>Configs</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Not found</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          Config &quot;{name}&quot; not found.
-        </div>
-      </Fragment>
-    );
-  }
 
   async function handleSubmit(data: {
     name: string;
