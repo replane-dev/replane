@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
+import type {AuditLogPayload} from '@/engine/core/audit-log-store';
 import {isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
@@ -136,7 +136,7 @@ export default function AuditLogMessagePage() {
           {/* Event Details */}
           <div className="rounded-lg border bg-card/50 p-6">
             <AuditEventDisplay
-              payload={message.payload as AuditMessagePayload}
+              payload={message.payload as AuditLogPayload}
               projectId={projectId}
             />
           </div>

@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
 import {diffMembers} from '../member-diff';
 import type {ProjectUserRole} from '../project-user-store';
@@ -48,8 +48,8 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
 
       await tx.projects.updateById({id: req.id, name, description, updatedAt: now});
 
-      await tx.auditMessages.create({
-        id: createAuditMessageId(),
+      await tx.auditLogs.create({
+        id: createAuditLogId(),
         createdAt: now,
         userId: user.id,
         projectId: existing.id,
@@ -102,8 +102,8 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
       );
 
       if (added.length + removed.length > 0) {
-        await tx.auditMessages.create({
-          id: createAuditMessageId(),
+        await tx.auditLogs.create({
+          id: createAuditLogId(),
           createdAt: now,
           userId: user.id,
           configId: null,

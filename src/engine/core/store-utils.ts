@@ -1,3 +1,4 @@
+// TODO: text should be a string, not a string | null
 export function deserializeJson<T>(text: string | null): T | null {
   if (text === null) {
     return null;

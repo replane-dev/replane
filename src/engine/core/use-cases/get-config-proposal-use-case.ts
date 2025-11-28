@@ -24,18 +24,14 @@ export interface ConfigProposalDetails {
   rejectionReason: ConfigProposalRejectionReason | null;
   baseConfigVersion: number;
   proposedDelete: boolean;
-  proposedValue: {newValue: unknown} | null;
   proposedDescription: string | null;
-  proposedSchema: {newSchema: unknown} | null;
   proposedMembers: {newMembers: Array<{email: string; role: string}>} | null;
   message: string | null;
   status: 'pending' | 'approved' | 'rejected';
   approverRole: 'maintainers' | 'maintainers_and_editors';
   approverEmails: string[];
   approverReason: string;
-  baseValue: unknown | null;
-  baseDescription: string | null;
-  baseSchema: unknown | null;
+  baseDescription: string;
   baseMaintainerEmails: string[];
   baseEditorEmails: string[];
 }
@@ -90,23 +86,21 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const maintainerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
     const editorEmails = await tx.permissionService.getConfigEditors(proposal.configId);
 
+    // Config proposals only handle description and members now (no schema)
     const maintainersOnly =
       proposal.proposedDelete ||
-      proposal.proposedSchema !== null ||
       proposal.proposedDescription !== null ||
       proposal.proposedMembers !== null;
 
     let approverReason = '';
     if (proposal.proposedDelete) {
       approverReason = 'Deletion requests require maintainer approval.';
-    } else if (proposal.proposedSchema !== null) {
-      approverReason = 'Schema changes require maintainer approval.';
     } else if (proposal.proposedDescription !== null) {
       approverReason = 'Description changes require maintainer approval.';
     } else if (proposal.proposedMembers !== null) {
       approverReason = 'Membership changes require maintainer approval.';
     } else {
-      approverReason = 'Value-only changes can be approved by editors or maintainers.';
+      approverReason = 'Config changes require approval.';
     }
 
     const approverRole: 'maintainers' | 'maintainers_and_editors' = maintainersOnly
@@ -114,30 +108,14 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
       : 'maintainers_and_editors';
     const approverEmails = maintainersOnly ? maintainerEmails : editorEmails;
 
-    // Get the base version of the config to show the diff against the original state
-    const baseVersion = await tx.configVersions.getByConfigIdAndVersion(
-      proposal.configId,
-      proposal.baseConfigVersion,
-    );
-    assert(
-      baseVersion,
-      `Base config version ${proposal.baseConfigVersion} not found for config ${proposal.configId}`,
-    );
+    // Use original description from proposal snapshot
+    const baseDescription = proposal.originalDescription;
 
-    // getByConfigIdAndVersion already extracts value and schema from JSON wrappers
-    const baseValue = baseVersion.value ?? null;
-    const baseDescription = baseVersion.description ?? null;
-    const baseSchema = baseVersion.schema ?? null;
-
-    // Get base members from the version snapshot, or fall back to current members if not versioned
-    const baseMaintainerEmails =
-      baseVersion.members.length > 0
-        ? baseVersion.members.filter(m => m.role === 'maintainer').map(m => m.normalizedEmail)
-        : maintainerEmails;
-    const baseEditorEmails =
-      baseVersion.members.length > 0
-        ? baseVersion.members.filter(m => m.role === 'editor').map(m => m.normalizedEmail)
-        : editorEmails;
+    // Get base members from the proposal's originalMembers
+    const baseMaintainerEmails = proposal.originalMembers
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.email);
+    const baseEditorEmails = proposal.originalMembers.filter(m => m.role === 'editor').map(m => m.email);
 
     // Fetch proposals that were rejected because of this approval
     let proposalsRejectedByThisApproval: Array<{id: string; proposerEmail: string | null}> = [];
@@ -167,18 +145,14 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         rejectionReason: proposal.rejectionReason,
         baseConfigVersion: proposal.baseConfigVersion,
         proposedDelete: proposal.proposedDelete,
-        proposedValue: proposal.proposedValue,
         proposedDescription: proposal.proposedDescription,
-        proposedSchema: proposal.proposedSchema,
         proposedMembers: proposal.proposedMembers ?? null,
         message: proposal.message,
         status,
         approverRole,
         approverEmails,
         approverReason,
-        baseValue,
         baseDescription,
-        baseSchema,
         baseMaintainerEmails,
         baseEditorEmails,
       },

@@ -1,34 +1,42 @@
 import assert from 'assert';
-import {
-  createAuditMessageId,
-  type AuditMessage,
-  type AuditMessageStore,
-} from './audit-message-store';
+import {createAuditLogId, type AuditLog, type AuditLogStore} from './audit-log-store';
 import type {ConfigProposalStore} from './config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
-import {createConfigVersionId, type ConfigVersionStore} from './config-version-store';
+import type {ConfigVariantProposalStore} from './config-variant-proposal-store';
+import type {ConfigVariant, ConfigVariantStore} from './config-variant-store';
+import type {ConfigVariantVersionStore} from './config-variant-version-store';
 import type {DateProvider} from './date-provider';
 import type {ConfigProposalRejectionReason} from './db';
 import {BadRequestError} from './errors';
 import {diffMembers} from './member-diff';
 import type {Override} from './override-condition-schemas';
 import type {PermissionService} from './permission-service';
+import type {ProjectEnvironmentStore} from './project-environment-store';
 import type {User} from './user-store';
 import {normalizeEmail, validateAgainstJsonSchema} from './utils';
+import {createUuidV7} from './uuid';
 import {validateOverrideReferences} from './validate-override-references';
 import type {ConfigMember} from './zod';
 
 export interface PatchConfigParams {
   configId: ConfigId;
-  value?: {newValue: any};
-  schema?: {newSchema: any};
-  overrides?: {newOverrides: Override[]};
   description?: {newDescription: string};
+  members?: {newMembers: ConfigMember[]};
   patchAuthor: User;
   reviewer: User;
   originalProposalId?: string;
-  members?: {newMembers: ConfigMember[]};
+  prevVersion: number;
+}
+
+export interface PatchConfigVariantParams {
+  configVariantId: string;
+  value?: {newValue: any};
+  schema?: {newSchema: any};
+  overrides?: {newOverrides: Override[]};
+  patchAuthor: User;
+  reviewer: User;
+  originalProposalId?: string;
   prevVersion: number;
 }
 
@@ -45,10 +53,13 @@ export class ConfigService {
     private readonly configs: ConfigStore,
     private readonly configProposals: ConfigProposalStore,
     private readonly configUsers: ConfigUserStore,
-    private readonly configVersions: ConfigVersionStore,
     private readonly permissionService: PermissionService,
-    private readonly auditMessages: AuditMessageStore,
+    private readonly auditLogs: AuditLogStore,
     private readonly dateProvider: DateProvider,
+    private readonly projectEnvironments: ProjectEnvironmentStore,
+    private readonly configVariants: ConfigVariantStore,
+    private readonly configVariantVersions: ConfigVariantVersionStore,
+    private readonly configVariantProposals: ConfigVariantProposalStore,
   ) {}
 
   /**
@@ -64,52 +75,33 @@ export class ConfigService {
   async patchConfig(params: PatchConfigParams): Promise<void> {
     const existingConfig = await this.configs.getById(params.configId);
     if (!existingConfig) {
-      throw new BadRequestError('Config with this name does not exist');
+      throw new BadRequestError('Config does not exist');
     }
 
     const {patchAuthor, reviewer} = params;
     assert(patchAuthor.email, 'Patch author must have an email');
     assert(reviewer.email, 'Reviewer must have an email');
 
-    if (params.members || params.schema || params.description || params.overrides) {
+    // Check version conflict
+    if (existingConfig.version !== params.prevVersion) {
+      throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
+    }
+
+    // Config-level patches (description, members) always require manage permission
+    if (params.members || params.description) {
       await this.permissionService.ensureCanManageConfig(
         existingConfig.id,
         normalizeEmail(reviewer.email),
       );
-    } else {
-      await this.permissionService.ensureCanEditConfig(
-        existingConfig.id,
-        normalizeEmail(reviewer.email),
-      );
     }
 
-    await this.rejectProposals({
+    // Reject all pending CONFIG proposals (not variant proposals)
+    await this.rejectConfigProposalsInternal({
       configId: existingConfig.id,
       originalProposalId: params.originalProposalId,
       existingConfig,
       reviewer,
-      prevVersion: params.prevVersion,
       rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
-    });
-
-    const nextValue = params.value ? params.value.newValue : existingConfig.value;
-    const nextSchema = params.schema ? params.schema.newSchema : existingConfig.schema;
-    const nextOverrides = params.overrides
-      ? params.overrides.newOverrides
-      : existingConfig.overrides;
-    if (nextSchema !== null) {
-      const result = validateAgainstJsonSchema(nextValue, nextSchema);
-      if (!result.ok) {
-        throw new BadRequestError(
-          `Config value does not match schema: ${result.errors.join('; ')}`,
-        );
-      }
-    }
-
-    // Validate override references use the same project ID
-    validateOverrideReferences({
-      overrides: nextOverrides,
-      configProjectId: existingConfig.projectId,
     });
 
     const nextDescription = params.description
@@ -119,29 +111,20 @@ export class ConfigService {
 
     const beforeConfig = existingConfig;
 
-    await this.configs.updateById({
-      id: existingConfig.id,
-      value: nextValue,
-      schema: nextSchema,
-      overrides: nextOverrides,
-      description: nextDescription,
-      updatedAt: this.dateProvider.now(),
-      version: nextVersion,
-    });
-
-    // Capture members before any updates for versioning
-    const configUsersBefore = await this.configUsers.getByConfigId(existingConfig.id);
-    const ownerEmailsBefore = configUsersBefore
-      .filter(u => u.role === 'maintainer')
-      .map(u => u.user_email_normalized);
-    const editorEmailsBefore = configUsersBefore
-      .filter(u => u.role === 'editor')
-      .map(u => u.user_email_normalized);
+    // Update description if changed
+    if (params.description) {
+      await this.configs.updateDescription({
+        id: existingConfig.id,
+        description: nextDescription,
+        version: nextVersion,
+      });
+    }
 
     let membersDiff: {
       added: Array<{email: string; role: string}>;
       removed: Array<{email: string; role: string}>;
     } | null = null;
+
     if (params.members) {
       // Validate no user appears with multiple roles
       this.ensureUniqueMembers(params.members.newMembers);
@@ -171,84 +154,45 @@ export class ConfigService {
       };
     }
 
-    // Get final members for the version
-    const configUsersAfter = await this.configUsers.getByConfigId(existingConfig.id);
-    const ownerEmailsAfter = configUsersAfter
-      .filter(u => u.role === 'maintainer')
-      .map(u => u.user_email_normalized);
-    const editorEmailsAfter = configUsersAfter
-      .filter(u => u.role === 'editor')
-      .map(u => u.user_email_normalized);
-
-    await this.configVersions.create({
-      configId: existingConfig.id,
-      createdAt: this.dateProvider.now(),
-      description: nextDescription,
-      id: createConfigVersionId(),
-      name: existingConfig.name,
-      schema: nextSchema,
-      overrides: nextOverrides,
-      value: nextValue,
-      version: nextVersion,
-      members: [
-        ...ownerEmailsAfter.map(email => ({
-          normalizedEmail: normalizeEmail(email),
-          role: 'maintainer' as const,
-        })),
-        ...editorEmailsAfter.map(email => ({
-          normalizedEmail: normalizeEmail(email),
-          role: 'editor' as const,
-        })),
-      ],
-      authorId: patchAuthor.id ?? null,
-      proposalId: params.originalProposalId ?? null,
-    });
-
     const afterConfig = await this.configs.getById(existingConfig.id);
-
     assert(afterConfig, 'Config must exist after update');
 
-    const baseMessage: AuditMessage = {
-      id: createAuditMessageId(),
-      createdAt: this.dateProvider.now(),
-      userId: patchAuthor.id,
-      projectId: afterConfig.projectId,
-      configId: afterConfig.id,
-      payload: {
-        type: 'config_updated',
-        before: {
-          id: beforeConfig.id,
-          projectId: beforeConfig.projectId,
-          name: beforeConfig.name,
-          value: beforeConfig.value,
-          schema: beforeConfig.schema,
-          overrides: beforeConfig.overrides,
-          description: beforeConfig.description,
-          creatorId: beforeConfig.creatorId,
-          createdAt: beforeConfig.createdAt,
-          updatedAt: beforeConfig.updatedAt,
-          version: beforeConfig.version,
+    // Only create audit logs if something actually changed
+    if (params.description) {
+      const baseLog: AuditLog = {
+        id: createAuditLogId(),
+        createdAt: this.dateProvider.now(),
+        userId: patchAuthor.id,
+        projectId: afterConfig.projectId,
+        configId: afterConfig.id,
+        payload: {
+          type: 'config_updated',
+          before: {
+            id: beforeConfig.id,
+            projectId: beforeConfig.projectId,
+            name: beforeConfig.name,
+            description: beforeConfig.description,
+            creatorId: beforeConfig.creatorId,
+            createdAt: beforeConfig.createdAt,
+            version: beforeConfig.version,
+          },
+          after: {
+            id: afterConfig.id,
+            projectId: afterConfig.projectId,
+            name: afterConfig.name,
+            description: afterConfig.description,
+            creatorId: afterConfig.creatorId,
+            createdAt: afterConfig.createdAt,
+            version: afterConfig.version,
+          },
         },
-        after: {
-          id: afterConfig.id,
-          projectId: afterConfig.projectId,
-          name: afterConfig.name,
-          value: afterConfig.value,
-          schema: afterConfig.schema,
-          overrides: afterConfig.overrides,
-          description: afterConfig.description,
-          creatorId: afterConfig.creatorId,
-          createdAt: afterConfig.createdAt,
-          updatedAt: afterConfig.updatedAt,
-          version: afterConfig.version,
-        },
-      },
-    };
-    await this.auditMessages.create(baseMessage);
+      };
+      await this.auditLogs.create(baseLog);
+    }
 
     if (membersDiff && membersDiff.added.length + membersDiff.removed.length > 0) {
-      await this.auditMessages.create({
-        id: createAuditMessageId(),
+      await this.auditLogs.create({
+        id: createAuditLogId(),
         projectId: afterConfig.projectId,
         createdAt: this.dateProvider.now(),
         userId: patchAuthor.id,
@@ -259,13 +203,9 @@ export class ConfigService {
             id: afterConfig.id,
             projectId: afterConfig.projectId,
             name: afterConfig.name,
-            value: afterConfig.value,
-            schema: afterConfig.schema,
-            overrides: afterConfig.overrides,
             description: afterConfig.description,
             creatorId: afterConfig.creatorId,
             createdAt: afterConfig.createdAt,
-            updatedAt: afterConfig.updatedAt,
             version: afterConfig.version,
           },
           added: membersDiff.added,
@@ -275,10 +215,140 @@ export class ConfigService {
     }
   }
 
+  async patchConfigVariant(params: PatchConfigVariantParams): Promise<void> {
+    const existingVariant = await this.configVariants.getById(params.configVariantId);
+    if (!existingVariant) {
+      throw new BadRequestError('Config variant does not exist');
+    }
+
+    const config = await this.configs.getById(existingVariant.configId);
+    if (!config) {
+      throw new BadRequestError('Config does not exist');
+    }
+
+    const {patchAuthor, reviewer} = params;
+    assert(patchAuthor.email, 'Patch author must have an email');
+    assert(reviewer.email, 'Reviewer must have an email');
+
+    // Check version conflict
+    if (existingVariant.version !== params.prevVersion) {
+      throw new BadRequestError(
+        `Config variant was edited by another user. Please, refresh the page.`,
+      );
+    }
+
+    // Schema changes require maintainer permission, other changes require at least edit permission
+    if (params.schema) {
+      await this.permissionService.ensureCanManageConfig(config.id, normalizeEmail(reviewer.email));
+    } else {
+      await this.permissionService.ensureCanEditConfig(config.id, normalizeEmail(reviewer.email));
+    }
+
+    // Reject all pending VARIANT proposals for this variant
+    await this.rejectVariantProposalsInternal({
+      configVariantId: existingVariant.id,
+      originalProposalId: params.originalProposalId ?? null,
+      existingVariant,
+      reviewer,
+      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
+    });
+
+    const nextValue = params.value ? params.value.newValue : existingVariant.value;
+    const nextSchema = params.schema ? params.schema.newSchema : existingVariant.schema;
+    const nextOverrides = params.overrides
+      ? params.overrides.newOverrides
+      : existingVariant.overrides;
+
+    // Validate schema if present
+    if (nextSchema !== null) {
+      const result = validateAgainstJsonSchema(nextValue, nextSchema);
+      if (!result.ok) {
+        throw new BadRequestError(
+          `Config value does not match schema: ${result.errors.join('; ')}`,
+        );
+      }
+    }
+
+    // Validate override references use the same project ID
+    validateOverrideReferences({
+      overrides: nextOverrides,
+      configProjectId: config.projectId,
+    });
+
+    const nextVersion = existingVariant.version + 1;
+
+    // Update the variant
+    await this.configVariants.update({
+      id: existingVariant.id,
+      value: nextValue,
+      schema: nextSchema,
+      overrides: nextOverrides,
+      version: nextVersion,
+      updatedAt: this.dateProvider.now(),
+    });
+
+    // Create variant version history
+    await this.configVariantVersions.create({
+      id: createUuidV7(),
+      configVariantId: existingVariant.id,
+      version: nextVersion,
+      name: config.name,
+      description: config.description,
+      value: nextValue,
+      schema: nextSchema,
+      overrides: nextOverrides,
+      authorId: patchAuthor.id ?? null,
+      proposalId: params.originalProposalId ?? null,
+      createdAt: this.dateProvider.now(),
+    });
+
+    // Get environment information for audit log
+    const environment = await this.projectEnvironments.getById(existingVariant.environmentId);
+    assert(environment, `Environment ${existingVariant.environmentId} not found`);
+
+    // Create audit log for variant update
+    await this.auditLogs.create({
+      id: createAuditLogId(),
+      createdAt: this.dateProvider.now(),
+      userId: patchAuthor.id,
+      configId: config.id,
+      projectId: config.projectId,
+      payload: {
+        type: 'config_variant_updated',
+        before: {
+          id: existingVariant.id,
+          configId: existingVariant.configId,
+          configName: config.name,
+          environmentId: existingVariant.environmentId,
+          environmentName: environment.name,
+          value: existingVariant.value,
+          schema: existingVariant.schema,
+          overrides: existingVariant.overrides,
+          version: existingVariant.version,
+        },
+        after: {
+          id: existingVariant.id,
+          configId: existingVariant.configId,
+          configName: config.name,
+          environmentId: existingVariant.environmentId,
+          environmentName: environment.name,
+          value: nextValue,
+          schema: nextSchema,
+          overrides: nextOverrides,
+          version: nextVersion,
+        },
+      },
+    });
+  }
+
   async deleteConfig(params: DeleteConfigParams): Promise<void> {
     const existingConfig = await this.configs.getById(params.configId);
     if (!existingConfig) {
-      throw new BadRequestError('Config with this name does not exist');
+      throw new BadRequestError('Config does not exist');
+    }
+
+    if (existingConfig.version !== params.prevVersion) {
+      throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
     }
 
     // Manage permission is required to delete a config
@@ -288,19 +358,38 @@ export class ConfigService {
       normalizeEmail(params.reviewer.email),
     );
 
-    await this.rejectProposals({
+    // Reject all pending CONFIG proposals
+    await this.rejectConfigProposalsInternal({
       configId: existingConfig.id,
       originalProposalId: params.originalProposalId,
       existingConfig,
       reviewer: params.reviewer,
-      prevVersion: params.prevVersion,
       rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_deleted',
     });
 
+    // Reject all pending VARIANT proposals for all variants of this config
+    const variants = await this.configVariants.getByConfigId(existingConfig.id);
+    for (const variant of variants) {
+      await this.rejectVariantProposalsInternal({
+        configVariantId: variant.id,
+        originalProposalId: null,
+        existingVariant: variant,
+        reviewer: params.reviewer,
+        rejectionReason: 'config_deleted',
+      });
+    }
+
+    // Delete each variant (triggers notifications)
+    for (const variant of variants) {
+      await this.configVariants.delete(variant.id);
+    }
+
+    // Delete the config metadata
     await this.configs.deleteById(existingConfig.id);
 
-    await this.auditMessages.create({
-      id: createAuditMessageId(),
+    // One audit log for config deletion (not per environment)
+    await this.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: this.dateProvider.now(),
       userId: params.deleteAuthor.id ?? null,
       configId: null,
@@ -311,13 +400,9 @@ export class ConfigService {
           id: existingConfig.id,
           projectId: existingConfig.projectId,
           name: existingConfig.name,
-          value: existingConfig.value,
-          schema: existingConfig.schema,
-          overrides: existingConfig.overrides,
           description: existingConfig.description,
           creatorId: existingConfig.creatorId,
           createdAt: existingConfig.createdAt,
-          updatedAt: existingConfig.updatedAt,
           version: existingConfig.version,
         },
       },
@@ -334,67 +419,62 @@ export class ConfigService {
       throw new BadRequestError('Config not found');
     }
 
-    await this.rejectAllPendingProposalsInternal({
+    await this.rejectConfigProposalsInternal({
       configId: params.configId,
       reviewer: params.reviewer,
       existingConfig: config,
-      rejectedInFavorOfProposalId: null,
+      originalProposalId: undefined,
       rejectionReason: 'rejected_explicitly',
     });
   }
 
-  private async rejectProposals(params: {
+  /**
+   * Rejects all pending variant proposals for a config variant.
+   * This is a public method that can be called directly from use cases.
+   */
+  async rejectAllPendingVariantProposals(params: {
+    configVariantId: string;
+    reviewer: User;
+  }): Promise<void> {
+    const variant = await this.configVariants.getById(params.configVariantId);
+    if (!variant) {
+      throw new BadRequestError('Config variant not found');
+    }
+
+    await this.rejectVariantProposalsInternal({
+      configVariantId: params.configVariantId,
+      originalProposalId: null,
+      existingVariant: variant,
+      reviewer: params.reviewer,
+      rejectionReason: 'rejected_explicitly',
+    });
+  }
+
+  private async rejectConfigProposalsInternal(params: {
     configId: string;
     originalProposalId?: string;
     existingConfig: Config;
     reviewer: User;
-    prevVersion: number;
-    rejectionReason: Exclude<ConfigProposalRejectionReason, 'rejected_explicitly'>;
+    rejectionReason: ConfigProposalRejectionReason;
   }): Promise<void> {
     const {reviewer, existingConfig} = params;
-
-    if (existingConfig.version !== params.prevVersion) {
-      throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
-    }
 
     if (params.originalProposalId) {
       const proposal = await this.configProposals.getById(params.originalProposalId);
 
       assert(proposal, 'Proposal to reject in favor of not found');
       assert(proposal.configId === params.configId, 'Config ID must match the proposal config ID');
-      assert(
-        proposal.baseConfigVersion === existingConfig.version,
-        'Base config version must match',
-      );
       assert(proposal.reviewerId === reviewer.id, 'Reviewer must match the proposal reviewer');
       assert(proposal.rejectedAt === null, 'Proposal to reject in favor of is already rejected');
       assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
     }
 
-    await this.rejectAllPendingProposalsInternal({
-      configId: params.configId,
-      reviewer: params.reviewer,
-      existingConfig: params.existingConfig,
-      rejectedInFavorOfProposalId: params.originalProposalId ?? null,
-      rejectionReason: params.rejectionReason,
-    });
-  }
-
-  private async rejectAllPendingProposalsInternal(params: {
-    configId: string;
-    reviewer: User;
-    existingConfig: Config;
-    rejectedInFavorOfProposalId: string | null;
-    rejectionReason: ConfigProposalRejectionReason;
-  }): Promise<void> {
-    const {reviewer, existingConfig} = params;
-
-    // Get all pending proposals for this config
+    // Get all pending config proposals for this config
     const pendingProposals = await this.configProposals.getPendingProposals({
       configId: params.configId,
     });
 
-    // Reject all pending proposals
+    // Reject all pending config proposals
     for (const proposalInfo of pendingProposals) {
       assert(
         !proposalInfo.approvedAt && !proposalInfo.rejectedAt,
@@ -409,13 +489,13 @@ export class ConfigService {
         id: proposal.id,
         rejectedAt: this.dateProvider.now(),
         reviewerId: reviewer.id,
-        rejectedInFavorOfProposalId: params.rejectedInFavorOfProposalId,
+        rejectedInFavorOfProposalId: params.originalProposalId ?? null,
         rejectionReason: params.rejectionReason,
       });
 
-      // Create audit message for the rejection
-      await this.auditMessages.create({
-        id: createAuditMessageId(),
+      // Create audit log for the rejection
+      await this.auditLogs.create({
+        id: createAuditLogId(),
         createdAt: this.dateProvider.now(),
         userId: reviewer.id,
         projectId: existingConfig.projectId,
@@ -424,15 +504,63 @@ export class ConfigService {
           type: 'config_proposal_rejected',
           proposalId: proposal.id,
           configId: params.configId,
-          rejectedInFavorOfProposalId: params.rejectedInFavorOfProposalId ?? undefined,
+          rejectedInFavorOfProposalId: params.originalProposalId ?? undefined,
           proposedDelete: proposal.proposedDelete ?? undefined,
-          proposedValue: proposal.proposedValue ?? undefined,
           proposedDescription: proposal.proposedDescription ?? undefined,
-          proposedSchema: proposal.proposedSchema ?? undefined,
-          proposedOverrides: proposal.proposedOverrides ?? undefined,
           proposedMembers: proposal.proposedMembers ?? undefined,
         },
       });
+    }
+  }
+
+  private async rejectVariantProposalsInternal(params: {
+    configVariantId: string;
+    originalProposalId: string | null;
+    existingVariant: ConfigVariant;
+    reviewer: User;
+    rejectionReason: ConfigProposalRejectionReason;
+  }): Promise<void> {
+    const {reviewer, existingVariant} = params;
+
+    if (params.originalProposalId) {
+      const proposal = await this.configVariantProposals.getById(params.originalProposalId);
+
+      assert(proposal, 'Proposal to reject in favor of not found');
+      assert(
+        proposal.configVariantId === params.configVariantId,
+        'Config variant ID must match the proposal variant ID',
+      );
+      assert(
+        proposal.baseVariantVersion === existingVariant.version,
+        'Base variant version must match',
+      );
+      assert(proposal.reviewerId === reviewer.id, 'Reviewer must match the proposal reviewer');
+      assert(proposal.rejectedAt === null, 'Proposal to reject in favor of is already rejected');
+      assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
+    }
+
+    // Get all pending variant proposals for this variant
+    const pendingProposals = await this.configVariantProposals.getPendingByConfigVariantId(
+      params.configVariantId,
+    );
+
+    // Reject all pending variant proposals
+    for (const proposal of pendingProposals) {
+      assert(
+        !proposal.approvedAt && !proposal.rejectedAt,
+        'Proposal should not be approved or rejected',
+      );
+
+      await this.configVariantProposals.reject({
+        id: proposal.id,
+        rejectedAt: this.dateProvider.now(),
+        reviewerId: reviewer.id,
+        reason: params.rejectionReason,
+        rejectedInFavorOfProposalId: params.originalProposalId ?? undefined,
+      });
+
+      // TODO: Add audit log for variant proposal rejections (needs new audit log type)
+      // Variant proposals are per-environment and need separate audit log types
     }
   }
 }

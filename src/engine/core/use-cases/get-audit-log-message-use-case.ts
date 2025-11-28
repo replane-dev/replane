@@ -1,9 +1,9 @@
-import type {AuditMessageId} from '../audit-message-store';
+import type {AuditLogId} from '../audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetAuditLogMessageRequest {
-  id: AuditMessageId;
+  id: AuditLogId;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -24,7 +24,7 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
   GetAuditLogMessageResponse
 > {
   return async (_ctx, tx, req) => {
-    const base = await tx.auditMessages.getById(req.id);
+    const base = await tx.auditLogs.getById(req.id);
     if (!base) return {message: undefined};
 
     const user = base.userId ? await tx.users.getById(base.userId) : undefined;

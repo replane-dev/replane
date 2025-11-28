@@ -13,6 +13,8 @@ export interface GetApiKeyListResponse {
     name: string;
     description: string;
     creatorEmail: string | null;
+    environmentId: string;
+    environmentName: string;
   }>;
 }
 
@@ -21,7 +23,7 @@ export function createGetApiKeyListUseCase(): TransactionalUseCase<
   GetApiKeyListResponse
 > {
   return async (_ctx, tx, _req) => {
-    const tokens = await tx.apiTokens.list({projectId: _req.projectId});
+    const tokens = await tx.sdkKeys.list({projectId: _req.projectId});
     return {
       apiKeys: tokens.map(t => ({
         id: t.id,
@@ -29,6 +31,8 @@ export function createGetApiKeyListUseCase(): TransactionalUseCase<
         name: t.name,
         description: t.description,
         creatorEmail: t.creatorEmail,
+        environmentId: t.environmentId,
+        environmentName: t.environmentName,
       })),
     };
   };

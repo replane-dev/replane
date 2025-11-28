@@ -14,6 +14,7 @@ describe('getApiKey', () => {
       name: 'FetchMe',
       description: 'desc',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
@@ -27,6 +28,8 @@ describe('getApiKey', () => {
       id: created.apiKey.id,
       name: 'FetchMe',
       description: 'desc',
+      environmentId: fixture.productionEnvironmentId,
+      environmentName: 'Production',
     });
   });
 
@@ -45,6 +48,7 @@ describe('getApiKey', () => {
       name: 'DeleteThenFetch',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,

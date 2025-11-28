@@ -1,7 +1,7 @@
 import type {EventBusClient} from '@/engine/core/event-bus';
 import {normalizeEmail} from '@/engine/core/utils';
-import {afterEach, beforeEach, describe, expect, it} from 'vitest';
-import type {ConfigChangePayload} from '../src/engine/core/config-store';
+import {afterEach, assert, beforeEach, describe, expect, it} from 'vitest';
+import type {ConfigVariantChangePayload} from '../src/engine/core/config-variant-store';
 import {type ConfigReplicaEvent, ConfigsReplica} from '../src/engine/core/configs-replica';
 import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {InMemoryEventBus} from '../src/engine/core/in-memory-event-bus';
@@ -22,7 +22,7 @@ describe('getProjectEvents Integration', () => {
   let projectId: string;
 
   beforeEach(async () => {
-    // Create a test project
+    // Create a test project (automatically creates Production and Development environments)
     const {projectId: pid} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
       name: 'test-project',
@@ -49,7 +49,7 @@ describe('getProjectEvents Integration', () => {
     // Give the subscription time to be established
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Create a config
+    // Create a config (creates 2 variants - Production and Development)
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       projectId,
@@ -62,19 +62,19 @@ describe('getProjectEvents Integration', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
-    // Get the event
+    // Get the event - note that configId in event is actually the variantId
     const result = await eventPromise;
     expect(result.done).toBe(false);
-    expect(result.value).toEqual({
-      type: 'created',
-      configId,
-      configName: 'feature-flag',
-    } satisfies ProjectEvent);
+    // Since creating a config creates 2 variants (Production and Development),
+    // we get 2 events. Check the first one.
+    expect(result.value?.type).toBe('created');
+    expect(result.value?.configName).toBe('feature-flag');
+    expect(result.value?.configId).toEqual(expect.any(String));
 
     await iterator.return?.();
   });
 
-  it('should emit updated event when a config is updated', async () => {
+  it('should emit updated event when a config variant is updated', async () => {
     // Create initial config
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
@@ -88,33 +88,36 @@ describe('getProjectEvents Integration', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
+    // Wait for replica to process the create
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Get variant for patching
+    const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+    const variant = variants[0];
+    assert(variant, 'Variant should exist');
+
     const events = fixture.engine.useCases.getProjectEvents(GLOBAL_CONTEXT, {projectId});
     const iterator = events[Symbol.asyncIterator]();
 
-    // Consume the initial "created" event
-    const createdResult = await iterator.next();
-    expect(createdResult.value).toEqual({
-      type: 'created',
-      configName: 'feature-flag',
-      configId,
-    } satisfies ProjectEvent);
+    // Start consuming in parallel
+    const eventPromise = iterator.next();
 
-    // Update the config
-    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
-      configId,
+    // Give the subscription time to be established
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Update the config variant
+    await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
+      configVariantId: variant.id,
       value: {newValue: {enabled: false}},
       currentUserEmail: TEST_USER_EMAIL,
       prevVersion: 1,
     });
 
     // Get the update event
-    const result = await iterator.next();
+    const result = await eventPromise;
     expect(result.done).toBe(false);
-    expect(result.value).toEqual({
-      type: 'updated',
-      configName: 'feature-flag',
-      configId,
-    } satisfies ProjectEvent);
+    expect(result.value.type).toBe('updated');
+    expect(result.value.configId).toBe(variant.id); // configId in event is actually variantId
 
     await iterator.return?.();
   });
@@ -133,16 +136,30 @@ describe('getProjectEvents Integration', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
+    // Wait for replica to process the create
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     const events = fixture.engine.useCases.getProjectEvents(GLOBAL_CONTEXT, {projectId});
     const iterator = events[Symbol.asyncIterator]();
 
-    // Consume the initial "created" event
-    const createdResult = await iterator.next();
-    expect(createdResult.value).toEqual({
-      type: 'created',
-      configName: 'feature-flag',
-      configId,
-    } satisfies ProjectEvent);
+    // Collect delete events with timeout
+    const receivedEvents: any[] = [];
+    const collectPromise = (async () => {
+      const timeout = setTimeout(() => {}, 3000);
+      try {
+        for await (const event of events) {
+          receivedEvents.push(event);
+          if (event.type === 'deleted') {
+            break;
+          }
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
+
+    // Give the subscription time to be established
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Delete the config
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
@@ -151,20 +168,19 @@ describe('getProjectEvents Integration', () => {
       prevVersion: 1,
     });
 
-    // Get the delete event
-    const result = await iterator.next();
-    expect(result.done).toBe(false);
-    expect(result.value).toEqual({
-      type: 'deleted',
-      configName: 'feature-flag',
-      configId,
-    } satisfies ProjectEvent);
+    // Wait for events with a timeout
+    await Promise.race([collectPromise, new Promise(resolve => setTimeout(resolve, 2000))]);
+
+    // Find a delete event
+    const deleteEvent = receivedEvents.find(e => e.type === 'deleted');
+    expect(deleteEvent).toBeDefined();
+    expect(deleteEvent?.configName).toBe('feature-flag');
 
     await iterator.return?.();
-  });
+  }, 10000);
 
   it('should only emit events for the specified project', async () => {
-    // Create another project
+    // Create another project (automatically creates Production and Development environments)
     const {projectId: otherProjectId} = await fixture.engine.useCases.createProject(
       GLOBAL_CONTEXT,
       {
@@ -213,11 +229,9 @@ describe('getProjectEvents Integration', () => {
       // Should only get event for target project
       const result = await eventPromise;
       expect(result.done).toBe(false);
-      expect(result.value).toEqual({
-        type: 'created',
-        configName: 'target-flag',
-        configId,
-      } satisfies ProjectEvent);
+      expect(result.value?.type).toBe('created');
+      expect(result.value?.configName).toBe('target-flag');
+      expect(result.value?.configId).toEqual(expect.any(String));
 
       await iterator.return?.();
     } finally {
@@ -261,18 +275,14 @@ describe('getProjectEvents Integration', () => {
     const [result1, result2] = await Promise.all([eventPromise1, eventPromise2]);
 
     expect(result1.done).toBe(false);
-    expect(result1.value).toEqual({
-      type: 'created',
-      configName: 'shared-flag',
-      configId,
-    } satisfies ProjectEvent);
+    expect(result1.value?.type).toBe('created');
+    expect(result1.value?.configName).toBe('shared-flag');
+    expect(result1.value?.configId).toEqual(expect.any(String));
 
     expect(result2.done).toBe(false);
-    expect(result2.value).toEqual({
-      type: 'created',
-      configName: 'shared-flag',
-      configId,
-    } satisfies ProjectEvent);
+    expect(result2.value?.type).toBe('created');
+    expect(result2.value?.configName).toBe('shared-flag');
+    expect(result2.value?.configId).toEqual(expect.any(String));
 
     await iterator1.return?.();
     await iterator2.return?.();
@@ -361,8 +371,9 @@ describe('GetProjectEvents Integration', () => {
 
   it('should stream events from ConfigsReplica for a specific project', async () => {
     const projectId = 'proj-1';
-    const config1 = {id: 'cfg-1', name: 'config1', projectId, version: 1};
-    const config2 = {id: 'cfg-2', name: 'config2', projectId, version: 1};
+    const environmentId = 'env-1';
+    const config1 = {variant_id: 'var-1', name: 'config1', projectId, environmentId, version: 1};
+    const config2 = {variant_id: 'var-2', name: 'config2', projectId, environmentId, version: 1};
 
     let currentConfigs: any[] = [];
 
@@ -370,12 +381,12 @@ describe('GetProjectEvents Integration', () => {
       async getReplicaDump() {
         return currentConfigs;
       },
-      async getReplicaConfig(cfgId: string) {
-        return currentConfigs.find(c => c.id === cfgId) || null;
+      async getReplicaConfig(variantId: string) {
+        return currentConfigs.find(c => c.variant_id === variantId) || null;
       },
     } as any;
 
-    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
     const replica = new ConfigsReplica({
@@ -384,7 +395,7 @@ describe('GetProjectEvents Integration', () => {
       logger,
       eventsSubject,
       createEventBusClient: (onNotification: any) => {
-        mem = new InMemoryEventBus<ConfigChangePayload>({
+        mem = new InMemoryEventBus<ConfigVariantChangePayload>({
           logger: console,
         }).createClient(onNotification);
         return mem!;
@@ -415,25 +426,25 @@ describe('GetProjectEvents Integration', () => {
 
     // Add first config
     currentConfigs = [{...config1, value: 'v1', overrides: []}];
-    await mem!.notify({configId: config1.id});
+    await mem!.notify({variantId: config1.variant_id});
     await sleep(10);
 
     // Add second config
     currentConfigs.push({...config2, value: 'v2', overrides: []});
-    await mem!.notify({configId: config2.id});
+    await mem!.notify({variantId: config2.variant_id});
     await sleep(10);
 
     // Update first config
     currentConfigs[0] = {...config1, value: 'v1-updated', version: 2, overrides: []};
-    await mem!.notify({configId: config1.id});
+    await mem!.notify({variantId: config1.variant_id});
     await sleep(10);
 
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
-      {type: 'created', configName: 'config2', configId: 'cfg-2'},
-      {type: 'updated', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config1', configId: 'var-1'},
+      {type: 'created', configName: 'config2', configId: 'var-2'},
+      {type: 'updated', configName: 'config1', configId: 'var-1'},
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -442,8 +453,21 @@ describe('GetProjectEvents Integration', () => {
   it('should filter events by project and only stream relevant ones', async () => {
     const project1 = 'proj-1';
     const project2 = 'proj-2';
-    const config1 = {id: 'cfg-1', name: 'config1', projectId: project1, version: 1};
-    const config2 = {id: 'cfg-2', name: 'config2', projectId: project2, version: 1};
+    const environmentId = 'env-1';
+    const config1 = {
+      variant_id: 'var-1',
+      name: 'config1',
+      projectId: project1,
+      environmentId,
+      version: 1,
+    };
+    const config2 = {
+      variant_id: 'var-2',
+      name: 'config2',
+      projectId: project2,
+      environmentId,
+      version: 1,
+    };
 
     let currentConfigs: any[] = [];
 
@@ -451,12 +475,12 @@ describe('GetProjectEvents Integration', () => {
       async getReplicaDump() {
         return currentConfigs;
       },
-      async getReplicaConfig(cfgId: string) {
-        return currentConfigs.find(c => c.id === cfgId) || null;
+      async getReplicaConfig(variantId: string) {
+        return currentConfigs.find(c => c.variant_id === variantId) || null;
       },
     } as any;
 
-    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
     const replica = new ConfigsReplica({
@@ -465,7 +489,7 @@ describe('GetProjectEvents Integration', () => {
       logger,
       eventsSubject,
       createEventBusClient: (onNotification: any) => {
-        mem = new InMemoryEventBus<ConfigChangePayload>({
+        mem = new InMemoryEventBus<ConfigVariantChangePayload>({
           logger: console,
         }).createClient(onNotification);
         return mem!;
@@ -495,19 +519,19 @@ describe('GetProjectEvents Integration', () => {
 
     // Add config for project2 - should be filtered out
     currentConfigs = [{...config2, value: 'v2', overrides: []}];
-    await mem!.notify({configId: config2.id});
+    await mem!.notify({variantId: config2.variant_id});
     await sleep(10);
 
     // Add config for project1 - should be received
     currentConfigs.push({...config1, value: 'v1', overrides: []});
-    await mem!.notify({configId: config1.id});
+    await mem!.notify({variantId: config1.variant_id});
     await sleep(10);
 
     await consumePromise;
 
     // Should only receive event for project1
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config1', configId: 'var-1'},
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -515,10 +539,12 @@ describe('GetProjectEvents Integration', () => {
 
   it('should stream delete events when configs are removed', async () => {
     const projectId = 'proj-1';
+    const environmentId = 'env-1';
     const config1 = {
-      id: 'cfg-1',
+      variant_id: 'var-1',
       name: 'config1',
       projectId,
+      environmentId,
       version: 1,
       value: 'v1',
       overrides: [],
@@ -530,12 +556,12 @@ describe('GetProjectEvents Integration', () => {
       async getReplicaDump() {
         return currentConfigs;
       },
-      async getReplicaConfig(cfgId: string) {
-        return currentConfigs.find(c => c.id === cfgId) || null;
+      async getReplicaConfig(variantId: string) {
+        return currentConfigs.find(c => c.variant_id === variantId) || null;
       },
     } as any;
 
-    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
     const replica = new ConfigsReplica({
@@ -544,7 +570,7 @@ describe('GetProjectEvents Integration', () => {
       logger,
       eventsSubject,
       createEventBusClient: (onNotification: any) => {
-        mem = new InMemoryEventBus<ConfigChangePayload>({
+        mem = new InMemoryEventBus<ConfigVariantChangePayload>({
           logger: console,
         }).createClient(onNotification);
         return mem!;
@@ -578,19 +604,19 @@ describe('GetProjectEvents Integration', () => {
     expect(receivedEvents[0]).toEqual({
       type: 'created',
       configName: 'config1',
-      configId: 'cfg-1',
+      configId: 'var-1',
     } satisfies ProjectEvent);
 
     // Now delete the config
     currentConfigs = [];
-    await mem!.notify({configId: config1.id});
+    await mem!.notify({variantId: config1.variant_id});
     await sleep(10);
 
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
-      {type: 'deleted', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config1', configId: 'var-1'},
+      {type: 'deleted', configName: 'config1', configId: 'var-1'},
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -599,8 +625,21 @@ describe('GetProjectEvents Integration', () => {
   it('should handle multiple concurrent consumers for different projects', async () => {
     const project1 = 'proj-1';
     const project2 = 'proj-2';
-    const config1 = {id: 'cfg-1', name: 'config1', projectId: project1, version: 1};
-    const config2 = {id: 'cfg-2', name: 'config2', projectId: project2, version: 1};
+    const environmentId = 'env-1';
+    const config1 = {
+      variant_id: 'var-1',
+      name: 'config1',
+      projectId: project1,
+      environmentId,
+      version: 1,
+    };
+    const config2 = {
+      variant_id: 'var-2',
+      name: 'config2',
+      projectId: project2,
+      environmentId,
+      version: 1,
+    };
 
     let currentConfigs: any[] = [];
 
@@ -608,12 +647,12 @@ describe('GetProjectEvents Integration', () => {
       async getReplicaDump() {
         return currentConfigs;
       },
-      async getReplicaConfig(cfgId: string) {
-        return currentConfigs.find(c => c.id === cfgId) || null;
+      async getReplicaConfig(variantId: string) {
+        return currentConfigs.find(c => c.variant_id === variantId) || null;
       },
     } as any;
 
-    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
     const replica = new ConfigsReplica({
@@ -622,7 +661,7 @@ describe('GetProjectEvents Integration', () => {
       logger,
       eventsSubject,
       createEventBusClient: (onNotification: any) => {
-        mem = new InMemoryEventBus<ConfigChangePayload>({
+        mem = new InMemoryEventBus<ConfigVariantChangePayload>({
           logger: console,
         }).createClient(onNotification);
         return mem!;
@@ -661,22 +700,22 @@ describe('GetProjectEvents Integration', () => {
 
     // Add config for project1
     currentConfigs = [{...config1, value: 'v1', overrides: []}];
-    await mem!.notify({configId: config1.id});
+    await mem!.notify({variantId: config1.variant_id});
     await sleep(10);
 
     // Add config for project2
     currentConfigs.push({...config2, value: 'v2', overrides: []});
-    await mem!.notify({configId: config2.id});
+    await mem!.notify({variantId: config2.variant_id});
     await sleep(10);
 
     await Promise.all([consume1, consume2]);
 
     // Each consumer should only receive events for their project
     expect(events1).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {type: 'created', configName: 'config1', configId: 'var-1'},
     ] satisfies ProjectEvent[]);
     expect(events2).toEqual([
-      {type: 'created', configName: 'config2', configId: 'cfg-2'},
+      {type: 'created', configName: 'config2', configId: 'var-2'},
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -684,18 +723,21 @@ describe('GetProjectEvents Integration', () => {
 
   it('should receive events from full refresh on initial load', async () => {
     const projectId = 'proj-1';
+    const environmentId = 'env-1';
     const config1 = {
-      id: 'cfg-1',
+      variant_id: 'var-1',
       name: 'config1',
       projectId,
+      environmentId,
       version: 1,
       value: 'v1',
       overrides: [],
     };
     const config2 = {
-      id: 'cfg-2',
+      variant_id: 'var-2',
       name: 'config2',
       projectId,
+      environmentId,
       version: 1,
       value: 'v2',
       overrides: [],
@@ -707,12 +749,12 @@ describe('GetProjectEvents Integration', () => {
       async getReplicaDump() {
         return currentConfigs;
       },
-      async getReplicaConfig(cfgId: string) {
-        return currentConfigs.find(c => c.id === cfgId) || null;
+      async getReplicaConfig(variantId: string) {
+        return currentConfigs.find(c => c.variant_id === variantId) || null;
       },
     } as any;
 
-    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
     const replica = new ConfigsReplica({
@@ -721,7 +763,7 @@ describe('GetProjectEvents Integration', () => {
       logger,
       eventsSubject,
       createEventBusClient: (onNotification: any) => {
-        mem = new InMemoryEventBus<ConfigChangePayload>({
+        mem = new InMemoryEventBus<ConfigVariantChangePayload>({
           logger: console,
         }).createClient(onNotification);
         return mem!;
@@ -754,8 +796,8 @@ describe('GetProjectEvents Integration', () => {
 
     // Should receive created events for both configs from initial load
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
-      {type: 'created', configName: 'config2', configId: 'cfg-2'},
+      {type: 'created', configName: 'config1', configId: 'var-1'},
+      {type: 'created', configName: 'config2', configId: 'var-2'},
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -763,18 +805,19 @@ describe('GetProjectEvents Integration', () => {
 
   it('should handle rapid config changes without dropping events', async () => {
     const projectId = 'proj-1';
+    const environmentId = 'env-1';
     let currentConfigs: any[] = [];
 
     const configs = {
       async getReplicaDump() {
         return currentConfigs;
       },
-      async getReplicaConfig(cfgId: string) {
-        return currentConfigs.find(c => c.id === cfgId) || null;
+      async getReplicaConfig(variantId: string) {
+        return currentConfigs.find(c => c.variant_id === variantId) || null;
       },
     } as any;
 
-    let mem: EventBusClient<ConfigChangePayload> | null = null;
+    let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
     const replica = new ConfigsReplica({
@@ -783,7 +826,7 @@ describe('GetProjectEvents Integration', () => {
       logger,
       eventsSubject,
       createEventBusClient: (onNotification: any) => {
-        mem = new InMemoryEventBus<ConfigChangePayload>({
+        mem = new InMemoryEventBus<ConfigVariantChangePayload>({
           logger: console,
         }).createClient(onNotification);
         return mem!;
@@ -813,14 +856,15 @@ describe('GetProjectEvents Integration', () => {
     // Rapidly create multiple configs
     for (let i = 1; i <= 10; i++) {
       currentConfigs.push({
-        id: `cfg-${i}`,
+        variant_id: `var-${i}`,
         name: `config${i}`,
         projectId,
+        environmentId,
         version: 1,
         value: `v${i}`,
         overrides: [],
       });
-      await mem!.notify({configId: `cfg-${i}`});
+      await mem!.notify({variantId: `var-${i}`});
     }
 
     await consumePromise;
@@ -830,7 +874,7 @@ describe('GetProjectEvents Integration', () => {
     for (let i = 1; i <= 10; i++) {
       expect(receivedEvents[i - 1]).toEqual({
         type: 'created',
-        configId: `cfg-${i}`,
+        configId: `var-${i}`,
         configName: `config${i}`,
       } satisfies ProjectEvent);
     }

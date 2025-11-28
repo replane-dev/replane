@@ -157,15 +157,26 @@ export function ConditionEditor({
             trpc.getConfig.queryOptions({projectId, name: reference.configName.trim()}),
           );
 
-          if (!config?.config?.config) {
+          if (!config?.config) {
             setReferenceValidation({valid: false, checking: false, error: 'Config not found'});
+            return;
+          }
+
+          // TODO: use the same environment as the current variant
+          // Use Production variant or first variant
+          const variant =
+            config.config.variants.find(v => v.environmentName === 'Production') ??
+            config.config.variants[0];
+
+          if (!variant) {
+            setReferenceValidation({valid: false, checking: false, error: 'No variants found'});
             return;
           }
 
           const resolvedValue =
             reference.path.length > 0
-              ? getValueByPath(config.config.config.value, reference.path)
-              : config.config.config.value;
+              ? getValueByPath(variant.value, reference.path)
+              : variant.value;
 
           if (resolvedValue === undefined) {
             setReferenceValidation({
@@ -242,16 +253,24 @@ export function ConditionEditor({
         trpc.getConfig.queryOptions({projectId, name: configName.trim()}),
       );
 
-      if (!config?.config?.config) {
+      if (!config?.config) {
         setPreviewValue({loading: false, error: 'Config not found'});
+        return;
+      }
+
+      // Use Production variant or first variant
+      const variant =
+        config.config.variants.find(v => v.environmentName === 'Production') ??
+        config.config.variants[0];
+
+      if (!variant) {
+        setPreviewValue({loading: false, error: 'No variants found'});
         return;
       }
 
       const parsedPath = path.trim() ? parseJsonPath(path.trim()) : [];
       const resolvedValue =
-        parsedPath.length > 0
-          ? getValueByPath(config.config.config.value, parsedPath)
-          : config.config.config.value;
+        parsedPath.length > 0 ? getValueByPath(variant.value, parsedPath) : variant.value;
 
       // Check if the resolved value is undefined (bad reference/path)
       if (resolvedValue === undefined) {

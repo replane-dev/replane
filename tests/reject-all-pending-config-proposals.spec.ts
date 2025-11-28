@@ -1,4 +1,4 @@
-import type {ConfigProposalRejectedAuditMessagePayload} from '@/engine/core/audit-message-store';
+import type {ConfigProposalRejectedAuditLogPayload} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
@@ -36,18 +36,18 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
-    // Create multiple proposals
+    // Create multiple config proposals (config-level: description and members)
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'Description 1'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -57,7 +57,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedDescription: {newDescription: 'New description'},
+        proposedDescription: {newDescription: 'Description 2'},
         currentUserEmail: THIRD_USER_EMAIL,
       },
     );
@@ -67,7 +67,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {count: 42}},
+        proposedDescription: {newDescription: 'Description 3'},
         currentUserEmail: CURRENT_USER_EMAIL,
       },
     );
@@ -120,8 +120,8 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -130,7 +130,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'New description 1'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -140,7 +140,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedDescription: {newDescription: 'New description'},
+        proposedDescription: {newDescription: 'New description 2'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -151,7 +151,7 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify audit messages
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    const auditMessages = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
@@ -160,7 +160,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     const rejectionMessages = auditMessages.filter(
       msg => msg.payload.type === 'config_proposal_rejected',
-    ) as Array<{payload: ConfigProposalRejectedAuditMessagePayload}>;
+    ) as Array<{payload: ConfigProposalRejectedAuditLogPayload}>;
 
     expect(rejectionMessages).toHaveLength(2);
 
@@ -174,14 +174,14 @@ describe('rejectAllPendingConfigProposals', () => {
       type: 'config_proposal_rejected',
       proposalId: proposal1Id,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: 'New description 1',
     });
 
     expect(rejection2.payload).toMatchObject({
       type: 'config_proposal_rejected',
       proposalId: proposal2Id,
       configId,
-      proposedDescription: 'New description',
+      proposedDescription: 'New description 2',
     });
   });
 
@@ -193,39 +193,12 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
-    const newSchema = {
-      type: 'object',
-      properties: {
-        enabled: {type: 'boolean'},
-        threshold: {type: 'number'},
-      },
-    };
-
-    const {configProposalId: valueProposalId} = await fixture.engine.useCases.createConfigProposal(
-      GLOBAL_CONTEXT,
-      {
-        baseVersion: 1,
-        configId,
-        proposedValue: {newValue: {enabled: true}},
-        currentUserEmail: OTHER_USER_EMAIL,
-      },
-    );
-
-    const {configProposalId: schemaProposalId} = await fixture.engine.useCases.createConfigProposal(
-      GLOBAL_CONTEXT,
-      {
-        baseVersion: 1,
-        configId,
-        proposedSchema: {newSchema},
-        currentUserEmail: OTHER_USER_EMAIL,
-      },
-    );
-
+    // Config-level proposals: description, members, delete
     const {configProposalId: descriptionProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
         baseVersion: 1,
@@ -244,26 +217,34 @@ describe('rejectAllPendingConfigProposals', () => {
         currentUserEmail: OTHER_USER_EMAIL,
       });
 
+    const {configProposalId: deleteProposalId} = await fixture.engine.useCases.createConfigProposal(
+      GLOBAL_CONTEXT,
+      {
+        baseVersion: 1,
+        configId,
+        proposedDelete: true,
+        currentUserEmail: OTHER_USER_EMAIL,
+      },
+    );
+
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     // Verify all proposals are rejected
-    const valueProposal = await fixture.engine.testing.configProposals.getById(valueProposalId);
-    const schemaProposal = await fixture.engine.testing.configProposals.getById(schemaProposalId);
     const descriptionProposal =
       await fixture.engine.testing.configProposals.getById(descriptionProposalId);
     const membersProposal = await fixture.engine.testing.configProposals.getById(membersProposalId);
+    const deleteProposal = await fixture.engine.testing.configProposals.getById(deleteProposalId);
 
-    assert(valueProposal && schemaProposal && descriptionProposal && membersProposal);
-    expect(valueProposal.rejectedAt).toBeDefined();
-    expect(schemaProposal.rejectedAt).toBeDefined();
+    assert(descriptionProposal && membersProposal && deleteProposal);
     expect(descriptionProposal.rejectedAt).toBeDefined();
     expect(membersProposal.rejectedAt).toBeDefined();
+    expect(deleteProposal.rejectedAt).toBeDefined();
 
     // Verify audit messages include all proposal types
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    const auditMessages = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
@@ -272,32 +253,27 @@ describe('rejectAllPendingConfigProposals', () => {
 
     const rejectionMessages = auditMessages.filter(
       msg => msg.payload.type === 'config_proposal_rejected',
-    ) as Array<{payload: ConfigProposalRejectedAuditMessagePayload}>;
+    ) as Array<{payload: ConfigProposalRejectedAuditLogPayload}>;
 
-    expect(rejectionMessages.length).toBeGreaterThanOrEqual(4);
+    expect(rejectionMessages.length).toBeGreaterThanOrEqual(3);
 
-    const valueRejection = rejectionMessages.find(
-      msg => msg.payload.proposalId === valueProposalId,
-    );
-    const schemaRejection = rejectionMessages.find(
-      msg => msg.payload.proposalId === schemaProposalId,
-    );
     const descriptionRejection = rejectionMessages.find(
       msg => msg.payload.proposalId === descriptionProposalId,
     );
     const membersRejection = rejectionMessages.find(
       msg => msg.payload.proposalId === membersProposalId,
     );
+    const deleteRejection = rejectionMessages.find(
+      msg => msg.payload.proposalId === deleteProposalId,
+    );
 
-    assert(valueRejection);
-    assert(schemaRejection);
     assert(descriptionRejection);
     assert(membersRejection);
+    assert(deleteRejection);
 
-    expect(valueRejection.payload.proposedValue).toBeDefined();
-    expect(schemaRejection.payload.proposedSchema).toBeDefined();
     expect(descriptionRejection.payload.proposedDescription).toBeDefined();
     expect(membersRejection.payload.proposedMembers).toBeDefined();
+    expect(deleteRejection.payload.proposedDelete).toBe(true);
   });
 
   it('should handle deletion proposals', async () => {
@@ -308,8 +284,8 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -323,12 +299,12 @@ describe('rejectAllPendingConfigProposals', () => {
       },
     );
 
-    const {configProposalId: valueProposalId} = await fixture.engine.useCases.createConfigProposal(
+    const {configProposalId: descProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'New desc'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -340,14 +316,14 @@ describe('rejectAllPendingConfigProposals', () => {
 
     // Verify both proposals are rejected
     const deleteProposal = await fixture.engine.testing.configProposals.getById(deleteProposalId);
-    const valueProposal = await fixture.engine.testing.configProposals.getById(valueProposalId);
+    const descProposal = await fixture.engine.testing.configProposals.getById(descProposalId);
 
-    assert(deleteProposal && valueProposal);
+    assert(deleteProposal && descProposal);
     expect(deleteProposal.rejectedAt).toBeDefined();
-    expect(valueProposal.rejectedAt).toBeDefined();
+    expect(descProposal.rejectedAt).toBeDefined();
 
     // Verify audit message for deletion proposal
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    const auditMessages = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
@@ -358,7 +334,7 @@ describe('rejectAllPendingConfigProposals', () => {
       msg =>
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === deleteProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload} | undefined;
+    ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
 
     assert(deleteRejection);
     expect(deleteRejection.payload.proposedDelete).toBe(true);
@@ -372,8 +348,8 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -383,8 +359,8 @@ describe('rejectAllPendingConfigProposals', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    // Verify no audit messages were created
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    // Verify no audit messages were created for rejections
+    const auditMessages = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
@@ -416,8 +392,8 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -426,7 +402,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'Description 1'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -436,7 +412,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedDescription: {newDescription: 'New description'},
+        proposedDescription: {newDescription: 'Description 2'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -474,8 +450,8 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -484,7 +460,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'Description 1'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -494,7 +470,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedDescription: {newDescription: 'New description'},
+        proposedDescription: {newDescription: 'Description 2'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -530,8 +506,8 @@ describe('rejectAllPendingConfigProposals', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -540,7 +516,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'Description 1'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -550,7 +526,7 @@ describe('rejectAllPendingConfigProposals', () => {
       {
         baseVersion: 1,
         configId,
-        proposedDescription: {newDescription: 'New description'},
+        proposedDescription: {newDescription: 'Description 2'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );

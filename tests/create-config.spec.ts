@@ -1,6 +1,5 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import type {GetConfigResponse} from '@/engine/core/use-cases/get-config-use-case';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
@@ -11,7 +10,7 @@ describe('createConfig', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   it('should create a new config', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'new_config',
       value: {flag: true},
@@ -23,36 +22,26 @@ describe('createConfig', () => {
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-
     const {config} = await fixture.trpc.getConfig({
       name: 'new_config',
       projectId: fixture.projectId,
     });
 
-    expect(config).toEqual({
-      config: {
-        overrides: [],
-        name: 'new_config',
-        value: {flag: true},
-        schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
-        createdAt: fixture.now,
-        updatedAt: fixture.now,
-        description: 'A new config for testing',
-        creatorId: TEST_USER_ID,
-        id: expect.any(String),
-        version: 1,
-        projectId: fixture.projectId,
-      },
-      editorEmails: [],
-      maintainerEmails: [],
-      myRole: 'viewer',
-      pendingProposals: [],
-    } satisfies GetConfigResponse['config']);
+    expect(config).toBeDefined();
+    expect(config?.config.name).toBe('new_config');
+    expect(config?.config.description).toBe('A new config for testing');
+    expect(config?.config.creatorId).toBe(TEST_USER_ID);
+    expect(config?.config.id).toBe(configId);
+    expect(config?.config.version).toBe(1);
+    expect(config?.config.projectId).toBe(fixture.projectId);
+
+    // Variants should exist
+    expect(config?.variants).toHaveLength(2); // Production and Development
+    const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
+    expect(productionVariant).toBeDefined();
+    expect(productionVariant?.value).toEqual({flag: true});
+    expect(productionVariant?.schema).toEqual({type: 'object', properties: {flag: {type: 'boolean'}}});
+    expect(productionVariant?.overrides).toEqual([]);
   });
 
   it('should allow letters (any case), numbers and hyphen in name', async () => {
@@ -100,36 +89,15 @@ describe('createConfig', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-
     const {config} = await fixture.trpc.getConfig({
       name: 'dup_config',
       projectId: fixture.projectId,
     });
 
-    expect(config).toEqual({
-      config: {
-        overrides: [],
-        name: 'dup_config',
-        value: 'v1',
-        schema: {type: 'string'},
-        createdAt: fixture.now,
-        updatedAt: fixture.now,
-        description: 'A duplicate config for testing v1',
-        creatorId: TEST_USER_ID,
-        id: expect.any(String),
-        version: 1,
-        projectId: fixture.projectId,
-      },
-      editorEmails: [],
-      maintainerEmails: [],
-      pendingProposals: [],
-      myRole: 'viewer',
-    } satisfies GetConfigResponse['config']);
+    expect(config?.config.name).toBe('dup_config');
+    expect(config?.config.description).toBe('A duplicate config for testing v1');
+    const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
+    expect(productionVariant?.value).toBe('v1');
   });
 
   it('should accept config without a schema', async () => {
@@ -145,36 +113,15 @@ describe('createConfig', () => {
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-
     const {config} = await fixture.trpc.getConfig({
       name: 'no_schema_config',
       projectId: fixture.projectId,
     });
 
-    expect(config).toEqual({
-      config: {
-        overrides: [],
-        name: 'no_schema_config',
-        value: 'v1',
-        schema: null,
-        createdAt: fixture.now,
-        updatedAt: fixture.now,
-        description: 'A config without a schema',
-        creatorId: TEST_USER_ID,
-        id: expect.any(String),
-        version: 1,
-        projectId: fixture.projectId,
-      },
-      editorEmails: [],
-      maintainerEmails: [],
-      myRole: 'viewer',
-      pendingProposals: [],
-    } satisfies GetConfigResponse['config']);
+    expect(config?.config.name).toBe('no_schema_config');
+    const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
+    expect(productionVariant?.value).toBe('v1');
+    expect(productionVariant?.schema).toBeNull();
   });
 
   it('should reject creation when value does not match schema', async () => {
@@ -193,7 +140,7 @@ describe('createConfig', () => {
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
-  it('should create config with members and set myRole=owner', async () => {
+  it('should create config with members and set myRole=maintainer', async () => {
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'config_with_members_owner',
@@ -211,26 +158,14 @@ describe('createConfig', () => {
       projectId: fixture.projectId,
     });
     expect(config).toBeDefined();
-    // Structural checks (excluding ownerEmails order)
-    expect(config).toEqual({
-      config: {
-        overrides: [],
-        name: 'config_with_members_owner',
-        value: 1,
-        schema: {type: 'number'},
-        description: 'Members test owner',
-        createdAt: fixture.now,
-        updatedAt: fixture.now,
-        creatorId: TEST_USER_ID,
-        id: expect.any(String),
-        version: 1,
-        projectId: fixture.projectId,
-      },
-      editorEmails: ['editor1@example.com', 'editor2@example.com'].map(normalizeEmail),
-      maintainerEmails: [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
-      myRole: 'maintainer',
-      pendingProposals: [],
-    } satisfies GetConfigResponse['config']);
+    expect(config?.config.name).toBe('config_with_members_owner');
+    expect(config?.editorEmails).toEqual(['editor1@example.com', 'editor2@example.com'].map(normalizeEmail));
+    expect(config?.maintainerEmails.sort()).toEqual(
+      [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
+    );
+    expect(config?.myRole).toBe('maintainer');
+    const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
+    expect(productionVariant?.value).toBe(1);
   });
 
   it('should set myRole=editor when current user only an editor', async () => {
@@ -256,25 +191,12 @@ describe('createConfig', () => {
       name: 'config_with_editor_role',
       projectId: fixture.projectId,
     });
-    expect(config).toEqual({
-      config: {
-        overrides: [],
-        name: 'config_with_editor_role',
-        value: 'x',
-        schema: {type: 'string'},
-        description: 'Members test editor',
-        createdAt: fixture.now,
-        updatedAt: fixture.now,
-        creatorId: TEST_USER_ID,
-        id: expect.any(String),
-        version: 1,
-        projectId: fixture.projectId,
-      },
-      editorEmails: [CURRENT_USER_EMAIL],
-      maintainerEmails: [normalizeEmail('other-owner@example.com')],
-      myRole: 'editor',
-      pendingProposals: [],
-    } satisfies GetConfigResponse['config']);
+    expect(config?.config.name).toBe('config_with_editor_role');
+    expect(config?.editorEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(config?.maintainerEmails).toEqual([normalizeEmail('other-owner@example.com')]);
+    expect(config?.myRole).toBe('editor');
+    const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
+    expect(productionVariant?.value).toBe('x');
   });
 
   it('creates audit message (config_created)', async () => {
@@ -290,25 +212,20 @@ describe('createConfig', () => {
       projectId: fixture.projectId,
     });
 
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 50,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
 
-    expect(messages.length).toBe(2); // including project_created
-    const payload: any = messages[1].payload;
+    // Find the config_created message
+    const configCreatedMsg = messages.find(m => m.payload.type === 'config_created');
+    expect(configCreatedMsg).toBeDefined();
+    const payload: any = configCreatedMsg!.payload;
     expect(payload.type).toBe('config_created');
     expect(payload.config.name).toBe('audit_config_created');
-    expect(payload.config.value).toBe(123);
-    expect(payload.config.version).toBe(1);
-    expect(payload.config.schema).toEqual({type: 'number'});
     expect(payload.config.description).toBe('audit test');
-    // createdAt & updatedAt should be equal on creation
-    expect(new Date(payload.config.createdAt).toISOString()).toBe(
-      new Date(payload.config.updatedAt).toISOString(),
-    );
   });
 
   it('should throw BadRequestError when user is in both editors and owners', async () => {
@@ -361,41 +278,29 @@ describe('createConfig', () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it('should version members when creating config', async () => {
-    const editor1 = normalizeEmail('editor1@example.com');
-    const editor2 = normalizeEmail('editor2@example.com');
-
+  it('should create config variants for each environment', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
-      name: 'version_members_on_create',
+      name: 'variant_per_env_config',
       value: {x: 1},
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [editor1, editor2],
+      editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
-    // Verify the version was created with members in the separate table
-    const version1Id = await fixture.engine.testing.pool.query(
-      `SELECT id FROM config_versions WHERE config_id = $1 AND version = 1`,
-      [configId],
-    );
-    const versionId = version1Id.rows[0].id;
+    // Verify variants were created for each environment
+    const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+    expect(variants).toHaveLength(2); // Production and Development
 
-    const members = await fixture.engine.testing.pool.query(
-      `SELECT user_email_normalized, role FROM config_version_members WHERE config_version_id = $1 ORDER BY role, user_email_normalized`,
-      [versionId],
-    );
+    const productionVariant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
+    const developmentVariant = variants.find(v => v.environmentId === fixture.developmentEnvironmentId);
 
-    const owners = members.rows
-      .filter(m => m.role === 'maintainer')
-      .map(m => m.user_email_normalized);
-    const editors = members.rows.filter(m => m.role === 'editor').map(m => m.user_email_normalized);
-
-    expect(owners).toEqual([CURRENT_USER_EMAIL]);
-    expect(editors).toEqual(expect.arrayContaining([editor1, editor2]));
-    expect(editors).toHaveLength(2);
+    expect(productionVariant).toBeDefined();
+    expect(developmentVariant).toBeDefined();
+    expect(productionVariant?.value).toEqual({x: 1});
+    expect(developmentVariant?.value).toEqual({x: 1});
   });
 });

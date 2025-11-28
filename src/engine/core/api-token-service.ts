@@ -31,8 +31,8 @@ export class ApiTokenService implements Service {
       if (!tokenId) return null;
 
       const row = await this.db
-        .selectFrom('api_tokens as t')
-        .select(['t.id as id', 't.token_hash as token_hash', 't.project_id'])
+        .selectFrom('sdk_keys as t')
+        .select(['t.id as id', 't.token_hash as token_hash', 't.project_id', 't.environment_id'])
         .where('t.id', '=', tokenId)
         .executeTakeFirst();
       if (!row) return null;
@@ -40,7 +40,7 @@ export class ApiTokenService implements Service {
       const valid = await this.tokenHasher.verify(row.token_hash, token);
       if (!valid) return null;
 
-      return {projectId: row.project_id};
+      return {projectId: row.project_id, environmentId: row.environment_id};
     })();
 
     this.apiKeyCache.set(token, result);

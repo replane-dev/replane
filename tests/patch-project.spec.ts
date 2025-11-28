@@ -40,7 +40,7 @@ describe('patchProject', () => {
     expect(project.name).toBe('Renamed Project');
     expect(project.description).toBe('Updated description');
 
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 20,
       orderBy: 'created_at desc, id desc',
@@ -101,7 +101,7 @@ describe('patchProject', () => {
     members = await getMembers(projectId);
     expect(members.map((m: any) => m.user_email_normalized)).toEqual([OTHER_OWNER_EMAIL]);
 
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 50,
       orderBy: 'created_at desc, id desc',

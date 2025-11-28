@@ -35,8 +35,9 @@ describe('GetProjectEventsUseCase', () => {
     // Publish events
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -47,8 +48,9 @@ describe('GetProjectEventsUseCase', () => {
 
     subject.next({
       type: 'updated',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v2',
@@ -89,8 +91,9 @@ describe('GetProjectEventsUseCase', () => {
     // Publish event for different project - should be filtered out
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-other',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-other',
         name: 'config-other',
         projectId: 'proj-2',
         value: 'v1',
@@ -102,8 +105,9 @@ describe('GetProjectEventsUseCase', () => {
     // Publish event for our project - should be received
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -142,8 +146,9 @@ describe('GetProjectEventsUseCase', () => {
 
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -154,8 +159,9 @@ describe('GetProjectEventsUseCase', () => {
 
     subject.next({
       type: 'updated',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v2',
@@ -166,8 +172,9 @@ describe('GetProjectEventsUseCase', () => {
 
     subject.next({
       type: 'deleted',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v2',
@@ -209,8 +216,9 @@ describe('GetProjectEventsUseCase', () => {
     // Publish first event - will be received
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -226,8 +234,9 @@ describe('GetProjectEventsUseCase', () => {
     // Publish another event - should not be received
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-2',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-2',
         name: 'config2',
         projectId: 'proj-1',
         value: 'v1',
@@ -267,8 +276,9 @@ describe('GetProjectEventsUseCase', () => {
     for (let i = 1; i <= 5; i++) {
       subject.next({
         type: 'created',
-        config: {
-          id: `cfg-${i}`,
+        variant: {
+          environmentId: 'env-1',
+          variantId: `cfg-${i}`,
           name: `config${i}`,
           projectId: 'proj-1',
           value: `v${i}`,
@@ -305,8 +315,9 @@ describe('GetProjectEventsUseCase', () => {
     // Immediately publish an event before awaiting
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -344,8 +355,9 @@ describe('GetProjectEventsUseCase', () => {
     // Publish an event
     subject.next({
       type: 'created',
-      config: {
-        id: 'cfg-1',
+      variant: {
+        environmentId: 'env-1',
+        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',

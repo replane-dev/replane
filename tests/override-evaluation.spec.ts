@@ -4,7 +4,7 @@ import type {Override} from '@/engine/core/override-evaluator';
 import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
 import {normalizeEmail} from '@/engine/core/utils';
 import {v4 as uuidv4} from 'uuid';
-import {describe, expect, it} from 'vitest';
+import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
@@ -909,6 +909,7 @@ describe('Override Evaluation', () => {
       const baseResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
       });
       expect(baseResult.value).toEqual({maxItems: 10});
 
@@ -916,6 +917,7 @@ describe('Override Evaluation', () => {
       const vipResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {userEmail: 'vip@example.com'},
       });
       expect(vipResult.value).toEqual({maxItems: 100});
@@ -924,6 +926,7 @@ describe('Override Evaluation', () => {
       const premiumResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {userEmail: 'regular@example.com', tier: 'premium'},
       });
       expect(premiumResult.value).toEqual({maxItems: 50});
@@ -932,12 +935,13 @@ describe('Override Evaluation', () => {
       const regularResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {userEmail: 'regular@example.com', tier: 'free'},
       });
       expect(regularResult.value).toEqual({maxItems: 10});
     });
 
-    it('should update overrides via patchConfig', async () => {
+    it('should update overrides via patchConfigVariant', async () => {
       const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'feature_flag',
         value: false,
@@ -949,6 +953,11 @@ describe('Override Evaluation', () => {
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
       });
+
+      // Get the production variant
+      const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+      const productionVariant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
+      assert(productionVariant, 'Production variant should exist');
 
       const newOverrides: Override[] = [
         {
@@ -965,8 +974,8 @@ describe('Override Evaluation', () => {
         },
       ];
 
-      await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
-        configId,
+      await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
+        configVariantId: productionVariant.id,
         overrides: {newOverrides},
         currentUserEmail: CURRENT_USER_EMAIL,
         prevVersion: 1,
@@ -978,6 +987,7 @@ describe('Override Evaluation', () => {
       const enabledResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'feature_flag',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {enabled: true},
       });
       expect(enabledResult.value).toBe(true);
@@ -985,6 +995,7 @@ describe('Override Evaluation', () => {
       const disabledResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'feature_flag',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {enabled: false},
       });
       expect(disabledResult.value).toBe(false);
@@ -1024,6 +1035,7 @@ describe('Override Evaluation', () => {
       const adult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'age_restricted',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {age: 25},
       });
       expect(adult.value).toEqual({access: 'adult'});
@@ -1031,6 +1043,7 @@ describe('Override Evaluation', () => {
       const minor = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'age_restricted',
         projectId: fixture.projectId,
+        environmentId: fixture.productionEnvironmentId,
         context: {age: 15},
       });
       expect(minor.value).toEqual({access: 'child'});

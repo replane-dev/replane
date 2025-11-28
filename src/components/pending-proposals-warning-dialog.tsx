@@ -18,7 +18,6 @@ interface PendingProposal {
   id: string;
   proposerEmail: string | null;
   createdAt: Date | string;
-  baseConfigVersion: number;
 }
 
 interface PendingProposalsWarningDialogProps {
@@ -94,7 +93,6 @@ export function PendingProposalsWarningDialog({
                       <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Based on version {proposal.baseConfigVersion} ·{' '}
                       {formatDistanceToNow(new Date(proposal.createdAt), {addSuffix: true})}
                     </div>
                   </div>

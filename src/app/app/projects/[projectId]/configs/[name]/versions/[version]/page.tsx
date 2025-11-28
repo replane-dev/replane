@@ -29,12 +29,29 @@ export default function ConfigVersionDetailsPage() {
   const name = decodeURIComponent(rawName ?? '');
   const versionNumber = Number(rawVersion);
   const trpc = useTRPC();
-  const {data} = useSuspenseQuery(
-    trpc.getConfigVersion.queryOptions({name, version: versionNumber, projectId}),
-  );
+
+  // Load config first to get configId and determine environment
   const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
-  const currentConfigVersion = configData.config?.config.version as number | undefined;
-  const restoreMutation = useMutation(trpc.restoreConfigVersion.mutationOptions());
+  const configInfo = configData?.config;
+
+  // TODO: Add environment selector - for now use Production or first variant
+  const variant = configInfo
+    ? configInfo.variants.find(v => v.environmentName === 'Production') ?? configInfo.variants[0]
+    : null;
+
+  // Load version for the selected variant
+  const hasVariant = !!configInfo && !!variant;
+  const {data} = useSuspenseQuery(
+    trpc.getConfigVariantVersion.queryOptions({
+      configId: hasVariant ? configInfo.config.id : '',
+      environmentId: hasVariant ? variant.environmentId : '',
+      version: versionNumber,
+      projectId,
+    }),
+  );
+
+  const currentVariantVersion = variant?.version as number | undefined;
+  const restoreMutation = useMutation(trpc.restoreConfigVariantVersion.mutationOptions());
   const router = useRouter();
   const version = data.version;
 
@@ -111,33 +128,34 @@ export default function ConfigVersionDetailsPage() {
                       <Badge variant="secondary" className="text-sm font-semibold px-3 py-1">
                         Version {version.version}
                       </Badge>
-                      {currentConfigVersion === version.version && (
+                      {currentVariantVersion === version.version && (
                         <Badge variant="outline" className="text-xs">
                           Current
                         </Badge>
                       )}
                     </div>
-                    {currentConfigVersion !== undefined &&
-                      currentConfigVersion !== version.version && (
+                    {currentVariantVersion !== undefined &&
+                      currentVariantVersion !== version.version &&
+                      hasVariant && (
                         <Button
                           size="sm"
                           disabled={
-                            restoreMutation.isPending ||
-                            currentConfigVersion !== configData.config?.config.version
+                            restoreMutation.isPending || currentVariantVersion !== variant.version
                           }
                           onClick={async () => {
                             if (
                               !confirm(
-                                `Restore version ${version.version}? This will create a new version with the same contents (current version: ${currentConfigVersion}).`,
+                                `Restore version ${version.version}? This will create a new version with the same contents (current version: ${currentVariantVersion}).`,
                               )
                             ) {
                               return;
                             }
                             try {
                               await restoreMutation.mutateAsync({
-                                name,
+                                configId: configInfo.config.id,
+                                environmentId: variant.environmentId,
                                 versionToRestore: version.version,
-                                expectedCurrentVersion: currentConfigVersion,
+                                expectedCurrentVersion: currentVariantVersion,
                                 projectId,
                               });
                               toast.success('Version restored successfully');

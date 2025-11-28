@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import type {ConfigProposalId} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
@@ -53,8 +53,8 @@ export function createRejectConfigProposalUseCase(
     });
 
     // Create audit message for the rejection
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: deps.dateProvider.now(),
       userId: currentUser.id,
       projectId: config.projectId,
@@ -64,9 +64,9 @@ export function createRejectConfigProposalUseCase(
         proposalId: proposal.id,
         configId: proposal.configId,
         rejectedInFavorOfProposalId: undefined,
-        proposedValue: proposal.proposedValue ?? undefined,
+        proposedDelete: proposal.proposedDelete || undefined,
         proposedDescription: proposal.proposedDescription ?? undefined,
-        proposedSchema: proposal.proposedSchema ?? undefined,
+        proposedMembers: proposal.proposedMembers ?? undefined,
       },
     });
 

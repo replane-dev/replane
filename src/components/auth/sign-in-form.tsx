@@ -2,10 +2,9 @@
 
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {REPLANE_USER_VISITED_KEY} from '@/lib/constants';
 import {SiGithub, SiGitlab, SiGoogle, SiOkta} from '@icons-pack/react-simple-icons';
 import {signIn} from 'next-auth/react';
-import {useMemo, useState} from 'react';
+import {useState} from 'react';
 
 interface Provider {
   id: string;
@@ -20,10 +19,6 @@ interface SignInFormProps {
 
 export function SignInForm({providers, callbackUrl, error}: SignInFormProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const isReturningUser = useMemo(
-    () => localStorage.getItem(REPLANE_USER_VISITED_KEY) === 'true',
-    [],
-  );
 
   const handleSignIn = async (providerId: string) => {
     setLoadingProvider(providerId);
@@ -38,9 +33,7 @@ export function SignInForm({providers, callbackUrl, error}: SignInFormProps) {
   return (
     <Card className="dark:bg-muted">
       <CardHeader className="text-center">
-        <CardTitle className="text-xl">
-          {isReturningUser ? 'Welcome back' : 'Get started'}
-        </CardTitle>
+        <CardTitle className="text-xl">Get started</CardTitle>
         <CardDescription>
           {providers.length > 0
             ? 'Choose your sign in method'

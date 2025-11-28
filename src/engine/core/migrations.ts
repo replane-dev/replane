@@ -463,6 +463,251 @@ export const migrations: Migration[] = [
         ALTER COLUMN payload TYPE TEXT USING COALESCE((payload->'value')::TEXT, payload::TEXT);
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Major refactor: Introduce environments and restructure schema
+
+      -- Step 1: Create project_environments table
+      CREATE TABLE project_environments (
+        id UUID PRIMARY KEY,
+        project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL,
+        UNIQUE(project_id, name)
+      );
+
+      CREATE INDEX idx_project_environments_project_id ON project_environments(project_id);
+
+      -- Step 2: Insert Production and Development environments for each project
+      INSERT INTO project_environments (id, project_id, name, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        p.id,
+        'Production',
+        NOW(),
+        NOW()
+      FROM projects p;
+
+      INSERT INTO project_environments (id, project_id, name, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        p.id,
+        'Development',
+        NOW(),
+        NOW()
+      FROM projects p;
+
+      -- Step 3: Rename api_tokens to sdk_keys
+      ALTER TABLE api_tokens RENAME TO sdk_keys;
+      ALTER INDEX idx_api_tokens_token_hash RENAME TO idx_sdk_keys_token_hash;
+      ALTER INDEX idx_api_tokens_creator_id RENAME TO idx_sdk_keys_creator_id;
+      ALTER INDEX idx_api_tokens_project_id RENAME TO idx_sdk_keys_project_id;
+
+      -- Step 4: Rename audit_messages to audit_logs and add nullable environment_id
+      ALTER TABLE audit_messages RENAME TO audit_logs;
+      ALTER INDEX idx_audit_messages_user_id RENAME TO idx_audit_logs_user_id;
+      ALTER INDEX idx_audit_messages_config_id RENAME TO idx_audit_logs_config_id;
+      ALTER INDEX idx_audit_messages_created_at_id RENAME TO idx_audit_logs_created_at_id;
+      ALTER INDEX idx_audit_messages_project_id RENAME TO idx_audit_logs_project_id;
+
+      -- Add nullable environment_id to audit_logs (set to Production for existing records)
+      ALTER TABLE audit_logs ADD COLUMN environment_id UUID NULL;
+
+      UPDATE audit_logs al
+      SET environment_id = (
+        SELECT pe.id
+        FROM project_environments pe
+        WHERE pe.project_id = al.project_id
+        AND pe.name = 'Production'
+        LIMIT 1
+      )
+      WHERE al.project_id IS NOT NULL;
+
+      ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_environment_id_fkey
+        FOREIGN KEY (environment_id) REFERENCES project_environments(id) ON DELETE SET NULL;
+
+      CREATE INDEX idx_audit_logs_environment_id ON audit_logs(environment_id);
+
+      -- Step 5: Create config_variants table to hold environment-specific config data
+      CREATE TABLE config_variants (
+        id UUID PRIMARY KEY,
+        config_id UUID NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        environment_id UUID NOT NULL REFERENCES project_environments(id) ON DELETE CASCADE,
+        value TEXT NOT NULL,
+        schema TEXT NULL,
+        overrides TEXT NOT NULL,
+        version INT NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL,
+        UNIQUE(config_id, environment_id)
+      );
+
+      CREATE INDEX idx_config_variants_config_id ON config_variants(config_id);
+      CREATE INDEX idx_config_variants_environment_id ON config_variants(environment_id);
+
+      -- Step 6: Migrate existing config data to config_variants
+      -- For each existing config, create a variant in the Production environment
+      INSERT INTO config_variants (id, config_id, environment_id, value, schema, overrides, version, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        c.id,
+        (SELECT pe.id FROM project_environments pe WHERE pe.project_id = c.project_id AND pe.name = 'Production' LIMIT 1),
+        c.value,
+        c.schema,
+        COALESCE(c.overrides, '[]'),
+        c.version,
+        c.created_at,
+        c.updated_at
+      FROM configs c;
+
+      -- Also create Development variants (copy from Production)
+      INSERT INTO config_variants (id, config_id, environment_id, value, schema, overrides, version, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        c.id,
+        (SELECT pe.id FROM project_environments pe WHERE pe.project_id = c.project_id AND pe.name = 'Development' LIMIT 1),
+        c.value,
+        c.schema,
+        COALESCE(c.overrides, '[]'),
+        c.version,
+        c.created_at,
+        c.updated_at
+      FROM configs c;
+
+      -- Step 7: Remove migrated columns from configs table
+      -- Note: version is kept for optimistic locking on config-level changes
+      ALTER TABLE configs DROP COLUMN value;
+      ALTER TABLE configs DROP COLUMN schema;
+      ALTER TABLE configs DROP COLUMN overrides;
+      ALTER TABLE configs DROP COLUMN updated_at;
+
+      -- Step 8: Rename config_versions to config_variant_versions and add config_variant_id
+      ALTER TABLE config_versions RENAME TO config_variant_versions;
+      ALTER INDEX idx_config_versions_config_id_version RENAME TO idx_config_variant_versions_config_id_version;
+      ALTER INDEX idx_config_versions_author_id RENAME TO idx_config_variant_versions_author_id;
+      ALTER INDEX idx_config_versions_proposal_id RENAME TO idx_config_variant_versions_proposal_id;
+
+      -- Add config_variant_id FK to config_variant_versions (set to Production variant for existing records)
+      ALTER TABLE config_variant_versions ADD COLUMN config_variant_id UUID NULL;
+
+      UPDATE config_variant_versions cvv
+      SET config_variant_id = (
+        SELECT cv.id
+        FROM config_variants cv
+        INNER JOIN project_environments pe ON pe.id = cv.environment_id
+        WHERE cv.config_id = cvv.config_id
+        AND pe.name = 'Production'
+        LIMIT 1
+      );
+
+      ALTER TABLE config_variant_versions ALTER COLUMN config_variant_id SET NOT NULL;
+      ALTER TABLE config_variant_versions ADD CONSTRAINT config_variant_versions_config_variant_id_fkey
+        FOREIGN KEY (config_variant_id) REFERENCES config_variants(id) ON DELETE CASCADE;
+
+      CREATE INDEX idx_config_variant_versions_config_variant_id ON config_variant_versions(config_variant_id);
+
+      -- Drop config_id column (now redundant - can get from config_variant)
+      ALTER TABLE config_variant_versions DROP COLUMN config_id;
+
+      -- Step 9: Drop config_version_members table
+      DROP TABLE config_version_members;
+
+      -- Step 10: Update config_proposals - add members_snapshot, remove variant-specific columns
+      -- config_proposals are used for config-level changes (deletion, member management)
+      ALTER TABLE config_proposals ADD COLUMN members_snapshot TEXT NOT NULL DEFAULT '[]';
+
+      -- Populate members_snapshot with current members from config_users
+      UPDATE config_proposals cp
+      SET members_snapshot = (
+        SELECT COALESCE(
+          jsonb_agg(
+            jsonb_build_object('email', user_email_normalized, 'role', role)
+            ORDER BY user_email_normalized
+          )::TEXT,
+          '[]'
+        )
+        FROM config_users cu
+        WHERE cu.config_id = cp.config_id
+      );
+
+      -- Remove DEFAULT for future inserts
+      ALTER TABLE config_proposals ALTER COLUMN members_snapshot DROP DEFAULT;
+
+      -- Drop variant-specific proposal columns (now in config_variant_proposals)
+      ALTER TABLE config_proposals DROP COLUMN proposed_value;
+      ALTER TABLE config_proposals DROP COLUMN proposed_schema;
+      ALTER TABLE config_proposals DROP COLUMN proposed_overrides;
+
+      -- Step 11: Create config_variant_proposals table for environment-specific changes
+      CREATE TABLE config_variant_proposals (
+        id UUID PRIMARY KEY,
+        config_variant_id UUID NOT NULL REFERENCES config_variants(id) ON DELETE CASCADE,
+        base_variant_version INT NOT NULL,
+        proposer_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        rejected_at TIMESTAMPTZ(3) NULL,
+        approved_at TIMESTAMPTZ(3) NULL,
+        reviewer_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+        rejected_in_favor_of_proposal_id UUID NULL REFERENCES config_variant_proposals(id) ON DELETE SET NULL,
+        rejection_reason config_proposal_rejection_reason NULL,
+        proposed_value TEXT NULL,
+        proposed_description TEXT NULL,
+        proposed_schema TEXT NULL,
+        proposed_overrides TEXT NULL,
+        message TEXT NULL
+      );
+
+      CREATE INDEX idx_config_variant_proposals_config_variant_id ON config_variant_proposals(config_variant_id);
+      CREATE INDEX idx_config_variant_proposals_proposer_id ON config_variant_proposals(proposer_id);
+      CREATE INDEX idx_config_variant_proposals_reviewer_id ON config_variant_proposals(reviewer_id);
+      CREATE INDEX idx_config_variant_proposals_rejected_in_favor_of_proposal_id ON config_variant_proposals(rejected_in_favor_of_proposal_id);
+
+      -- Step 12: Update config_variant_versions.proposal_id FK to reference config_variant_proposals
+      ALTER TABLE config_variant_versions DROP CONSTRAINT config_versions_proposal_id_fkey;
+      ALTER TABLE config_variant_versions ADD CONSTRAINT config_variant_versions_proposal_id_fkey
+        FOREIGN KEY (proposal_id) REFERENCES config_variant_proposals(id) ON DELETE SET NULL;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Add environment_id foreign key to sdk_keys
+      ALTER TABLE sdk_keys ADD COLUMN environment_id UUID NULL;
+
+      -- Set all existing SDK keys to Production environment
+      UPDATE sdk_keys sk
+      SET environment_id = (
+        SELECT pe.id
+        FROM project_environments pe
+        WHERE pe.project_id = sk.project_id
+        AND pe.name = 'Production'
+        LIMIT 1
+      );
+
+      -- Make environment_id required
+      ALTER TABLE sdk_keys ALTER COLUMN environment_id SET NOT NULL;
+
+      -- Add foreign key constraint
+      ALTER TABLE sdk_keys ADD CONSTRAINT sdk_keys_environment_id_fkey
+        FOREIGN KEY (environment_id) REFERENCES project_environments(id) ON DELETE CASCADE;
+
+      CREATE INDEX idx_sdk_keys_environment_id ON sdk_keys(environment_id);
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Rename members_snapshot to original_members and add original_description
+      ALTER TABLE config_proposals
+      RENAME COLUMN members_snapshot TO original_members;
+
+      ALTER TABLE config_proposals
+      ADD COLUMN original_description TEXT NOT NULL DEFAULT '';
+
+      -- Drop default for future inserts
+      ALTER TABLE config_proposals
+      ALTER COLUMN original_description DROP DEFAULT;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

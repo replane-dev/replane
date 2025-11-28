@@ -35,8 +35,17 @@ describe('createProject', () => {
     expect(members.rows.map((r: any) => r.user_email_normalized)).toContain(CURRENT_USER_EMAIL);
     expect(members.rows[0].role).toBe('admin');
 
+    // default environments
+    const environments = await fixture.engine.testing.pool.query(
+      `SELECT * FROM project_environments WHERE project_id = $1 ORDER BY name`,
+      [projectId],
+    );
+    expect(environments.rows.length).toBe(2);
+    expect(environments.rows[0].name).toBe('Development');
+    expect(environments.rows[1].name).toBe('Production');
+
     // audit messages: project_created for default + project_created for this one => at least 2 messages overall, we filter by projectId
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 20,
       orderBy: 'created_at desc, id desc',

@@ -1,5 +1,6 @@
 import {buildRawApiToken} from '../api-token-utils';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
+import {BadRequestError} from '../errors';
 import type {TokenHashingService} from '../token-hashing-service';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
@@ -10,6 +11,7 @@ export interface CreateApiKeyRequest {
   name: string;
   description: string;
   projectId: string;
+  environmentId: string;
 }
 
 export interface CreateApiKeyResponse {
@@ -32,24 +34,33 @@ export function createCreateApiKeyUseCase(deps: {
       throw new Error('User not found');
     }
 
-    const apiTokenId = createUuidV7();
+    const env = await tx.projectEnvironments.getById(req.environmentId);
+    if (!env) {
+      throw new BadRequestError('Environment not found');
+    }
+    if (env.projectId !== req.projectId) {
+      throw new BadRequestError('Environment does not belong to the specified project');
+    }
+
+    const sdkKeyId = createUuidV7();
     // Embed apiTokenId into token for future extraction
-    const rawToken = buildRawApiToken(apiTokenId);
+    const rawToken = buildRawApiToken(sdkKeyId);
     const tokenHash = await deps.tokenHasher.hash(rawToken);
     const now = new Date();
 
-    await tx.apiTokens.create({
-      id: apiTokenId,
+    await tx.sdkKeys.create({
+      id: sdkKeyId,
       creatorId: user.id,
       createdAt: now,
       tokenHash,
       projectId: req.projectId,
+      environmentId: req.environmentId,
       name: req.name,
       description: req.description,
     });
 
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: now,
       userId: user.id,
       projectId: req.projectId,
@@ -57,7 +68,7 @@ export function createCreateApiKeyUseCase(deps: {
       payload: {
         type: 'api_key_created',
         apiKey: {
-          id: apiTokenId,
+          id: sdkKeyId,
           name: req.name,
           description: req.description,
           createdAt: now,
@@ -67,7 +78,7 @@ export function createCreateApiKeyUseCase(deps: {
 
     return {
       apiKey: {
-        id: apiTokenId,
+        id: sdkKeyId,
         name: req.name,
         description: req.description,
         createdAt: now,

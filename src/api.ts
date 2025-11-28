@@ -16,6 +16,7 @@ async function getEngine() {
 interface HonoEnv {
   Variables: {
     context: Context;
+    environmentId: string;
     projectId: string;
   };
 }
@@ -84,6 +85,7 @@ honoApi.use('*', async (c, next) => {
     const verified = await engine.verifyApiKey(token);
     if (!verified) return c.json({msg: 'Invalid API key'}, 401);
     c.set('projectId', verified.projectId);
+    c.set('environmentId', verified.environmentId);
     await next();
   } catch (e) {
     console.error(e);
@@ -145,6 +147,7 @@ honoApi.openapi(
     const result = await engine.useCases.getConfigValue(c.get('context'), {
       name,
       projectId: c.get('projectId'),
+      environmentId: c.get('environmentId'),
       context,
     });
 
@@ -189,6 +192,7 @@ honoApi.openapi(
     const result = await engine.useCases.getConfigForApi(c.get('context'), {
       name,
       projectId: c.get('projectId'),
+      environmentId: c.get('environmentId'),
     });
 
     if (!result) {

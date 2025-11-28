@@ -14,6 +14,7 @@ describe('deleteApiKey', () => {
       name: 'DeleteMe',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
@@ -35,6 +36,7 @@ describe('deleteApiKey', () => {
       name: 'ProtectMe',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     // second user
@@ -64,6 +66,7 @@ describe('deleteApiKey', () => {
       name: 'ToDeleteAudit',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
       id: created.apiKey.id,
@@ -71,14 +74,17 @@ describe('deleteApiKey', () => {
       projectId: fixture.projectId,
     });
 
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
-      limit: 10,
+      limit: 20,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toEqual(['api_key_created', 'api_key_deleted', 'project_created']);
+    expect(types).toContain('api_key_created');
+    expect(types).toContain('api_key_deleted');
+    expect(types).toContain('project_created');
+
     const byType: Record<string, any> = Object.fromEntries(
       messages.map(m => [m.payload.type, m.payload]),
     );

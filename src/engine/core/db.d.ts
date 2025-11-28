@@ -39,19 +39,10 @@ export interface Accounts {
   userId: number;
 }
 
-export interface ApiTokens {
-  created_at: Timestamp;
-  creator_id: number;
-  description: string;
-  id: string;
-  name: string;
-  project_id: string;
-  token_hash: string;
-}
-
-export interface AuditMessages {
+export interface AuditLogs {
   config_id: string | null;
   created_at: Timestamp;
+  environment_id: string | null;
   id: string;
   payload: string;
   project_id: string | null;
@@ -64,13 +55,12 @@ export interface ConfigProposals {
   config_id: string;
   created_at: Timestamp;
   id: string;
+  original_members: string;
+  original_description: string;
   message: string | null;
   proposed_delete: Generated<boolean>;
   proposed_description: string | null;
   proposed_members: string | null;
-  proposed_overrides: string | null;
-  proposed_schema: string | null;
-  proposed_value: string | null;
   proposer_id: number | null;
   rejected_at: Timestamp | null;
   rejected_in_favor_of_proposal_id: string | null;
@@ -84,11 +74,7 @@ export interface Configs {
   description: string;
   id: string;
   name: string;
-  overrides: string | null;
   project_id: string;
-  schema: string | null;
-  updated_at: Timestamp;
-  value: string;
   version: number;
 }
 
@@ -100,15 +86,39 @@ export interface ConfigUsers {
   user_email_normalized: string;
 }
 
-export interface ConfigVersionMembers {
-  config_version_id: string;
-  role: ConfigUserRole;
-  user_email_normalized: string;
+export interface ConfigVariantProposals {
+  approved_at: Timestamp | null;
+  base_variant_version: number;
+  config_variant_id: string;
+  created_at: Timestamp;
+  id: string;
+  message: string | null;
+  proposed_description: string | null;
+  proposed_overrides: string | null;
+  proposed_schema: string | null;
+  proposed_value: string | null;
+  proposer_id: number | null;
+  rejected_at: Timestamp | null;
+  rejected_in_favor_of_proposal_id: string | null;
+  rejection_reason: ConfigProposalRejectionReason | null;
+  reviewer_id: number | null;
 }
 
-export interface ConfigVersions {
-  author_id: number | null;
+export interface ConfigVariants {
   config_id: string;
+  created_at: Timestamp;
+  environment_id: string;
+  id: string;
+  overrides: string;
+  schema: string | null;
+  updated_at: Timestamp;
+  value: string;
+  version: number;
+}
+
+export interface ConfigVariantVersions {
+  author_id: number | null;
+  config_variant_id: string;
   created_at: Timestamp;
   description: string;
   id: string;
@@ -126,6 +136,14 @@ export interface Migrations {
   sql: string;
 }
 
+export interface ProjectEnvironments {
+  created_at: Timestamp;
+  id: string;
+  name: string;
+  project_id: string;
+  updated_at: Timestamp;
+}
+
 export interface Projects {
   created_at: Timestamp;
   description: string;
@@ -141,6 +159,17 @@ export interface ProjectUsers {
   role: ProjectUserRole;
   updated_at: Timestamp;
   user_email_normalized: string;
+}
+
+export interface SdkKeys {
+  created_at: Timestamp;
+  creator_id: number;
+  description: string;
+  environment_id: string;
+  id: string;
+  name: string;
+  project_id: string;
+  token_hash: string;
 }
 
 export interface Sessions {
@@ -166,16 +195,18 @@ export interface VerificationToken {
 
 export interface DB {
   accounts: Accounts;
-  api_tokens: ApiTokens;
-  audit_messages: AuditMessages;
+  audit_logs: AuditLogs;
   config_proposals: ConfigProposals;
   config_users: ConfigUsers;
-  config_version_members: ConfigVersionMembers;
-  config_versions: ConfigVersions;
+  config_variant_proposals: ConfigVariantProposals;
+  config_variant_versions: ConfigVariantVersions;
+  config_variants: ConfigVariants;
   configs: Configs;
   migrations: Migrations;
+  project_environments: ProjectEnvironments;
   project_users: ProjectUsers;
   projects: Projects;
+  sdk_keys: SdkKeys;
   sessions: Sessions;
   users: Users;
   verification_token: VerificationToken;

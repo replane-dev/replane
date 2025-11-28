@@ -1,6 +1,6 @@
 'use client';
 
-import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
+import type {AuditLogPayload} from '@/engine/core/audit-log-store';
 import {assertNever} from '@/engine/core/utils';
 import {DiffEditor} from '@monaco-editor/react';
 import {
@@ -22,7 +22,7 @@ import * as React from 'react';
 import {Badge} from './ui/badge';
 
 interface AuditEventDisplayProps {
-  payload: AuditMessagePayload;
+  payload: AuditLogPayload;
   projectId: string;
 }
 
@@ -194,13 +194,44 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
           </div>
         </div>
         <div className="space-y-4">
-          <DiffRow label="Value" before={payload.before.value} after={payload.after.value} />
           <DiffRow
             label="Description"
             before={payload.before.description}
             after={payload.after.description}
             language="plaintext"
           />
+          <div className="text-sm text-muted-foreground">
+            Note: Value, schema, and overrides are now tracked per-environment variant
+          </div>
+        </div>
+      </div>
+    );
+  } else if (type === 'config_variant_updated') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-muted-foreground" />
+          <span className="font-semibold">Config Variant Updated</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <Link
+            href={`/app/projects/${projectId}/configs/${encodeURIComponent(payload.after.configName)}`}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-foreground/80 transition-colors group"
+          >
+            <span>{payload.after.configName}</span>
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground/60" />
+          </Link>
+          <div className="text-sm text-muted-foreground">
+            Version: {payload.before.version} → {payload.after.version}
+          </div>
+        </div>
+        <div className="mb-2">
+          <Badge variant="outline" className="text-xs">
+            {payload.after.environmentName}
+          </Badge>
+        </div>
+        <div className="space-y-4">
+          <DiffRow label="Value" before={payload.before.value} after={payload.after.value} />
           <DiffRow label="Schema" before={payload.before.schema} after={payload.after.schema} />
           <DiffRow
             label="Overrides"
@@ -449,6 +480,48 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
         <MemberChangesList added={payload.added} removed={payload.removed} />
       </div>
     );
+  } else if (type === 'environment_created') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+          <Plus className="h-5 w-5" />
+          <span className="font-semibold">Environment Created</span>
+        </div>
+        <div className="grid gap-2 text-sm">
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground w-24 shrink-0">Name:</span>
+            <Badge variant="outline" className="text-xs">
+              {payload.environment.name}
+            </Badge>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground w-24 shrink-0">Environment ID:</span>
+            <code className="text-xs font-mono">{payload.environment.id}</code>
+          </div>
+        </div>
+      </div>
+    );
+  } else if (type === 'environment_deleted') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+          <Trash2 className="h-5 w-5" />
+          <span className="font-semibold">Environment Deleted</span>
+        </div>
+        <div className="grid gap-2 text-sm">
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground w-24 shrink-0">Name:</span>
+            <Badge variant="outline" className="text-xs">
+              {payload.environment.name}
+            </Badge>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground w-24 shrink-0">Environment ID:</span>
+            <code className="text-xs font-mono">{payload.environment.id}</code>
+          </div>
+        </div>
+      </div>
+    );
   } else if (type === 'config_version_restored') {
     return (
       <div className="space-y-4">
@@ -474,20 +547,85 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
           </Badge>
         </div>
         <div className="space-y-4">
-          <DiffRow label="Value" before={payload.before.value} after={payload.after.value} />
           <DiffRow
             label="Description"
             before={payload.before.description}
             after={payload.after.description}
             language="plaintext"
           />
-          <DiffRow label="Schema" before={payload.before.schema} after={payload.after.schema} />
+          <div className="text-sm text-muted-foreground">
+            Note: Value, schema, and overrides are now tracked per-environment variant
+          </div>
+        </div>
+      </div>
+    );
+  } else if (type === 'config_variant_version_restored') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-muted-foreground" />
+          <span className="font-semibold">Config Variant Version Restored</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Config ID:</span>
+          <code className="text-xs font-mono">{payload.after.configId}</code>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Environment ID:</span>
+          <code className="text-xs font-mono">{payload.environmentId}</code>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Version:</span>
+          <Badge variant="outline" className="text-xs">
+            {payload.restoredFromVersion}
+          </Badge>
+          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <Badge variant="outline" className="text-xs">
+            {payload.after.version}
+          </Badge>
+        </div>
+        <div className="space-y-4">
+          <DiffRow
+            label="Value"
+            before={JSON.stringify(payload.before.value, null, 2)}
+            after={JSON.stringify(payload.after.value, null, 2)}
+            language="json"
+          />
+          {payload.before.schema !== null && payload.after.schema !== null && (
+            <DiffRow
+              label="Schema"
+              before={JSON.stringify(payload.before.schema, null, 2)}
+              after={JSON.stringify(payload.after.schema, null, 2)}
+              language="json"
+            />
+          )}
           <DiffRow
             label="Overrides"
-            before={payload.before.overrides}
-            after={payload.after.overrides}
+            before={JSON.stringify(payload.before.overrides, null, 2)}
+            after={JSON.stringify(payload.after.overrides, null, 2)}
+            language="json"
           />
         </div>
+      </div>
+    );
+  } else if (type === 'config_variant_proposal_created') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          A new config variant proposal was created
+        </div>
+      </div>
+    );
+  } else if (type === 'config_variant_proposal_approved') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">Config variant proposal was approved</div>
+      </div>
+    );
+  } else if (type === 'config_variant_proposal_rejected') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">Config variant proposal was rejected</div>
       </div>
     );
   } else {

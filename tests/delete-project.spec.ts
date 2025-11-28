@@ -31,7 +31,7 @@ describe('deleteProject', () => {
     expect(res.rows.length).toBe(0);
 
     // project_deleted message stores projectId null, so we cannot filter by projectId. Fetch a broader set.
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
       limit: 50,
       orderBy: 'created_at desc, id desc',

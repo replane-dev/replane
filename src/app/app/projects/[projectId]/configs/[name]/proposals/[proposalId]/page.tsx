@@ -92,7 +92,7 @@ export default function ReviewConfigProposalPage() {
 
   // Get other pending proposals (excluding current one)
   const otherPendingProposals =
-    configData?.config?.pendingProposals.filter(p => p.id !== proposal.id) ?? [];
+    configData?.config?.pendingConfigProposals.filter(p => p.id !== proposal.id) ?? [];
 
   async function handleApprove() {
     await approve.mutateAsync({proposalId: proposal.id});
@@ -474,16 +474,12 @@ export default function ReviewConfigProposalPage() {
           ) : (
             <ConfigProposalDiff
               current={{
-                value: proposal.baseValue,
                 description: proposal.baseDescription ?? '',
-                schema: proposal.baseSchema,
                 maintainers: proposal.baseMaintainerEmails,
                 editors: proposal.baseEditorEmails,
               }}
               proposed={{
-                value: proposal.proposedValue,
                 description: proposal.proposedDescription,
-                schema: proposal.proposedSchema,
                 members: proposal.proposedMembers
                   ? {
                       newMembers: proposal.proposedMembers.newMembers.map(m => ({

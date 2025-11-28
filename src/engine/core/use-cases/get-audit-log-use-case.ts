@@ -1,4 +1,4 @@
-import type {AuditMessage} from '../audit-message-store';
+import type {AuditLog} from '../audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -19,7 +19,7 @@ export interface GetAuditLogResponse {
     createdAt: Date;
     userEmail: string | null;
     configName: string | null;
-    payload: AuditMessage['payload'];
+    payload: AuditLog['payload'];
   }>;
   nextCursor: {createdAt: Date; id: string} | null;
 }
@@ -50,7 +50,7 @@ export function createGetAuditLogUseCase(): TransactionalUseCase<
       }
     }
 
-    const messages = await tx.auditMessages.list({
+    const messages = await tx.auditLogs.list({
       gte: req.from,
       lt: req.to,
       lte: req.to ?? new Date(),

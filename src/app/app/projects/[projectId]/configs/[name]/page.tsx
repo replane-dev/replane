@@ -31,6 +31,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {Label} from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
@@ -58,7 +65,11 @@ export default function ConfigByNamePage() {
   const projectId = useProjectId();
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
+  const patchConfigVariant = useMutation(trpc.patchConfigVariant.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
+  const createConfigVariantProposal = useMutation(
+    trpc.createConfigVariantProposal.mutationOptions(),
+  );
   const rejectAllPendingProposals = useMutation(
     trpc.rejectAllPendingConfigProposals.mutationOptions(),
   );
@@ -75,8 +86,25 @@ export default function ConfigByNamePage() {
   const [liveValue, setLiveValue] = useState<any>(null);
   const [liveOverrides, setLiveOverrides] = useState<any>(null);
   const [showOverrideTester, setShowOverrideTester] = useState(false);
+  // TODO: we should select the default environment
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   const config = data.config;
+
+  // Select environment: use selected, or default to Production, or first variant
+  const currentVariant = useMemo(() => {
+    if (!config?.variants) return null;
+
+    if (selectedEnvironmentId) {
+      const variant = config.variants.find(v => v.environmentId === selectedEnvironmentId);
+      // TODO: show error if variant not found and suggest to reload the page
+      if (variant) return variant;
+
+      throw new Error('Variant not found');
+    }
+
+    return config.variants.find(v => v.environmentName === 'Production') ?? config.variants[0];
+  }, [config?.variants, selectedEnvironmentId]);
 
   const onValuesChange = useCallback(
     (values: {value: string; overrides: Override[]}) => {
@@ -84,16 +112,16 @@ export default function ConfigByNamePage() {
       try {
         setLiveValue(JSON.parse(values.value));
       } catch {
-        setLiveValue(config?.config.value);
+        setLiveValue(currentVariant?.value);
       }
     },
-    [config?.config.value],
+    [currentVariant?.value],
   );
 
   const defaultValue = useMemo(() => {
-    if (!config) return '';
-    return JSON.stringify(config.config.value, null, 2);
-  }, [config]);
+    if (!currentVariant) return '';
+    return JSON.stringify(currentVariant.value, null, 2);
+  }, [currentVariant]);
 
   async function executePatchConfig(data: {
     value: unknown;
@@ -103,14 +131,21 @@ export default function ConfigByNamePage() {
     maintainerEmails: string[];
     editorEmails: string[];
   }) {
-    if (!config) return;
+    if (!config || !currentVariant) return;
 
-    await patchConfig.mutateAsync({
-      configId: config.config.id,
-      prevVersion: config.config.version,
+    // Patch variant-level changes (value, schema, overrides)
+    await patchConfigVariant.mutateAsync({
+      configVariantId: currentVariant.id,
+      prevVersion: currentVariant.version,
       value: {newValue: data.value},
       schema: config.myRole === 'maintainer' ? {newSchema: data.schema} : undefined,
       overrides: config.myRole === 'maintainer' ? {newOverrides: data.overrides as any} : undefined,
+    });
+
+    // Patch config-level changes (description, members)
+    await patchConfig.mutateAsync({
+      configId: config.config.id,
+      prevVersion: config.config.version,
       description: {newDescription: data.description},
       members:
         config.myRole === 'maintainer'
@@ -148,13 +183,12 @@ export default function ConfigByNamePage() {
     }
 
     if (data.action === 'propose') {
-      // Build a minimal proposal containing only changed fields
+      // TODO: this should never happen, because we always should have a currentVariant
+      if (!currentVariant) return;
+
+      // Detect config-level changes (description, members)
       const current = config.config;
-      const valueChanged = JSON.stringify(data.value) !== JSON.stringify(current.value);
       const descChanged = (data.description ?? '') !== (current.description ?? '');
-      const schemaChanged = JSON.stringify(data.schema) !== JSON.stringify(current.schema);
-      const overridesChanged = JSON.stringify(data.overrides) !== JSON.stringify(current.overrides);
-      // Members change detection
       const currentMaintainers = (config.maintainerEmails ?? []).slice().sort();
       const currentEditors = (config.editorEmails ?? []).slice().sort();
       const newMaintainers = (data.maintainerEmails ?? []).slice().sort();
@@ -163,12 +197,7 @@ export default function ConfigByNamePage() {
         JSON.stringify(currentMaintainers) !== JSON.stringify(newMaintainers);
       const editorsChanged = JSON.stringify(currentEditors) !== JSON.stringify(newEditors);
 
-      const proposedValue = valueChanged ? {newValue: data.value} : undefined;
       const proposedDescription = descChanged ? {newDescription: data.description} : undefined;
-      const proposedSchema = schemaChanged ? {newSchema: data.schema} : undefined;
-      const proposedOverrides = overridesChanged
-        ? {newOverrides: data.overrides as any}
-        : undefined;
       const proposedMembers =
         maintainersChanged || editorsChanged
           ? {
@@ -179,6 +208,19 @@ export default function ConfigByNamePage() {
             }
           : undefined;
 
+      // Detect variant-level changes (value, schema, overrides)
+      const valueChanged = JSON.stringify(data.value) !== JSON.stringify(currentVariant.value);
+      const schemaChanged = JSON.stringify(data.schema) !== JSON.stringify(currentVariant.schema);
+      const overridesChanged =
+        JSON.stringify(data.overrides) !== JSON.stringify(currentVariant.overrides);
+
+      const proposedValue = valueChanged ? {newValue: data.value} : undefined;
+      const proposedSchema = schemaChanged ? {newSchema: data.schema} : undefined;
+      const proposedOverrides = overridesChanged
+        ? {newOverrides: data.overrides as any}
+        : undefined;
+
+      // Check if anything changed
       if (
         !proposedValue &&
         !proposedDescription &&
@@ -193,6 +235,8 @@ export default function ConfigByNamePage() {
       // Store the proposal data and show dialog
       setPendingProposalData({
         configId: current.id,
+        configVariantId: currentVariant.id,
+        variantVersion: currentVariant.version,
         proposedValue,
         proposedDescription,
         proposedSchema,
@@ -205,7 +249,7 @@ export default function ConfigByNamePage() {
 
     // Direct patch path (no approvals required)
     // Check if there are pending proposals
-    if (config.pendingProposals.length > 0) {
+    if (config.pendingConfigProposals.length > 0) {
       setPendingEditData(data);
       setShowPendingWarning(true);
       return;
@@ -245,7 +289,32 @@ export default function ConfigByNamePage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-3xl space-y-6">
-          {config.pendingProposals.length > 0 && (
+          {/* Environment Selector */}
+          {/* TODO: config always has at least one variant, because we enforce that at least one environment is present in the project */}
+          {config?.variants && config.variants.length > 1 && (
+            <div className="flex items-center gap-4">
+              <Label htmlFor="environment-select" className="text-sm font-medium shrink-0">
+                Environment:
+              </Label>
+              <Select
+                value={currentVariant?.environmentId || ''}
+                onValueChange={setSelectedEnvironmentId}
+              >
+                <SelectTrigger id="environment-select" className="w-[200px]">
+                  <SelectValue placeholder="Select environment" />
+                </SelectTrigger>
+                <SelectContent>
+                  {config.variants.map(v => (
+                    <SelectItem key={v.environmentId} value={v.environmentId}>
+                      {v.environmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {config.pendingConfigProposals.length > 0 && (
             <div className="rounded-lg border border-yellow-300/60 bg-yellow-50 dark:border-yellow-800/40 dark:bg-yellow-950/30 p-4">
               <div className="flex items-start gap-3">
                 <GitBranch className="size-5 text-yellow-700 dark:text-yellow-300 mt-0.5 shrink-0" />
@@ -253,26 +322,28 @@ export default function ConfigByNamePage() {
                   <div className="flex items-center justify-between gap-4 mb-1">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-foreground mb-1">
-                        {config.pendingProposals.length === 1
+                        {config.pendingConfigProposals.length === 1
                           ? 'Review pending proposal'
-                          : `${config.pendingProposals.length} pending proposals`}
+                          : `${config.pendingConfigProposals.length} pending proposals`}
                       </div>
-                      {config.pendingProposals.length === 1 ? (
+                      {config.pendingConfigProposals.length === 1 ? (
                         <div className="text-sm text-foreground/80 dark:text-foreground/70">
                           <span>
-                            By {config.pendingProposals[0]!.proposerEmail ?? 'Unknown'} · based on
-                            version {config.pendingProposals[0]!.baseConfigVersion}
+                            By {config.pendingConfigProposals[0]!.proposerEmail ?? 'Unknown'}
                           </span>
                           <span className="mx-1">·</span>
                           <span>
-                            {formatDistanceToNow(new Date(config.pendingProposals[0]!.createdAt), {
-                              addSuffix: true,
-                            })}
+                            {formatDistanceToNow(
+                              new Date(config.pendingConfigProposals[0]!.createdAt),
+                              {
+                                addSuffix: true,
+                              },
+                            )}
                           </span>
                         </div>
                       ) : (
                         <div className="text-sm text-foreground/80 dark:text-foreground/70">
-                          {config.pendingProposals.length} proposals waiting for review
+                          {config.pendingConfigProposals.length} proposals waiting for review
                         </div>
                       )}
                     </div>
@@ -284,7 +355,7 @@ export default function ConfigByNamePage() {
                             variant="outline"
                             className="text-destructive hover:text-destructive"
                           >
-                            {config.pendingProposals.length === 1 ? 'Reject' : 'Reject all'}
+                            {config.pendingConfigProposals.length === 1 ? 'Reject' : 'Reject all'}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -313,7 +384,7 @@ export default function ConfigByNamePage() {
                             >
                               {rejectAllPendingProposals.isPending
                                 ? 'Rejecting...'
-                                : config.pendingProposals.length === 1
+                                : config.pendingConfigProposals.length === 1
                                   ? 'Reject'
                                   : 'Reject all'}
                             </AlertDialogAction>
@@ -323,28 +394,27 @@ export default function ConfigByNamePage() {
                       <Button asChild size="sm" variant="default">
                         <Link
                           href={
-                            config.pendingProposals.length === 1
-                              ? `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${config.pendingProposals[0]!.id}`
+                            config.pendingConfigProposals.length === 1
+                              ? `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${config.pendingConfigProposals[0]!.id}`
                               : `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals`
                           }
                         >
-                          {config.pendingProposals.length === 1 ? 'Review proposal' : 'View all'}
+                          {config.pendingConfigProposals.length === 1
+                            ? 'Review proposal'
+                            : 'View all'}
                         </Link>
                       </Button>
                     </div>
                   </div>
-                  {config.pendingProposals.length > 1 && (
+                  {config.pendingConfigProposals.length > 1 && (
                     <ul className="mt-3 space-y-4 border-t border-yellow-300/40 dark:border-yellow-800/30 pt-3">
-                      {config.pendingProposals.map(p => (
+                      {config.pendingConfigProposals.map(p => (
                         <li
                           key={p.id}
                           className="flex items-center justify-between text-sm text-foreground/80 dark:text-foreground/70"
                         >
                           <div className="flex flex-col">
-                            <span>
-                              By {p.proposerEmail ?? 'Unknown'} · based on version{' '}
-                              {p.baseConfigVersion}
-                            </span>
+                            <span>By {p.proposerEmail ?? 'Unknown'}</span>
                             <span className="text-xs text-foreground/60 dark:text-foreground/50">
                               {formatDistanceToNow(new Date(p.createdAt), {addSuffix: true})}
                             </span>
@@ -366,26 +436,27 @@ export default function ConfigByNamePage() {
           )}
 
           <ConfigForm
+            key={currentVariant?.id}
             onValuesChange={onValuesChange}
             mode={org.requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
             role={org.requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
             currentName={name}
-            currentPendingProposalsCount={config.pendingProposals.length}
+            currentPendingProposalsCount={config.pendingConfigProposals.length}
             defaultValue={defaultValue}
-            defaultSchemaEnabled={!!config.config?.schema}
+            defaultSchemaEnabled={!!currentVariant?.schema}
             defaultSchema={
-              config.config?.schema ? JSON.stringify(config.config.schema, null, 2) : ''
+              currentVariant?.schema ? JSON.stringify(currentVariant.schema, null, 2) : ''
             }
-            defaultOverrides={config.config?.overrides as any}
+            defaultOverrides={currentVariant?.overrides as any}
             defaultDescription={config.config?.description ?? ''}
             defaultMaintainerEmails={config.maintainerEmails}
             defaultEditorEmails={config.editorEmails}
             editorIdPrefix={`edit-config-${name}`}
             createdAt={config.config.createdAt}
-            updatedAt={config.config.updatedAt}
+            updatedAt={currentVariant?.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
-            saving={patchConfig.isPending}
+            saving={patchConfig.isPending || patchConfigVariant.isPending}
             proposing={createConfigProposal.isPending}
             onDelete={async () => {
               await deleteOrPropose({
@@ -406,8 +477,8 @@ export default function ConfigByNamePage() {
 
           {/* Override Tester Dialog */}
           <OverrideTester
-            baseValue={liveValue || config.config.value}
-            overrides={liveOverrides || (config.config.overrides as any)}
+            baseValue={liveValue || currentVariant?.value}
+            overrides={liveOverrides || (currentVariant?.overrides as any)}
             open={showOverrideTester}
             onOpenChange={setShowOverrideTester}
           />
@@ -422,16 +493,16 @@ export default function ConfigByNamePage() {
 
             {/* Warning/Info about proposal rejection */}
             <div className="pt-2">
-              {config && config.pendingProposals.length > 0 ? (
+              {config && config.pendingConfigProposals.length > 0 ? (
                 <div className="rounded-lg border border-yellow-200/50 bg-yellow-50/50 dark:border-yellow-900/30 dark:bg-yellow-950/20 p-3">
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
                     <div className="flex-1 text-sm space-y-2">
                       <div>
                         <p className="font-semibold text-foreground">
-                          {config.pendingProposals.length === 1
+                          {config.pendingConfigProposals.length === 1
                             ? '1 other proposal is pending'
-                            : `${config.pendingProposals.length} other proposals are pending`}
+                            : `${config.pendingConfigProposals.length} other proposals are pending`}
                         </p>
                         <p className="text-foreground/80 dark:text-foreground/70 mt-1">
                           If another proposal gets approved before this one, your proposal will be
@@ -499,26 +570,63 @@ export default function ConfigByNamePage() {
               </Button>
               <Button
                 type="button"
-                disabled={createConfigProposal.isPending}
+                disabled={createConfigProposal.isPending || createConfigVariantProposal.isPending}
                 onClick={async () => {
                   if (!pendingProposalData) return;
 
                   try {
-                    const res = await createConfigProposal.mutateAsync({
-                      ...pendingProposalData,
-                      baseVersion: config.config.version,
-                      message: proposalMessage.trim() || undefined,
-                    });
+                    // Separate config-level and variant-level proposals
+                    const hasConfigChanges =
+                      pendingProposalData.proposedDescription ||
+                      pendingProposalData.proposedMembers;
+                    const hasVariantChanges =
+                      pendingProposalData.proposedValue ||
+                      pendingProposalData.proposedSchema ||
+                      pendingProposalData.proposedOverrides;
+
+                    let proposalId: string | undefined;
+
+                    // Create config-level proposal if needed
+                    if (hasConfigChanges) {
+                      const res = await createConfigProposal.mutateAsync({
+                        configId: pendingProposalData.configId,
+                        baseVersion: config.config.version,
+                        proposedDescription: pendingProposalData.proposedDescription,
+                        proposedMembers: pendingProposalData.proposedMembers,
+                        message: proposalMessage.trim() || undefined,
+                      });
+                      proposalId = res.configProposalId;
+                    }
+
+                    // Create variant-level proposal if needed
+                    if (hasVariantChanges) {
+                      const res = await createConfigVariantProposal.mutateAsync({
+                        configVariantId: pendingProposalData.configVariantId,
+                        baseVersion: pendingProposalData.variantVersion,
+                        proposedValue: pendingProposalData.proposedValue,
+                        proposedSchema: pendingProposalData.proposedSchema,
+                        proposedOverrides: pendingProposalData.proposedOverrides,
+                        message: proposalMessage.trim() || undefined,
+                      });
+                      proposalId = res.configVariantProposalId;
+                    }
 
                     setShowProposalDialog(false);
                     setProposalMessage('');
                     setPendingProposalData(null);
 
-                    router.push(
-                      `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
-                    );
+                    if (proposalId) {
+                      router.push(
+                        `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${proposalId}`,
+                      );
+                    } else {
+                      router.refresh();
+                    }
                   } catch (error: any) {
-                    if (error?.data?.cause?.code === 'CONFIG_VERSION_MISMATCH') {
+                    if (
+                      error?.data?.cause?.code === 'CONFIG_VERSION_MISMATCH' ||
+                      error?.data?.cause?.code === 'CONFIG_VARIANT_VERSION_MISMATCH'
+                    ) {
                       setShowProposalDialog(false);
                       setProposalMessage('');
                       setPendingProposalData(null);
@@ -531,7 +639,9 @@ export default function ConfigByNamePage() {
                   }
                 }}
               >
-                {createConfigProposal.isPending ? 'Creating…' : 'Create Proposal'}
+                {createConfigProposal.isPending || createConfigVariantProposal.isPending
+                  ? 'Creating…'
+                  : 'Create Proposal'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -542,7 +652,7 @@ export default function ConfigByNamePage() {
           <PendingProposalsWarningDialog
             open={showPendingWarning}
             onOpenChange={setShowPendingWarning}
-            pendingProposals={config.pendingProposals}
+            pendingProposals={config.pendingConfigProposals}
             configName={name}
             projectId={projectId}
             action="edit"

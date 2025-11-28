@@ -14,6 +14,8 @@ export interface GetApiKeyResponse {
     name: string;
     description: string;
     creatorEmail: string | null;
+    environmentId: string;
+    environmentName: string;
   } | null;
 }
 
@@ -22,7 +24,7 @@ export function createGetApiKeyUseCase(): TransactionalUseCase<
   GetApiKeyResponse
 > {
   return async (_ctx, tx, req) => {
-    const token = await tx.apiTokens.getById({apiKeyId: req.id, projectId: req.projectId});
+    const token = await tx.sdkKeys.getById({apiKeyId: req.id, projectId: req.projectId});
     if (!token) return {apiKey: null};
     return {
       apiKey: {
@@ -31,6 +33,8 @@ export function createGetApiKeyUseCase(): TransactionalUseCase<
         name: token.name,
         description: token.description,
         creatorEmail: token.creatorEmail ?? null,
+        environmentId: token.environmentId,
+        environmentName: token.environmentName,
       },
     };
   };

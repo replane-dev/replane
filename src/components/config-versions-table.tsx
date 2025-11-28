@@ -51,16 +51,31 @@ function humanizeId(id: string): string {
     .replace(/^\w/, c => c.toUpperCase());
 }
 
-export function ConfigVersionsTable({name}: {name: string}) {
+export function ConfigVersionsTable({
+  name,
+  configId,
+  environmentId,
+}: {
+  name: string;
+  configId: string;
+  environmentId: string;
+}) {
   const router = useRouter();
   const projectId = useProjectId();
   const trpc = useTRPC();
   const {
     data: {versions},
-  } = useSuspenseQuery(trpc.getConfigVersionList.queryOptions({name, projectId}));
+  } = useSuspenseQuery(
+    trpc.getConfigVariantVersionList.queryOptions({
+      configId,
+      environmentId,
+      projectId,
+    }),
+  );
   const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
-  const currentConfigVersion = configData.config?.config.version as number | undefined;
-  const restoreMutation = useMutation(trpc.restoreConfigVersion.mutationOptions());
+  const variant = configData.config?.variants.find(v => v.environmentId === environmentId);
+  const currentVariantVersion = variant?.version as number | undefined;
+  const restoreMutation = useMutation(trpc.restoreConfigVariantVersion.mutationOptions());
   const tableData = React.useMemo(
     () =>
       (versions ?? []).map(v => ({
@@ -189,31 +204,30 @@ export function ConfigVersionsTable({name}: {name: string}) {
                 >
                   View
                 </DropdownMenuItem>
-                {currentConfigVersion !== undefined && (
+                {currentVariantVersion !== undefined && (
                   <DropdownMenuItem
                     disabled={
-                      restoreMutation.isPending ||
-                      currentConfigVersion !== configData.config?.config.version
+                      restoreMutation.isPending || currentVariantVersion !== variant?.version
                     }
                     onClick={async e => {
                       e.stopPropagation();
                       if (
                         !confirm(
-                          `Restore version v${version.version}? This will create a new version with the same contents (current v${currentConfigVersion}).`,
+                          `Restore version v${version.version}? This will create a new version with the same contents (current v${currentVariantVersion}).`,
                         )
                       ) {
                         return;
                       }
                       try {
                         await restoreMutation.mutateAsync({
-                          name,
+                          configId,
+                          environmentId,
                           versionToRestore: version.version,
-                          expectedCurrentVersion: currentConfigVersion,
+                          expectedCurrentVersion: currentVariantVersion,
                           projectId,
                         });
                         toast.success(`Restored v${version.version} to new latest version`);
                       } catch (e) {
-                         
                         alert((e as Error).message);
                       }
                     }}
@@ -227,7 +241,7 @@ export function ConfigVersionsTable({name}: {name: string}) {
         },
       },
     ],
-    [name, router, currentConfigVersion, restoreMutation, configData],
+    [name, router, currentVariantVersion, restoreMutation, variant, configId, environmentId, projectId],
   );
 
   const table = useReactTable({

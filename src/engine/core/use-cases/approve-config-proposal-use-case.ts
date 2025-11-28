@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import type {ConfigProposalId} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError, ForbiddenError} from '../errors';
@@ -67,8 +67,8 @@ export function createApproveConfigProposalUseCase(
     });
 
     // Create audit message for the approval
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: deps.dateProvider.now(),
       userId: currentUser.id,
       projectId: config.projectId,
@@ -78,10 +78,7 @@ export function createApproveConfigProposalUseCase(
         proposalId: proposal.id,
         configId: proposal.configId,
         proposedDelete: proposal.proposedDelete,
-        proposedValue: proposal.proposedValue ?? undefined,
         proposedDescription: proposal.proposedDescription ?? undefined,
-        proposedSchema: proposal.proposedSchema ?? undefined,
-        proposedOverrides: proposal.proposedOverrides ?? undefined,
         proposedMembers: proposal.proposedMembers ?? undefined,
       },
     });
@@ -97,13 +94,6 @@ export function createApproveConfigProposalUseCase(
     } else {
       await tx.configService.patchConfig({
         configId: proposal.configId,
-        value: proposal.proposedValue ? {newValue: proposal.proposedValue.newValue} : undefined,
-        schema: proposal.proposedSchema
-          ? {newSchema: proposal.proposedSchema.newSchema}
-          : undefined,
-        overrides: proposal.proposedOverrides
-          ? {newOverrides: proposal.proposedOverrides.newOverrides}
-          : undefined,
         description:
           proposal.proposedDescription !== null
             ? {newDescription: proposal.proposedDescription}

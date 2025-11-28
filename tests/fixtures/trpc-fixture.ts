@@ -1,4 +1,4 @@
-import {type ConfigChangePayload} from '@/engine/core/config-store';
+import {type ConfigVariantChangePayload} from '@/engine/core/config-variant-store';
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
 import {InMemoryEventBus} from '@/engine/core/in-memory-event-bus';
@@ -35,13 +35,15 @@ export class AppFixture {
   private _engine: Engine | undefined;
   private overrideNow: Date = new Date();
   private _projectId: string | undefined;
+  private _productionEnvironmentId: string | undefined;
+  private _developmentEnvironmentId: string | undefined;
 
   constructor(private options: TrpcFixtureOptions) {}
 
   async init() {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
 
-    const eventBus = new InMemoryEventBus<ConfigChangePayload>({});
+    const eventBus = new InMemoryEventBus<ConfigVariantChangePayload>({});
 
     const engine = await createEngine({
       databaseUrl: getDatabaseUrl(),
@@ -69,12 +71,15 @@ export class AppFixture {
     this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
     this._engine = engine;
 
-    const {projectId} = await engine.useCases.createProject(GLOBAL_CONTEXT, {
+    const {projectId, environments} = await engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: normalizeEmail(this.options.authEmail),
       name: 'Test Project',
       description: 'Default project for tests',
     });
     this._projectId = projectId;
+
+    this._productionEnvironmentId = environments.find(e => e.name === 'Production')?.id;
+    this._developmentEnvironmentId = environments.find(e => e.name === 'Development')?.id;
   }
 
   get now() {
@@ -102,6 +107,17 @@ export class AppFixture {
   get projectId(): string {
     if (!this._projectId) throw new Error('projectId not initialized');
     return this._projectId;
+  }
+
+  get productionEnvironmentId(): string {
+    if (!this._productionEnvironmentId) throw new Error('productionEnvironmentId not initialized');
+    return this._productionEnvironmentId;
+  }
+
+  get developmentEnvironmentId(): string {
+    if (!this._developmentEnvironmentId)
+      throw new Error('developmentEnvironmentId not initialized');
+    return this._developmentEnvironmentId;
   }
 
   async destroy(ctx: Context) {

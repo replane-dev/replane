@@ -11,7 +11,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
-import type {AuditMessagePayload} from '@/engine/core/audit-message-store';
+import type {AuditLogPayload} from '@/engine/core/audit-log-store';
 import {assertNever} from '@/engine/core/utils';
 import {shouldNavigateOnRowClick} from '@/lib/table-row-interaction';
 import {cn} from '@/lib/utils';
@@ -38,7 +38,7 @@ export interface FilterState {
   to?: Date;
 }
 
-function humanizePayload(payload: AuditMessagePayload): {action: string; details: string} {
+function humanizePayload(payload: AuditLogPayload): {action: string; details: string} {
   if (!payload || typeof payload !== 'object') return {action: 'unknown', details: ''};
   if (payload.type === 'config_created') {
     return {action: 'Config Created', details: `Config name '${payload.config.name}'`};
@@ -87,6 +87,41 @@ function humanizePayload(payload: AuditMessagePayload): {action: string; details
     return {
       action: 'Config Proposal Created',
       details: `Proposal ID '${payload.proposalId}'`,
+    };
+  } else if (payload.type === 'config_variant_updated') {
+    return {
+      action: 'Config Variant Updated',
+      details: `${payload.after.configName} (${payload.after.environmentName}) v${payload.before.version} → v${payload.after.version}`,
+    };
+  } else if (payload.type === 'environment_created') {
+    return {
+      action: 'Environment Created',
+      details: `Environment '${payload.environment.name}'`,
+    };
+  } else if (payload.type === 'environment_deleted') {
+    return {
+      action: 'Environment Deleted',
+      details: `Environment '${payload.environment.name}'`,
+    };
+  } else if (payload.type === 'config_variant_version_restored') {
+    return {
+      action: 'Config Variant Version Restored',
+      details: `Config '${payload.after.configId}' v${payload.restoredFromVersion} → v${payload.after.version}`,
+    };
+  } else if (payload.type === 'config_variant_proposal_created') {
+    return {
+      action: 'Config Variant Proposal Created',
+      details: `Proposal for variant`,
+    };
+  } else if (payload.type === 'config_variant_proposal_approved') {
+    return {
+      action: 'Config Variant Proposal Approved',
+      details: `Variant proposal approved`,
+    };
+  } else if (payload.type === 'config_variant_proposal_rejected') {
+    return {
+      action: 'Config Variant Proposal Rejected',
+      details: `Variant proposal rejected`,
     };
   } else {
     assertNever(payload, `Unhandled payload type: ${JSON.stringify(payload)}`);

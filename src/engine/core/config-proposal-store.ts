@@ -1,6 +1,5 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
-import {ConfigOverrides} from './config-store';
 import type {ConfigProposalRejectionReason, ConfigProposals, DB} from './db';
 import {deserializeJson, serializeJson} from './store-utils';
 import {createUuidV7} from './uuid';
@@ -26,11 +25,10 @@ export function ConfigProposal() {
       .enum(['config_edited', 'config_deleted', 'another_proposal_approved', 'rejected_explicitly'])
       .nullable(),
     baseConfigVersion: z.number(),
+    originalMembers: z.array(ConfigMember()),
+    originalDescription: z.string(),
     proposedDelete: z.boolean(),
     proposedDescription: z.string().nullable(),
-    proposedValue: z.object({newValue: z.unknown()}).nullable(),
-    proposedSchema: z.object({newSchema: z.unknown()}).nullable(),
-    proposedOverrides: z.object({newOverrides: ConfigOverrides()}).nullable(),
     proposedMembers: z.object({newMembers: z.array(ConfigMember())}).nullable(),
     message: z.string().nullable(),
   });
@@ -297,11 +295,10 @@ export class ConfigProposalStore {
         rejected_in_favor_of_proposal_id: proposal.rejectedInFavorOfProposalId,
         rejection_reason: proposal.rejectionReason,
         base_config_version: proposal.baseConfigVersion,
+        original_members: serializeJson(proposal.originalMembers),
+        original_description: proposal.originalDescription,
         proposed_delete: proposal.proposedDelete,
-        proposed_value: proposal.proposedValue ? serializeJson(proposal.proposedValue) : null,
         proposed_description: proposal.proposedDescription,
-        proposed_schema: proposal.proposedSchema ? serializeJson(proposal.proposedSchema) : null,
-        proposed_overrides: proposal.proposedOverrides ? serializeJson(proposal.proposedOverrides) : null,
         proposed_members: proposal.proposedMembers ? serializeJson(proposal.proposedMembers) : null,
         message: proposal.message,
       })
@@ -310,10 +307,7 @@ export class ConfigProposalStore {
 
   async updateById(params: {
     id: string;
-    proposedValue?: unknown;
     proposedDescription?: string;
-    proposedSchema?: unknown;
-    proposedOverrides?: unknown;
     proposedMembers?: ConfigMember[];
     proposedDelete?: boolean;
     approvedAt?: Date;
@@ -325,21 +319,7 @@ export class ConfigProposalStore {
     await this.db
       .updateTable('config_proposals')
       .set({
-        proposed_value:
-          params.proposedValue !== undefined ? serializeJson(params.proposedValue) : undefined,
         proposed_description: params.proposedDescription,
-        proposed_schema:
-          params.proposedSchema !== undefined
-            ? params.proposedSchema
-              ? serializeJson(params.proposedSchema)
-              : null
-            : undefined,
-        proposed_overrides:
-          params.proposedOverrides !== undefined
-            ? params.proposedOverrides
-              ? serializeJson(params.proposedOverrides)
-              : null
-            : undefined,
         proposed_members:
           params.proposedMembers !== undefined
             ? params.proposedMembers
@@ -374,11 +354,10 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     rejectedInFavorOfProposalId: proposal.rejected_in_favor_of_proposal_id,
     rejectionReason: proposal.rejection_reason,
     baseConfigVersion: proposal.base_config_version,
+    originalMembers: deserializeJson(proposal.original_members) ?? [],
+    originalDescription: proposal.original_description,
     proposedDelete: proposal.proposed_delete,
-    proposedValue: deserializeJson(proposal.proposed_value),
     proposedDescription: proposal.proposed_description,
-    proposedSchema: deserializeJson(proposal.proposed_schema),
-    proposedOverrides: deserializeJson(proposal.proposed_overrides),
     proposedMembers: deserializeJson(proposal.proposed_members),
     message: proposal.message,
   };

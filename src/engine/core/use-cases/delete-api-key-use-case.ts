@@ -1,4 +1,4 @@
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -16,7 +16,7 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
   DeleteApiKeyResponse
 > {
   return async (_ctx, tx, req) => {
-    const token = await tx.apiTokens.getById({
+    const token = await tx.sdkKeys.getById({
       apiKeyId: req.id,
       projectId: req.projectId,
     });
@@ -31,9 +31,9 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
     if (!user || user.id !== token.creatorId) {
       throw new Error('Not allowed to delete this API key');
     }
-    await tx.apiTokens.deleteById(token.id);
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    await tx.sdkKeys.deleteById(token.id);
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: new Date(),
       projectId: token.projectId,
       userId: user.id,

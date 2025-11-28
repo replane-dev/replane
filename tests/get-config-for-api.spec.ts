@@ -1,7 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {v4 as uuidv4} from 'uuid';
-import {describe, expect, it} from 'vitest';
+import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
@@ -45,6 +45,7 @@ describe('Get Config For API Use Case', () => {
     const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     expect(result).not.toBeNull();
@@ -61,6 +62,7 @@ describe('Get Config For API Use Case', () => {
     const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
       name: 'non-existent-config',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     expect(result).toBeNull();
@@ -83,9 +85,14 @@ describe('Get Config For API Use Case', () => {
 
     await sleep(50);
 
-    // Patch the config
-    await fixture.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
-      configId,
+    // Get the production variant
+    const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+    const productionVariant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
+    assert(productionVariant, 'Production variant should exist');
+
+    // Patch the config variant (value is now on variant)
+    await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
+      configVariantId: productionVariant.id,
       prevVersion: 1,
       value: {newValue: {count: 2}},
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -96,6 +103,7 @@ describe('Get Config For API Use Case', () => {
     const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     expect(result?.value).toEqual({count: 2});
@@ -122,11 +130,12 @@ describe('Get Config For API Use Case', () => {
     const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     // Overrides can be null or empty array depending on how it was stored
-    const hasNoOverrides = 
-      result?.overrides === null || 
+    const hasNoOverrides =
+      result?.overrides === null ||
       result?.overrides === undefined ||
       (Array.isArray(result?.overrides) && result.overrides.length === 0);
     expect(hasNoOverrides).toBe(true);

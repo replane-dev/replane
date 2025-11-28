@@ -1,4 +1,5 @@
 import {Config} from '../config-store';
+import type {ConfigVariant} from '../config-variant-store';
 import {combineConfigAndProjectRoles} from '../role-utils';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -9,20 +10,24 @@ export interface GetConfigRequest {
   projectId: string;
 }
 
-export interface PendingProposalSummary {
+export interface PendingConfigProposalSummary {
   id: string;
   proposerId: number | null;
   proposerEmail: string | null;
   createdAt: Date;
-  baseConfigVersion: number;
+}
+
+export interface ConfigVariantWithEnvironmentName extends ConfigVariant {
+  environmentName: string;
 }
 
 export interface ConfigDetails {
   config: Config;
+  variants: ConfigVariantWithEnvironmentName[];
   editorEmails: string[];
   maintainerEmails: string[];
   myRole: 'maintainer' | 'editor' | 'viewer';
-  pendingProposals: PendingProposalSummary[];
+  pendingConfigProposals: PendingConfigProposalSummary[];
 }
 
 export interface GetConfigResponse {
@@ -54,8 +59,11 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
     const myConfigRole =
       configUsers.find(cu => cu.user_email_normalized === req.currentUserEmail)?.role ?? 'viewer';
 
-    // Get pending proposals with proposer emails
-    const pendingProposals = await tx.configProposals.getPendingProposalsWithProposerEmails({
+    // Get all variants for this config
+    const variants = await tx.configVariants.getByConfigId(config.id);
+
+    // Get pending config-level proposals (deletion, members, description)
+    const pendingConfigProposals = await tx.configProposals.getPendingProposalsWithProposerEmails({
       configId: config.id,
     });
 
@@ -64,16 +72,13 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
         config: {
           id: config.id,
           name: config.name,
-          value: config.value,
           projectId: config.projectId,
           description: config.description,
-          schema: config.schema,
-          overrides: config.overrides,
           creatorId: config.creatorId,
           createdAt: config.createdAt,
-          updatedAt: config.updatedAt,
           version: config.version,
         } satisfies Config,
+        variants,
         editorEmails: configUsers
           .filter(cu => cu.role === 'editor')
           .map(cu => cu.user_email_normalized)
@@ -85,7 +90,7 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
         myRole: myProjectRole
           ? combineConfigAndProjectRoles(myProjectRole.role, myConfigRole)
           : myConfigRole,
-        pendingProposals,
+        pendingConfigProposals,
       },
     };
   };

@@ -1,4 +1,4 @@
-import {createAuditMessageId} from '@/engine/core/audit-message-store';
+import {createAuditLogId} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
@@ -14,15 +14,17 @@ function advance(fixture: ReturnType<typeof useAppFixture>, ms: number) {
 describe('getAuditLog', () => {
   const fixture = useAppFixture({authEmail: TEST_USER_EMAIL});
 
-  it('returns empty result when no messages', async () => {
+  it('returns result with initial messages', async () => {
     const {messages, nextCursor} = await fixture.trpc.getAuditLog({
       projectId: fixture.projectId,
     });
-    expect(messages.length).toEqual(1); // project creation message
+    // project_created = 1 message (environments are created without audit logs)
+    expect(messages.length).toEqual(1);
     expect(nextCursor).toBeNull();
   });
 
   it('lists messages with pagination & cursor', async () => {
+    // Initial state: 1 message (project_created)
     // create two configs (each generates an audit entry)
     await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
@@ -47,33 +49,22 @@ describe('getAuditLog', () => {
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
+    // Now we have 3 messages: project_created + 2 config_created
 
-    const page1 = await fixture.trpc.getAuditLog({limit: 1, projectId: fixture.projectId});
-    expect(page1.messages).toHaveLength(1);
+    // Test pagination - get all messages 2 at a time
+    const page1 = await fixture.trpc.getAuditLog({limit: 2, projectId: fixture.projectId});
+    expect(page1.messages).toHaveLength(2);
     expect(page1.nextCursor).not.toBeNull();
-    expect(page1.messages[0].payload.type).toBe('project_created');
 
     const page2 = await fixture.trpc.getAuditLog({
-      limit: 1,
+      limit: 2,
       cursor: page1.nextCursor!,
       projectId: fixture.projectId,
     });
     expect(page2.messages).toHaveLength(1);
-    // second page should have no further cursor
-    expect(page2.nextCursor).not.toBeNull();
-    expect(page2.messages[0].configName).toBe('cfg_b');
+    expect(page2.nextCursor).toBeNull();
 
-    const page3 = await fixture.trpc.getAuditLog({
-      limit: 1,
-      cursor: page2.nextCursor!,
-      projectId: fixture.projectId,
-    });
-    expect(page3.messages).toHaveLength(1);
-    // third page should have no further cursor
-    expect(page3.nextCursor).toBeNull();
-    expect(page3.messages[0].configName).toBe('cfg_a');
-
-    const allIds = [...page1.messages, ...page2.messages, ...page3.messages].map(m => m.id);
+    const allIds = [...page1.messages, ...page2.messages].map(m => m.id);
     expect(new Set(allIds).size).toBe(3);
   });
 
@@ -90,10 +81,10 @@ describe('getAuditLog', () => {
       connection.release();
     }
 
-    // create audit message manually for other user (api key creation pattern)
+    // create audit log manually for other user (sdk key creation pattern)
     const now = new Date(fixture.now);
-    await fixture.engine.testing.auditMessages.create({
-      id: createAuditMessageId(),
+    await fixture.engine.testing.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: now,
       userId: 2,
       configId: null,

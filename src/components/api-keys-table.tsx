@@ -37,6 +37,8 @@ interface ApiKeyRow {
   description: string;
   createdAt: string | Date;
   creatorEmail: string | null;
+  environmentId: string;
+  environmentName: string;
 }
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
@@ -117,6 +119,11 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
         accessorKey: 'name',
         header: 'API Key Name',
         cell: ({row}) => <div>{row.getValue('name') || '—'}</div>,
+      },
+      {
+        accessorKey: 'environmentName',
+        header: 'Environment',
+        cell: ({row}) => <div>{row.getValue('environmentName') || '—'}</div>,
       },
       {
         accessorKey: 'description',

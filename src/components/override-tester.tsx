@@ -93,7 +93,12 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
     const config = await queryClient.fetchQuery(
       trpc.getConfig.queryOptions({projectId: params.projectId, name: params.configName}),
     );
-    return config.config?.config.value;
+    // TODO: use the same environment as the current variant
+    // Use Production variant or first variant
+    const variant =
+      config.config?.variants.find(v => v.environmentName === 'Production') ??
+      config.config?.variants[0];
+    return variant?.value;
   };
 
   const handleTest = async () => {

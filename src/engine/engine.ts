@@ -3,13 +3,14 @@
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
-import {ApiTokenStore} from './core/api-token-store';
-import {AuditMessageStore} from './core/audit-message-store';
+import {AuditLogStore} from './core/audit-log-store';
 import {ConfigProposalStore} from './core/config-proposal-store';
 import {ConfigService} from './core/config-service';
-import {type ConfigChangePayload, ConfigStore} from './core/config-store';
+import {ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
-import {ConfigVersionStore} from './core/config-version-store';
+import {ConfigVariantProposalStore} from './core/config-variant-proposal-store';
+import {type ConfigVariantChangePayload, ConfigVariantStore} from './core/config-variant-store';
+import {ConfigVariantVersionStore} from './core/config-variant-version-store';
 import {type ConfigReplicaEvent, ConfigsReplica} from './core/configs-replica';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
@@ -24,19 +25,25 @@ import {
   type PgEventBusClientNotificationHandler,
 } from './core/pg-event-bus-client';
 import {getPgPool} from './core/pg-pool-cache';
+import {ProjectEnvironmentStore} from './core/project-environment-store';
 import {ProjectStore} from './core/project-store';
 import {ProjectUserStore} from './core/project-user-store';
+import {SdkKeyStore} from './core/sdk-key-store';
 import type {Service} from './core/service';
 import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
+import {createApproveConfigVariantProposalUseCase} from './core/use-cases/approve-config-variant-proposal-use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
+import {createCreateConfigVariantProposalUseCase} from './core/use-cases/create-config-variant-proposal-use-case';
+import {createCreateEnvironmentUseCase} from './core/use-cases/create-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
+import {createDeleteEnvironmentUseCase} from './core/use-cases/delete-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
@@ -48,18 +55,22 @@ import {createGetConfigProposalListUseCase} from './core/use-cases/get-config-pr
 import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
-import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
-import {createGetConfigVersionUseCase} from './core/use-cases/get-config-version-use-case';
+import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-config-variant-version-list-use-case';
+import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
+import {createGetEnvironmentListUseCase} from './core/use-cases/get-environment-list-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
 import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
+import {createPatchConfigVariantUseCase} from './core/use-cases/patch-config-variant-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
+import {createRejectAllPendingConfigVariantProposalsUseCase} from './core/use-cases/reject-all-pending-config-variant-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
-import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
+import {createRejectConfigVariantProposalUseCase} from './core/use-cases/reject-config-variant-proposal-use-case';
+import {createRestoreConfigVariantVersionUseCase} from './core/use-cases/restore-config-variant-version-use-case';
 import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {UserStore} from './core/user-store';
@@ -73,13 +84,13 @@ export interface EngineOptions {
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
   createEventBusClient?: (
-    onNotification: PgEventBusClientNotificationHandler<ConfigChangePayload>,
-  ) => EventBusClient<ConfigChangePayload>;
+    onNotification: PgEventBusClientNotificationHandler<ConfigVariantChangePayload>,
+  ) => EventBusClient<ConfigVariantChangePayload>;
 }
 
 interface ToUseCaseOptions {
   onConflictRetriesCount: number;
-  listener: EventBusClient<ConfigChangePayload>;
+  listener: EventBusClient<ConfigVariantChangePayload>;
   dateProvider: DateProvider;
 }
 
@@ -97,24 +108,34 @@ function toUseCase<TReq, TRes>(
       }
 
       const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
-      const configs = new ConfigStore(dbTx, scheduleOptimisticEffect, options.listener);
+      const configs = new ConfigStore(dbTx);
       const configProposals = new ConfigProposalStore(dbTx);
       const users = new UserStore(dbTx);
       const configUsers = new ConfigUserStore(dbTx);
-      const configVersions = new ConfigVersionStore(dbTx);
-      const apiTokens = new ApiTokenStore(dbTx);
-      const auditMessages = new AuditMessageStore(dbTx);
+      const sdkKeys = new SdkKeyStore(dbTx);
+      const auditLogs = new AuditLogStore(dbTx);
       const projectUsers = new ProjectUserStore(dbTx);
       const projects = new ProjectStore(dbTx);
+      const projectEnvironments = new ProjectEnvironmentStore(dbTx);
+      const configVariants = new ConfigVariantStore(
+        dbTx,
+        scheduleOptimisticEffect,
+        options.listener,
+      );
+      const configVariantVersions = new ConfigVariantVersionStore(dbTx);
+      const configVariantProposals = new ConfigVariantProposalStore(dbTx);
       const permissionService = new PermissionService(configUsers, projectUsers, configs);
       const configService = new ConfigService(
         configs,
         configProposals,
         configUsers,
-        configVersions,
         permissionService,
-        auditMessages,
+        auditLogs,
         options.dateProvider,
+        projectEnvironments,
+        configVariants,
+        configVariantVersions,
+        configVariantProposals,
       );
 
       const tx: UseCaseTransaction = {
@@ -124,12 +145,15 @@ function toUseCase<TReq, TRes>(
         configService,
         users,
         configUsers,
-        configVersions,
         permissionService,
-        apiTokens,
-        auditMessages,
+        sdkKeys,
+        auditLogs,
         projectUsers,
         projects,
+        projectEnvironments,
+        configVariants,
+        configVariantVersions,
+        configVariantProposals,
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -176,6 +200,7 @@ type UseCaseMap = Record<string, TransactionalUseCase<any, any>>;
 
 export interface ApiKeyInfo {
   projectId: string;
+  environmentId: string;
 }
 
 export async function createEngine(options: EngineOptions) {
@@ -189,10 +214,10 @@ export async function createEngine(options: EngineOptions) {
   const apiTokenService = new ApiTokenService(db, tokenHasher);
 
   const createEventBusClient = options.createEventBusClient
-    ? (_name: string, onNotification: (event: ConfigChangePayload) => void) =>
+    ? (_name: string, onNotification: (event: ConfigVariantChangePayload) => void) =>
         options.createEventBusClient!(onNotification)
-    : (name: string, onNotification: (event: ConfigChangePayload) => void) =>
-        new PgEventBusClient<ConfigChangePayload>({
+    : (name: string, onNotification: (event: ConfigVariantChangePayload) => void) =>
+        new PgEventBusClient<ConfigVariantChangePayload>({
           pool,
           channel: 'replane_events',
           onNotification,
@@ -210,11 +235,7 @@ export async function createEngine(options: EngineOptions) {
 
   const configsReplica = new ConfigsReplica({
     pool,
-    configs: new ConfigStore(
-      db,
-      /* no transaction, so run immediately */ effect => effect(),
-      eventBusClient,
-    ),
+    configs: new ConfigStore(db),
     logger,
     eventsSubject: configEventsSubject,
     createEventBusClient: onNotification => createEventBusClient('ConfigReplica', onNotification),
@@ -233,22 +254,33 @@ export async function createEngine(options: EngineOptions) {
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),
     createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
+    createConfigVariantProposal: createCreateConfigVariantProposalUseCase({dateProvider}),
     approveConfigProposal: createApproveConfigProposalUseCase({
       dateProvider,
       allowSelfApprovals: options.allowSelfApprovals,
     }),
+    approveConfigVariantProposal: createApproveConfigVariantProposalUseCase({
+      dateProvider,
+      allowSelfApprovals: options.allowSelfApprovals,
+    }),
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
+    rejectConfigVariantProposal: createRejectConfigVariantProposalUseCase({dateProvider}),
     rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
+    rejectAllPendingConfigVariantProposals: createRejectAllPendingConfigVariantProposalsUseCase({}),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
     patchConfig: createPatchConfigUseCase({
       dateProvider,
       requireProposals: options.requireProposals,
     }),
+    patchConfigVariant: createPatchConfigVariantUseCase({
+      dateProvider,
+      requireProposals: options.requireProposals,
+    }),
     getConfig: createGetConfigUseCase({}),
     deleteConfig: createDeleteConfigUseCase({requireProposals: options.requireProposals}),
-    getConfigVersionList: createGetConfigVersionListUseCase({}),
-    getConfigVersion: createGetConfigVersionUseCase({}),
+    getConfigVariantVersionList: createGetConfigVariantVersionListUseCase(),
+    getConfigVariantVersion: createGetConfigVariantVersionUseCase(),
     getApiKeyList: createGetApiKeyListUseCase(),
     getApiKey: createGetApiKeyUseCase(),
     deleteApiKey: createDeleteApiKeyUseCase(),
@@ -260,8 +292,11 @@ export async function createEngine(options: EngineOptions) {
     patchProject: createPatchProjectUseCase(),
     getProjectUsers: createGetProjectUsersUseCase(),
     updateProjectUsers: createUpdateProjectUsersUseCase(),
-    restoreConfigVersion: createRestoreConfigVersionUseCase({dateProvider}),
+    restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
+    createEnvironment: createCreateEnvironmentUseCase({dateProvider}),
+    deleteEnvironment: createDeleteEnvironmentUseCase({dateProvider}),
+    getEnvironmentList: createGetEnvironmentListUseCase({}),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;
@@ -296,9 +331,11 @@ export async function createEngine(options: EngineOptions) {
     testing: {
       pool,
       dbSchema: options.dbSchema,
-      auditMessages: new AuditMessageStore(db),
+      auditLogs: new AuditLogStore(db),
       projects: new ProjectStore(db),
       configProposals: new ConfigProposalStore(db),
+      configVariantProposals: new ConfigVariantProposalStore(db),
+      configVariants: new ConfigVariantStore(db, () => {}, eventBusClient),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: async () => {

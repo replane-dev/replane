@@ -4,6 +4,7 @@ import type {UseCase} from '../use-case';
 export interface GetConfigForApiRequest {
   name: string;
   projectId: string;
+  environmentId: string;
 }
 
 export interface GetConfigForApiResponse {
@@ -24,6 +25,7 @@ export function createGetConfigForApiUseCase(
     const config = deps.configsReplica.getConfig({
       projectId: req.projectId,
       name: req.name,
+      environmentId: req.environmentId,
     });
 
     if (!config) {

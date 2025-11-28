@@ -1,7 +1,7 @@
 import type {Kysely} from 'kysely';
 import type {DB} from './db';
 
-export interface ApiTokenRow {
+export interface SdkKeyRow {
   id: string;
   creatorId: number;
   createdAt: Date;
@@ -10,15 +10,18 @@ export interface ApiTokenRow {
   description: string;
   creatorEmail?: string | null;
   projectId: string;
+  environmentId: string;
+  environmentName: string;
 }
 
-export class ApiTokenStore {
+export class SdkKeyStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async list(params: {projectId: string}) {
-    const rows = await this.db
-      .selectFrom('api_tokens as t')
+  async list(params: {projectId: string; environmentId?: string}) {
+    let query = this.db
+      .selectFrom('sdk_keys as t')
       .leftJoin('users as u', 'u.id', 't.creator_id')
+      .leftJoin('project_environments as pe', 'pe.id', 't.environment_id')
       .select([
         't.id as id',
         't.creator_id as creator_id',
@@ -27,10 +30,16 @@ export class ApiTokenStore {
         't.name as name',
         't.description as description',
         'u.email as creator_email',
+        't.environment_id as environment_id',
+        'pe.name as environment_name',
       ])
-      .where('t.project_id', '=', params.projectId)
-      .orderBy('t.created_at', 'desc')
-      .execute();
+      .where('t.project_id', '=', params.projectId);
+
+    if (params.environmentId) {
+      query = query.where('t.environment_id', '=', params.environmentId);
+    }
+    const rows = await query.orderBy('t.created_at', 'desc').execute();
+
     return rows.map(r => ({
       id: r.id,
       creatorId: r.creator_id!,
@@ -39,6 +48,8 @@ export class ApiTokenStore {
       name: r.name,
       description: r.description,
       creatorEmail: r.creator_email ?? null,
+      environmentId: r.environment_id,
+      environmentName: r.environment_name!,
     }));
   }
 
@@ -50,9 +61,10 @@ export class ApiTokenStore {
     name: string;
     description: string;
     projectId: string;
+    environmentId: string;
   }) {
     await this.db
-      .insertInto('api_tokens')
+      .insertInto('sdk_keys')
       .values({
         id: key.id,
         creator_id: key.creatorId,
@@ -61,14 +73,16 @@ export class ApiTokenStore {
         name: key.name,
         description: key.description,
         project_id: key.projectId,
+        environment_id: key.environmentId,
       })
       .execute();
   }
 
   async getById(params: {apiKeyId: string; projectId: string}) {
     const row = await this.db
-      .selectFrom('api_tokens as t')
+      .selectFrom('sdk_keys as t')
       .leftJoin('users as u', 'u.id', 't.creator_id')
+      .leftJoin('project_environments as pe', 'pe.id', 't.environment_id')
       .select([
         't.id as id',
         't.creator_id as creator_id',
@@ -78,6 +92,8 @@ export class ApiTokenStore {
         't.description as description',
         'u.email as creator_email',
         't.project_id as project_id',
+        't.environment_id as environment_id',
+        'pe.name as environment_name',
       ])
       .where('t.id', '=', params.apiKeyId)
       .where('t.project_id', '=', params.projectId)
@@ -92,10 +108,12 @@ export class ApiTokenStore {
       description: row.description,
       creatorEmail: row.creator_email ?? null,
       projectId: row.project_id,
-    } satisfies ApiTokenRow;
+      environmentId: row.environment_id,
+      environmentName: row.environment_name!,
+    };
   }
 
   async deleteById(id: string) {
-    await this.db.deleteFrom('api_tokens').where('id', '=', id).execute();
+    await this.db.deleteFrom('sdk_keys').where('id', '=', id).execute();
   }
 }

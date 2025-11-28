@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError, ForbiddenError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -50,8 +50,8 @@ export function createDeleteProjectUseCase(
 
     await tx.projects.deleteById(project.id);
 
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: new Date(),
       userId: currentUser.id,
       configId: null,

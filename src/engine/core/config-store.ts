@@ -1,10 +1,9 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {Configs, DB} from './db';
-import type {EventBusClient} from './event-bus';
 import {ConditionSchema, OverrideSchema} from './override-condition-schemas';
 import type {Override} from './override-evaluator';
-import {deserializeJson, serializeJson} from './store-utils';
+import {deserializeJson} from './store-utils';
 import {isValidJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {ConfigInfo, Uuid, type NormalizedEmail} from './zod';
@@ -68,62 +67,76 @@ export function Config() {
   return z.object({
     id: Uuid(),
     name: ConfigName(),
-    value: ConfigValue(),
-    schema: ConfigSchema().nullable(),
     description: ConfigDescription(),
-    overrides: ConfigOverrides(),
     createdAt: z.date(),
-    updatedAt: z.date(),
     creatorId: z.number(),
-    version: z.number(),
     projectId: z.string(),
+    version: z.number(),
   });
 }
 
 export interface Config extends z.infer<ReturnType<typeof Config>> {}
 
 export class ConfigStore {
-  constructor(
-    private readonly db: Kysely<DB>,
-    private readonly scheduleOptimisticEffect: (effect: () => Promise<void>) => void,
-    private readonly eventBusClient: EventBusClient<ConfigChangePayload>,
-  ) {}
+  constructor(private readonly db: Kysely<DB>) {}
 
+  // TODO: Update replica methods to work with config_variants
+  // For now, these methods will need to be refactored to join with config_variants
   async getReplicaDump(): Promise<
     Array<{
-      id: string;
+      variant_id: string;
       name: string;
       projectId: string;
+      environmentId: string;
       value: unknown;
       overrides: Override[];
       version: number;
     }>
   > {
     const rows = await this.db
-      .selectFrom('configs')
-      .select(['id', 'name', 'value', 'overrides', 'version', 'project_id'])
+      .selectFrom('config_variants as cv')
+      .innerJoin('configs as c', 'c.id', 'cv.config_id')
+      .select([
+        'cv.id as variant_id',
+        'c.name',
+        'c.project_id',
+        'cv.environment_id',
+        'cv.value',
+        'cv.overrides',
+        'cv.version',
+      ])
       .execute();
     return rows.map(row => ({
-      id: row.id,
+      variant_id: row.variant_id,
       name: row.name,
+      projectId: row.project_id,
+      environmentId: row.environment_id,
       value: deserializeJson(row.value),
       overrides: deserializeJson(row.overrides) ?? [],
       version: row.version,
-      projectId: row.project_id,
     }));
   }
 
-  async getReplicaConfig(configId: string): Promise<{
+  async getReplicaConfig(variantId: string): Promise<{
     name: string;
     projectId: string;
     value: unknown;
     overrides: Override[];
     version: number;
+    environmentId: string;
   } | null> {
     const row = await this.db
-      .selectFrom('configs')
-      .select(['name', 'value', 'overrides', 'version', 'project_id'])
-      .where('id', '=', configId)
+      .selectFrom('config_variants as cv')
+      .innerJoin('configs as c', 'c.id', 'cv.config_id')
+      .select([
+        'c.name',
+        'c.project_id',
+        'cv.value',
+        'cv.overrides',
+        'cv.version',
+        'cv.environment_id',
+      ])
+      .where('cv.id', '=', variantId)
       .executeTakeFirst();
     if (!row) {
       return null;
@@ -133,8 +146,42 @@ export class ConfigStore {
       value: deserializeJson(row.value),
       overrides: deserializeJson(row.overrides) ?? [],
       version: row.version,
+      environmentId: row.environment_id,
       projectId: row.project_id,
     };
+  }
+
+  async getVariantsByConfigId(configId: string): Promise<
+    Array<{
+      name: string;
+      projectId: string;
+      environmentId: string;
+      value: unknown;
+      overrides: Override[];
+      version: number;
+    }>
+  > {
+    const rows = await this.db
+      .selectFrom('config_variants as cv')
+      .innerJoin('configs as c', 'c.id', 'cv.config_id')
+      .select([
+        'c.name',
+        'c.project_id',
+        'cv.environment_id',
+        'cv.value',
+        'cv.overrides',
+        'cv.version',
+      ])
+      .where('cv.config_id', '=', configId)
+      .execute();
+    return rows.map(row => ({
+      name: row.name,
+      projectId: row.project_id,
+      environmentId: row.environment_id,
+      value: deserializeJson(row.value),
+      overrides: deserializeJson(row.overrides) ?? [],
+      version: row.version,
+    }));
   }
 
   async getAll(params: {
@@ -157,14 +204,9 @@ export class ConfigStore {
         'configs.created_at',
         'configs.id',
         'configs.name',
-        'configs.value',
-        'configs.schema',
         'configs.description',
-        'configs.overrides',
-        'configs.updated_at',
         'configs.creator_id',
         'config_users.role as myRole',
-        'configs.version',
         'configs.project_id',
       ]);
 
@@ -173,10 +215,10 @@ export class ConfigStore {
     return configs.map(c => ({
       name: c.name,
       createdAt: c.created_at,
-      updatedAt: c.updated_at,
+      updatedAt: c.created_at, // No updated_at on configs table anymore, use created_at
       descriptionPreview: c.description.substring(0, 100),
       myRole: c.myRole ?? 'viewer',
-      version: c.version,
+      version: 1, // No version on configs table, placeholder
       id: c.id,
       projectId: c.project_id,
     }));
@@ -215,61 +257,33 @@ export class ConfigStore {
       .values({
         created_at: config.createdAt,
         id: config.id,
-        updated_at: config.updatedAt,
         name: config.name,
         description: config.description,
         creator_id: config.creatorId,
-        value: serializeJson(config.value),
-        schema: config.schema ? serializeJson(config.schema) : null,
-        overrides: config.overrides ? serializeJson(config.overrides) : null,
-        version: 1,
         project_id: config.projectId,
+        version: config.version,
       })
       .execute();
-
-    this.notifyConfigChange({configId: config.id});
   }
 
-  async updateById(params: {
+  async updateDescription(params: {
     id: string;
-    value: unknown;
-    schema: unknown;
-    overrides: unknown;
-    updatedAt: Date;
     description: string;
     version: number;
   }): Promise<void> {
     await this.db
       .updateTable('configs')
       .set({
-        value: serializeJson(params.value),
         description: params.description,
-        schema: params.schema ? serializeJson(params.schema) : null,
-        overrides: params.overrides ? serializeJson(params.overrides) : null,
-        updated_at: params.updatedAt,
         version: params.version,
       })
       .where('id', '=', params.id)
       .execute();
-
-    this.notifyConfigChange({configId: params.id});
   }
 
   async deleteById(id: string): Promise<void> {
     await this.db.deleteFrom('configs').where('id', '=', id).execute();
-
-    this.notifyConfigChange({configId: id});
   }
-
-  private notifyConfigChange(payload: ConfigChangePayload): void {
-    this.scheduleOptimisticEffect(async () => {
-      await this.eventBusClient.notify(payload);
-    });
-  }
-}
-
-export interface ConfigChangePayload {
-  configId: string;
 }
 
 function mapConfig(config: Selectable<Configs>): Config {
@@ -277,13 +291,9 @@ function mapConfig(config: Selectable<Configs>): Config {
     id: config.id,
     creatorId: config.creator_id,
     name: config.name,
-    value: deserializeJson(config.value),
-    schema: deserializeJson(config.schema),
-    overrides: deserializeJson(config.overrides) ?? [],
     description: config.description,
     createdAt: config.created_at,
-    updatedAt: config.updated_at,
-    version: config.version,
     projectId: config.project_id,
+    version: config.version,
   };
 }

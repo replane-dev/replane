@@ -1,8 +1,10 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
+import type {ProjectEnvironment} from '../project-environment-store';
 import {createProjectId} from '../project-store';
 import type {TransactionalUseCase} from '../use-case';
+import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectRequest {
@@ -13,6 +15,10 @@ export interface CreateProjectRequest {
 
 export interface CreateProjectResponse {
   projectId: string;
+  environments: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 export function createCreateProjectUseCase(): TransactionalUseCase<
@@ -39,18 +45,28 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       isExample: false,
     });
 
-    await tx.projectUsers.create([
-      {
-        projectId,
-        email: req.currentUserEmail,
-        role: 'admin',
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
+    const dev: ProjectEnvironment = {
+      id: createUuidV7(),
+      projectId,
+      name: 'Development',
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    const production: ProjectEnvironment = {
+      id: createUuidV7(),
+      projectId,
+      name: 'Production',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await tx.projectEnvironments.create(production);
+
+    await tx.projectEnvironments.create(dev);
+
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: now,
       projectId,
       userId: user.id,
@@ -61,6 +77,16 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       },
     });
 
-    return {projectId};
+    await tx.projectUsers.create([
+      {
+        projectId,
+        email: req.currentUserEmail,
+        role: 'admin',
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    return {projectId, environments: [production, dev].map(e => ({id: e.id, name: e.name}))};
   };
 }

@@ -14,6 +14,7 @@ describe('createApiKey', () => {
       name: 'Primary Key',
       description: 'Main key',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     // Expect format: cm_<80 hex chars> (24 random bytes + 16 uuid bytes)
@@ -28,12 +29,14 @@ describe('createApiKey', () => {
       name: 'K1',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     const second = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'K2',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     expect(first.apiKey.token).not.toBe(second.apiKey.token);
 
@@ -52,16 +55,18 @@ describe('createApiKey', () => {
       name: 'Audit Key',
       description: 'audit',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
-    const messages = await fixture.engine.testing.auditMessages.list({
+    const messages = await fixture.engine.testing.auditLogs.list({
       lte: new Date('2100-01-01T00:00:00Z'),
-      limit: 10,
+      limit: 20,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    expect(messages.length).toBe(2);
-    const payload: any = messages[0].payload;
+    const apiKeyCreatedMsg = messages.find(m => m.payload.type === 'api_key_created');
+    expect(apiKeyCreatedMsg).toBeDefined();
+    const payload: any = apiKeyCreatedMsg!.payload;
     expect(payload.type).toBe('api_key_created');
     expect(payload.apiKey.id).toBe(created.apiKey.id);
     expect(payload.apiKey.name).toBe('Audit Key');

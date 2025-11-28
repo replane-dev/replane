@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -63,8 +63,8 @@ export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: now,
       userId: user.id,
       configId: null,

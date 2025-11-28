@@ -14,6 +14,7 @@ describe('api keys', () => {
       name: 'Primary Key',
       description: 'Main key',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     // Expect format: rp_<80 hex chars> (24 random bytes + 16 uuid bytes)
@@ -39,6 +40,7 @@ describe('api keys', () => {
       name: 'First',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     // Advance time a bit for ordering
     fixture.setNow(new Date('2020-01-01T00:01:00Z'));
@@ -47,6 +49,7 @@ describe('api keys', () => {
       name: 'Second',
       description: 'second desc',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
@@ -61,6 +64,7 @@ describe('api keys', () => {
     const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
       name: 'FetchMe',
       description: 'desc',
     });
@@ -92,6 +96,7 @@ describe('api keys', () => {
     const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
       name: 'DeleteMe',
       description: '',
     });
@@ -113,6 +118,7 @@ describe('api keys', () => {
     const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
       name: 'ProtectMe',
       description: '',
     });

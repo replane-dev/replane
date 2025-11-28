@@ -28,11 +28,11 @@ export function createGetProjectEventsUseCase(
     const unsubscribe = deps.configEventsObservable.subscribe({
       next: (event: ConfigReplicaEvent) => {
         // Filter events by projectId
-        if (event.config.projectId === request.projectId) {
+        if (event.variant.projectId === request.projectId) {
           channel.push({
             type: event.type,
-            configId: event.config.id,
-            configName: event.config.name,
+            configId: event.variant.variantId,
+            configName: event.variant.name,
           });
         }
       },

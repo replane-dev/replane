@@ -1,13 +1,13 @@
 import assert from 'assert';
-import {createAuditMessageId} from '../audit-message-store';
+import {createAuditLogId} from '../audit-log-store';
 import {createConfigId, type ConfigId} from '../config-store';
 import type {NewConfigUser} from '../config-user-store';
-import {createConfigVersionId} from '../config-version-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
-import {normalizeEmail, validateAgainstJsonSchema} from '../utils';
+import {validateAgainstJsonSchema} from '../utils';
+import {createUuidV7} from '../uuid';
 import {validateOverrideReferences} from '../validate-override-references';
 import type {NormalizedEmail} from '../zod';
 
@@ -16,7 +16,7 @@ export interface CreateConfigRequest {
   value: any;
   description: string;
   schema: unknown;
-  overrides: unknown | null;
+  overrides: Override[];
   currentUserEmail: NormalizedEmail;
   editorEmails: string[];
   maintainerEmails: string[];
@@ -25,6 +25,7 @@ export interface CreateConfigRequest {
 
 export interface CreateConfigResponse {
   configId: ConfigId;
+  configVariantIds: Array<{variantId: string; environmentId: string}>;
 }
 
 export interface CreateConfigUseCaseDeps {
@@ -72,34 +73,59 @@ export function createCreateConfigUseCase(
     assert(currentUser, 'Current user not found');
 
     const configId = createConfigId();
+
+    // Create config (metadata only)
     await tx.configs.create({
       id: configId,
       name: req.name,
       projectId: req.projectId,
-      value: req.value,
-      schema: req.schema,
-      overrides: req.overrides as any,
       description: req.description,
       createdAt: deps.dateProvider.now(),
-      updatedAt: deps.dateProvider.now(),
       creatorId: currentUser.id,
       version: 1,
     });
 
-    await tx.configVersions.create({
-      configId,
-      createdAt: deps.dateProvider.now(),
-      description: req.description,
-      id: createConfigVersionId(),
-      name: req.name,
-      schema: req.schema,
-      overrides: req.overrides,
-      value: req.value,
-      version: 1,
-      members: allMembers.map(m => ({normalizedEmail: normalizeEmail(m.email), role: m.role})),
-      authorId: currentUser.id,
-      proposalId: null,
-    });
+    // Get all environments for this project
+    const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
+
+    if (environments.length === 0) {
+      throw new BadRequestError('Project has no environments. Create an environment first.');
+    }
+
+    // Create a variant for each environment with the same initial value
+    const configVariantIds: Array<{variantId: string; environmentId: string}> = [];
+    for (const environment of environments) {
+      const variantId = createUuidV7();
+
+      await tx.configVariants.create({
+        id: variantId,
+        configId,
+        environmentId: environment.id,
+        value: req.value,
+        schema: req.schema,
+        overrides: req.overrides,
+        version: 1,
+        createdAt: deps.dateProvider.now(),
+        updatedAt: deps.dateProvider.now(),
+      });
+
+      configVariantIds.push({variantId, environmentId: environment.id});
+
+      // Create version history for this variant
+      await tx.configVariantVersions.create({
+        id: createUuidV7(),
+        configVariantId: variantId,
+        version: 1,
+        name: req.name,
+        description: req.description,
+        value: req.value,
+        schema: req.schema,
+        overrides: req.overrides,
+        authorId: currentUser.id,
+        proposalId: null,
+        createdAt: deps.dateProvider.now(),
+      });
+    }
 
     await tx.configUsers.create(
       req.editorEmails
@@ -129,8 +155,9 @@ export function createCreateConfigUseCase(
 
     assert(fullConfig, 'Just created config not found');
 
-    await tx.auditMessages.create({
-      id: createAuditMessageId(),
+    // One audit log for config creation (not per environment)
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
       createdAt: deps.dateProvider.now(),
       projectId: fullConfig.projectId,
       userId: currentUser.id,
@@ -141,13 +168,9 @@ export function createCreateConfigUseCase(
           id: fullConfig.id,
           projectId: fullConfig.projectId,
           name: fullConfig.name,
-          value: fullConfig.value,
-          schema: fullConfig.schema,
-          overrides: fullConfig.overrides,
           description: fullConfig.description,
           creatorId: fullConfig.creatorId,
           createdAt: fullConfig.createdAt,
-          updatedAt: fullConfig.updatedAt,
           version: fullConfig.version,
         },
       },
@@ -155,6 +178,7 @@ export function createCreateConfigUseCase(
 
     return {
       configId,
+      configVariantIds,
     };
   };
 }

@@ -3,10 +3,8 @@
 import {AppSidebar} from '@/components/app-sidebar';
 import {SidebarInset, SidebarProvider} from '@/components/ui/sidebar';
 import {ProjectProvider} from '@/contexts/project-context';
-import {REPLANE_USER_VISITED_KEY} from '@/lib/constants';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
-import {useEffect} from 'react';
 import {useProject} from './utils';
 
 export default function AppLayout({
@@ -14,11 +12,6 @@ export default function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Mark user as visited when they successfully reach the app
-  useEffect(() => {
-    localStorage.setItem(REPLANE_USER_VISITED_KEY, 'true');
-  }, []);
-
   return (
     <SidebarProvider>
       <ProjectProvider>

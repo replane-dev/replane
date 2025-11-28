@@ -14,6 +14,7 @@ describe('getApiKeyList', () => {
       name: 'First',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     fixture.setNow(new Date('2020-01-01T00:01:00Z'));
     await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
@@ -21,6 +22,7 @@ describe('getApiKeyList', () => {
       name: 'Second',
       description: 'second desc',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
 
     const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
@@ -38,6 +40,7 @@ describe('getApiKeyList', () => {
       name: 'Temp',
       description: '',
       projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
     });
     let list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,

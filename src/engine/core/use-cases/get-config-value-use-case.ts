@@ -4,6 +4,7 @@ import type {UseCase} from '../use-case';
 export interface GetConfigValueRequest {
   name: string;
   projectId: string;
+  environmentId: string;
   context?: Record<string, unknown>;
 }
 
@@ -22,6 +23,7 @@ export function createGetConfigValueUseCase(
     const configValue = await deps.configsReplica.getConfigValue({
       projectId: req.projectId,
       name: req.name,
+      environmentId: req.environmentId,
       context: req.context,
     });
     return {value: configValue};

@@ -54,9 +54,9 @@ function DiffRow(props: {
 
 export interface ConfigProposalDiffProps {
   current: {
-    value: unknown;
+    value?: unknown;
     description: string;
-    schema: unknown | null;
+    schema?: unknown | null;
     maintainers?: string[];
     editors?: string[];
   };
@@ -70,9 +70,9 @@ export interface ConfigProposalDiffProps {
 
 export function ConfigProposalDiff({current, proposed}: ConfigProposalDiffProps) {
   const diffs: Array<{title: string; before: unknown; after: unknown}> = [];
-  if (proposed.schema)
+  if (proposed.schema && current.schema !== undefined)
     diffs.push({title: 'JSON Schema', before: current.schema, after: proposed.schema.newSchema});
-  if (proposed.value)
+  if (proposed.value && current.value !== undefined)
     diffs.push({title: 'JSON Value', before: current.value, after: proposed.value.newValue});
   if (proposed.description !== undefined && proposed.description !== null)
     diffs.push({title: 'Description', before: current.description, after: proposed.description});

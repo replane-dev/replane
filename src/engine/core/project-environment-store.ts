@@ -1,0 +1,100 @@
+import type {Kysely} from 'kysely';
+import type {DB} from './db';
+
+export interface ProjectEnvironment {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class ProjectEnvironmentStore {
+  constructor(private readonly db: Kysely<DB>) {}
+
+  async getById(id: string): Promise<ProjectEnvironment | null> {
+    const row = await this.db
+      .selectFrom('project_environments')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
+
+    if (!row) return null;
+
+    return this.mapRow(row);
+  }
+
+  async getByProjectId(projectId: string): Promise<ProjectEnvironment[]> {
+    const rows = await this.db
+      .selectFrom('project_environments')
+      .selectAll()
+      .where('project_id', '=', projectId)
+      .orderBy('name', 'asc')
+      .execute();
+
+    return rows.map(this.mapRow);
+  }
+
+  async getByProjectIdAndName(params: {
+    projectId: string;
+    name: string;
+  }): Promise<ProjectEnvironment | null> {
+    const row = await this.db
+      .selectFrom('project_environments')
+      .selectAll()
+      .where('project_id', '=', params.projectId)
+      .where('name', '=', params.name)
+      .executeTakeFirst();
+
+    if (!row) return null;
+
+    return this.mapRow(row);
+  }
+
+  async create(environment: ProjectEnvironment): Promise<void> {
+    await this.db
+      .insertInto('project_environments')
+      .values({
+        id: environment.id,
+        project_id: environment.projectId,
+        name: environment.name,
+        created_at: environment.createdAt,
+        updated_at: environment.updatedAt,
+      })
+      .execute();
+  }
+
+  async update(params: {id: string; name: string; updatedAt: Date}): Promise<void> {
+    await this.db
+      .updateTable('project_environments')
+      .set({
+        name: params.name,
+        updated_at: params.updatedAt,
+      })
+      .where('id', '=', params.id)
+      .execute();
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.db
+      .deleteFrom('project_environments')
+      .where('id', '=', id)
+      .execute();
+  }
+
+  private mapRow(row: {
+    id: string;
+    project_id: string;
+    name: string;
+    created_at: Date;
+    updated_at: Date;
+  }): ProjectEnvironment {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+}

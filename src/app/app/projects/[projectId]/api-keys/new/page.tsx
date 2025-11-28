@@ -13,11 +13,12 @@ import {
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
 import {useTRPC} from '@/trpc/client';
-import {useMutation} from '@tanstack/react-query';
+import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
 import {Fragment, useState} from 'react';
 import {toast} from 'sonner';
@@ -27,8 +28,19 @@ export default function NewApiKeyPage() {
   const trpc = useTRPC();
   const projectId = useProjectId();
   const createMutation = useMutation(trpc.createApiKey.mutationOptions());
+
+  // Load environments for this project
+  const {data: environmentsData} = useSuspenseQuery(
+    trpc.getEnvironmentList.queryOptions({projectId}),
+  );
+  const environments = environmentsData.environments;
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [environmentId, setEnvironmentId] = useState(() => {
+    const prodEnv = environments.find(e => e.name === 'Production');
+    return prodEnv?.id ?? environments[0]?.id ?? '';
+  });
   const [createdToken, setCreatedToken] = useState<string | null>(null);
 
   return (
@@ -71,10 +83,31 @@ export default function NewApiKeyPage() {
                     name,
                     description,
                     projectId,
+                    environmentId,
                   });
                   setCreatedToken(result.apiKey.token);
                 }}
               >
+                <div className="space-y-2">
+                  <Label htmlFor="api-key-environment" className="text-sm font-medium">
+                    Environment <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={environmentId} onValueChange={setEnvironmentId}>
+                    <SelectTrigger id="api-key-environment" className="max-w-md">
+                      <SelectValue placeholder="Select environment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {environments.map(env => (
+                        <SelectItem key={env.id} value={env.id}>
+                          {env.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    The API key will only work for the selected environment
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="api-key-name" className="text-sm font-medium">
                     Name <span className="text-destructive">*</span>

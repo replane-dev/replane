@@ -1,4 +1,4 @@
-import type {ConfigProposalRejectedAuditMessagePayload} from '@/engine/core/audit-message-store';
+import type {ConfigProposalRejectedAuditLogPayload} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
@@ -28,23 +28,23 @@ describe('rejectConfigProposal', () => {
     }
   });
 
-  it('should reject a proposal with value change', async () => {
+  it('should reject a proposal with description change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
-      name: 'reject_value',
+      name: 'reject_description',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: {newDescription: 'Updated description'},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -61,44 +61,44 @@ describe('rejectConfigProposal', () => {
     expect(proposal.reviewerId).toBe(1); // CURRENT_USER_ID is 1
     expect(proposal.rejectionReason).toBe('rejected_explicitly');
 
-    // Verify audit message
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    // Verify audit message includes proposed description
+    const auditLogs = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    const rejectionMessage = auditMessages.find(
+    const rejectionMessage = auditLogs.find(
       msg =>
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload} | undefined;
+    ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
     assert(rejectionMessage);
     expect(rejectionMessage.payload).toMatchObject({
       type: 'config_proposal_rejected',
       proposalId: configProposalId,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: 'Updated description',
     });
   });
 
-  it('should reject a proposal with description change', async () => {
+  it('should reject a proposal with member changes', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
-      name: 'reject_description',
+      name: 'reject_members',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -113,33 +113,28 @@ describe('rejectConfigProposal', () => {
     expect(proposal.rejectedAt).toBeDefined();
     expect(proposal.approvedAt).toBeNull();
 
-    // Verify audit message includes proposed description
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    // Verify audit message includes proposed members
+    const auditLogs = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    const rejectionMessage = auditMessages.find(
+    const rejectionMessage = auditLogs.find(
       msg =>
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload} | undefined;
+    ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
     assert(rejectionMessage);
-    expect(rejectionMessage.payload).toMatchObject({
-      type: 'config_proposal_rejected',
-      proposalId: configProposalId,
-      configId,
-      proposedDescription: 'Updated description',
-    });
+    expect(rejectionMessage.payload.proposedMembers).toBeDefined();
   });
 
-  it('should reject a proposal with schema change', async () => {
+  it('should reject a deletion proposal', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
-      name: 'reject_schema',
+      name: 'reject_delete',
       value: {enabled: false},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
@@ -147,18 +142,10 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
     });
 
-    const newSchema = {
-      type: 'object',
-      properties: {
-        enabled: {type: 'boolean'},
-        threshold: {type: 'number'},
-      },
-    };
-
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedSchema: {newSchema},
+      proposedDelete: true,
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -171,29 +158,22 @@ describe('rejectConfigProposal', () => {
     const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
     assert(proposal);
     expect(proposal.rejectedAt).toBeDefined();
+    expect(proposal.approvedAt).toBeNull();
 
-    // Verify audit message includes proposed schema
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
-      lte: fixture.now,
-      limit: 100,
-      orderBy: 'created_at desc, id desc',
+    // Verify config still exists
+    const config = await fixture.trpc.getConfig({
+      name: 'reject_delete',
       projectId: fixture.projectId,
     });
-    const rejectionMessage = auditMessages.find(
-      msg =>
-        msg.payload.type === 'config_proposal_rejected' &&
-        msg.payload.proposalId === configProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload} | undefined;
-    assert(rejectionMessage);
-    expect(rejectionMessage.payload.proposedSchema).toBeDefined();
+    expect(config?.config).toBeDefined();
   });
 
-  it('should reject a proposal with multiple changes', async () => {
+  it('should reject a proposal with multiple changes (description + members)', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'reject_multiple',
       value: {enabled: false},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [CURRENT_USER_EMAIL],
@@ -201,19 +181,11 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
     });
 
-    const newSchema = {
-      type: 'object',
-      properties: {
-        enabled: {type: 'boolean'},
-      },
-    };
-
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
       proposedDescription: {newDescription: 'Updated description'},
-      proposedSchema: {newSchema},
+      proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -223,26 +195,25 @@ describe('rejectConfigProposal', () => {
     });
 
     // Verify audit message includes all proposed changes
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    const auditLogs = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    const rejectionMessage = auditMessages.find(
+    const rejectionMessage = auditLogs.find(
       msg =>
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload} | undefined;
+    ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
     assert(rejectionMessage);
     expect(rejectionMessage.payload).toMatchObject({
       type: 'config_proposal_rejected',
       proposalId: configProposalId,
       configId,
-      proposedValue: {newValue: {enabled: true}},
       proposedDescription: 'Updated description',
     });
-    expect(rejectionMessage.payload.proposedSchema).toBeDefined();
+    expect(rejectionMessage.payload.proposedMembers).toBeDefined();
   });
 
   it('should set rejectedInFavorOfProposalId to undefined (explicit rejection)', async () => {
@@ -253,15 +224,15 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: {newDescription: 'Updated description'},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -271,23 +242,23 @@ describe('rejectConfigProposal', () => {
     });
 
     // Verify audit message has undefined rejectedInFavorOfProposalId (explicit rejection)
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    const auditLogs = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    const rejectionMessage = auditMessages.find(
+    const rejectionMessage = auditLogs.find(
       msg =>
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload} | undefined;
+    ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
     assert(rejectionMessage);
     expect(rejectionMessage.payload.rejectedInFavorOfProposalId).toBeUndefined();
   });
 
   it('should allow anyone to reject a proposal (no permission check)', async () => {
-    // Create config with CURRENT_USER as owner, OTHER_USER as editor
+    // Create config with CURRENT_USER as editor, OTHER_USER as maintainer
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'reject_no_permission',
@@ -295,8 +266,8 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [OTHER_USER_EMAIL],
-      maintainerEmails: [CURRENT_USER_EMAIL],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -304,7 +275,7 @@ describe('rejectConfigProposal', () => {
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: {newDescription: 'Updated description'},
       currentUserEmail: THIRD_USER_EMAIL,
     });
 
@@ -328,8 +299,8 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL, THIRD_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -339,7 +310,7 @@ describe('rejectConfigProposal', () => {
       {
         configId,
         baseVersion: 1,
-        proposedValue: {newValue: {enabled: true}},
+        proposedDescription: {newDescription: 'Description 1'},
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -349,7 +320,7 @@ describe('rejectConfigProposal', () => {
       {
         configId,
         baseVersion: 1,
-        proposedDescription: {newDescription: 'New description'},
+        proposedDescription: {newDescription: 'Description 2'},
         currentUserEmail: THIRD_USER_EMAIL,
       },
     );
@@ -392,15 +363,15 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: {newDescription: 'Updated description'},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -427,22 +398,22 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
-      currentUserEmail: OTHER_USER_EMAIL,
+      proposedDescription: {newDescription: 'Updated description'},
+      currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    // Approve proposal
+    // Approve proposal (OTHER_USER is maintainer, can approve description changes)
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: configProposalId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      currentUserEmail: OTHER_USER_EMAIL,
     });
 
     // Try to reject
@@ -462,15 +433,15 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: {newDescription: 'Updated description'},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -494,8 +465,8 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -508,7 +479,6 @@ describe('rejectConfigProposal', () => {
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
       proposedDescription: {newDescription: 'New description'},
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -524,7 +494,6 @@ describe('rejectConfigProposal', () => {
       name: 'reject_no_changes',
       projectId: fixture.projectId,
     });
-    expect(config?.config.value).toEqual({enabled: false});
     expect(config?.config.description).toBe('Original description');
     expect(config?.config.version).toBe(originalVersion); // Version should not change
   });
@@ -537,8 +506,8 @@ describe('rejectConfigProposal', () => {
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -546,7 +515,7 @@ describe('rejectConfigProposal', () => {
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
       baseVersion: 1,
       configId,
-      proposedValue: {newValue: {enabled: true}},
+      proposedDescription: {newDescription: 'Updated description'},
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -557,17 +526,17 @@ describe('rejectConfigProposal', () => {
     });
 
     // Verify audit message has correct userId (rejector, not proposer)
-    const auditMessages = await fixture.engine.testing.auditMessages.list({
+    const auditLogs = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    const rejectionMessage = auditMessages.find(
+    const rejectionMessage = auditLogs.find(
       msg =>
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
-    ) as {payload: ConfigProposalRejectedAuditMessagePayload; userId: number} | undefined;
+    ) as {payload: ConfigProposalRejectedAuditLogPayload; userId: number} | undefined;
     assert(rejectionMessage);
     expect(rejectionMessage.userId).toBe(1); // CURRENT_USER_ID is 1
   });

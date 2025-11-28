@@ -38,7 +38,7 @@ describe('getConfigProposalList', () => {
     const T6 = d('2020-01-01T06:00:00Z');
     const T7 = d('2020-01-01T07:00:00Z');
 
-    // Create config A with OTHER_USER as editor (so they can approve value/description changes)
+    // Create config A with maintainer permissions for proposal creation
     fixture.setNow(T1);
     const {configId: configAId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
@@ -47,12 +47,12 @@ describe('getConfigProposalList', () => {
       schema: {type: 'object', properties: {a: {type: 'number'}}},
       description: 'A',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
-    // Create first proposal for A (P1) at T1
+    // Create first proposal for A (P1) at T1 - config-level proposal
     fixture.setNow(T1);
     const {configProposalId: P1} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
@@ -64,14 +64,14 @@ describe('getConfigProposalList', () => {
       },
     );
 
-    // Create second proposal for A (P2) at T2
+    // Create second proposal for A (P2) at T2 - another config-level proposal
     fixture.setNow(T2);
     const {configProposalId: P2} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
         baseVersion: 1,
         configId: configAId,
-        proposedValue: {newValue: {a: 2}},
+        proposedDescription: {newDescription: 'A2'},
         currentUserEmail: CURRENT_USER_EMAIL,
       },
     );
@@ -85,8 +85,8 @@ describe('getConfigProposalList', () => {
       schema: {type: 'object', properties: {b: {type: 'number'}}},
       description: 'B',
       currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-      maintainerEmails: [],
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -118,7 +118,7 @@ describe('getConfigProposalList', () => {
       expect(pend.map(p => p.id)).toEqual([P2, P1]);
     }
 
-    // Approve P2 at T5 by OTHER_USER (editor)
+    // Approve P2 at T5 by OTHER_USER (maintainer)
     fixture.setNow(T5);
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: P2,

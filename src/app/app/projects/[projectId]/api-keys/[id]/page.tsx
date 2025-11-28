@@ -17,7 +17,7 @@ import {isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
-import {AlignLeft, CalendarDays, FileKey, Mail, Trash2} from 'lucide-react';
+import {AlignLeft, CalendarDays, FileKey, Globe, Mail, Trash2} from 'lucide-react';
 import Link from 'next/link';
 import {notFound, useParams, useRouter} from 'next/navigation';
 import {Fragment, useState} from 'react';
@@ -85,6 +85,17 @@ export default function ApiKeyDetailPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Environment */}
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground mb-0.5">Environment</div>
+                    <div className="text-sm font-medium">{apiKey.environmentName}</div>
+                  </div>
+                </div>
+
                 {/* Created Date */}
                 <div className="flex items-center gap-2.5">
                   <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">

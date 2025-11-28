@@ -1,14 +1,17 @@
-import type {ApiTokenStore} from './api-token-store';
-import type {AuditMessageStore} from './audit-message-store';
+import type {AuditLogStore} from './audit-log-store';
 import type {ConfigProposalStore} from './config-proposal-store';
 import type {ConfigService} from './config-service';
 import type {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
-import type {ConfigVersionStore} from './config-version-store';
+import type {ConfigVariantProposalStore} from './config-variant-proposal-store';
+import type {ConfigVariantStore} from './config-variant-store';
+import type {ConfigVariantVersionStore} from './config-variant-version-store';
 import type {Context} from './context';
 import type {PermissionService} from './permission-service';
+import type {ProjectEnvironmentStore} from './project-environment-store';
 import type {ProjectStore} from './project-store';
 import type {ProjectUserStore} from './project-user-store';
+import type {SdkKeyStore} from './sdk-key-store';
 import type {UserStore} from './user-store';
 
 export interface TransactionalUseCase<TRequest, TResponse> {
@@ -26,10 +29,14 @@ export interface UseCaseTransaction {
   configService: ConfigService;
   users: UserStore;
   configUsers: ConfigUserStore;
-  configVersions: ConfigVersionStore;
   permissionService: PermissionService;
-  apiTokens: ApiTokenStore;
-  auditMessages: AuditMessageStore;
+  sdkKeys: SdkKeyStore;
+  auditLogs: AuditLogStore;
   projectUsers: ProjectUserStore;
   projects: ProjectStore;
+  // New stores for environment support
+  projectEnvironments: ProjectEnvironmentStore;
+  configVariants: ConfigVariantStore;
+  configVariantVersions: ConfigVariantVersionStore;
+  configVariantProposals: ConfigVariantProposalStore;
 }
