@@ -8,7 +8,6 @@ import {ConfigProposalStore} from './core/config-proposal-store';
 import {ConfigService} from './core/config-service';
 import {ConfigStore} from './core/config-store';
 import {ConfigUserStore} from './core/config-user-store';
-import {ConfigVariantProposalStore} from './core/config-variant-proposal-store';
 import {type ConfigVariantChangePayload, ConfigVariantStore} from './core/config-variant-store';
 import {ConfigVariantVersionStore} from './core/config-variant-version-store';
 import {type ConfigReplicaEvent, ConfigsReplica} from './core/configs-replica';
@@ -34,16 +33,16 @@ import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
-import {createApproveConfigVariantProposalUseCase} from './core/use-cases/approve-config-variant-proposal-use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
-import {createCreateConfigVariantProposalUseCase} from './core/use-cases/create-config-variant-proposal-use-case';
 import {createCreateEnvironmentUseCase} from './core/use-cases/create-environment-use-case';
+import {createCreateProjectEnvironmentUseCase} from './core/use-cases/create-project-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
 import {createDeleteEnvironmentUseCase} from './core/use-cases/delete-environment-use-case';
+import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
@@ -59,6 +58,7 @@ import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-con
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
 import {createGetEnvironmentListUseCase} from './core/use-cases/get-environment-list-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
+import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
 import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
@@ -67,10 +67,10 @@ import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
 import {createPatchConfigVariantUseCase} from './core/use-cases/patch-config-variant-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
-import {createRejectAllPendingConfigVariantProposalsUseCase} from './core/use-cases/reject-all-pending-config-variant-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
-import {createRejectConfigVariantProposalUseCase} from './core/use-cases/reject-config-variant-proposal-use-case';
 import {createRestoreConfigVariantVersionUseCase} from './core/use-cases/restore-config-variant-version-use-case';
+import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
+import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {UserStore} from './core/user-store';
@@ -123,7 +123,6 @@ function toUseCase<TReq, TRes>(
         options.listener,
       );
       const configVariantVersions = new ConfigVariantVersionStore(dbTx);
-      const configVariantProposals = new ConfigVariantProposalStore(dbTx);
       const permissionService = new PermissionService(configUsers, projectUsers, configs);
       const configService = new ConfigService(
         configs,
@@ -135,7 +134,6 @@ function toUseCase<TReq, TRes>(
         projectEnvironments,
         configVariants,
         configVariantVersions,
-        configVariantProposals,
       );
 
       const tx: UseCaseTransaction = {
@@ -153,7 +151,6 @@ function toUseCase<TReq, TRes>(
         projectEnvironments,
         configVariants,
         configVariantVersions,
-        configVariantProposals,
       };
       try {
         const result = await useCase(ctx, tx, req);
@@ -254,19 +251,12 @@ export async function createEngine(options: EngineOptions) {
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),
     createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
-    createConfigVariantProposal: createCreateConfigVariantProposalUseCase({dateProvider}),
     approveConfigProposal: createApproveConfigProposalUseCase({
       dateProvider,
       allowSelfApprovals: options.allowSelfApprovals,
     }),
-    approveConfigVariantProposal: createApproveConfigVariantProposalUseCase({
-      dateProvider,
-      allowSelfApprovals: options.allowSelfApprovals,
-    }),
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
-    rejectConfigVariantProposal: createRejectConfigVariantProposalUseCase({dateProvider}),
     rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
-    rejectAllPendingConfigVariantProposals: createRejectAllPendingConfigVariantProposalsUseCase({}),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
     patchConfig: createPatchConfigUseCase({
@@ -292,6 +282,11 @@ export async function createEngine(options: EngineOptions) {
     patchProject: createPatchProjectUseCase(),
     getProjectUsers: createGetProjectUsersUseCase(),
     updateProjectUsers: createUpdateProjectUsersUseCase(),
+    getProjectEnvironments: createGetProjectEnvironmentsUseCase(),
+    createProjectEnvironment: createCreateProjectEnvironmentUseCase({dateProvider}),
+    updateProjectEnvironment: createUpdateProjectEnvironmentUseCase({dateProvider}),
+    updateProjectEnvironmentsOrder: createUpdateProjectEnvironmentsOrderUseCase({dateProvider}),
+    deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase(),
     restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
     createEnvironment: createCreateEnvironmentUseCase({dateProvider}),
@@ -334,7 +329,6 @@ export async function createEngine(options: EngineOptions) {
       auditLogs: new AuditLogStore(db),
       projects: new ProjectStore(db),
       configProposals: new ConfigProposalStore(db),
-      configVariantProposals: new ConfigVariantProposalStore(db),
       configVariants: new ConfigVariantStore(db, () => {}, eventBusClient),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },

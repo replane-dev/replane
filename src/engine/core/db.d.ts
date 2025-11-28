@@ -86,22 +86,14 @@ export interface ConfigUsers {
   user_email_normalized: string;
 }
 
-export interface ConfigVariantProposals {
-  approved_at: Timestamp | null;
-  base_variant_version: number;
-  config_variant_id: string;
-  created_at: Timestamp;
+export interface ConfigProposalVariants {
   id: string;
-  message: string | null;
-  proposed_description: string | null;
-  proposed_overrides: string | null;
-  proposed_schema: string | null;
+  proposal_id: string;
+  config_variant_id: string;
+  base_variant_version: number;
   proposed_value: string | null;
-  proposer_id: number | null;
-  rejected_at: Timestamp | null;
-  rejected_in_favor_of_proposal_id: string | null;
-  rejection_reason: ConfigProposalRejectionReason | null;
-  reviewer_id: number | null;
+  proposed_schema: string | null;
+  proposed_overrides: string | null;
 }
 
 export interface ConfigVariants {
@@ -140,6 +132,7 @@ export interface ProjectEnvironments {
   created_at: Timestamp;
   id: string;
   name: string;
+  order: number;
   project_id: string;
   updated_at: Timestamp;
 }
@@ -197,8 +190,8 @@ export interface DB {
   accounts: Accounts;
   audit_logs: AuditLogs;
   config_proposals: ConfigProposals;
+  config_proposal_variants: ConfigProposalVariants;
   config_users: ConfigUsers;
-  config_variant_proposals: ConfigVariantProposals;
   config_variant_versions: ConfigVariantVersions;
   config_variants: ConfigVariants;
   configs: Configs;

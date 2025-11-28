@@ -1,11 +1,17 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {ConfigProposalRejectionReason, ConfigProposals, DB} from './db';
+import type {Override} from './override-evaluator';
 import {deserializeJson, serializeJson} from './store-utils';
 import {createUuidV7} from './uuid';
 import {ConfigMember, Uuid} from './zod';
 
 export type ConfigProposalId = string;
+export type ConfigProposalVariantId = string;
+
+export function createConfigProposalVariantId(): ConfigProposalVariantId {
+  return createUuidV7() as ConfigProposalVariantId;
+}
 
 export function createConfigProposalId() {
   return createUuidV7() as ConfigProposalId;
@@ -55,6 +61,23 @@ export interface PendingProposalWithProposerEmail {
   proposerEmail: string | null;
   createdAt: Date;
   baseConfigVersion: number;
+}
+
+// Variant change within a proposal
+export interface ConfigProposalVariant {
+  id: string;
+  proposalId: string;
+  configVariantId: string;
+  baseVariantVersion: number;
+  // undefined = no change proposed, null = explicitly set to null, value = set to value
+  proposedValue: unknown | undefined;
+  proposedSchema: unknown | undefined;
+  proposedOverrides: Override[] | undefined;
+}
+
+export interface ConfigProposalVariantWithEnvironment extends ConfigProposalVariant {
+  environmentId: string;
+  environmentName: string;
 }
 
 export class ConfigProposalStore {
@@ -339,6 +362,123 @@ export class ConfigProposalStore {
 
   async deleteById(id: string): Promise<void> {
     await this.db.deleteFrom('config_proposals').where('id', '=', id).execute();
+  }
+
+  // =============== Proposal Variants ===============
+
+  async createVariant(variant: ConfigProposalVariant): Promise<void> {
+    await this.db
+      .insertInto('config_proposal_variants')
+      .values({
+        id: variant.id,
+        proposal_id: variant.proposalId,
+        config_variant_id: variant.configVariantId,
+        base_variant_version: variant.baseVariantVersion,
+        proposed_value:
+          variant.proposedValue !== undefined ? serializeJson(variant.proposedValue) : null,
+        proposed_schema:
+          variant.proposedSchema !== undefined ? serializeJson(variant.proposedSchema) : null,
+        proposed_overrides:
+          variant.proposedOverrides !== undefined ? serializeJson(variant.proposedOverrides) : null,
+      })
+      .execute();
+  }
+
+  async createVariants(variants: ConfigProposalVariant[]): Promise<void> {
+    if (variants.length === 0) return;
+
+    await this.db
+      .insertInto('config_proposal_variants')
+      .values(
+        variants.map(variant => ({
+          id: variant.id,
+          proposal_id: variant.proposalId,
+          config_variant_id: variant.configVariantId,
+          base_variant_version: variant.baseVariantVersion,
+          proposed_value:
+            variant.proposedValue !== undefined ? serializeJson(variant.proposedValue) : null,
+          proposed_schema:
+            variant.proposedSchema !== undefined ? serializeJson(variant.proposedSchema) : null,
+          proposed_overrides:
+            variant.proposedOverrides !== undefined
+              ? serializeJson(variant.proposedOverrides)
+              : null,
+        })),
+      )
+      .execute();
+  }
+
+  async getVariantsByProposalId(
+    proposalId: string,
+  ): Promise<ConfigProposalVariantWithEnvironment[]> {
+    const rows = await this.db
+      .selectFrom('config_proposal_variants as cpv')
+      .innerJoin('config_variants as cv', 'cv.id', 'cpv.config_variant_id')
+      .innerJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
+      .select([
+        'cpv.id',
+        'cpv.proposal_id',
+        'cpv.config_variant_id',
+        'cpv.base_variant_version',
+        'cpv.proposed_value',
+        'cpv.proposed_schema',
+        'cpv.proposed_overrides',
+        'pe.id as environment_id',
+        'pe.name as environment_name',
+      ])
+      .where('cpv.proposal_id', '=', proposalId)
+      .execute();
+
+    return rows.map(row => ({
+      id: row.id,
+      proposalId: row.proposal_id,
+      configVariantId: row.config_variant_id,
+      baseVariantVersion: row.base_variant_version,
+      proposedValue: row.proposed_value !== null ? deserializeJson(row.proposed_value) : undefined,
+      proposedSchema:
+        row.proposed_schema !== null ? deserializeJson(row.proposed_schema) : undefined,
+      proposedOverrides:
+        row.proposed_overrides !== null
+          ? deserializeJson<Override[]>(row.proposed_overrides)!
+          : undefined,
+      environmentId: row.environment_id,
+      environmentName: row.environment_name,
+    }));
+  }
+
+  async getVariantByProposalIdAndConfigVariantId(
+    proposalId: string,
+    configVariantId: string,
+  ): Promise<ConfigProposalVariant | null> {
+    const row = await this.db
+      .selectFrom('config_proposal_variants')
+      .selectAll()
+      .where('proposal_id', '=', proposalId)
+      .where('config_variant_id', '=', configVariantId)
+      .executeTakeFirst();
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      proposalId: row.proposal_id,
+      configVariantId: row.config_variant_id,
+      baseVariantVersion: row.base_variant_version,
+      proposedValue: row.proposed_value !== null ? deserializeJson(row.proposed_value) : undefined,
+      proposedSchema:
+        row.proposed_schema !== null ? deserializeJson(row.proposed_schema) : undefined,
+      proposedOverrides:
+        row.proposed_overrides !== null
+          ? deserializeJson<Override[]>(row.proposed_overrides)!
+          : undefined,
+    };
+  }
+
+  async deleteVariantsByProposalId(proposalId: string): Promise<void> {
+    await this.db
+      .deleteFrom('config_proposal_variants')
+      .where('proposal_id', '=', proposalId)
+      .execute();
   }
 }
 

@@ -24,7 +24,7 @@ import {Fragment, useState} from 'react';
 import {toast} from 'sonner';
 import {useProjectId} from '../../utils';
 
-export default function NewApiKeyPage() {
+export default function NewSdkKeyPage() {
   const trpc = useTRPC();
   const projectId = useProjectId();
   const createMutation = useMutation(trpc.createApiKey.mutationOptions());
@@ -53,7 +53,7 @@ export default function NewApiKeyPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/projects/${projectId}/api-keys`}>API Keys</Link>
+                  <Link href={`/app/projects/${projectId}/sdk-keys`}>SDK Keys</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -70,9 +70,9 @@ export default function NewApiKeyPage() {
           {!createdToken && (
             <div className="rounded-lg border bg-card/50 overflow-hidden">
               <div className="border-b bg-muted/30 px-6 py-4">
-                <h2 className="text-base font-semibold text-foreground">Create API Key</h2>
+                <h2 className="text-base font-semibold text-foreground">Create SDK Key</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Provide a name and optional description for your API key.
+                  Provide a name and optional description for your SDK key.
                 </p>
               </div>
               <form
@@ -105,7 +105,7 @@ export default function NewApiKeyPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    The API key will only work for the selected environment
+                    The SDK key will only work for the selected environment
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -137,10 +137,10 @@ export default function NewApiKeyPage() {
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button type="submit" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? 'Creating…' : 'Create API Key'}
+                    {createMutation.isPending ? 'Creating…' : 'Create SDK Key'}
                   </Button>
                   <Button asChild variant="outline">
-                    <Link href={`/app/projects/${projectId}/api-keys`}>Cancel</Link>
+                    <Link href={`/app/projects/${projectId}/sdk-keys`}>Cancel</Link>
                   </Button>
                 </div>
               </form>
@@ -150,7 +150,7 @@ export default function NewApiKeyPage() {
             <div className="rounded-lg border border-green-200/50 bg-green-50/50 dark:border-green-900/30 dark:bg-green-950/20 overflow-hidden">
               <div className="border-b bg-green-100/50 dark:bg-green-900/20 px-6 py-4">
                 <h2 className="text-base font-semibold text-foreground">
-                  API Key Created Successfully
+                  SDK Key Created Successfully
                 </h2>
                 <p className="text-sm text-foreground/80 dark:text-foreground/70 mt-1">
                   Copy and store this key securely. You won&apos;t be able to see it again.
@@ -158,7 +158,7 @@ export default function NewApiKeyPage() {
               </div>
               <div className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Your API Key</Label>
+                  <Label className="text-sm font-medium">Your SDK Key</Label>
                   <pre className="p-4 bg-muted/50 rounded-lg border text-sm overflow-auto font-mono select-all">
                     {createdToken}
                   </pre>
@@ -182,7 +182,7 @@ export default function NewApiKeyPage() {
                     Copy to Clipboard
                   </Button>
                   <Button asChild variant="outline">
-                    <Link href={`/app/projects/${projectId}/api-keys`}>Done</Link>
+                    <Link href={`/app/projects/${projectId}/sdk-keys`}>Done</Link>
                   </Button>
                 </div>
               </div>
@@ -195,3 +195,4 @@ export default function NewApiKeyPage() {
     </Fragment>
   );
 }
+

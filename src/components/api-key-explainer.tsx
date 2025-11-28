@@ -30,15 +30,15 @@ export function ApiKeyExplainer() {
         <Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-foreground mb-2">
-            Project-scoped API keys
+            Project-scoped SDK keys
           </div>
           <div className="space-y-2 text-sm text-foreground/80 dark:text-foreground/70">
             <p>
-              Each API key is tied to a specific project and can only access configs from that
+              Each SDK key is tied to a specific project and can only access configs from that
               project.
             </p>
             <p>
-              If you need to access configs from multiple projects, create a separate API key for
+              If you need to access configs from multiple projects, create a separate SDK key for
               each project and initialize the SDK separately for each one.
             </p>
           </div>

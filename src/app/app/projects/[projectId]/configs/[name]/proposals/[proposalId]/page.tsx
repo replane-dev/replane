@@ -489,6 +489,7 @@ export default function ReviewConfigProposalPage() {
                     }
                   : null,
               }}
+              proposedVariants={proposal.proposedVariants}
             />
           )}
 

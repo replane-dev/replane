@@ -45,18 +45,20 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       isExample: false,
     });
 
-    const dev: ProjectEnvironment = {
-      id: createUuidV7(),
-      projectId,
-      name: 'Development',
-      createdAt: now,
-      updatedAt: now,
-    };
-
     const production: ProjectEnvironment = {
       id: createUuidV7(),
       projectId,
       name: 'Production',
+      order: 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const dev: ProjectEnvironment = {
+      id: createUuidV7(),
+      projectId,
+      name: 'Development',
+      order: 2,
       createdAt: now,
       updatedAt: now,
     };

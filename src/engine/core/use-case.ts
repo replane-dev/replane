@@ -3,7 +3,6 @@ import type {ConfigProposalStore} from './config-proposal-store';
 import type {ConfigService} from './config-service';
 import type {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
-import type {ConfigVariantProposalStore} from './config-variant-proposal-store';
 import type {ConfigVariantStore} from './config-variant-store';
 import type {ConfigVariantVersionStore} from './config-variant-version-store';
 import type {Context} from './context';
@@ -38,5 +37,4 @@ export interface UseCaseTransaction {
   projectEnvironments: ProjectEnvironmentStore;
   configVariants: ConfigVariantStore;
   configVariantVersions: ConfigVariantVersionStore;
-  configVariantProposals: ConfigVariantProposalStore;
 }

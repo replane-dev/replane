@@ -93,6 +93,17 @@ export const appRouter = createTRPCRouter({
             newMembers: z.array(ConfigMember()),
           })
           .optional(),
+        variants: z
+          .array(
+            z.object({
+              configVariantId: Uuid(),
+              prevVersion: z.number(),
+              value: z.object({newValue: z.any()}).optional(),
+              schema: z.object({newSchema: z.any()}).optional(),
+              overrides: z.object({newOverrides: ConfigOverrides()}).optional(),
+            }),
+          )
+          .optional(),
       }),
     )
     .mutation(async opts => {
@@ -100,26 +111,6 @@ export const appRouter = createTRPCRouter({
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
       await opts.ctx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
-        ...opts.input,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-      return {};
-    }),
-  patchConfigVariant: baseProcedure
-    .input(
-      z.object({
-        configVariantId: Uuid(),
-        value: z.object({newValue: ConfigValue()}).optional(),
-        schema: z.object({newSchema: ConfigSchema()}).optional(),
-        overrides: z.object({newOverrides: ConfigOverrides()}).optional(),
-        prevVersion: z.number(),
-      }),
-    )
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      await opts.ctx.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
         ...opts.input,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
@@ -380,6 +371,94 @@ export const appRouter = createTRPCRouter({
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),
+  getProjectEnvironments: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  createProjectEnvironment: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+        name: z.string().min(1).max(50),
+        copyFromEnvironmentId: Uuid().optional(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.createProjectEnvironment(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
+        name: opts.input.name,
+        copyFromEnvironmentId: opts.input.copyFromEnvironmentId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  updateProjectEnvironment: baseProcedure
+    .input(
+      z.object({
+        environmentId: Uuid(),
+        name: z.string().min(1).max(50),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.updateProjectEnvironment(GLOBAL_CONTEXT, {
+        environmentId: opts.input.environmentId,
+        name: opts.input.name,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  deleteProjectEnvironment: baseProcedure
+    .input(
+      z.object({
+        environmentId: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.deleteProjectEnvironment(GLOBAL_CONTEXT, {
+        environmentId: opts.input.environmentId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  updateProjectEnvironmentsOrder: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+        environmentOrders: z.array(
+          z.object({
+            environmentId: Uuid(),
+            order: z.number().int().min(0),
+          }),
+        ),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.updateProjectEnvironmentsOrder(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
+        environmentOrders: opts.input.environmentOrders,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
   updateProjectUsers: baseProcedure
     .input(
       z.object({
@@ -523,6 +602,17 @@ export const appRouter = createTRPCRouter({
             newMembers: z.array(ConfigMember()),
           })
           .optional(),
+        proposedVariants: z
+          .array(
+            z.object({
+              configVariantId: Uuid(),
+              baseVariantVersion: z.number(),
+              proposedValue: z.object({newValue: ConfigValue()}).optional(),
+              proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
+              proposedOverrides: z.object({newOverrides: ConfigOverrides()}).optional(),
+            }),
+          )
+          .optional(),
         message: z.string().max(5000).optional(),
       }),
     )
@@ -538,40 +628,12 @@ export const appRouter = createTRPCRouter({
           proposedDelete: opts.input.proposedDelete,
           proposedDescription: opts.input.proposedDescription,
           proposedMembers: opts.input.proposedMembers,
+          proposedVariants: opts.input.proposedVariants,
           message: opts.input.message,
           currentUserEmail: opts.ctx.currentUserEmail,
         },
       );
       return {configProposalId};
-    }),
-  createConfigVariantProposal: baseProcedure
-    .input(
-      z.object({
-        configVariantId: Uuid(),
-        baseVersion: z.number(),
-        proposedValue: z.object({newValue: ConfigValue()}).optional(),
-        proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
-        proposedOverrides: z.object({newOverrides: ConfigOverrides()}).optional(),
-        message: z.string().max(5000).optional(),
-      }),
-    )
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      const {configVariantProposalId} = await opts.ctx.engine.useCases.createConfigVariantProposal(
-        GLOBAL_CONTEXT,
-        {
-          configVariantId: opts.input.configVariantId,
-          baseVersion: opts.input.baseVersion,
-          proposedValue: opts.input.proposedValue,
-          proposedSchema: opts.input.proposedSchema,
-          proposedOverrides: opts.input.proposedOverrides,
-          message: opts.input.message,
-          currentUserEmail: opts.ctx.currentUserEmail,
-        },
-      );
-      return {configVariantProposalId};
     }),
   approveConfigProposal: baseProcedure
     .input(
@@ -617,54 +679,6 @@ export const appRouter = createTRPCRouter({
       }
       await opts.ctx.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
         configId: opts.input.configId,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-      return {};
-    }),
-  approveConfigVariantProposal: baseProcedure
-    .input(
-      z.object({
-        proposalId: Uuid(),
-      }),
-    )
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      await opts.ctx.engine.useCases.approveConfigVariantProposal(GLOBAL_CONTEXT, {
-        proposalId: opts.input.proposalId,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-      return {};
-    }),
-  rejectConfigVariantProposal: baseProcedure
-    .input(
-      z.object({
-        proposalId: Uuid(),
-      }),
-    )
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      await opts.ctx.engine.useCases.rejectConfigVariantProposal(GLOBAL_CONTEXT, {
-        proposalId: opts.input.proposalId,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-      return {};
-    }),
-  rejectAllPendingConfigVariantProposals: baseProcedure
-    .input(
-      z.object({
-        configVariantId: Uuid(),
-      }),
-    )
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      await opts.ctx.engine.useCases.rejectAllPendingConfigVariantProposals(GLOBAL_CONTEXT, {
-        configVariantId: opts.input.configVariantId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
       return {};

@@ -201,7 +201,7 @@ export function ConfigMemberList({
       )}
       <div>
         <Button type="button" variant="secondary" onClick={handleAdd} disabled={disabled}>
-          <Plus className="mr-1 h-4 w-4" /> Add config maintainer
+          <Plus className="mr-1 h-4 w-4" /> Add config member
         </Button>
       </div>
     </div>

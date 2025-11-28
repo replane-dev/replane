@@ -358,4 +358,90 @@ describe('createConfigProposal', () => {
     const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
     expect(proposal?.proposedDelete).toBe(true);
   });
+
+  it('should create a proposal with variant value changes', async () => {
+    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
+      GLOBAL_CONTEXT,
+      {
+        overrides: [],
+        name: 'variant_proposal_config',
+        value: {enabled: true},
+        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+        description: 'Variant test',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL],
+        projectId: fixture.projectId,
+      },
+    );
+
+    // Get the production variant
+    const prodVariantId = configVariantIds.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    )?.variantId;
+    expect(prodVariantId).toBeDefined();
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedVariants: [
+        {
+          configVariantId: prodVariantId!,
+          baseVariantVersion: 1,
+          proposedValue: {newValue: {enabled: false}},
+        },
+      ],
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(configProposalId).toBeDefined();
+    const variantChanges =
+      await fixture.engine.testing.configProposals.getVariantsByProposalId(configProposalId);
+    expect(variantChanges).toHaveLength(1);
+    expect(variantChanges[0].proposedValue).toEqual({enabled: false});
+  });
+
+  it('should create a proposal with both config and variant changes', async () => {
+    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
+      GLOBAL_CONTEXT,
+      {
+        overrides: [],
+        name: 'combined_config_variant_proposal',
+        value: {count: 10},
+        schema: {type: 'object', properties: {count: {type: 'number'}}},
+        description: 'Original description',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL],
+        projectId: fixture.projectId,
+      },
+    );
+
+    // Get the production variant
+    const prodVariantId = configVariantIds.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    )?.variantId;
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedDescription: {newDescription: 'Updated description'},
+      proposedVariants: [
+        {
+          configVariantId: prodVariantId!,
+          baseVariantVersion: 1,
+          proposedValue: {newValue: {count: 20}},
+        },
+      ],
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    expect(proposal?.proposedDescription).toBe('Updated description');
+
+    const variantChanges =
+      await fixture.engine.testing.configProposals.getVariantsByProposalId(configProposalId);
+    expect(variantChanges).toHaveLength(1);
+    expect(variantChanges[0].proposedValue).toEqual({count: 20});
+  });
 });

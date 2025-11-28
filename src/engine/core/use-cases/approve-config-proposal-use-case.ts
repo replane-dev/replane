@@ -92,20 +92,57 @@ export function createApproveConfigProposalUseCase(
         prevVersion: proposal.baseConfigVersion,
       });
     } else {
-      await tx.configService.patchConfig({
-        configId: proposal.configId,
-        description:
-          proposal.proposedDescription !== null
-            ? {newDescription: proposal.proposedDescription}
+      // Apply config-level changes
+      const hasConfigChanges =
+        proposal.proposedDescription !== null || proposal.proposedMembers !== null;
+      if (hasConfigChanges) {
+        await tx.configService.patchConfig({
+          configId: proposal.configId,
+          description:
+            proposal.proposedDescription !== null
+              ? {newDescription: proposal.proposedDescription}
+              : undefined,
+          members: proposal.proposedMembers
+            ? {newMembers: proposal.proposedMembers.newMembers}
             : undefined,
-        members: proposal.proposedMembers
-          ? {newMembers: proposal.proposedMembers.newMembers}
-          : undefined,
-        patchAuthor: patchAuthor,
-        reviewer: currentUser,
-        prevVersion: proposal.baseConfigVersion,
-        originalProposalId: proposal.id,
-      });
+          patchAuthor: patchAuthor,
+          reviewer: currentUser,
+          prevVersion: proposal.baseConfigVersion,
+          originalProposalId: proposal.id,
+        });
+      }
+
+      // Apply variant-level changes
+      const variantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
+      for (const variantChange of variantChanges) {
+        // Verify variant version hasn't changed
+        const variant = await tx.configVariants.getById(variantChange.configVariantId);
+        assert(variant, `Variant ${variantChange.configVariantId} not found`);
+        assert(
+          variant.version === variantChange.baseVariantVersion,
+          `Variant version mismatch for ${variantChange.configVariantId}`,
+        );
+
+        await tx.configService.patchConfigVariant({
+          configVariantId: variantChange.configVariantId,
+          value:
+            variantChange.proposedValue !== undefined
+              ? {newValue: variantChange.proposedValue}
+              : undefined,
+          schema:
+            variantChange.proposedSchema !== undefined
+              ? {newSchema: variantChange.proposedSchema}
+              : undefined,
+          overrides:
+            variantChange.proposedOverrides !== undefined
+              ? {newOverrides: variantChange.proposedOverrides}
+              : undefined,
+          patchAuthor: patchAuthor,
+          reviewer: currentUser,
+          prevVersion: variantChange.baseVariantVersion,
+          originalProposalId: proposal.id,
+        });
+      }
     }
 
     return {};

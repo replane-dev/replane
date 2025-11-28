@@ -5,6 +5,7 @@ export interface ProjectEnvironment {
   id: string;
   projectId: string;
   name: string;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,7 +30,7 @@ export class ProjectEnvironmentStore {
       .selectFrom('project_environments')
       .selectAll()
       .where('project_id', '=', projectId)
-      .orderBy('name', 'asc')
+      .orderBy('order', 'asc')
       .execute();
 
     return rows.map(this.mapRow);
@@ -58,34 +59,47 @@ export class ProjectEnvironmentStore {
         id: environment.id,
         project_id: environment.projectId,
         name: environment.name,
+        order: environment.order,
         created_at: environment.createdAt,
         updated_at: environment.updatedAt,
       })
       .execute();
   }
 
-  async update(params: {id: string; name: string; updatedAt: Date}): Promise<void> {
+  async update(params: {
+    id: string;
+    name?: string;
+    order?: number;
+    updatedAt: Date;
+  }): Promise<void> {
+    const updates: any = {
+      updated_at: params.updatedAt,
+    };
+
+    if (params.name !== undefined) {
+      updates.name = params.name;
+    }
+
+    if (params.order !== undefined) {
+      updates.order = params.order;
+    }
+
     await this.db
       .updateTable('project_environments')
-      .set({
-        name: params.name,
-        updated_at: params.updatedAt,
-      })
+      .set(updates)
       .where('id', '=', params.id)
       .execute();
   }
 
   async delete(id: string): Promise<void> {
-    await this.db
-      .deleteFrom('project_environments')
-      .where('id', '=', id)
-      .execute();
+    await this.db.deleteFrom('project_environments').where('id', '=', id).execute();
   }
 
   private mapRow(row: {
     id: string;
     project_id: string;
     name: string;
+    order: number;
     created_at: Date;
     updated_at: Date;
   }): ProjectEnvironment {
@@ -93,6 +107,7 @@ export class ProjectEnvironmentStore {
       id: row.id,
       projectId: row.project_id,
       name: row.name,
+      order: row.order,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

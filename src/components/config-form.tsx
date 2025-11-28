@@ -3,8 +3,8 @@
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {ConfigMemberList} from '@/components/config-member-list';
 import {ConfigMetadataHeader} from '@/components/config-metadata-header';
-import {JsonEditor} from '@/components/json-editor';
-import {OverrideBuilder} from '@/components/override-builder';
+import {ConfigVariantFields} from '@/components/config-variant-fields';
+import {SchemaDiffWarning} from '@/components/schema-diff-warning';
 import {Button} from '@/components/ui/button';
 import {
   Form,
@@ -16,13 +16,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
-import {Switch} from '@/components/ui/switch';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {ConfigOverrides} from '@/engine/core/config-store';
 import type {Override} from '@/engine/core/override-evaluator';
 import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
+import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {CircleHelp} from 'lucide-react';
 import * as React from 'react';
@@ -31,15 +31,23 @@ import {z} from 'zod';
 
 type Mode = 'new' | 'edit' | 'proposal';
 
+export interface ConfigVariantData {
+  configVariantId?: string; // undefined for new configs
+  environmentId: string;
+  environmentName: string;
+  value: unknown;
+  schema: unknown | null;
+  overrides: Override[];
+  version?: number; // undefined for new configs
+}
+
 export interface ConfigFormProps {
   mode: Mode;
   role: 'viewer' | 'maintainer' | 'editor';
   currentName?: string; // used in edit mode (read-only display)
-  defaultValue: string; // JSON string
+  variants: ConfigVariantData[]; // Array of variants, one per environment
+  initialEnvironmentId?: string; // Initial environment tab to select
   defaultDescription?: string;
-  defaultSchemaEnabled?: boolean;
-  defaultSchema?: string; // JSON string
-  defaultOverrides?: Override[];
   defaultMaintainerEmails?: string[];
   defaultEditorEmails?: string[];
   proposing?: boolean;
@@ -52,18 +60,24 @@ export interface ConfigFormProps {
   versionsLink?: string; // link to versions page
   onCancel?: () => void;
   onDelete?: () => Promise<void> | void;
+  onEnvironmentChange?: (environmentId: string) => void;
   onSubmit: (data: {
     action: 'save' | 'propose';
     name: string;
-    value: unknown;
-    schema: unknown | null;
-    overrides: Override[];
+    variants: Array<{
+      configVariantId?: string;
+      environmentId: string;
+      value: unknown;
+      schema: unknown | null;
+      overrides: Override[];
+      version?: number;
+    }>;
     description: string;
     maintainerEmails: string[];
     editorEmails: string[];
   }) => Promise<void> | void;
-  onValuesChange?: (values: {value: string; overrides: Override[]}) => void;
-  onTestOverrides?: () => void;
+  onValuesChange?: (environmentId: string, values: {value: string; overrides: Override[]}) => void;
+  onTestOverrides?: (environmentId: string) => void;
 }
 
 export function ConfigForm(props: ConfigFormProps) {
@@ -72,11 +86,9 @@ export function ConfigForm(props: ConfigFormProps) {
     role: rawRole,
     currentName,
     currentPendingProposalsCount,
-    defaultValue,
+    variants,
+    initialEnvironmentId,
     defaultDescription = '',
-    defaultSchemaEnabled = false,
-    defaultSchema = '',
-    defaultOverrides = [],
     defaultMaintainerEmails = [],
     defaultEditorEmails = [],
     proposing,
@@ -91,11 +103,33 @@ export function ConfigForm(props: ConfigFormProps) {
     onSubmit,
     onValuesChange,
     onTestOverrides,
+    onEnvironmentChange,
   } = props;
 
   const defaultName = currentName ?? '';
 
   const projectId = useProjectId();
+
+  // State for active tab (environment)
+  const [activeEnvironmentId, setActiveEnvironmentId] = React.useState<string>(
+    initialEnvironmentId ?? variants[0]?.environmentId ?? '',
+  );
+
+  // Update activeEnvironmentId when initialEnvironmentId changes (e.g., from URL)
+  React.useEffect(() => {
+    if (initialEnvironmentId && initialEnvironmentId !== activeEnvironmentId) {
+      setActiveEnvironmentId(initialEnvironmentId);
+    }
+  }, [initialEnvironmentId, activeEnvironmentId]);
+
+  // Notify parent when environment changes
+  const handleEnvironmentChange = React.useCallback(
+    (environmentId: string) => {
+      setActiveEnvironmentId(environmentId);
+      onEnvironmentChange?.(environmentId);
+    },
+    [onEnvironmentChange],
+  );
 
   // Normalize role, tolerate common typo "editor"
   const role: 'viewer' | 'maintainer' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
@@ -116,7 +150,9 @@ export function ConfigForm(props: ConfigFormProps) {
   // Track which action button was clicked
   const submitActionRef = React.useRef<'save' | 'propose' | null>(null);
 
-  const baseSchema = {
+  // Create variant-specific schema
+  const variantSchema = z.object({
+    environmentId: z.string(),
     value: z
       .string()
       .min(1, 'Value is required')
@@ -128,7 +164,6 @@ export function ConfigForm(props: ConfigFormProps) {
           return false;
         }
       }, 'Must be valid JSON'),
-    description: z.string().optional(),
     schemaEnabled: z.boolean().default(false),
     schema: z
       .string()
@@ -148,6 +183,11 @@ export function ConfigForm(props: ConfigFormProps) {
         }
       }),
     overrides: ConfigOverrides(),
+  });
+
+  const baseSchema = {
+    description: z.string().optional(),
+    variants: z.array(variantSchema),
     members: z
       .array(
         z.object({
@@ -205,11 +245,14 @@ export function ConfigForm(props: ConfigFormProps) {
     resolver: zodResolver(fullSchema),
     defaultValues: {
       ...(mode === 'new' ? {name: defaultName} : {}),
-      value: defaultValue,
       description: defaultDescription,
-      schemaEnabled: defaultSchemaEnabled,
-      schema: defaultSchema,
-      overrides: defaultOverrides,
+      variants: variants.map(v => ({
+        environmentId: v.environmentId,
+        value: JSON.stringify(v.value, null, 2),
+        schemaEnabled: v.schema !== null,
+        schema: v.schema ? JSON.stringify(v.schema, null, 2) : '',
+        overrides: v.overrides,
+      })),
       members: [
         ...defaultMaintainerEmails.map(email => ({email, role: 'maintainer' as const})),
         ...defaultEditorEmails.map(email => ({email, role: 'editor' as const})),
@@ -219,40 +262,59 @@ export function ConfigForm(props: ConfigFormProps) {
   });
 
   async function handleSubmit(values: FormValues) {
-    const payloadValue = JSON.parse(values.value);
-    let parsedSchema: any | null = null;
-    if (values.schemaEnabled) {
-      try {
-        parsedSchema = JSON.parse(values.schema || '');
-      } catch {
-        form.setError('schema', {message: 'Schema must be valid JSON'});
-        return;
+    // Process each variant
+    const processedVariants = [];
+    for (let i = 0; i < values.variants.length; i++) {
+      const variant = values.variants[i];
+      const originalVariant = variants[i];
+
+      const payloadValue = JSON.parse(variant.value);
+      let parsedSchema: any | null = null;
+
+      if (variant.schemaEnabled) {
+        try {
+          parsedSchema = JSON.parse(variant.schema || '');
+        } catch {
+          form.setError(`variants.${i}.schema`, {message: 'Schema must be valid JSON'});
+          // Switch to the tab with the error
+          setActiveEnvironmentId(variant.environmentId);
+          return;
+        }
+
+        // Validate that the schema itself is a valid JSON Schema
+        if (!isValidJsonSchema(parsedSchema)) {
+          form.setError(`variants.${i}.schema`, {message: 'Invalid JSON Schema'});
+          setActiveEnvironmentId(variant.environmentId);
+          return;
+        }
+
+        // Validate the value against the schema
+        const validationResult = validateAgainstJsonSchema(payloadValue, parsedSchema);
+        if (!validationResult.ok) {
+          const errors = validationResult.errors.join('; ');
+          form.setError(`variants.${i}.value`, {
+            message: `Does not match schema: ${errors || 'Invalid value'}`,
+          });
+          setActiveEnvironmentId(variant.environmentId);
+          return;
+        }
       }
 
-      // Validate that the schema itself is a valid JSON Schema
-      if (!isValidJsonSchema(parsedSchema)) {
-        form.setError('schema', {message: 'Invalid JSON Schema'});
-        return;
-      }
-
-      // Validate the value against the schema
-      const validationResult = validateAgainstJsonSchema(payloadValue, parsedSchema);
-      if (!validationResult.ok) {
-        const errors = validationResult.errors.join('; ');
-        form.setError('value', {message: `Does not match schema: ${errors || 'Invalid value'}`});
-        return;
-      }
+      processedVariants.push({
+        configVariantId: originalVariant?.configVariantId,
+        environmentId: variant.environmentId,
+        value: payloadValue,
+        schema: variant.schemaEnabled ? parsedSchema : null,
+        overrides: variant.overrides as Override[],
+        version: originalVariant?.version,
+      });
     }
-
-    // Handle overrides - overrides are enabled if they exist
-    const overrides = values.overrides;
 
     // Determine action: use tracked action, or default based on mode
     const action: 'save' | 'propose' =
       submitActionRef.current ?? (mode === 'proposal' ? 'propose' : 'save');
 
     // Transform member array back to maintainerEmails and editorEmails
-    // Filter out entries with empty emails
     const members = (values.members ?? []).filter(m => m.email.trim());
     const maintainerEmails = members
       .filter(m => m.role === 'maintainer')
@@ -264,9 +326,7 @@ export function ConfigForm(props: ConfigFormProps) {
     await onSubmit({
       action,
       name: values.name ?? defaultName,
-      value: payloadValue,
-      schema: values.schemaEnabled ? parsedSchema : null,
-      overrides: overrides as Override[],
+      variants: processedVariants,
       description: values.description ?? '',
       maintainerEmails: maintainerEmails,
       editorEmails,
@@ -278,37 +338,37 @@ export function ConfigForm(props: ConfigFormProps) {
 
   // Track all form values to detect changes and for reactive schema
   const watchedName = useWatch({control: form.control, name: 'name'});
-  const watchedValue = useWatch({control: form.control, name: 'value'});
   const watchedDescription = useWatch({control: form.control, name: 'description'});
-  const watchedSchemaEnabled = useWatch({control: form.control, name: 'schemaEnabled'});
-  const watchedSchema = useWatch({control: form.control, name: 'schema'});
-  const watchedOverrides = useWatch({control: form.control, name: 'overrides'}) as
-    | Override[]
-    | undefined;
+  const watchedVariants = useWatch({control: form.control, name: 'variants'});
   const watchedMembers = useWatch({control: form.control, name: 'members'});
 
+  // Get current active variant
+  const activeVariantIndex = variants.findIndex(v => v.environmentId === activeEnvironmentId);
+  const activeVariant = watchedVariants?.[activeVariantIndex];
+
   const overrideBuilderDefaultValue = React.useMemo(() => {
+    if (!activeVariant?.value) return null;
     try {
-      return JSON.parse(watchedValue ?? defaultValue);
+      return JSON.parse(activeVariant.value);
     } catch {
       return null;
     }
-  }, [watchedValue, defaultValue]);
+  }, [activeVariant?.value]);
 
-  // Notify parent of value changes for live testing
+  // Notify parent of value changes for live testing (for active environment)
   React.useEffect(() => {
-    if (onValuesChange && watchedOverrides) {
-      onValuesChange({
-        value: watchedValue ?? defaultValue,
-        overrides: watchedOverrides,
+    if (onValuesChange && activeVariant) {
+      onValuesChange(activeEnvironmentId, {
+        value: activeVariant.value ?? '',
+        overrides: (activeVariant.overrides ?? []) as Override[],
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedValue, watchedOverrides]);
+  }, [activeVariant?.value, activeVariant?.overrides, activeEnvironmentId]);
 
-  // Reactive schema for Value editor (useWatch ensures defaults are considered before inputs mount)
-  const enabled = (watchedSchemaEnabled ?? form.getValues('schemaEnabled')) as boolean;
-  const schemaText = (watchedSchema ?? form.getValues('schema') ?? '').toString().trim();
+  // Reactive schema for Value editor (for active environment)
+  const enabled = activeVariant?.schemaEnabled ?? false;
+  const schemaText = (activeVariant?.schema ?? '').toString().trim();
   let liveSchema: any | undefined = undefined;
   if (enabled && schemaText) {
     try {
@@ -322,20 +382,17 @@ export function ConfigForm(props: ConfigFormProps) {
   // Check if there are any changes
   const hasChanges = React.useMemo(() => {
     if (mode === 'new') {
-      // For new configs, check if name and value are filled
+      // For new configs, check if name and at least one variant value are filled
       const name = (watchedName ?? '').trim();
-      const value = (watchedValue ?? '').trim();
-      return name.length > 0 && value.length > 0;
+      const hasValue = watchedVariants?.some(v => (v.value ?? '').trim().length > 0);
+      return name.length > 0 && hasValue;
     }
 
     // For edit/proposal modes, compare with defaults
-    const currentValue = (watchedValue ?? '').trim();
     const currentDescription = (watchedDescription ?? '').trim();
-    const currentSchemaEnabled = watchedSchemaEnabled ?? false;
-    const currentSchema = (watchedSchema ?? '').trim();
     const currentMembers = (watchedMembers ?? []).filter(m => m.email.trim());
 
-    // Normalize maintainers for comparison
+    // Normalize members for comparison
     const normalizeMembers = (members: typeof currentMembers) => {
       const normalized = members
         .filter(m => m.email.trim())
@@ -371,42 +428,56 @@ export function ConfigForm(props: ConfigFormProps) {
         (m, i) => m.email !== normalizedDefault[i]?.email || m.role !== normalizedDefault[i]?.role,
       );
 
-    // Compare other fields
-    const valueChanged = currentValue !== defaultValue.trim();
+    // Compare description
     const descriptionChanged = currentDescription !== (defaultDescription ?? '').trim();
-    const schemaEnabledChanged = currentSchemaEnabled !== defaultSchemaEnabled;
-    const schemaChanged = currentSchema !== (defaultSchema ?? '').trim();
 
-    // Compare overrides
-    const currentOverrides = watchedOverrides ?? null;
-    const overridesChanged = JSON.stringify(currentOverrides) !== JSON.stringify(defaultOverrides);
+    // Compare variants
+    let variantsChanged = false;
+    if (watchedVariants && variants.length === watchedVariants.length) {
+      for (let i = 0; i < watchedVariants.length; i++) {
+        const current = watchedVariants[i];
+        const original = variants[i];
 
-    return (
-      valueChanged ||
-      descriptionChanged ||
-      schemaEnabledChanged ||
-      schemaChanged ||
-      overridesChanged ||
-      membersChanged
-    );
+        const currentValue = (current.value ?? '').trim();
+        const originalValue = JSON.stringify(original.value, null, 2).trim();
+        const currentSchemaEnabled = current.schemaEnabled ?? false;
+        const originalSchemaEnabled = original.schema !== null;
+        const currentSchema = (current.schema ?? '').trim();
+        const originalSchema = original.schema
+          ? JSON.stringify(original.schema, null, 2).trim()
+          : '';
+        const currentOverrides = current.overrides ?? [];
+        const originalOverrides = original.overrides ?? [];
+
+        if (
+          currentValue !== originalValue ||
+          currentSchemaEnabled !== originalSchemaEnabled ||
+          currentSchema !== originalSchema ||
+          JSON.stringify(currentOverrides) !== JSON.stringify(originalOverrides)
+        ) {
+          variantsChanged = true;
+          break;
+        }
+      }
+    } else {
+      variantsChanged = true;
+    }
+
+    return descriptionChanged || variantsChanged || membersChanged;
   }, [
     mode,
     watchedName,
-    watchedValue,
     watchedDescription,
-    watchedSchemaEnabled,
-    watchedSchema,
-    watchedOverrides,
+    watchedVariants,
     watchedMembers,
-    defaultValue,
+    variants,
     defaultDescription,
-    defaultSchemaEnabled,
-    defaultSchema,
-    defaultOverrides,
     defaultMaintainerEmails,
     defaultEditorEmails,
-    projectId,
   ]);
+
+  // Check if schemas differ across environments
+  const hasDifferentSchemas = useSchemaDiffCheck(watchedVariants);
 
   return (
     <Form {...form}>
@@ -417,20 +488,20 @@ export function ConfigForm(props: ConfigFormProps) {
             name="name"
             render={({field}) => (
               <FormItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1.5 cursor-help">
-                      <FormLabel>Name</FormLabel>
-                      <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>
-                      A unique identifier for this config. Use 1-100 letters, numbers, underscores,
-                      or hyphens.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                <div className="flex items-center gap-1.5">
+                  <FormLabel>Name</FormLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        A unique identifier for this config. Use 1-100 letters, numbers,
+                        underscores, or hyphens.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <FormControl>
                   <Input
                     placeholder="e.g. FeatureFlag-1"
@@ -460,19 +531,19 @@ export function ConfigForm(props: ConfigFormProps) {
           name="description"
           render={({field}) => (
             <FormItem>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 cursor-help">
-                    <FormLabel>Description</FormLabel>
-                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>
-                    Optional human-readable description explaining what this config is used for.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
+              <div className="flex items-center gap-1.5">
+                <FormLabel>Description</FormLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>
+                      Optional human-readable description explaining what this config is used for.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <FormControl>
                 <Textarea
                   rows={3}
@@ -491,175 +562,50 @@ export function ConfigForm(props: ConfigFormProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="overrides"
-          render={({field}) => (
-            <FormItem>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 cursor-help">
-                    <FormLabel>Value overrides</FormLabel>
-                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-sm">
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      Overrides allow you to conditionally return different values based on context
-                      properties like user email, tier, country, etc.
-                    </p>
-                    <div className="space-y-1.5 text-xs">
-                      <p className="font-medium">Examples:</p>
-                      <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
-                        <li>Premium users get higher rate limits</li>
-                        <li>VIP customers see beta features</li>
-                        <li>Regional pricing based on country</li>
-                        <li>A/B testing by user ID</li>
-                        <li>Internal employees bypass restrictions</li>
-                      </ul>
-                    </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-              <FormControl>
-                <OverrideBuilder
-                  overrides={field.value as Override[]}
-                  onChange={field.onChange}
-                  readOnly={!canEditOverrides}
-                  schema={liveSchema}
+        {/* Warning for different schemas across environments */}
+        {hasDifferentSchemas && <SchemaDiffWarning />}
+
+        {/* Environment-specific configuration (variants) */}
+        <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/10 p-6 space-y-4">
+          <Tabs value={activeEnvironmentId} onValueChange={handleEnvironmentChange}>
+            <TabsList
+              className="grid w-full"
+              style={{gridTemplateColumns: `repeat(${variants.length}, minmax(0, 1fr))`}}
+            >
+              {variants.map(variant => (
+                <TabsTrigger key={variant.environmentId} value={variant.environmentId}>
+                  {variant.environmentName}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {variants.map((variant, variantIndex) => (
+              <TabsContent
+                key={variant.environmentId}
+                value={variant.environmentId}
+                className="space-y-6 mt-6"
+              >
+                <ConfigVariantFields
+                  control={form.control}
+                  variantIndex={variantIndex}
+                  environmentId={variant.environmentId}
+                  environmentName={variant.environmentName}
+                  editorIdPrefix={editorIdPrefix}
+                  mode={mode}
                   projectId={projectId}
-                  defaultValue={overrideBuilderDefaultValue}
+                  canEditValue={canEditValue}
+                  canEditSchema={canEditSchema}
+                  canEditOverrides={canEditOverrides}
+                  watchedVariants={watchedVariants}
+                  overrideBuilderDefaultValue={overrideBuilderDefaultValue}
+                  liveSchema={liveSchema}
                 />
-              </FormControl>
-              {!canEditOverrides && (
-                <FormDescription>You do not have permission to edit overrides.</FormDescription>
-              )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="value"
-          render={({field}) => (
-            <FormItem>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 cursor-help">
-                    <FormLabel>
-                      {form.getValues('overrides').length > 0 ? 'Default Value' : 'Value'}
-                    </FormLabel>
-                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>
-                    The configuration value as valid JSON. This is the actual data that will be
-                    stored and retrieved for this config.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-              <FormControl>
-                <JsonEditor
-                  id={`${editorIdPrefix ?? 'config'}-value`}
-                  height={mode === 'new' ? 300 : 360}
-                  value={field.value}
-                  onChange={field.onChange}
-                  aria-label="Config JSON"
-                  schema={liveSchema}
-                  readOnly={!canEditValue}
-                />
-              </FormControl>
-              {!canEditValue && (
-                <FormDescription>
-                  You are in view-only mode and cannot modify the value.
-                </FormDescription>
-              )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="rounded-lg border bg-card/50 p-4 space-y-4">
-          <FormField
-            control={form.control}
-            name="schemaEnabled"
-            render={({field}) => (
-              <FormItem>
-                <div className="flex items-center justify-between space-x-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1.5 cursor-help">
-                        <Label
-                          htmlFor={`${editorIdPrefix ?? 'config'}-use-schema`}
-                          className="text-sm font-medium cursor-pointer gap-1"
-                        >
-                          Enforce
-                          <a
-                            href="https://json-schema.org/"
-                            target="_blank"
-                            className="text-primary underline"
-                          >
-                            JSON schema
-                          </a>
-                        </Label>
-                        <CircleHelp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>
-                        When enabled, the config value must validate against the JSON Schema before
-                        it can be saved. This helps ensure data consistency and catch errors early.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <FormControl>
-                    <Switch
-                      id={`${editorIdPrefix ?? 'config'}-use-schema`}
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={!canEditSchema}
-                    />
-                  </FormControl>
-                </div>
-                {!canEditSchema && (
-                  <p className="text-xs text-muted-foreground">
-                    Only maintainers can change schema enforcement.
-                  </p>
-                )}
-              </FormItem>
-            )}
-          />
-
-          {enabled && (
-            <FormField
-              control={form.control}
-              name="schema"
-              render={({field}) => (
-                <FormItem className="space-y-2">
-                  <FormControl>
-                    <JsonEditor
-                      id={`${editorIdPrefix ?? 'config'}-schema`}
-                      height={mode === 'new' ? 300 : 360}
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      aria-label="Config JSON Schema"
-                      readOnly={!canEditSchema}
-                    />
-                  </FormControl>
-                  {!canEditSchema && (
-                    <FormDescription>
-                      You do not have permission to edit the schema.
-                    </FormDescription>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
+
+        {/* End of environment-specific section */}
 
         {showMembers && (
           <FormField
@@ -667,21 +613,21 @@ export function ConfigForm(props: ConfigFormProps) {
             name="members"
             render={({field}) => (
               <FormItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1.5 cursor-help">
-                      <FormLabel>Members (can approve proposals)</FormLabel>
-                      <CircleHelp className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>
-                      Config-level members who can approve proposals for this config. Project
-                      members (admins and maintainers) can also approve proposals and are treated
-                      like config members.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                <div className="flex items-center gap-1.5">
+                  <FormLabel>Members (can approve proposals)</FormLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        Config-level members who can approve proposals for this config. Project
+                        members (admins and maintainers) can also approve proposals and are treated
+                        like config members.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <FormControl>
                   <ConfigMemberList
                     members={field.value ?? []}
@@ -764,11 +710,18 @@ export function ConfigForm(props: ConfigFormProps) {
               Cancel
             </Button>
           )}
-          {onTestOverrides && watchedOverrides && (watchedOverrides as any[])?.length > 0 && (
-            <Button type="button" variant="outline" onClick={onTestOverrides}>
-              Test Overrides
-            </Button>
-          )}
+          {onTestOverrides &&
+            activeVariant?.overrides &&
+            (activeVariant.overrides as any[])?.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onTestOverrides(activeEnvironmentId)}
+              >
+                Test Overrides (
+                {variants.find(v => v.environmentId === activeEnvironmentId)?.environmentName})
+              </Button>
+            )}
           {mode !== 'proposal' && onDelete && role === 'maintainer' && (
             <div className="ml-auto">
               <Button

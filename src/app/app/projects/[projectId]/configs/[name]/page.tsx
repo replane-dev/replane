@@ -31,13 +31,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {Label} from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
@@ -49,8 +42,8 @@ import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
 import {AlertTriangle, GitBranch, Info} from 'lucide-react';
 import Link from 'next/link';
-import {notFound, useParams, useRouter} from 'next/navigation';
-import {Fragment, useCallback, useMemo, useState} from 'react';
+import {notFound, useParams, useRouter, useSearchParams} from 'next/navigation';
+import {Fragment, useCallback, useState} from 'react';
 import {toast} from 'sonner';
 import {useProject, useProjectId} from '../../utils';
 import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
@@ -59,17 +52,14 @@ import {useDeleteOrProposeConfig} from '../useDeleteOrPropose';
 
 export default function ConfigByNamePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {name: nameParam} = useParams<{name: string}>();
   const name = decodeURIComponent(nameParam ?? '');
   const trpc = useTRPC();
   const projectId = useProjectId();
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
-  const patchConfigVariant = useMutation(trpc.patchConfigVariant.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
-  const createConfigVariantProposal = useMutation(
-    trpc.createConfigVariantProposal.mutationOptions(),
-  );
   const rejectAllPendingProposals = useMutation(
     trpc.rejectAllPendingConfigProposals.mutationOptions(),
   );
@@ -86,69 +76,107 @@ export default function ConfigByNamePage() {
   const [liveValue, setLiveValue] = useState<any>(null);
   const [liveOverrides, setLiveOverrides] = useState<any>(null);
   const [showOverrideTester, setShowOverrideTester] = useState(false);
-  // TODO: we should select the default environment
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
+  const [activeTestEnvironmentId, setActiveTestEnvironmentId] = useState<string | null>(null);
 
   const config = data.config;
 
-  // Select environment: use selected, or default to Production, or first variant
-  const currentVariant = useMemo(() => {
-    if (!config?.variants) return null;
+  // Get initial environment from URL query param
+  const envIdFromUrl = searchParams.get('env_id');
+  const initialEnvironmentId =
+    envIdFromUrl && config?.variants.some(v => v.environmentId === envIdFromUrl)
+      ? envIdFromUrl
+      : undefined;
 
-    if (selectedEnvironmentId) {
-      const variant = config.variants.find(v => v.environmentId === selectedEnvironmentId);
-      // TODO: show error if variant not found and suggest to reload the page
-      if (variant) return variant;
-
-      throw new Error('Variant not found');
-    }
-
-    return config.variants.find(v => v.environmentName === 'Production') ?? config.variants[0];
-  }, [config?.variants, selectedEnvironmentId]);
-
-  const onValuesChange = useCallback(
-    (values: {value: string; overrides: Override[]}) => {
-      setLiveOverrides(values.overrides);
-      try {
-        setLiveValue(JSON.parse(values.value));
-      } catch {
-        setLiveValue(currentVariant?.value);
-      }
+  // Handler for when environment tab changes
+  const handleEnvironmentChange = useCallback(
+    (environmentId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('env_id', environmentId);
+      router.replace(`?${params.toString()}`, {scroll: false});
     },
-    [currentVariant?.value],
+    [router, searchParams],
   );
 
-  const defaultValue = useMemo(() => {
-    if (!currentVariant) return '';
-    return JSON.stringify(currentVariant.value, null, 2);
-  }, [currentVariant]);
+  const onValuesChange = useCallback(
+    (environmentId: string, values: {value: string; overrides: Override[]}) => {
+      // Only update if this is the environment we're currently testing
+      if (activeTestEnvironmentId === environmentId) {
+        setLiveOverrides(values.overrides);
+        try {
+          setLiveValue(JSON.parse(values.value));
+        } catch {
+          const variant = config?.variants.find(v => v.environmentId === environmentId);
+          setLiveValue(variant?.value);
+        }
+      }
+    },
+    [activeTestEnvironmentId, config?.variants],
+  );
 
   async function executePatchConfig(data: {
-    value: unknown;
-    schema: unknown | null;
-    overrides: unknown;
+    variants: Array<{
+      configVariantId?: string;
+      environmentId: string;
+      value: unknown;
+      schema: unknown | null;
+      overrides: Override[];
+      version?: number;
+    }>;
     description: string;
     maintainerEmails: string[];
     editorEmails: string[];
   }) {
-    if (!config || !currentVariant) return;
+    if (!config) return;
 
-    // Patch variant-level changes (value, schema, overrides)
-    await patchConfigVariant.mutateAsync({
-      configVariantId: currentVariant.id,
-      prevVersion: currentVariant.version,
-      value: {newValue: data.value},
-      schema: config.myRole === 'maintainer' ? {newSchema: data.schema} : undefined,
-      overrides: config.myRole === 'maintainer' ? {newOverrides: data.overrides as any} : undefined,
-    });
+    // Build variant changes array
+    const variantChanges = [];
+    for (const variantData of data.variants) {
+      const originalVariant = config.variants.find(v => v.id === variantData.configVariantId);
+      if (!originalVariant) continue;
 
-    // Patch config-level changes (description, members)
+      // Check if this variant has changes
+      const valueChanged =
+        JSON.stringify(variantData.value) !== JSON.stringify(originalVariant.value);
+      const schemaChanged =
+        JSON.stringify(variantData.schema) !== JSON.stringify(originalVariant.schema);
+      const overridesChanged =
+        JSON.stringify(variantData.overrides) !== JSON.stringify(originalVariant.overrides);
+
+      if (valueChanged || schemaChanged || overridesChanged) {
+        variantChanges.push({
+          configVariantId: originalVariant.id,
+          prevVersion: originalVariant.version,
+          value: valueChanged ? {newValue: variantData.value} : undefined,
+          schema:
+            config.myRole === 'maintainer' && schemaChanged
+              ? {newSchema: variantData.schema}
+              : undefined,
+          overrides:
+            config.myRole === 'maintainer' && overridesChanged
+              ? {newOverrides: variantData.overrides}
+              : undefined,
+        });
+      }
+    }
+
+    // Check config-level changes (description, members)
+    const current = config.config;
+    const descChanged = (data.description ?? '') !== (current.description ?? '');
+    const currentMaintainers = (config.maintainerEmails ?? []).slice().sort();
+    const currentEditors = (config.editorEmails ?? []).slice().sort();
+    const newMaintainers = (data.maintainerEmails ?? []).slice().sort();
+    const newEditors = (data.editorEmails ?? []).slice().sort();
+    const maintainersChanged =
+      JSON.stringify(currentMaintainers) !== JSON.stringify(newMaintainers);
+    const editorsChanged = JSON.stringify(currentEditors) !== JSON.stringify(newEditors);
+
+    // Call unified patchConfig with both config and variant changes
     await patchConfig.mutateAsync({
       configId: config.config.id,
       prevVersion: config.config.version,
-      description: {newDescription: data.description},
+      description: descChanged ? {newDescription: data.description} : undefined,
       members:
-        config.myRole === 'maintainer'
+        config.myRole === 'maintainer' && (maintainersChanged || editorsChanged)
           ? {
               newMembers: [
                 ...data.maintainerEmails.map(email => ({
@@ -159,6 +187,7 @@ export default function ConfigByNamePage() {
               ],
             }
           : undefined,
+      variants: variantChanges.length > 0 ? variantChanges : undefined,
     });
 
     toast.success('Config updated successfully');
@@ -171,9 +200,14 @@ export default function ConfigByNamePage() {
   async function handleSubmit(data: {
     action: 'save' | 'propose';
     name: string;
-    value: unknown;
-    schema: unknown | null;
-    overrides: unknown;
+    variants: Array<{
+      configVariantId?: string;
+      environmentId: string;
+      value: unknown;
+      schema: unknown | null;
+      overrides: Override[];
+      version?: number;
+    }>;
     description: string;
     maintainerEmails: string[];
     editorEmails: string[];
@@ -183,9 +217,6 @@ export default function ConfigByNamePage() {
     }
 
     if (data.action === 'propose') {
-      // TODO: this should never happen, because we always should have a currentVariant
-      if (!currentVariant) return;
-
       // Detect config-level changes (description, members)
       const current = config.config;
       const descChanged = (data.description ?? '') !== (current.description ?? '');
@@ -208,26 +239,32 @@ export default function ConfigByNamePage() {
             }
           : undefined;
 
-      // Detect variant-level changes (value, schema, overrides)
-      const valueChanged = JSON.stringify(data.value) !== JSON.stringify(currentVariant.value);
-      const schemaChanged = JSON.stringify(data.schema) !== JSON.stringify(currentVariant.schema);
-      const overridesChanged =
-        JSON.stringify(data.overrides) !== JSON.stringify(currentVariant.overrides);
+      // Collect variant-level changes
+      const proposedVariants = [];
+      for (const variantData of data.variants) {
+        const originalVariant = config.variants.find(v => v.id === variantData.configVariantId);
+        if (!originalVariant) continue;
 
-      const proposedValue = valueChanged ? {newValue: data.value} : undefined;
-      const proposedSchema = schemaChanged ? {newSchema: data.schema} : undefined;
-      const proposedOverrides = overridesChanged
-        ? {newOverrides: data.overrides as any}
-        : undefined;
+        const valueChanged =
+          JSON.stringify(variantData.value) !== JSON.stringify(originalVariant.value);
+        const schemaChanged =
+          JSON.stringify(variantData.schema) !== JSON.stringify(originalVariant.schema);
+        const overridesChanged =
+          JSON.stringify(variantData.overrides) !== JSON.stringify(originalVariant.overrides);
+
+        if (valueChanged || schemaChanged || overridesChanged) {
+          proposedVariants.push({
+            configVariantId: originalVariant.id,
+            baseVariantVersion: originalVariant.version,
+            proposedValue: valueChanged ? {newValue: variantData.value} : undefined,
+            proposedSchema: schemaChanged ? {newSchema: variantData.schema} : undefined,
+            proposedOverrides: overridesChanged ? {newOverrides: variantData.overrides} : undefined,
+          });
+        }
+      }
 
       // Check if anything changed
-      if (
-        !proposedValue &&
-        !proposedDescription &&
-        !proposedSchema &&
-        !proposedOverrides &&
-        !proposedMembers
-      ) {
+      if (proposedVariants.length === 0 && !proposedDescription && !proposedMembers) {
         alert('No changes to propose.');
         return;
       }
@@ -235,13 +272,9 @@ export default function ConfigByNamePage() {
       // Store the proposal data and show dialog
       setPendingProposalData({
         configId: current.id,
-        configVariantId: currentVariant.id,
-        variantVersion: currentVariant.version,
-        proposedValue,
         proposedDescription,
-        proposedSchema,
-        proposedOverrides,
         proposedMembers,
+        proposedVariants: proposedVariants.length > 0 ? proposedVariants : undefined,
       });
       setShowProposalDialog(true);
       return;
@@ -289,31 +322,6 @@ export default function ConfigByNamePage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-3xl space-y-6">
-          {/* Environment Selector */}
-          {/* TODO: config always has at least one variant, because we enforce that at least one environment is present in the project */}
-          {config?.variants && config.variants.length > 1 && (
-            <div className="flex items-center gap-4">
-              <Label htmlFor="environment-select" className="text-sm font-medium shrink-0">
-                Environment:
-              </Label>
-              <Select
-                value={currentVariant?.environmentId || ''}
-                onValueChange={setSelectedEnvironmentId}
-              >
-                <SelectTrigger id="environment-select" className="w-[200px]">
-                  <SelectValue placeholder="Select environment" />
-                </SelectTrigger>
-                <SelectContent>
-                  {config.variants.map(v => (
-                    <SelectItem key={v.environmentId} value={v.environmentId}>
-                      {v.environmentName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {config.pendingConfigProposals.length > 0 && (
             <div className="rounded-lg border border-yellow-300/60 bg-yellow-50 dark:border-yellow-800/40 dark:bg-yellow-950/30 p-4">
               <div className="flex items-start gap-3">
@@ -436,27 +444,30 @@ export default function ConfigByNamePage() {
           )}
 
           <ConfigForm
-            key={currentVariant?.id}
             onValuesChange={onValuesChange}
             mode={org.requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
             role={org.requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
             currentName={name}
             currentPendingProposalsCount={config.pendingConfigProposals.length}
-            defaultValue={defaultValue}
-            defaultSchemaEnabled={!!currentVariant?.schema}
-            defaultSchema={
-              currentVariant?.schema ? JSON.stringify(currentVariant.schema, null, 2) : ''
-            }
-            defaultOverrides={currentVariant?.overrides as any}
+            variants={config.variants.map(v => ({
+              configVariantId: v.id,
+              environmentId: v.environmentId,
+              environmentName: v.environmentName,
+              value: v.value,
+              schema: v.schema,
+              overrides: v.overrides as Override[],
+              version: v.version,
+            }))}
+            initialEnvironmentId={initialEnvironmentId}
+            onEnvironmentChange={handleEnvironmentChange}
             defaultDescription={config.config?.description ?? ''}
             defaultMaintainerEmails={config.maintainerEmails}
             defaultEditorEmails={config.editorEmails}
             editorIdPrefix={`edit-config-${name}`}
             createdAt={config.config.createdAt}
-            updatedAt={currentVariant?.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
-            saving={patchConfig.isPending || patchConfigVariant.isPending}
+            saving={patchConfig.isPending}
             proposing={createConfigProposal.isPending}
             onDelete={async () => {
               await deleteOrPropose({
@@ -472,16 +483,28 @@ export default function ConfigByNamePage() {
               });
             }}
             onSubmit={handleSubmit}
-            onTestOverrides={() => setShowOverrideTester(true)}
+            onTestOverrides={environmentId => {
+              setActiveTestEnvironmentId(environmentId);
+              setShowOverrideTester(true);
+            }}
           />
 
           {/* Override Tester Dialog */}
-          <OverrideTester
-            baseValue={liveValue || currentVariant?.value}
-            overrides={liveOverrides || (currentVariant?.overrides as any)}
-            open={showOverrideTester}
-            onOpenChange={setShowOverrideTester}
-          />
+          {activeTestEnvironmentId && (
+            <OverrideTester
+              baseValue={
+                liveValue ||
+                config.variants.find(v => v.environmentId === activeTestEnvironmentId)?.value
+              }
+              overrides={
+                liveOverrides ||
+                (config.variants.find(v => v.environmentId === activeTestEnvironmentId)
+                  ?.overrides as any)
+              }
+              open={showOverrideTester}
+              onOpenChange={setShowOverrideTester}
+            />
+          )}
         </div>
 
         {/* Proposal Message Dialog */}
@@ -570,58 +593,28 @@ export default function ConfigByNamePage() {
               </Button>
               <Button
                 type="button"
-                disabled={createConfigProposal.isPending || createConfigVariantProposal.isPending}
+                disabled={createConfigProposal.isPending}
                 onClick={async () => {
                   if (!pendingProposalData) return;
 
                   try {
-                    // Separate config-level and variant-level proposals
-                    const hasConfigChanges =
-                      pendingProposalData.proposedDescription ||
-                      pendingProposalData.proposedMembers;
-                    const hasVariantChanges =
-                      pendingProposalData.proposedValue ||
-                      pendingProposalData.proposedSchema ||
-                      pendingProposalData.proposedOverrides;
-
-                    let proposalId: string | undefined;
-
-                    // Create config-level proposal if needed
-                    if (hasConfigChanges) {
-                      const res = await createConfigProposal.mutateAsync({
-                        configId: pendingProposalData.configId,
-                        baseVersion: config.config.version,
-                        proposedDescription: pendingProposalData.proposedDescription,
-                        proposedMembers: pendingProposalData.proposedMembers,
-                        message: proposalMessage.trim() || undefined,
-                      });
-                      proposalId = res.configProposalId;
-                    }
-
-                    // Create variant-level proposal if needed
-                    if (hasVariantChanges) {
-                      const res = await createConfigVariantProposal.mutateAsync({
-                        configVariantId: pendingProposalData.configVariantId,
-                        baseVersion: pendingProposalData.variantVersion,
-                        proposedValue: pendingProposalData.proposedValue,
-                        proposedSchema: pendingProposalData.proposedSchema,
-                        proposedOverrides: pendingProposalData.proposedOverrides,
-                        message: proposalMessage.trim() || undefined,
-                      });
-                      proposalId = res.configVariantProposalId;
-                    }
+                    // Create unified proposal with both config and variant changes
+                    const res = await createConfigProposal.mutateAsync({
+                      configId: pendingProposalData.configId,
+                      baseVersion: config.config.version,
+                      proposedDescription: pendingProposalData.proposedDescription,
+                      proposedMembers: pendingProposalData.proposedMembers,
+                      proposedVariants: pendingProposalData.proposedVariants,
+                      message: proposalMessage.trim() || undefined,
+                    });
 
                     setShowProposalDialog(false);
                     setProposalMessage('');
                     setPendingProposalData(null);
 
-                    if (proposalId) {
-                      router.push(
-                        `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${proposalId}`,
-                      );
-                    } else {
-                      router.refresh();
-                    }
+                    router.push(
+                      `/app/projects/${project.id}/configs/${encodeURIComponent(name)}/proposals/${res.configProposalId}`,
+                    );
                   } catch (error: any) {
                     if (
                       error?.data?.cause?.code === 'CONFIG_VERSION_MISMATCH' ||
@@ -639,9 +632,7 @@ export default function ConfigByNamePage() {
                   }
                 }}
               >
-                {createConfigProposal.isPending || createConfigVariantProposal.isPending
-                  ? 'Creating…'
-                  : 'Create Proposal'}
+                {createConfigProposal.isPending ? 'Creating…' : 'Create Proposal'}
               </Button>
             </DialogFooter>
           </DialogContent>

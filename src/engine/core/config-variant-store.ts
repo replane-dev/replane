@@ -68,7 +68,7 @@ export class ConfigVariantStore {
         'pe.name as environment_name',
       ])
       .where('cv.config_id', '=', configId)
-      .orderBy('pe.name', 'asc')
+      .orderBy('pe.order', 'asc')
       .execute();
 
     return rows.map(r => ({
@@ -178,4 +178,3 @@ export class ConfigVariantStore {
 export interface ConfigVariantChangePayload {
   variantId: string;
 }
-

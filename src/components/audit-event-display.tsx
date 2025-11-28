@@ -390,10 +390,10 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
           <FileKey className="h-5 w-5" />
-          <span className="font-semibold">API Key Created</span>
+          <span className="font-semibold">SDK Key Created</span>
         </div>
         <Link
-          href={`/app/projects/${projectId}/api-keys/${payload.apiKey.id}`}
+          href={`/app/projects/${projectId}/sdk-keys/${payload.apiKey.id}`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-foreground/80 transition-colors group"
         >
           <span>{payload.apiKey.name}</span>
@@ -412,7 +412,7 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <Trash2 className="h-5 w-5" />
-          <span className="font-semibold">API Key Deleted</span>
+          <span className="font-semibold">SDK Key Deleted</span>
         </div>
         <div className="text-sm font-semibold text-foreground">{payload.apiKey.name}</div>
         {payload.apiKey.description && (

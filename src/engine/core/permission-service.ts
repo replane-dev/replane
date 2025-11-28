@@ -174,7 +174,7 @@ export class PermissionService {
   ): Promise<void> {
     const canManage = await this.canManageProjectApiKeys(projectId, currentUserEmail);
     if (!canManage) {
-      throw new ForbiddenError('User does not have permission to manage API keys for this project');
+      throw new ForbiddenError('User does not have permission to manage SDK keys for this project');
     }
   }
 

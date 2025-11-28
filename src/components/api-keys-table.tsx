@@ -117,7 +117,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
       },
       {
         accessorKey: 'name',
-        header: 'API Key Name',
+        header: 'SDK Key Name',
         cell: ({row}) => <div>{row.getValue('name') || '—'}</div>,
       },
       {
@@ -191,7 +191,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/projects/${projectId}/api-keys/${apiKey.id}`);
+                    router.push(`/app/projects/${projectId}/sdk-keys/${apiKey.id}`);
                   }}
                 >
                   View details
@@ -201,7 +201,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
                   disabled={deleteMutation.isPending}
                   onClick={async e => {
                     e.stopPropagation();
-                    if (confirm(`Delete API key "${apiKey.name || ''}"? This cannot be undone.`)) {
+                    if (confirm(`Delete SDK key "${apiKey.name || ''}"? This cannot be undone.`)) {
                       try {
                         await deleteMutation.mutateAsync({id: apiKey.id, projectId});
                       } catch {
@@ -253,7 +253,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
-      router.push(`/app/projects/${projectId}/api-keys/${id}`);
+      router.push(`/app/projects/${projectId}/sdk-keys/${id}`);
     },
     [router, projectId],
   );
@@ -262,7 +262,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
     <div className="w-full">
       <div className="flex items-center py-4 gap-4">
         <Input
-          placeholder="Search API keys by name"
+          placeholder="Search SDK keys by name"
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
           className="max-w-md"
@@ -293,7 +293,7 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button asChild>
-          <Link href={`/app/projects/${projectId}/api-keys/new`}>New API Key</Link>
+          <Link href={`/app/projects/${projectId}/sdk-keys/new`}>New SDK Key</Link>
         </Button>
       </div>
       <div className="overflow-hidden rounded-md border">

@@ -1,10 +1,23 @@
 import assert from 'assert';
 import {createAuditLogId} from '../audit-log-store';
-import {createConfigProposalId, type ConfigProposalId} from '../config-proposal-store';
+import {
+  createConfigProposalId,
+  createConfigProposalVariantId,
+  type ConfigProposalId,
+} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import type {Override} from '../override-evaluator';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
+
+export interface ProposedVariantChange {
+  configVariantId: string;
+  baseVariantVersion: number;
+  proposedValue?: {newValue: unknown};
+  proposedSchema?: {newSchema: unknown};
+  proposedOverrides?: {newOverrides: Override[]};
+}
 
 export interface CreateConfigProposalRequest {
   configId: string;
@@ -12,6 +25,7 @@ export interface CreateConfigProposalRequest {
   proposedDelete?: boolean;
   proposedDescription?: {newDescription: string};
   proposedMembers?: {newMembers: Array<{email: string; role: 'maintainer' | 'editor'}>};
+  proposedVariants?: ProposedVariantChange[];
   message?: string;
   currentUserEmail: NormalizedEmail;
 }
@@ -40,19 +54,52 @@ export function createCreateConfigProposalUseCase(
       });
     }
 
+    const hasVariantChanges = req.proposedVariants && req.proposedVariants.length > 0;
+
+    // TODO: need to check that the variant itself has changes, and update tests
     // At least one field must be proposed
     if (
       req.proposedDelete !== true &&
       req.proposedDescription === undefined &&
-      req.proposedMembers === undefined
+      req.proposedMembers === undefined &&
+      !hasVariantChanges
     ) {
       throw new BadRequestError('At least one field must be proposed');
     }
 
     // Deletion proposals must not include other fields
     if (req.proposedDelete) {
-      if (req.proposedDescription || req.proposedMembers) {
+      if (req.proposedDescription || req.proposedMembers || hasVariantChanges) {
         throw new BadRequestError('Deletion proposal cannot include other changes');
+      }
+    }
+
+    // Validate variant changes
+    if (hasVariantChanges) {
+      for (const variantChange of req.proposedVariants!) {
+        const variant = await tx.configVariants.getById(variantChange.configVariantId);
+        if (!variant) {
+          throw new BadRequestError(`Variant ${variantChange.configVariantId} not found`);
+        }
+        if (variant.configId !== req.configId) {
+          throw new BadRequestError(`Variant does not belong to this config`);
+        }
+        if (variant.version !== variantChange.baseVariantVersion) {
+          throw new BadRequestError(
+            `Variant was edited by another user. Please, refresh the page.`,
+            {code: 'CONFIG_VARIANT_VERSION_MISMATCH'},
+          );
+        }
+        // Ensure at least one change is proposed for this variant
+        if (
+          variantChange.proposedValue === undefined &&
+          variantChange.proposedSchema === undefined &&
+          variantChange.proposedOverrides === undefined
+        ) {
+          throw new BadRequestError(
+            `Variant ${variantChange.configVariantId} must have at least one proposed change`,
+          );
+        }
       }
     }
 
@@ -83,6 +130,21 @@ export function createCreateConfigProposalUseCase(
       proposedMembers: req.proposedMembers ? {newMembers: req.proposedMembers.newMembers} : null,
       message: req.message ?? null,
     });
+
+    // Create variant change entries
+    if (hasVariantChanges) {
+      await tx.configProposals.createVariants(
+        req.proposedVariants!.map(v => ({
+          id: createConfigProposalVariantId(),
+          proposalId: configProposalId,
+          configVariantId: v.configVariantId,
+          baseVariantVersion: v.baseVariantVersion,
+          proposedValue: v.proposedValue?.newValue,
+          proposedSchema: v.proposedSchema?.newSchema,
+          proposedOverrides: v.proposedOverrides?.newOverrides,
+        })),
+      );
+    }
 
     await tx.auditLogs.create({
       id: createAuditLogId(),

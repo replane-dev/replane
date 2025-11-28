@@ -708,6 +708,63 @@ export const migrations: Migration[] = [
       ALTER COLUMN original_description DROP DEFAULT;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Unify config_proposals and config_variant_proposals into a single proposal system
+      -- A proposal can now include both config-level changes (description, members, deletion)
+      -- and variant-level changes (value, schema, overrides for specific environments)
+
+      -- Step 1: Create config_proposal_variants junction table
+      -- This stores variant-specific changes that are part of a proposal
+      CREATE TABLE config_proposal_variants (
+        id UUID PRIMARY KEY,
+        proposal_id UUID NOT NULL REFERENCES config_proposals(id) ON DELETE CASCADE,
+        config_variant_id UUID NOT NULL REFERENCES config_variants(id) ON DELETE CASCADE,
+        base_variant_version INT NOT NULL,
+        proposed_value TEXT NULL,
+        proposed_schema TEXT NULL,
+        proposed_overrides TEXT NULL,
+        UNIQUE(proposal_id, config_variant_id)
+      );
+
+      CREATE INDEX idx_config_proposal_variants_proposal_id ON config_proposal_variants(proposal_id);
+      CREATE INDEX idx_config_proposal_variants_config_variant_id ON config_proposal_variants(config_variant_id);
+
+      -- Step 2: Update config_variant_versions.proposal_id FK to reference config_proposals
+      ALTER TABLE config_variant_versions DROP CONSTRAINT config_variant_versions_proposal_id_fkey;
+      ALTER TABLE config_variant_versions ADD CONSTRAINT config_variant_versions_proposal_id_fkey
+        FOREIGN KEY (proposal_id) REFERENCES config_proposals(id) ON DELETE SET NULL;
+
+      -- Step 3: Drop the old config_variant_proposals table
+      DROP TABLE config_variant_proposals;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Add order column to project_environments
+      ALTER TABLE project_environments
+      ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0;
+
+      -- Set initial order: Production=1, Development=2, others start at 3
+      WITH ordered_envs AS (
+        SELECT
+          id,
+          CASE
+            WHEN name = 'Production' THEN 1
+            WHEN name = 'Development' THEN 2
+            ELSE ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY name) + 2
+          END as new_order
+        FROM project_environments
+      )
+      UPDATE project_environments
+      SET "order" = ordered_envs.new_order
+      FROM ordered_envs
+      WHERE project_environments.id = ordered_envs.id;
+
+      -- Create index for efficient ordering
+      CREATE INDEX idx_project_environments_order ON project_environments(project_id, "order");
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

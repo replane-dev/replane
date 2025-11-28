@@ -20,7 +20,7 @@ export default function ProjectPageNotFound() {
         <div className="space-y-2">
           <h1 className="text-xl font-semibold">Resource Not Found</h1>
           <p className="text-muted-foreground text-sm">
-            The config, API key, or page you&apos;re looking for doesn&apos;t exist in this project.
+            The config, SDK key, or page you&apos;re looking for doesn&apos;t exist in this project.
           </p>
         </div>
 
@@ -43,10 +43,10 @@ export default function ProjectPageNotFound() {
           </Link>
           <span className="text-muted-foreground">•</span>
           <Link
-            href={`/app/projects/${projectId}/api-keys`}
+            href={`/app/projects/${projectId}/sdk-keys`}
             className="text-muted-foreground hover:text-foreground hover:underline"
           >
-            API Keys
+            SDK Keys
           </Link>
           <span className="text-muted-foreground">•</span>
           <Link

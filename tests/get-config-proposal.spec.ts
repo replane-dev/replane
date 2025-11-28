@@ -27,10 +27,6 @@ describe('getConfigProposal', () => {
     }
   });
 
-  // Note: getConfigProposal now only handles config-level proposals
-  // (proposedDescription, proposedMembers, proposedDelete)
-  // Variant-level proposals (value, schema, overrides) use getConfigVariantProposal
-
   it('should get a pending proposal with description change', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
@@ -866,5 +862,101 @@ describe('getConfigProposal', () => {
 
     // Should have no rejected proposals
     expect(result.proposalsRejectedByThisApproval).toEqual([]);
+  });
+
+  it('should get a proposal with variant changes', async () => {
+    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
+      GLOBAL_CONTEXT,
+      {
+        overrides: [],
+        name: 'get_proposal_with_variants',
+        value: {enabled: true},
+        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+        description: 'Variant proposal test',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        projectId: fixture.projectId,
+      },
+    );
+
+    // Get the production variant
+    const prodVariantId = configVariantIds.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    )?.variantId;
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedVariants: [
+        {
+          configVariantId: prodVariantId!,
+          baseVariantVersion: 1,
+          proposedValue: {newValue: {enabled: false}},
+        },
+      ],
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(result.proposal.proposedVariants).toHaveLength(1);
+    expect(result.proposal.proposedVariants[0]).toMatchObject({
+      configVariantId: prodVariantId!,
+      environmentName: 'Production',
+      proposedValue: {enabled: false},
+      currentValue: {enabled: true},
+    });
+  });
+
+  it('should indicate maintainers as approvers for schema changes in variants', async () => {
+    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
+      GLOBAL_CONTEXT,
+      {
+        overrides: [],
+        name: 'get_proposal_schema_change',
+        value: {enabled: true},
+        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+        description: 'Schema change test',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [OTHER_USER_EMAIL],
+        maintainerEmails: [CURRENT_USER_EMAIL],
+        projectId: fixture.projectId,
+      },
+    );
+
+    // Get the production variant
+    const prodVariantId = configVariantIds.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    )?.variantId;
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedVariants: [
+        {
+          configVariantId: prodVariantId!,
+          baseVariantVersion: 1,
+          proposedSchema: {
+            newSchema: {
+              type: 'object',
+              properties: {enabled: {type: 'boolean'}, count: {type: 'number'}},
+            },
+          },
+        },
+      ],
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    expect(result.proposal.approverRole).toBe('maintainers');
+    expect(result.proposal.approverReason).toBe('Schema changes require maintainer approval.');
   });
 });

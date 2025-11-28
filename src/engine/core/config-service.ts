@@ -3,8 +3,7 @@ import {createAuditLogId, type AuditLog, type AuditLogStore} from './audit-log-s
 import type {ConfigProposalStore} from './config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
-import type {ConfigVariantProposalStore} from './config-variant-proposal-store';
-import type {ConfigVariant, ConfigVariantStore} from './config-variant-store';
+import type {ConfigVariantStore} from './config-variant-store';
 import type {ConfigVariantVersionStore} from './config-variant-version-store';
 import type {DateProvider} from './date-provider';
 import type {ConfigProposalRejectionReason} from './db';
@@ -59,7 +58,6 @@ export class ConfigService {
     private readonly projectEnvironments: ProjectEnvironmentStore,
     private readonly configVariants: ConfigVariantStore,
     private readonly configVariantVersions: ConfigVariantVersionStore,
-    private readonly configVariantProposals: ConfigVariantProposalStore,
   ) {}
 
   /**
@@ -244,15 +242,6 @@ export class ConfigService {
       await this.permissionService.ensureCanEditConfig(config.id, normalizeEmail(reviewer.email));
     }
 
-    // Reject all pending VARIANT proposals for this variant
-    await this.rejectVariantProposalsInternal({
-      configVariantId: existingVariant.id,
-      originalProposalId: params.originalProposalId ?? null,
-      existingVariant,
-      reviewer,
-      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
-    });
-
     const nextValue = params.value ? params.value.newValue : existingVariant.value;
     const nextSchema = params.schema ? params.schema.newSchema : existingVariant.schema;
     const nextOverrides = params.overrides
@@ -300,6 +289,15 @@ export class ConfigService {
       authorId: patchAuthor.id ?? null,
       proposalId: params.originalProposalId ?? null,
       createdAt: this.dateProvider.now(),
+    });
+
+    // Reject all pending CONFIG proposals (variant change invalidates config proposals)
+    await this.rejectConfigProposalsInternal({
+      configId: config.id,
+      originalProposalId: params.originalProposalId,
+      existingConfig: config,
+      reviewer,
+      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
     });
 
     // Get environment information for audit log
@@ -367,19 +365,8 @@ export class ConfigService {
       rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_deleted',
     });
 
-    // Reject all pending VARIANT proposals for all variants of this config
-    const variants = await this.configVariants.getByConfigId(existingConfig.id);
-    for (const variant of variants) {
-      await this.rejectVariantProposalsInternal({
-        configVariantId: variant.id,
-        originalProposalId: null,
-        existingVariant: variant,
-        reviewer: params.reviewer,
-        rejectionReason: 'config_deleted',
-      });
-    }
-
     // Delete each variant (triggers notifications)
+    const variants = await this.configVariants.getByConfigId(existingConfig.id);
     for (const variant of variants) {
       await this.configVariants.delete(variant.id);
     }
@@ -424,28 +411,6 @@ export class ConfigService {
       reviewer: params.reviewer,
       existingConfig: config,
       originalProposalId: undefined,
-      rejectionReason: 'rejected_explicitly',
-    });
-  }
-
-  /**
-   * Rejects all pending variant proposals for a config variant.
-   * This is a public method that can be called directly from use cases.
-   */
-  async rejectAllPendingVariantProposals(params: {
-    configVariantId: string;
-    reviewer: User;
-  }): Promise<void> {
-    const variant = await this.configVariants.getById(params.configVariantId);
-    if (!variant) {
-      throw new BadRequestError('Config variant not found');
-    }
-
-    await this.rejectVariantProposalsInternal({
-      configVariantId: params.configVariantId,
-      originalProposalId: null,
-      existingVariant: variant,
-      reviewer: params.reviewer,
       rejectionReason: 'rejected_explicitly',
     });
   }
@@ -510,57 +475,6 @@ export class ConfigService {
           proposedMembers: proposal.proposedMembers ?? undefined,
         },
       });
-    }
-  }
-
-  private async rejectVariantProposalsInternal(params: {
-    configVariantId: string;
-    originalProposalId: string | null;
-    existingVariant: ConfigVariant;
-    reviewer: User;
-    rejectionReason: ConfigProposalRejectionReason;
-  }): Promise<void> {
-    const {reviewer, existingVariant} = params;
-
-    if (params.originalProposalId) {
-      const proposal = await this.configVariantProposals.getById(params.originalProposalId);
-
-      assert(proposal, 'Proposal to reject in favor of not found');
-      assert(
-        proposal.configVariantId === params.configVariantId,
-        'Config variant ID must match the proposal variant ID',
-      );
-      assert(
-        proposal.baseVariantVersion === existingVariant.version,
-        'Base variant version must match',
-      );
-      assert(proposal.reviewerId === reviewer.id, 'Reviewer must match the proposal reviewer');
-      assert(proposal.rejectedAt === null, 'Proposal to reject in favor of is already rejected');
-      assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
-    }
-
-    // Get all pending variant proposals for this variant
-    const pendingProposals = await this.configVariantProposals.getPendingByConfigVariantId(
-      params.configVariantId,
-    );
-
-    // Reject all pending variant proposals
-    for (const proposal of pendingProposals) {
-      assert(
-        !proposal.approvedAt && !proposal.rejectedAt,
-        'Proposal should not be approved or rejected',
-      );
-
-      await this.configVariantProposals.reject({
-        id: proposal.id,
-        rejectedAt: this.dateProvider.now(),
-        reviewerId: reviewer.id,
-        reason: params.rejectionReason,
-        rejectedInFavorOfProposalId: params.originalProposalId ?? undefined,
-      });
-
-      // TODO: Add audit log for variant proposal rejections (needs new audit log type)
-      // Variant proposals are per-environment and need separate audit log types
     }
   }
 }

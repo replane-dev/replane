@@ -24,7 +24,7 @@ import {Fragment, useState} from 'react';
 import {toast} from 'sonner';
 import {useProjectId} from '../../utils';
 
-export default function ApiKeyDetailPage() {
+export default function SdkKeyDetailPage() {
   const params = useParams<{id: string}>();
   const id = params.id;
 
@@ -41,7 +41,7 @@ export default function ApiKeyDetailPage() {
   const apiKey = data.apiKey;
   const [confirming, setConfirming] = useState(false);
 
-  // Trigger 404 page if API key doesn't exist
+  // Trigger 404 page if SDK key doesn't exist
   if (!apiKey) {
     notFound();
   }
@@ -56,7 +56,7 @@ export default function ApiKeyDetailPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/projects/${projectId}/api-keys`}>API Keys</Link>
+                  <Link href={`/app/projects/${projectId}/sdk-keys`}>SDK Keys</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
@@ -71,7 +71,7 @@ export default function ApiKeyDetailPage() {
         <div className="max-w-3xl space-y-6">
           <ApiKeyExplainer />
 
-          {/* API Key Details */}
+          {/* SDK Key Details */}
           <div className="rounded-lg border bg-card/50 p-4">
             <div className="space-y-4">
               {/* Name and Created At */}
@@ -160,7 +160,7 @@ export default function ApiKeyDetailPage() {
                 {!confirming ? (
                   <>
                     <p className="text-sm text-foreground/80 dark:text-foreground/70 mb-3">
-                      Once you delete an API key, all applications using it will immediately lose
+                      Once you delete an SDK key, all applications using it will immediately lose
                       access. This action cannot be undone.
                     </p>
                     <Button
@@ -168,7 +168,7 @@ export default function ApiKeyDetailPage() {
                       onClick={() => setConfirming(true)}
                       className="text-destructive hover:text-destructive"
                     >
-                      Delete API Key
+                      Delete SDK Key
                     </Button>
                   </>
                 ) : (
@@ -185,8 +185,8 @@ export default function ApiKeyDetailPage() {
                         onClick={async () => {
                           try {
                             await deleteMutation.mutateAsync({id, projectId});
-                            toast.success('API key deleted');
-                            router.push(`/app/projects/${projectId}/api-keys`);
+                            toast.success('SDK key deleted');
+                            router.push(`/app/projects/${projectId}/sdk-keys`);
                           } catch (e) {
                             console.error(e);
                             toast.error('Failed to delete');
@@ -212,3 +212,4 @@ export default function ApiKeyDetailPage() {
     </Fragment>
   );
 }
+

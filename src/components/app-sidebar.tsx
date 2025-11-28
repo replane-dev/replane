@@ -34,8 +34,8 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
         icon: FileCog,
       },
       {
-        name: 'API keys',
-        url: `/app/projects/${projectId}/api-keys`,
+        name: 'SDK keys',
+        url: `/app/projects/${projectId}/sdk-keys`,
         icon: Key,
       },
       {
@@ -45,8 +45,21 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
       },
       {
         name: 'Settings',
-        url: `/app/projects/${projectId}/settings`,
         icon: Settings,
+        items: [
+          {
+            name: 'General',
+            url: `/app/projects/${projectId}/settings/general`,
+          },
+          {
+            name: 'Environments',
+            url: `/app/projects/${projectId}/settings/environments`,
+          },
+          {
+            name: 'Members',
+            url: `/app/projects/${projectId}/settings/members`,
+          },
+        ],
       },
     ],
   };

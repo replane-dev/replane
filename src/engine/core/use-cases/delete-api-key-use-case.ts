@@ -21,7 +21,7 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
       projectId: req.projectId,
     });
     if (!token) {
-      throw new BadRequestError('API key not found');
+      throw new BadRequestError('SDK key not found');
     }
 
     await tx.permissionService.ensureCanManageApiKeys(token.projectId, req.currentUserEmail);
@@ -29,7 +29,7 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
     // Only allow creator to delete for now
     const user = await tx.users.getByEmail(req.currentUserEmail);
     if (!user || user.id !== token.creatorId) {
-      throw new Error('Not allowed to delete this API key');
+      throw new Error('Not allowed to delete this SDK key');
     }
     await tx.sdkKeys.deleteById(token.id);
     await tx.auditLogs.create({

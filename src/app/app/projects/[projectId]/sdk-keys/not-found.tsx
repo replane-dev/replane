@@ -6,7 +6,7 @@ import {Key, Plus, Search} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 
-export default function ApiKeyNotFound() {
+export default function SdkKeyNotFound() {
   const router = useRouter();
   const projectId = useProjectId();
 
@@ -21,9 +21,9 @@ export default function ApiKeyNotFound() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-xl font-semibold">API Key Not Found</h1>
+          <h1 className="text-xl font-semibold">SDK Key Not Found</h1>
           <p className="text-muted-foreground text-sm">
-            The API key you&apos;re looking for doesn&apos;t exist, has been deleted, or you
+            The SDK key you&apos;re looking for doesn&apos;t exist, has been deleted, or you
             don&apos;t have permission to access it.
           </p>
         </div>
@@ -32,15 +32,15 @@ export default function ApiKeyNotFound() {
           <p className="text-sm font-medium">What would you like to do?</p>
           <div className="flex flex-col gap-2">
             <Button asChild variant="default" className="w-full">
-              <Link href={`/app/projects/${projectId}/api-keys/new`}>
+              <Link href={`/app/projects/${projectId}/sdk-keys/new`}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create New API Key
+                Create New SDK Key
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href={`/app/projects/${projectId}/api-keys`}>
+              <Link href={`/app/projects/${projectId}/sdk-keys`}>
                 <Key className="mr-2 h-4 w-4" />
-                View All API Keys
+                View All SDK Keys
               </Link>
             </Button>
           </div>
@@ -67,3 +67,4 @@ export default function ApiKeyNotFound() {
     </div>
   );
 }
+

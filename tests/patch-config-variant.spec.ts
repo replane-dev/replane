@@ -1,11 +1,10 @@
 import type {ConfigVariantUpdatedAuditLogPayload} from '@/engine/core/audit-log-store';
-import {createConfigVariantProposalId} from '@/engine/core/config-variant-proposal-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {Override} from '@/engine/core/override-condition-schemas';
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
-import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -297,76 +296,29 @@ describe('patchConfigVariant', () => {
     expect(updated.after.configId).toBe(configId);
   });
 
-  it('should reject all pending variant proposals when patching', async () => {
-    const {configVariantId} = await createConfigWithVariant({
+  // Note: Tests for rejecting variant proposals when patching have been removed
+  // because variant proposals are now unified into config proposals.
+  // The behavior of rejecting pending proposals is tested in approve-config-proposal.spec.ts
+
+  it('should reject all pending config proposals when patching variant', async () => {
+    const {configId, configVariantId} = await createConfigWithVariant({
       value: {x: 1},
       editorEmails: [CURRENT_USER_EMAIL],
     });
 
-    const variant = await fixture.engine.testing.configVariants.getById(configVariantId);
-    assert(variant);
-
-    // Create three variant proposals
-    const proposalId1 = createConfigVariantProposalId();
-    await fixture.engine.testing.configVariantProposals.create({
-      id: proposalId1,
-      configVariantId,
-      baseVariantVersion: variant.version,
-      proposerId: TEST_USER_ID,
-      createdAt: fixture.now,
-      rejectedAt: null,
-      approvedAt: null,
-      reviewerId: null,
-      rejectedInFavorOfProposalId: null,
-      rejectionReason: null,
-      proposedValue: {x: 2},
-      proposedSchema: null,
-      proposedOverrides: null,
-      message: null,
+    // Create a pending config proposal (base version is 1 for newly created config)
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      configId,
+      baseVersion: 1,
+      proposedDescription: {newDescription: 'New description'},
+      currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const proposalId2 = createConfigVariantProposalId();
-    await fixture.engine.testing.configVariantProposals.create({
-      id: proposalId2,
-      configVariantId,
-      baseVariantVersion: variant.version,
-      proposerId: TEST_USER_ID,
-      createdAt: fixture.now,
-      rejectedAt: null,
-      approvedAt: null,
-      reviewerId: null,
-      rejectedInFavorOfProposalId: null,
-      rejectionReason: null,
-      proposedValue: {x: 3},
-      proposedSchema: null,
-      proposedOverrides: null,
-      message: null,
-    });
-
-    const proposalId3 = createConfigVariantProposalId();
-    await fixture.engine.testing.configVariantProposals.create({
-      id: proposalId3,
-      configVariantId,
-      baseVariantVersion: variant.version,
-      proposerId: TEST_USER_ID,
-      createdAt: fixture.now,
-      rejectedAt: null,
-      approvedAt: null,
-      reviewerId: null,
-      rejectedInFavorOfProposalId: null,
-      rejectionReason: null,
-      proposedValue: {x: 4},
-      proposedSchema: null,
-      proposedOverrides: null,
-      message: null,
-    });
-
-    // Verify all proposals are pending
-    const pendingBefore =
-      await fixture.engine.testing.configVariantProposals.getPendingByConfigVariantId(
-        configVariantId,
-      );
-    expect(pendingBefore).toHaveLength(3);
+    // Verify proposal is pending
+    const proposalBefore = await fixture.engine.testing.configProposals.getById(configProposalId);
+    assert(proposalBefore);
+    expect(proposalBefore.approvedAt).toBeNull();
+    expect(proposalBefore.rejectedAt).toBeNull();
 
     // Patch the variant directly
     await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
@@ -376,135 +328,12 @@ describe('patchConfigVariant', () => {
       prevVersion: 1,
     });
 
-    // Verify all proposals are rejected
-    const rejectedProposal1 =
-      await fixture.engine.testing.configVariantProposals.getById(proposalId1);
-    assert(rejectedProposal1, 'Proposal 1 should exist');
-    expect(rejectedProposal1.approvedAt).toBeNull();
-    expect(rejectedProposal1.rejectedAt).not.toBeNull();
-    expect(rejectedProposal1.reviewerId).toBe(TEST_USER_ID);
-    expect(rejectedProposal1.rejectedInFavorOfProposalId).toBeNull();
-    expect(rejectedProposal1.rejectionReason).toBe('config_edited');
-
-    const rejectedProposal2 =
-      await fixture.engine.testing.configVariantProposals.getById(proposalId2);
-    assert(rejectedProposal2, 'Proposal 2 should exist');
-    expect(rejectedProposal2.approvedAt).toBeNull();
-    expect(rejectedProposal2.rejectedAt).not.toBeNull();
-    expect(rejectedProposal2.rejectionReason).toBe('config_edited');
-
-    const rejectedProposal3 =
-      await fixture.engine.testing.configVariantProposals.getById(proposalId3);
-    assert(rejectedProposal3, 'Proposal 3 should exist');
-    expect(rejectedProposal3.approvedAt).toBeNull();
-    expect(rejectedProposal3.rejectedAt).not.toBeNull();
-    expect(rejectedProposal3.rejectionReason).toBe('config_edited');
-
-    // Verify no pending proposals remain
-    const pendingAfter =
-      await fixture.engine.testing.configVariantProposals.getPendingByConfigVariantId(
-        configVariantId,
-      );
-    expect(pendingAfter).toHaveLength(0);
-  });
-
-  it('should create audit message for variant update when rejecting proposals', async () => {
-    const {configVariantId} = await createConfigWithVariant({
-      value: {x: 1},
-      editorEmails: [CURRENT_USER_EMAIL],
-    });
-
-    const variant = await fixture.engine.testing.configVariants.getById(configVariantId);
-    assert(variant);
-
-    // Create two variant proposals
-    const proposalId1 = createConfigVariantProposalId();
-    await fixture.engine.testing.configVariantProposals.create({
-      id: proposalId1,
-      configVariantId,
-      baseVariantVersion: variant.version,
-      proposerId: TEST_USER_ID,
-      createdAt: fixture.now,
-      rejectedAt: null,
-      approvedAt: null,
-      reviewerId: null,
-      rejectedInFavorOfProposalId: null,
-      rejectionReason: null,
-      proposedValue: {x: 2},
-      proposedSchema: null,
-      proposedOverrides: null,
-      message: null,
-    });
-
-    const proposalId2 = createConfigVariantProposalId();
-    await fixture.engine.testing.configVariantProposals.create({
-      id: proposalId2,
-      configVariantId,
-      baseVariantVersion: variant.version,
-      proposerId: TEST_USER_ID,
-      createdAt: fixture.now,
-      rejectedAt: null,
-      approvedAt: null,
-      reviewerId: null,
-      rejectedInFavorOfProposalId: null,
-      rejectionReason: null,
-      proposedValue: {x: 3},
-      proposedSchema: {type: 'object', properties: {x: {type: 'number'}}},
-      proposedOverrides: null,
-      message: null,
-    });
-
-    // Get audit messages before patch
-    const auditMessagesBefore = await fixture.engine.testing.auditLogs.list({
-      lte: fixture.now,
-      limit: 100,
-      orderBy: 'created_at desc, id desc',
-      projectId: fixture.projectId,
-    });
-    const beforeCount = auditMessagesBefore.length;
-
-    // Patch config variant - should reject all proposals
-    await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-      configVariantId,
-      value: {newValue: {x: 10}},
-      currentUserEmail: CURRENT_USER_EMAIL,
-      prevVersion: 1,
-    });
-
-    // Get audit messages after patch
-    const auditMessagesAfter = await fixture.engine.testing.auditLogs.list({
-      lte: fixture.now,
-      limit: 100,
-      orderBy: 'created_at desc, id desc',
-      projectId: fixture.projectId,
-    });
-
-    // Should have 1 config_variant_updated message
-    // Note: Variant proposal rejection audit logs are not yet implemented (TODO in config-service.ts)
-    expect(auditMessagesAfter.length).toBe(beforeCount + 1);
-
-    // Find the update audit message
-    const updateMessages = auditMessagesAfter.filter(
-      msg => msg.payload.type === 'config_variant_updated',
-    );
-
-    expect(updateMessages).toHaveLength(1);
-    expect((updateMessages[0].payload as ConfigVariantUpdatedAuditLogPayload).after.value).toEqual({
-      x: 10,
-    });
-
-    // Verify proposals are rejected even without audit logs
-    const rejectedProposal1 =
-      await fixture.engine.testing.configVariantProposals.getById(proposalId1);
-    assert(rejectedProposal1);
-    expect(rejectedProposal1.rejectedAt).not.toBeNull();
-    expect(rejectedProposal1.rejectionReason).toBe('config_edited');
-
-    const rejectedProposal2 =
-      await fixture.engine.testing.configVariantProposals.getById(proposalId2);
-    assert(rejectedProposal2);
-    expect(rejectedProposal2.rejectedAt).not.toBeNull();
-    expect(rejectedProposal2.rejectionReason).toBe('config_edited');
+    // Verify proposal was rejected
+    const proposalAfter = await fixture.engine.testing.configProposals.getById(configProposalId);
+    assert(proposalAfter);
+    expect(proposalAfter.approvedAt).toBeNull();
+    expect(proposalAfter.rejectedAt).not.toBeNull();
+    expect(proposalAfter.rejectionReason).toBe('config_edited');
   });
 
   it('should throw ForbiddenError when user is not an editor', async () => {

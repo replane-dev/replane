@@ -52,9 +52,9 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
       details: `Config name '${payload.after.name}' -> v${payload.restoredFromVersion}`,
     };
   } else if (payload.type === 'api_key_created') {
-    return {action: 'API Key Created', details: `API Key name '${payload.apiKey.name}'`};
+    return {action: 'SDK Key Created', details: `SDK Key name '${payload.apiKey.name}'`};
   } else if (payload.type === 'api_key_deleted') {
-    return {action: 'API Key Deleted', details: `API Key name '${payload.apiKey.name}'`};
+    return {action: 'SDK Key Deleted', details: `SDK Key name '${payload.apiKey.name}'`};
   } else if (payload.type === 'config_members_changed') {
     return {action: 'Config Members Changed', details: `Config name '${payload.config.name}'`};
   } else if (payload.type === 'project_created') {

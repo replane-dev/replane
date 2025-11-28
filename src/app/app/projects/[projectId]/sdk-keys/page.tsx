@@ -13,7 +13,7 @@ import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useParams} from 'next/navigation';
 import {Fragment} from 'react';
 
-export default function ApiKeysPage() {
+export default function SdkKeysPage() {
   const {projectId} = useParams<{projectId: string}>();
   return (
     <Fragment>
@@ -24,7 +24,7 @@ export default function ApiKeysPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>API Keys</BreadcrumbPage>
+                <BreadcrumbPage>SDK Keys</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -39,3 +39,4 @@ export default function ApiKeysPage() {
     </Fragment>
   );
 }
+

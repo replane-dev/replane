@@ -332,6 +332,103 @@ describe('approveConfigProposal', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
+
+  it('should approve a proposal with variant value changes', async () => {
+    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
+      GLOBAL_CONTEXT,
+      {
+        overrides: [],
+        name: 'approve_variant_value',
+        value: {enabled: true},
+        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+        description: 'Variant test',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        projectId: fixture.projectId,
+      },
+    );
+
+    // Get the production variant
+    const prodVariantId = configVariantIds.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    )?.variantId;
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedVariants: [
+        {
+          configVariantId: prodVariantId!,
+          baseVariantVersion: 1,
+          proposedValue: {newValue: {enabled: false}},
+        },
+      ],
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // Verify the variant value was updated
+    const updatedVariant = await fixture.engine.testing.configVariants.getById(prodVariantId!);
+    expect(updatedVariant?.value).toEqual({enabled: false});
+    expect(updatedVariant?.version).toBe(2);
+  });
+
+  it('should approve a proposal with both config and variant changes', async () => {
+    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
+      GLOBAL_CONTEXT,
+      {
+        overrides: [],
+        name: 'approve_combined_changes',
+        value: {count: 10},
+        schema: {type: 'object', properties: {count: {type: 'number'}}},
+        description: 'Original description',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        projectId: fixture.projectId,
+      },
+    );
+
+    // Get the production variant
+    const prodVariantId = configVariantIds.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    )?.variantId;
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      baseVersion: 1,
+      configId,
+      proposedDescription: {newDescription: 'Updated description'},
+      proposedVariants: [
+        {
+          configVariantId: prodVariantId!,
+          baseVariantVersion: 1,
+          proposedValue: {newValue: {count: 20}},
+        },
+      ],
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      proposalId: configProposalId,
+      currentUserEmail: OTHER_USER_EMAIL,
+    });
+
+    // Verify config description was updated
+    const {config} = await fixture.trpc.getConfig({
+      name: 'approve_combined_changes',
+      projectId: fixture.projectId,
+    });
+    expect(config?.config.description).toBe('Updated description');
+
+    // Verify variant value was updated
+    const updatedVariant = await fixture.engine.testing.configVariants.getById(prodVariantId!);
+    expect(updatedVariant?.value).toEqual({count: 20});
+  });
 });
 
 describe('approveConfigProposal (allowSelfApprovals=false)', () => {

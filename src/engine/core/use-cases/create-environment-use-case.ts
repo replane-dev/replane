@@ -42,11 +42,16 @@ export function createCreateEnvironmentUseCase(
     const environmentId = createUuidV7();
     const now = deps.dateProvider.now();
 
+    // Get the current max order for this project to append at the end
+    const existingEnvironments = await tx.projectEnvironments.getByProjectId(req.projectId);
+    const maxOrder = Math.max(0, ...existingEnvironments.map(e => e.order));
+
     // Create the environment
     await tx.projectEnvironments.create({
       id: environmentId,
       projectId: req.projectId,
       name: req.name,
+      order: maxOrder + 1,
       createdAt: now,
       updatedAt: now,
     });
