@@ -465,6 +465,7 @@ export default function ConfigByNamePage() {
             defaultEditorEmails={config.editorEmails}
             editorIdPrefix={`edit-config-${name}`}
             createdAt={config.config.createdAt}
+            updatedAt={config.config.updatedAt}
             currentVersion={config.config.version}
             versionsLink={`/app/projects/${project.id}/configs/${encodeURIComponent(name)}/versions`}
             saving={patchConfig.isPending}

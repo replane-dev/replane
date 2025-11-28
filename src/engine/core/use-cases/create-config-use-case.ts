@@ -75,12 +75,15 @@ export function createCreateConfigUseCase(
     const configId = createConfigId();
 
     // Create config (metadata only)
+    const now = deps.dateProvider.now();
+
     await tx.configs.create({
       id: configId,
       name: req.name,
       projectId: req.projectId,
       description: req.description,
-      createdAt: deps.dateProvider.now(),
+      createdAt: now,
+      updatedAt: now,
       creatorId: currentUser.id,
       version: 1,
     });
@@ -105,8 +108,8 @@ export function createCreateConfigUseCase(
         schema: req.schema,
         overrides: req.overrides,
         version: 1,
-        createdAt: deps.dateProvider.now(),
-        updatedAt: deps.dateProvider.now(),
+        createdAt: now,
+        updatedAt: now,
       });
 
       configVariantIds.push({variantId, environmentId: environment.id});
@@ -123,7 +126,7 @@ export function createCreateConfigUseCase(
         overrides: req.overrides,
         authorId: currentUser.id,
         proposalId: null,
-        createdAt: deps.dateProvider.now(),
+        createdAt: now,
       });
     }
 
@@ -134,8 +137,8 @@ export function createCreateConfigUseCase(
             email,
             role: 'editor',
             configId,
-            createdAt: deps.dateProvider.now(),
-            updatedAt: deps.dateProvider.now(),
+            createdAt: now,
+            updatedAt: now,
           }),
         )
         .concat(
@@ -144,8 +147,8 @@ export function createCreateConfigUseCase(
               email,
               role: 'maintainer', // owners map to maintainer role in database
               configId,
-              createdAt: deps.dateProvider.now(),
-              updatedAt: deps.dateProvider.now(),
+              createdAt: now,
+              updatedAt: now,
             }),
           ),
         ),
@@ -158,7 +161,7 @@ export function createCreateConfigUseCase(
     // One audit log for config creation (not per environment)
     await tx.auditLogs.create({
       id: createAuditLogId(),
-      createdAt: deps.dateProvider.now(),
+      createdAt: now,
       projectId: fullConfig.projectId,
       userId: currentUser.id,
       configId: fullConfig.id,

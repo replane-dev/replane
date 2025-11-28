@@ -765,6 +765,24 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_project_environments_order ON project_environments(project_id, "order");
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Add updated_at column to configs table
+      ALTER TABLE configs
+      ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+      -- Set initial updated_at to created_at for existing configs
+      UPDATE configs
+      SET updated_at = created_at;
+
+      -- Remove default for future inserts
+      ALTER TABLE configs
+      ALTER COLUMN updated_at DROP DEFAULT;
+
+      -- Create index for efficient queries
+      CREATE INDEX idx_configs_updated_at ON configs(project_id, updated_at DESC);
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

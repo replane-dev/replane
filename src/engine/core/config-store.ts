@@ -69,6 +69,7 @@ export function Config() {
     name: ConfigName(),
     description: ConfigDescription(),
     createdAt: z.date(),
+    updatedAt: z.date(),
     creatorId: z.number(),
     projectId: z.string(),
     version: z.number(),
@@ -256,6 +257,7 @@ export class ConfigStore {
       .insertInto('configs')
       .values({
         created_at: config.createdAt,
+        updated_at: config.updatedAt,
         id: config.id,
         name: config.name,
         description: config.description,
@@ -270,12 +272,14 @@ export class ConfigStore {
     id: string;
     description: string;
     version: number;
+    updatedAt: Date;
   }): Promise<void> {
     await this.db
       .updateTable('configs')
       .set({
         description: params.description,
         version: params.version,
+        updated_at: params.updatedAt,
       })
       .where('id', '=', params.id)
       .execute();
@@ -293,6 +297,7 @@ function mapConfig(config: Selectable<Configs>): Config {
     name: config.name,
     description: config.description,
     createdAt: config.created_at,
+    updatedAt: config.updated_at,
     projectId: config.project_id,
     version: config.version,
   };

@@ -115,6 +115,7 @@ export class ConfigService {
         id: existingConfig.id,
         description: nextDescription,
         version: nextVersion,
+        updatedAt: this.dateProvider.now(),
       });
     }
 
@@ -265,6 +266,7 @@ export class ConfigService {
     });
 
     const nextVersion = existingVariant.version + 1;
+    const now = this.dateProvider.now();
 
     // Update the variant
     await this.configVariants.update({
@@ -273,7 +275,15 @@ export class ConfigService {
       schema: nextSchema,
       overrides: nextOverrides,
       version: nextVersion,
-      updatedAt: this.dateProvider.now(),
+      updatedAt: now,
+    });
+
+    // Update the config's updated_at as well (variant change affects the config)
+    await this.configs.updateDescription({
+      id: config.id,
+      description: config.description,
+      version: config.version,
+      updatedAt: now,
     });
 
     // Create variant version history

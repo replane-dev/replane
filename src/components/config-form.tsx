@@ -16,6 +16,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
@@ -479,6 +487,10 @@ export function ConfigForm(props: ConfigFormProps) {
   // Check if schemas differ across environments
   const hasDifferentSchemas = useSchemaDiffCheck(watchedVariants);
 
+  // Determine if we should use tabs or dropdown based on total character count
+  const maxEnvNameChars = Math.max(...variants.map(v => v.environmentName.length));
+  const useTabs = maxEnvNameChars * variants.length <= 85;
+
   return (
     <Form {...form}>
       <form id="config-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -566,43 +578,93 @@ export function ConfigForm(props: ConfigFormProps) {
         {hasDifferentSchemas && <SchemaDiffWarning />}
 
         {/* Environment-specific configuration (variants) */}
-        <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/10 p-6 space-y-4">
-          <Tabs value={activeEnvironmentId} onValueChange={handleEnvironmentChange}>
-            <TabsList
-              className="grid w-full"
-              style={{gridTemplateColumns: `repeat(${variants.length}, minmax(0, 1fr))`}}
-            >
-              {variants.map(variant => (
-                <TabsTrigger key={variant.environmentId} value={variant.environmentId}>
-                  {variant.environmentName}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+        <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/10 space-y-4">
+          {useTabs ? (
+            <div className="p-6">
+              <Tabs value={activeEnvironmentId} onValueChange={handleEnvironmentChange}>
+                <TabsList
+                  className="grid w-full"
+                  style={{gridTemplateColumns: `repeat(${variants.length}, minmax(0, 1fr))`}}
+                >
+                  {variants.map(variant => (
+                    <TabsTrigger key={variant.environmentId} value={variant.environmentId}>
+                      {variant.environmentName}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-            {variants.map((variant, variantIndex) => (
-              <TabsContent
-                key={variant.environmentId}
-                value={variant.environmentId}
-                className="space-y-6 mt-6"
-              >
-                <ConfigVariantFields
-                  control={form.control}
-                  variantIndex={variantIndex}
-                  environmentId={variant.environmentId}
-                  environmentName={variant.environmentName}
-                  editorIdPrefix={editorIdPrefix}
-                  mode={mode}
-                  projectId={projectId}
-                  canEditValue={canEditValue}
-                  canEditSchema={canEditSchema}
-                  canEditOverrides={canEditOverrides}
-                  watchedVariants={watchedVariants}
-                  overrideBuilderDefaultValue={overrideBuilderDefaultValue}
-                  liveSchema={liveSchema}
-                />
-              </TabsContent>
-            ))}
-          </Tabs>
+                {variants.map((variant, variantIndex) => (
+                  <TabsContent
+                    key={variant.environmentId}
+                    value={variant.environmentId}
+                    className="space-y-6 mt-6"
+                  >
+                    <ConfigVariantFields
+                      control={form.control}
+                      variantIndex={variantIndex}
+                      environmentId={variant.environmentId}
+                      environmentName={variant.environmentName}
+                      editorIdPrefix={editorIdPrefix}
+                      mode={mode}
+                      projectId={projectId}
+                      canEditValue={canEditValue}
+                      canEditSchema={canEditSchema}
+                      canEditOverrides={canEditOverrides}
+                      watchedVariants={watchedVariants}
+                      overrideBuilderDefaultValue={overrideBuilderDefaultValue}
+                      liveSchema={liveSchema}
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
+          ) : (
+            <div className="space-y-0">
+              <div className="border-b bg-muted/30 px-4 py-3 flex items-center gap-3">
+                <Label htmlFor="environment-select" className="text-sm font-medium shrink-0">
+                  Environment:
+                </Label>
+                <Select value={activeEnvironmentId} onValueChange={handleEnvironmentChange}>
+                  <SelectTrigger id="environment-select" className="w-[240px] h-8 bg-background">
+                    <SelectValue placeholder="Select environment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {variants.map(variant => (
+                      <SelectItem key={variant.environmentId} value={variant.environmentId}>
+                        {variant.environmentName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="p-6">
+                {variants.map((variant, variantIndex) => (
+                  <div
+                    key={variant.environmentId}
+                    className={
+                      activeEnvironmentId === variant.environmentId ? 'space-y-6' : 'hidden'
+                    }
+                  >
+                    <ConfigVariantFields
+                      control={form.control}
+                      variantIndex={variantIndex}
+                      environmentId={variant.environmentId}
+                      environmentName={variant.environmentName}
+                      editorIdPrefix={editorIdPrefix}
+                      mode={mode}
+                      projectId={projectId}
+                      canEditValue={canEditValue}
+                      canEditSchema={canEditSchema}
+                      canEditOverrides={canEditOverrides}
+                      watchedVariants={watchedVariants}
+                      overrideBuilderDefaultValue={overrideBuilderDefaultValue}
+                      liveSchema={liveSchema}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* End of environment-specific section */}

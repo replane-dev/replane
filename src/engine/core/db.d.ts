@@ -75,6 +75,7 @@ export interface Configs {
   id: string;
   name: string;
   project_id: string;
+  updated_at: Timestamp;
   version: number;
 }
 

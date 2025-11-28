@@ -76,6 +76,7 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
           description: config.description,
           creatorId: config.creatorId,
           createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
           version: config.version,
         } satisfies Config,
         variants,
