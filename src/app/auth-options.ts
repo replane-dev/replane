@@ -166,7 +166,7 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
       ]);
       const project: Project = {
         id: createProjectId(),
-        name: 'Personal',
+        name: 'First project',
         description: 'This is your personal project.',
         organizationId: personalOrganization.id,
         requireProposals: false,

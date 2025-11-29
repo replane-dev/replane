@@ -7,9 +7,16 @@ import {useProject, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {NavMain} from '@/components/nav-main';
 import {NavSecondary} from '@/components/nav-secondary';
 import {NavUser} from '@/components/nav-user';
+import {OrgSwitcher} from '@/components/org-switcher';
+import {ProjectSwitcher} from '@/components/project-switcher';
 import {SettingsDialog} from '@/components/settings-dialog';
-import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader} from '@/components/ui/sidebar';
-import {ProjectSwitcher} from './project-switcher';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+} from '@/components/ui/sidebar';
 
 export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
   const projectId = useProjectId();
@@ -58,11 +65,16 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
   return (
     <>
       <Sidebar variant="inset" {...props}>
-        <SidebarHeader>
-          <ProjectSwitcher />
+        <SidebarHeader className="space-y-2">
+          <OrgSwitcher />
         </SidebarHeader>
         <SidebarContent>
-          <NavMain items={data.navMain} />
+          <SidebarGroup className="-mb-5 -mt-2">
+            <ProjectSwitcher />
+          </SidebarGroup>
+          <div className="ml-2">
+            <NavMain items={data.navMain} />
+          </div>
           <NavSecondary items={data.navSecondary} className="mt-auto" />
         </SidebarContent>
         <SidebarFooter>
