@@ -1,4 +1,6 @@
 import assert from 'assert';
+import {createAuditLogId} from '../audit-log-store';
+import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -10,10 +12,13 @@ export interface DeleteProjectEnvironmentRequest {
 
 export interface DeleteProjectEnvironmentResponse {}
 
-export function createDeleteProjectEnvironmentUseCase(): TransactionalUseCase<
-  DeleteProjectEnvironmentRequest,
-  DeleteProjectEnvironmentResponse
-> {
+export interface DeleteProjectEnvironmentUseCaseDeps {
+  dateProvider: DateProvider;
+}
+
+export function createDeleteProjectEnvironmentUseCase(
+  deps: DeleteProjectEnvironmentUseCaseDeps,
+): TransactionalUseCase<DeleteProjectEnvironmentRequest, DeleteProjectEnvironmentResponse> {
   return async (ctx, tx, req) => {
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
@@ -37,20 +42,30 @@ export function createDeleteProjectEnvironmentUseCase(): TransactionalUseCase<
       );
     }
 
-    // Delete all config variants for this environment
-    const configs = await tx.configs.getAll({
-      projectId: environment.projectId,
-      currentUserEmail: req.currentUserEmail,
-    });
+    // Delete all config variants for this environment using efficient single query
+    const variantsToDelete = await tx.configVariants.getByEnvironmentId(req.environmentId);
 
-    for (const config of configs) {
-      const variants = await tx.configVariants.getByConfigId(config.id);
-      const variantToDelete = variants.find(v => v.environmentId === req.environmentId);
-
-      if (variantToDelete) {
-        await tx.configVariants.delete(variantToDelete.id);
-      }
+    for (const variant of variantsToDelete) {
+      await tx.configVariants.delete(variant.id);
     }
+
+    // Create audit log before deleting
+    const now = deps.dateProvider.now();
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
+      createdAt: now,
+      userId: currentUser.id,
+      configId: null,
+      projectId: environment.projectId,
+      payload: {
+        type: 'environment_deleted',
+        environment: {
+          id: environment.id,
+          name: environment.name,
+          projectId: environment.projectId,
+        },
+      },
+    });
 
     // Delete the environment itself
     await tx.projectEnvironments.delete(req.environmentId);

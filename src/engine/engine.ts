@@ -36,12 +36,10 @@ import {createApproveConfigProposalUseCase} from './core/use-cases/approve-confi
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
-import {createCreateEnvironmentUseCase} from './core/use-cases/create-environment-use-case';
 import {createCreateProjectEnvironmentUseCase} from './core/use-cases/create-project-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
-import {createDeleteEnvironmentUseCase} from './core/use-cases/delete-environment-use-case';
 import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
@@ -286,11 +284,9 @@ export async function createEngine(options: EngineOptions) {
     createProjectEnvironment: createCreateProjectEnvironmentUseCase({dateProvider}),
     updateProjectEnvironment: createUpdateProjectEnvironmentUseCase({dateProvider}),
     updateProjectEnvironmentsOrder: createUpdateProjectEnvironmentsOrderUseCase({dateProvider}),
-    deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase(),
+    deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
     restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
-    createEnvironment: createCreateEnvironmentUseCase({dateProvider}),
-    deleteEnvironment: createDeleteEnvironmentUseCase({dateProvider}),
     getEnvironmentList: createGetEnvironmentListUseCase({}),
   } satisfies UseCaseMap;
 

@@ -391,7 +391,7 @@ export const appRouter = createTRPCRouter({
       z.object({
         projectId: Uuid(),
         name: z.string().min(1).max(50),
-        copyFromEnvironmentId: Uuid().optional(),
+        copyFromEnvironmentId: Uuid(),
       }),
     )
     .mutation(async opts => {

@@ -76,11 +76,16 @@ export default function EnvironmentsSettingsPage() {
   const canManageEnvironments = myRole === 'admin';
 
   const handleCreateEnvironment = async () => {
+    if (!copyFromEnvironmentId) {
+      toast.error('Please select an environment to copy from');
+      return;
+    }
+
     try {
       await createEnvironment.mutateAsync({
         projectId,
         name: newEnvironmentName.trim(),
-        copyFromEnvironmentId: copyFromEnvironmentId || undefined,
+        copyFromEnvironmentId,
       });
       toast.success('Environment created successfully');
       setShowCreateDialog(false);
@@ -356,7 +361,11 @@ export default function EnvironmentsSettingsPage() {
             </Button>
             <Button
               onClick={handleCreateEnvironment}
-              disabled={createEnvironment.isPending || newEnvironmentName.trim().length === 0}
+              disabled={
+                createEnvironment.isPending ||
+                newEnvironmentName.trim().length === 0 ||
+                !copyFromEnvironmentId
+              }
             >
               {createEnvironment.isPending ? 'Creating…' : 'Create'}
             </Button>

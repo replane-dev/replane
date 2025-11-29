@@ -1,4 +1,5 @@
 import assert from 'assert';
+import {createAuditLogId} from '../audit-log-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
@@ -8,7 +9,7 @@ import type {NormalizedEmail} from '../zod';
 export interface CreateProjectEnvironmentRequest {
   projectId: string;
   name: string;
-  copyFromEnvironmentId?: string;
+  copyFromEnvironmentId: string;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -37,6 +38,15 @@ export function createCreateProjectEnvironmentUseCase(
       );
     }
 
+    // Verify the source environment exists and belongs to this project
+    const sourceEnvironment = await tx.projectEnvironments.getById(req.copyFromEnvironmentId);
+    if (!sourceEnvironment) {
+      throw new BadRequestError('Source environment not found');
+    }
+    if (sourceEnvironment.projectId !== req.projectId) {
+      throw new BadRequestError('Source environment does not belong to this project');
+    }
+
     // Check if environment with this name already exists
     const existing = await tx.projectEnvironments.getByProjectIdAndName({
       projectId: req.projectId,
@@ -63,43 +73,43 @@ export function createCreateProjectEnvironmentUseCase(
       updatedAt: now,
     });
 
-    // Create config variants for all existing configs in this project
-    const configs = await tx.configs.getAll({
-      projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
-    });
+    // Get all config variants from the source environment
+    const sourceVariants = await tx.configVariants.getByEnvironmentId(req.copyFromEnvironmentId);
 
-    for (const config of configs) {
+    // Create config variants for all configs by copying from source environment
+    for (const sourceVariant of sourceVariants) {
       const configVariantId = createUuidV7();
 
-      // Get the variant to copy from
-      const existingVariants = await tx.configVariants.getByConfigId(config.id);
-      let templateVariant = existingVariants[0];
-
-      // If a specific environment was requested to copy from, use that
-      if (req.copyFromEnvironmentId) {
-        const specificVariant = existingVariants.find(
-          v => v.environmentId === req.copyFromEnvironmentId,
-        );
-        if (specificVariant) {
-          templateVariant = specificVariant;
-        }
-      }
-
-      if (templateVariant) {
-        await tx.configVariants.create({
-          id: configVariantId,
-          configId: config.id,
-          environmentId,
-          value: templateVariant.value,
-          schema: templateVariant.schema,
-          overrides: templateVariant.overrides,
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
+      await tx.configVariants.create({
+        id: configVariantId,
+        configId: sourceVariant.configId,
+        environmentId,
+        value: sourceVariant.value,
+        schema: sourceVariant.schema,
+        overrides: sourceVariant.overrides,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
+
+    // Create audit log for environment creation
+    await tx.auditLogs.create({
+      id: createAuditLogId(),
+      createdAt: now,
+      userId: currentUser.id,
+      configId: null,
+      projectId: req.projectId,
+      payload: {
+        type: 'environment_created',
+        environment: {
+          id: environmentId,
+          name: req.name,
+          projectId: req.projectId,
+          createdAt: now,
+        },
+      },
+    });
 
     return {environmentId};
   };
