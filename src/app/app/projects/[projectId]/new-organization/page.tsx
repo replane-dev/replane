@@ -21,9 +21,9 @@ export default function NewOrganizationPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const {organizationId} = await createOrganization.mutateAsync({name});
+      const {projectId} = await createOrganization.mutateAsync({name});
       // Navigate to the new organization's first project or configs
-      router.push(`/app/projects/${organizationId}/new-project`);
+      router.push(`/app/projects/${projectId}`);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create organization');
     } finally {

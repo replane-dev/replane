@@ -1,23 +1,21 @@
+import {AuditLogStore} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {DB} from '@/engine/core/db';
 import {createLogger, type Logger} from '@/engine/core/logger';
 import {OrganizationMemberStore} from '@/engine/core/organization-member-store';
-import {
-  createOrganizationId,
-  Organization,
-  OrganizationStore,
-} from '@/engine/core/organization-store';
+import {OrganizationStore} from '@/engine/core/organization-store';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {ProjectEnvironmentStore} from '@/engine/core/project-environment-store';
-import {createProjectId, Project, ProjectStore} from '@/engine/core/project-store';
+import {ProjectStore} from '@/engine/core/project-store';
 import {ProjectUserStore} from '@/engine/core/project-user-store';
+import {createOrganization} from '@/engine/core/use-cases/create-organization-use-case';
+import {UserStore} from '@/engine/core/user-store';
 import {
   ensureDefined,
   normalizeEmail,
   runTransactional,
   shouldAutoAddToOrganizations,
 } from '@/engine/core/utils';
-import {createUuidV7} from '@/engine/core/uuid';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
 import PostgresAdapter from '@auth/pg-adapter';
 import {Kysely, PostgresDialect} from 'kysely';
@@ -147,59 +145,17 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
       const projectUserStore = new ProjectUserStore(tx);
       const projectEnvironmentStore = new ProjectEnvironmentStore(tx);
 
-      const personalOrganization: Organization = {
-        id: createOrganizationId(),
+      await createOrganization({
+        currentUserEmail: normalizeEmail(user.email ?? 'unknown@replane.dev'),
         name: 'Personal',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      await organizationStore.create(personalOrganization);
-      await organizationMemberStore.create([
-        {
-          organizationId: personalOrganization.id,
-          email: normalizeEmail(user.email ?? 'unknown@replane.dev'),
-          role: 'admin',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ]);
-      const project: Project = {
-        id: createProjectId(),
-        name: 'First project',
-        description: 'This is your personal project.',
-        organizationId: personalOrganization.id,
-        requireProposals: false,
-        allowSelfApprovals: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isExample: false,
-      };
-      await projectStore.create(project);
-      await projectUserStore.create([
-        {
-          projectId: project.id,
-          email: normalizeEmail(user.email ?? 'unknown@replane.dev'),
-          role: 'admin',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ]);
-      await projectEnvironmentStore.create({
-        projectId: project.id,
-        name: 'Production',
-        order: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        id: createUuidV7(),
-      });
-      await projectEnvironmentStore.create({
-        projectId: project.id,
-        name: 'Development',
-        order: 2,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        id: createUuidV7(),
+        organizationStore,
+        organizationMemberStore,
+        projectStore,
+        projectUserStore,
+        projectEnvironmentStore,
+        users: new UserStore(tx),
+        auditLogs: new AuditLogStore(tx),
+        now: new Date(),
       });
 
       // Auto-add new users to all organizations if enabled
