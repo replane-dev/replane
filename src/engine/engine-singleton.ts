@@ -1,5 +1,5 @@
 import {Lazy} from '@/engine/core/lazy';
-import {ensureDefined, getOrganizationConfig, joinUndefined} from './core/utils';
+import {ensureDefined, joinUndefined} from './core/utils';
 import {createEngine, type Engine} from './engine';
 
 export const getDatabaseUrl = () =>
@@ -22,13 +22,10 @@ export const getDatabaseUrl = () =>
 
 // Shared singleton so TRPC and Hono reuse the same engine instance per process.
 export const engineLazy = new Lazy(async () => {
-  const orgConfig = getOrganizationConfig();
   return await createEngine({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
-    requireProposals: orgConfig.requireProposals,
-    allowSelfApprovals: orgConfig.allowSelfApprovals,
   });
 });
 

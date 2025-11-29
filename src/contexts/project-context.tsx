@@ -7,13 +7,23 @@ import React from 'react';
 export interface ProjectSummary {
   id: string;
   name: string;
+  organizationId: string;
   isExample: boolean;
+  requireProposals: boolean;
+  allowSelfApprovals: boolean;
   myRole: 'admin' | 'maintainer' | undefined;
 }
 
+export interface OrganizationSummary {
+  id: string;
+  name: string;
+  myRole: 'admin' | 'member' | undefined;
+}
+
 interface ProjectContextValue {
+  organizations: OrganizationSummary[];
   projects: ProjectSummary[];
-  // refreshes project list
+  // refreshes project and organization lists
   refresh: () => Promise<void>;
 }
 
@@ -23,11 +33,25 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const projectsQuery = trpc.getProjectList.queryOptions();
-  const {data} = useSuspenseQuery({...projectsQuery});
+  const organizationsQuery = trpc.getOrganizationList.queryOptions();
+  const {data: projectsData} = useSuspenseQuery({...projectsQuery});
+  const {data: organizationsData} = useSuspenseQuery({...organizationsQuery});
   const projects: ProjectSummary[] = React.useMemo(
     () =>
-      data.projects.map(p => ({id: p.id, name: p.name, myRole: p.myRole, isExample: p.isExample})),
-    [data.projects],
+      projectsData.projects.map(p => ({
+        id: p.id,
+        name: p.name,
+        organizationId: p.organizationId,
+        requireProposals: p.requireProposals,
+        allowSelfApprovals: p.allowSelfApprovals,
+        myRole: p.myRole,
+        isExample: p.isExample,
+      })),
+    [projectsData.projects],
+  );
+  const organizations: OrganizationSummary[] = React.useMemo(
+    () => organizationsData.map(o => ({id: o.id, name: o.name, myRole: o.myRole})),
+    [organizationsData],
   );
 
   // Assert non-empty list (backend guarantees at least one project)
@@ -40,8 +64,8 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
   }, [queryClient, projectsQuery.queryKey]);
 
   const value = React.useMemo<ProjectContextValue>(
-    () => ({projects, refresh}),
-    [projects, refresh],
+    () => ({projects, organizations, refresh}),
+    [projects, organizations, refresh],
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

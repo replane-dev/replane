@@ -15,6 +15,7 @@ describe('Override Reference Validation - Integration Tests', () => {
     // Create a second project for cross-project reference tests
     const result = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      organizationId: fixture.organizationId,
       name: 'Second Project',
       description: 'For cross-project testing',
     });

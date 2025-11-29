@@ -53,6 +53,7 @@ describe('patchProject', () => {
   it('fails on duplicate name', async () => {
     // create second project
     const {projectId: secondId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+      organizationId: fixture.organizationId,
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'SecondProj',
       description: 'desc',
@@ -69,6 +70,7 @@ describe('patchProject', () => {
 
   it('updates members (add/remove) and emits audit message', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+      organizationId: fixture.organizationId,
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'MembersProj',
       description: 'members',
@@ -113,6 +115,7 @@ describe('patchProject', () => {
 
   it('fails when removing all owners', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+      organizationId: fixture.organizationId,
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'NoOwnerRemoval',
       description: 'members',
@@ -130,6 +133,7 @@ describe('patchProject', () => {
   it('forbids member edit by non-owner', async () => {
     // Create project with two owners then remove current user, leaving OTHER_OWNER_EMAIL only. After removal current user loses owner role.
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+      organizationId: fixture.organizationId,
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'ForbiddenMembersEdit',
       description: 'x',

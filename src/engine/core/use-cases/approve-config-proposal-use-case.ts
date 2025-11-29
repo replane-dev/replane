@@ -15,7 +15,6 @@ export interface ApproveConfigProposalResponse {}
 
 export interface ApproveConfigProposalUseCaseDeps {
   dateProvider: DateProvider;
-  allowSelfApprovals: boolean;
 }
 
 export function createApproveConfigProposalUseCase(
@@ -30,7 +29,22 @@ export function createApproveConfigProposalUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    if (!deps.allowSelfApprovals && proposal.proposerId === currentUser.id) {
+    // Get the config to check allowSelfApprovals
+    const config = await tx.configs.getById(proposal.configId);
+    if (!config) {
+      throw new BadRequestError('Config not found');
+    }
+
+    // Get the project to check allowSelfApprovals setting
+    const project = await tx.projects.getById({
+      id: config.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+    if (!project) {
+      throw new BadRequestError('Project not found');
+    }
+
+    if (!project.allowSelfApprovals && proposal.proposerId === currentUser.id) {
       throw new ForbiddenError('Proposer cannot approve their own proposal');
     }
 
@@ -47,12 +61,6 @@ export function createApproveConfigProposalUseCase(
       ? await tx.users.getById(proposal.proposerId)
       : currentUser;
     assert(patchAuthor, 'Patch author not found');
-
-    // Get the config to check it exists
-    const config = await tx.configs.getById(proposal.configId);
-    if (!config) {
-      throw new BadRequestError('Config not found');
-    }
 
     assert(
       config.version === proposal.baseConfigVersion,

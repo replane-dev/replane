@@ -6,6 +6,8 @@ import type {ConfigUserStore} from './config-user-store';
 import type {ConfigVariantStore} from './config-variant-store';
 import type {ConfigVariantVersionStore} from './config-variant-version-store';
 import type {Context} from './context';
+import type {OrganizationMemberStore} from './organization-member-store';
+import type {OrganizationStore} from './organization-store';
 import type {PermissionService} from './permission-service';
 import type {ProjectEnvironmentStore} from './project-environment-store';
 import type {ProjectStore} from './project-store';
@@ -37,4 +39,9 @@ export interface UseCaseTransaction {
   projectEnvironments: ProjectEnvironmentStore;
   configVariants: ConfigVariantStore;
   configVariantVersions: ConfigVariantVersionStore;
+  // Organization stores
+  organizations: OrganizationStore;
+  organizationMembers: OrganizationMemberStore;
+  // Needed for permission checks
+  db: any;
 }

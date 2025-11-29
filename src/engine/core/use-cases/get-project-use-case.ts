@@ -11,6 +11,9 @@ export interface GetProjectResponse {
     id: string;
     name: string;
     description: string;
+    organizationId: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
     createdAt: Date;
     updatedAt: Date;
     myRole: 'admin' | 'maintainer' | null;
@@ -32,6 +35,9 @@ export function createGetProjectUseCase(): TransactionalUseCase<
         id: project.id,
         name: project.name,
         description: project.description,
+        organizationId: project.organizationId,
+        requireProposals: project.requireProposals,
+        allowSelfApprovals: project.allowSelfApprovals,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
         myRole: project.myRole ?? null,

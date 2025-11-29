@@ -9,8 +9,11 @@ import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectRequest {
   currentUserEmail: NormalizedEmail;
+  organizationId: string;
   name: string;
   description: string;
+  requireProposals?: boolean;
+  allowSelfApprovals?: boolean;
 }
 
 export interface CreateProjectResponse {
@@ -34,12 +37,18 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 
+    // Ensure user is a member of the organization
+    await tx.permissionService.ensureIsOrganizationMember(req.organizationId, req.currentUserEmail);
+
     const projectId = createProjectId();
 
     await tx.projects.create({
       id: projectId,
       name: req.name,
       description: req.description,
+      organizationId: req.organizationId,
+      requireProposals: req.requireProposals ?? false,
+      allowSelfApprovals: req.allowSelfApprovals ?? false,
       createdAt: now,
       updatedAt: now,
       isExample: false,

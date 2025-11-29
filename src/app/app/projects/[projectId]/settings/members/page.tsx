@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import {useOrg} from '@/contexts/org-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {Info, Lock, Plus, Trash2} from 'lucide-react';
@@ -84,6 +83,7 @@ export default function MembersSettingsPage() {
 
   const myRole = (detailsData.project.myRole ?? 'viewer') as Role | 'viewer';
   const canManageMembers = myRole === 'admin';
+  const requireProposals = detailsData.project.requireProposals;
 
   return (
     <Fragment>
@@ -111,7 +111,7 @@ export default function MembersSettingsPage() {
           <section>
             <h2 className="mb-4 text-xl font-semibold">Project members</h2>
             <div className="mb-4">
-              <RoleLegend />
+              <RoleLegend requireProposals={requireProposals} />
             </div>
             <div className="space-y-3">
               {users.length > 0 && (
@@ -203,9 +203,7 @@ export default function MembersSettingsPage() {
   );
 }
 
-function RoleLegend() {
-  const {requireProposals} = useOrg();
-
+function RoleLegend({requireProposals}: {requireProposals: boolean}) {
   return (
     <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-4">
       <div className="flex items-start gap-3">

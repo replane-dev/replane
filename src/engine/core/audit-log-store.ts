@@ -244,6 +244,81 @@ export interface ConfigVariantProposalApprovedAuditLogPayload
   proposedOverrides?: {newOverrides: unknown};
 }
 
+export interface OrganizationCreatedAuditLogPayload
+  extends BaseAuditLogPayload<'organization_created'> {
+  organization: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface OrganizationUpdatedAuditLogPayload
+  extends BaseAuditLogPayload<'organization_updated'> {
+  organization: {
+    id: string;
+    name: string;
+  };
+  before: {
+    name: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
+  };
+  after: {
+    name: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
+  };
+}
+
+export interface OrganizationDeletedAuditLogPayload
+  extends BaseAuditLogPayload<'organization_deleted'> {
+  organization: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface OrganizationMemberAddedAuditLogPayload
+  extends BaseAuditLogPayload<'organization_member_added'> {
+  organization: {
+    id: string;
+    name: string;
+  };
+  member: {
+    email: string;
+    role: string;
+  };
+}
+
+export interface OrganizationMemberRemovedAuditLogPayload
+  extends BaseAuditLogPayload<'organization_member_removed'> {
+  organization: {
+    id: string;
+    name: string;
+  };
+  member: {
+    email: string;
+    role: string;
+  };
+}
+
+export interface OrganizationMemberRoleChangedAuditLogPayload
+  extends BaseAuditLogPayload<'organization_member_role_changed'> {
+  organization: {
+    id: string;
+    name: string;
+  };
+  member: {
+    email: string;
+  };
+  before: {
+    role: string;
+  };
+  after: {
+    role: string;
+  };
+}
+
 export type AuditLogPayload =
   | ConfigCreatedAuditLogPayload
   | ConfigUpdatedAuditLogPayload
@@ -265,7 +340,13 @@ export type AuditLogPayload =
   | ConfigProposalApprovedAuditLogPayload
   | ConfigVariantProposalCreatedAuditLogPayload
   | ConfigVariantProposalRejectedAuditLogPayload
-  | ConfigVariantProposalApprovedAuditLogPayload;
+  | ConfigVariantProposalApprovedAuditLogPayload
+  | OrganizationCreatedAuditLogPayload
+  | OrganizationUpdatedAuditLogPayload
+  | OrganizationDeletedAuditLogPayload
+  | OrganizationMemberAddedAuditLogPayload
+  | OrganizationMemberRemovedAuditLogPayload
+  | OrganizationMemberRoleChangedAuditLogPayload;
 
 export interface AuditLog {
   id: AuditLogId;

@@ -1,6 +1,6 @@
 'use client';
 
-import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useProject, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {useOrg} from '@/contexts/org-context';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {ChevronDown, Info, Plus, Trash2, Users} from 'lucide-react';
@@ -35,7 +34,7 @@ export function ConfigMemberList({
   disabled = false,
   errors = [],
 }: ConfigMemberListProps) {
-  const {requireProposals} = useOrg();
+  const {requireProposals} = useProject();
   const projectId = useProjectId();
   const trpc = useTRPC();
   const projectUsersQuery = trpc.getProjectUsers.queryOptions({projectId});

@@ -1,12 +1,13 @@
 'use client';
 
-import {useOrg} from '@/contexts/org-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useCallback} from 'react';
+import {useProject} from '../utils';
 
 export function useDeleteOrProposeConfig() {
-  const org = useOrg();
+  const project = useProject();
+  const requireProposals = project.requireProposals;
   const trpc = useTRPC();
 
   const deleteConfig = useMutation(trpc.deleteConfig.mutationOptions({}));
@@ -22,7 +23,7 @@ export function useDeleteOrProposeConfig() {
       onAfterDelete?: () => void | Promise<void>;
       onAfterPropose?: (proposalId: string) => void | Promise<void>;
     }) {
-      const requireProposal = org.requireProposals || params.myRole !== 'owner';
+      const requireProposal = requireProposals || params.myRole !== 'owner';
       if (requireProposal) {
         const ok = confirm(
           `Create a deletion proposal for "${params.configName}"? It will require approval by an owner.`,
@@ -52,6 +53,6 @@ export function useDeleteOrProposeConfig() {
       });
       await params.onAfterDelete?.();
     },
-    [createConfigProposal, deleteConfig, org.requireProposals],
+    [createConfigProposal, deleteConfig, requireProposals],
   );
 }

@@ -451,10 +451,19 @@ describe('patchConfigVariant', () => {
 describe('patchConfigVariant with requireProposals enabled', () => {
   const fixture = useAppFixture({
     authEmail: CURRENT_USER_EMAIL,
-    requireProposals: true,
   });
 
   it('should throw BadRequestError when direct changes are disabled', async () => {
+    // Update project to require proposals
+    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      name: 'Test Project',
+      description: 'Default project for tests',
+      requireProposals: true,
+      allowSelfApprovals: false,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: `require_proposals_${Date.now()}`,
       value: {x: 1},

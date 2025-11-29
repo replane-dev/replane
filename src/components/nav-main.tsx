@@ -19,6 +19,7 @@ export type NavMainItem = {
   name: string;
   url?: string;
   icon: LucideIcon;
+  onClick?: () => void;
   items?: Array<{
     name: string;
     url: string;
@@ -71,6 +72,17 @@ export function NavMain({items}: {items: NavMainItem[]}) {
           }
 
           // Regular item without sub-items
+          if (item.onClick) {
+            return (
+              <SidebarMenuItem key={item.name}>
+                <SidebarMenuButton onClick={item.onClick}>
+                  <item.icon />
+                  <span>{item.name}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
+
           const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
           return (
             <SidebarMenuItem key={item.name}>

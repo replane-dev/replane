@@ -14,7 +14,6 @@ import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
-import {useOrg} from '@/contexts/org-context';
 import {assertNever, isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
@@ -57,7 +56,6 @@ export default function ReviewConfigProposalPage() {
 
   const trpc = useTRPC();
   const project = useProject();
-  const org = useOrg();
 
   const {data: proposalData} = useSuspenseQuery(trpc.getConfigProposal.queryOptions({proposalId}));
 
@@ -74,6 +72,9 @@ export default function ReviewConfigProposalPage() {
     trpc.getConfig.queryOptions({name: proposal.configName, projectId: project.id}),
   );
 
+  // Fetch project to get allowSelfApprovals setting
+  const {data: projectData} = useSuspenseQuery(trpc.getProject.queryOptions({id: project.id}));
+
   const approve = useMutation(trpc.approveConfigProposal.mutationOptions());
   const reject = useMutation(trpc.rejectConfigProposal.mutationOptions());
 
@@ -84,8 +85,9 @@ export default function ReviewConfigProposalPage() {
   const {data: session} = useSession();
   const sessionUser = session?.user;
 
+  const allowSelfApprovals = projectData.project?.allowSelfApprovals ?? false;
   const isSelfApprovalDisabled =
-    !org.allowSelfApprovals && proposal.proposerEmail === sessionUser?.email;
+    !allowSelfApprovals && proposal.proposerEmail === sessionUser?.email;
 
   const [showAllApprovers, setShowAllApprovers] = useState(false);
   const [showApproveWarning, setShowApproveWarning] = useState(false);

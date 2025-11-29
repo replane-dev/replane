@@ -3,7 +3,7 @@
 import {ChevronsUpDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
-import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useOrganization, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {ReplaneIcon} from '@/components/replane-icon';
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
-import {useOrg} from '@/contexts/org-context';
 import {useProjects} from '@/contexts/project-context';
 import {useMemo} from 'react';
 
@@ -22,7 +21,7 @@ export function ProjectSwitcher() {
   const {isMobile} = useSidebar();
   const projectId = useProjectId();
   const {projects} = useProjects();
-  const {organizationName} = useOrg();
+  const {name: organizationName} = useOrganization();
 
   const activeProject = useMemo(
     () => projects.find(project => project.id === projectId),

@@ -20,8 +20,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import {Switch} from '@/components/ui/switch';
 import {Textarea} from '@/components/ui/textarea';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
@@ -41,18 +43,30 @@ export default function GeneralSettingsPage() {
   const trpc = useTRPC();
   const router = useRouter();
 
-  // Org settings (for gating destructive actions via proposals requirement)
-  const {data: org} = useSuspenseQuery(trpc.getOrganization.queryOptions());
-
   // Project details
   const detailsQuery = trpc.getProject.queryOptions({id: projectId});
   const {data: detailsData} = useSuspenseQuery({...detailsQuery});
+
   const [name, setName] = React.useState(detailsData.project?.name ?? '');
   const [description, setDescription] = React.useState(detailsData.project?.description ?? '');
+  const [requireProposals, setRequireProposals] = React.useState(
+    detailsData.project?.requireProposals ?? false,
+  );
+  const [allowSelfApprovals, setAllowSelfApprovals] = React.useState(
+    detailsData.project?.allowSelfApprovals ?? false,
+  );
+
   React.useEffect(() => {
     setName(detailsData.project?.name ?? '');
     setDescription(detailsData.project?.description ?? '');
-  }, [detailsData.project?.name, detailsData.project?.description]);
+    setRequireProposals(detailsData.project?.requireProposals ?? false);
+    setAllowSelfApprovals(detailsData.project?.allowSelfApprovals ?? false);
+  }, [
+    detailsData.project?.name,
+    detailsData.project?.description,
+    detailsData.project?.requireProposals,
+    detailsData.project?.allowSelfApprovals,
+  ]);
   const patchProject = useMutation(trpc.patchProject.mutationOptions());
 
   const [savingDetails, setSavingDetails] = React.useState(false);
@@ -61,10 +75,13 @@ export default function GeneralSettingsPage() {
     e.preventDefault();
     setSavingDetails(true);
     try {
-      await patchProject.mutateAsync({id: projectId, details: {name, description}});
-      toast.success('Project details saved');
+      await patchProject.mutateAsync({
+        id: projectId,
+        details: {name, description, requireProposals, allowSelfApprovals},
+      });
+      toast.success('Project settings saved');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save details');
+      toast.error(e?.message ?? 'Failed to save settings');
     }
     setSavingDetails(false);
   };
@@ -74,7 +91,7 @@ export default function GeneralSettingsPage() {
   const myRole = (detailsData.project.myRole ?? 'viewer') as Role | 'viewer';
   const canEditDetails = myRole === 'admin' || myRole === 'maintainer';
   const canDeleteProject = myRole === 'admin';
-  const proposalsRequired = org?.requireProposals ?? false;
+  const proposalsRequired = detailsData.project.requireProposals;
 
   return (
     <Fragment>
@@ -127,6 +144,50 @@ export default function GeneralSettingsPage() {
                     rows={4}
                   />
                 </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold">Governance Settings</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="require-proposals" className="text-sm font-medium">
+                          Require Proposals
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          When enabled, all config changes must go through the proposal workflow
+                        </p>
+                      </div>
+                      <Switch
+                        id="require-proposals"
+                        checked={requireProposals}
+                        onCheckedChange={setRequireProposals}
+                        disabled={!canEditDetails}
+                      />
+                    </div>
+
+                    {requireProposals && (
+                      <div className="flex items-center justify-between ml-4 pl-4 border-l-2">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="allow-self-approvals" className="text-sm font-medium">
+                            Allow Self-Approvals
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Allow proposal creators to approve their own proposals
+                          </p>
+                        </div>
+                        <Switch
+                          id="allow-self-approvals"
+                          checked={allowSelfApprovals}
+                          onCheckedChange={setAllowSelfApprovals}
+                          disabled={!canEditDetails}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {!canEditDetails && (
                   <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-3">
                     <div className="flex items-start gap-2">

@@ -783,6 +783,142 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_configs_updated_at ON configs(project_id, updated_at DESC);
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Add organizations table
+      CREATE TABLE organizations (
+        id UUID PRIMARY KEY,
+        name TEXT NOT NULL,
+        require_proposals BOOLEAN NOT NULL DEFAULT FALSE,
+        allow_self_approvals BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE INDEX idx_organizations_name ON organizations(name);
+      CREATE INDEX idx_organizations_created_at ON organizations(created_at DESC);
+
+      -- Add organization_id foreign key to projects
+      ALTER TABLE projects
+      ADD COLUMN organization_id UUID NULL REFERENCES organizations(id) ON DELETE CASCADE;
+
+      -- Create a default organization for existing projects
+      INSERT INTO organizations (id, name, require_proposals, allow_self_approvals, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        'Default Organization',
+        FALSE,
+        FALSE,
+        NOW(),
+        NOW()
+      WHERE EXISTS (SELECT 1 FROM projects);
+
+      -- Assign all existing projects to the default organization
+      UPDATE projects
+      SET organization_id = (SELECT id FROM organizations ORDER BY created_at ASC LIMIT 1)
+      WHERE organization_id IS NULL;
+
+      -- Make organization_id required
+      ALTER TABLE projects
+      ALTER COLUMN organization_id SET NOT NULL;
+
+      CREATE INDEX idx_projects_organization_id ON projects(organization_id);
+
+      -- Create organization_members table
+      CREATE TYPE organization_member_role AS ENUM ('admin', 'member');
+
+      CREATE TABLE organization_members (
+        organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        user_email_normalized VARCHAR(255) NOT NULL,
+        role organization_member_role NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL,
+        PRIMARY KEY (organization_id, user_email_normalized)
+      );
+
+      CREATE INDEX idx_organization_members_user_email_normalized ON organization_members(user_email_normalized);
+      CREATE INDEX idx_organization_members_organization_id ON organization_members(organization_id);
+
+      -- Add all existing users as members of the default organization
+      INSERT INTO organization_members (organization_id, user_email_normalized, role, created_at, updated_at)
+      SELECT
+        (SELECT id FROM organizations ORDER BY created_at ASC LIMIT 1),
+        LOWER(TRIM(email)),
+        'member',
+        NOW(),
+        NOW()
+      FROM users
+      WHERE email IS NOT NULL AND EXISTS (SELECT 1 FROM organizations);
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Migration 27: Move governance settings from organizations to projects
+
+      -- Add governance columns to projects table
+      ALTER TABLE projects
+      ADD COLUMN require_proposals BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN allow_self_approvals BOOLEAN NOT NULL DEFAULT FALSE;
+
+      -- Copy governance settings from organizations to their projects
+      UPDATE projects p
+      SET
+        require_proposals = o.require_proposals,
+        allow_self_approvals = o.allow_self_approvals
+      FROM organizations o
+      WHERE p.organization_id = o.id;
+
+      -- Remove governance columns from organizations table
+      ALTER TABLE organizations
+      DROP COLUMN require_proposals,
+      DROP COLUMN allow_self_approvals;
+
+      -- Remove defaults from projects table
+      ALTER TABLE projects
+      ALTER COLUMN require_proposals DROP DEFAULT;
+      ALTER TABLE projects
+      ALTER COLUMN allow_self_approvals DROP DEFAULT;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Add personal_org_user_id column to organizations for personal organizations
+      ALTER TABLE organizations
+      ADD COLUMN personal_org_user_id INTEGER NULL REFERENCES users(id) ON DELETE CASCADE;
+
+      -- Create unique index to ensure one personal org per user
+      CREATE UNIQUE INDEX idx_organizations_personal_user_id
+        ON organizations(personal_org_user_id)
+        WHERE personal_org_user_id IS NOT NULL;
+
+      -- Create personal organizations for all existing users who don't have one
+      INSERT INTO organizations (id, name, personal_org_user_id, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        COALESCE(u.name, SPLIT_PART(u.email, '@', 1)) || '''s Organization',
+        u.id,
+        NOW(),
+        NOW()
+      FROM users u
+      WHERE NOT EXISTS (
+        SELECT 1 FROM organizations o
+        WHERE o.personal_org_user_id = u.id
+      );
+
+      -- Add users as admins to their personal organizations
+      INSERT INTO organization_members (organization_id, user_email_normalized, role, created_at, updated_at)
+      SELECT
+        o.id,
+        u.email,
+        'admin',
+        NOW(),
+        NOW()
+      FROM organizations o
+      INNER JOIN users u ON o.personal_org_user_id = u.id
+      WHERE o.personal_org_user_id IS NOT NULL
+      ON CONFLICT (organization_id, user_email_normalized) DO NOTHING;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

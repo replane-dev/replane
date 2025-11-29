@@ -27,7 +27,6 @@ export interface PatchConfigResponse {}
 
 export interface PatchConfigUseCaseDeps {
   dateProvider: DateProvider;
-  requireProposals: boolean;
 }
 
 export function createPatchConfigUseCase(
@@ -37,7 +36,22 @@ export function createPatchConfigUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    if (deps.requireProposals) {
+    // Get the config to check its project's requireProposals setting
+    const config = await tx.configs.getById(req.configId);
+    if (!config) {
+      throw new BadRequestError('Config not found');
+    }
+
+    // Get the project to check requireProposals setting
+    const project = await tx.projects.getById({
+      id: config.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+    if (!project) {
+      throw new BadRequestError('Project not found');
+    }
+
+    if (project.requireProposals) {
       throw new BadRequestError(
         'Direct config changes are disabled. Please create a proposal instead.',
       );

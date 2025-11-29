@@ -7,17 +7,146 @@ import {
   ConfigValue,
 } from '@/engine/core/config-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {OrganizationName} from '@/engine/core/organization-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/project-store';
-import {getOrganizationConfig} from '@/engine/core/utils';
 import {ConfigMember, EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
 
 export const appRouter = createTRPCRouter({
-  getOrganization: baseProcedure.query(async () => {
-    return getOrganizationConfig();
+  getOrganization: baseProcedure.input(z.object({organizationId: Uuid()})).query(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.getOrganization(GLOBAL_CONTEXT, {
+      organizationId: opts.input.organizationId,
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
   }),
+  getOrganizationList: baseProcedure.query(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.getOrganizationList(GLOBAL_CONTEXT, {
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
+  }),
+  createOrganization: baseProcedure
+    .input(
+      z.object({
+        name: OrganizationName(),
+        requireProposals: z.boolean().optional(),
+        allowSelfApprovals: z.boolean().optional(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        name: opts.input.name,
+        requireProposals: opts.input.requireProposals,
+        allowSelfApprovals: opts.input.allowSelfApprovals,
+      });
+    }),
+  updateOrganization: baseProcedure
+    .input(
+      z.object({
+        organizationId: Uuid(),
+        name: OrganizationName(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.updateOrganization(GLOBAL_CONTEXT, {
+        organizationId: opts.input.organizationId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+        name: opts.input.name,
+        requireProposals: opts.input.requireProposals,
+        allowSelfApprovals: opts.input.allowSelfApprovals,
+      });
+    }),
+  deleteOrganization: baseProcedure
+    .input(z.object({organizationId: Uuid()}))
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.deleteOrganization(GLOBAL_CONTEXT, {
+        organizationId: opts.input.organizationId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  getOrganizationMembers: baseProcedure
+    .input(z.object({organizationId: Uuid()}))
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.getOrganizationMembers(GLOBAL_CONTEXT, {
+        organizationId: opts.input.organizationId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
+  addOrganizationMember: baseProcedure
+    .input(
+      z.object({
+        organizationId: Uuid(),
+        memberEmail: Email(),
+        role: z.enum(['admin', 'member']),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
+        organizationId: opts.input.organizationId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+        memberEmail: opts.input.memberEmail,
+        role: opts.input.role,
+      });
+    }),
+  removeOrganizationMember: baseProcedure
+    .input(
+      z.object({
+        organizationId: Uuid(),
+        memberEmail: Email(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.removeOrganizationMember(GLOBAL_CONTEXT, {
+        organizationId: opts.input.organizationId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+        memberEmail: opts.input.memberEmail,
+      });
+    }),
+  updateOrganizationMemberRole: baseProcedure
+    .input(
+      z.object({
+        organizationId: Uuid(),
+        memberEmail: Email(),
+        role: z.enum(['admin', 'member']),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.updateOrganizationMemberRole(GLOBAL_CONTEXT, {
+        organizationId: opts.input.organizationId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+        memberEmail: opts.input.memberEmail,
+        role: opts.input.role,
+      });
+    }),
   getAuthProviders: baseProcedure.query(async () => {
     const authOptions = getAuthOptions();
     return {
@@ -277,6 +406,8 @@ export const appRouter = createTRPCRouter({
           .object({
             name: ProjectName(),
             description: ProjectDescription(),
+            requireProposals: z.boolean().optional(),
+            allowSelfApprovals: z.boolean().optional(),
           })
           .optional(),
         members: z
@@ -526,6 +657,7 @@ export const appRouter = createTRPCRouter({
   createProject: baseProcedure
     .input(
       z.object({
+        organizationId: Uuid(),
         name: z.string().min(1).max(100),
         description: z.string().max(1_000_000).default(''),
       }),
@@ -536,6 +668,7 @@ export const appRouter = createTRPCRouter({
       }
       const {projectId} = await opts.ctx.engine.useCases.createProject(GLOBAL_CONTEXT, {
         currentUserEmail: opts.ctx.currentUserEmail,
+        organizationId: opts.input.organizationId,
         name: opts.input.name,
         description: opts.input.description,
       });

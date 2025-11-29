@@ -34,7 +34,6 @@ import {Label} from '@/components/ui/label';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
-import {useOrg} from '@/contexts/org-context';
 import type {ConfigUserRole} from '@/engine/core/db';
 import type {Override} from '@/engine/core/override-evaluator';
 import {useTRPC} from '@/trpc/client';
@@ -58,6 +57,7 @@ export default function ConfigByNamePage() {
   const trpc = useTRPC();
   const projectId = useProjectId();
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
+  const {data: projectData} = useSuspenseQuery(trpc.getProject.queryOptions({id: projectId}));
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
   const rejectAllPendingProposals = useMutation(
@@ -66,8 +66,9 @@ export default function ConfigByNamePage() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
   const project = useProject();
-  const deleteOrPropose = useDeleteOrProposeConfig();
-  const org = useOrg();
+  const requireProposals = projectData.project?.requireProposals ?? false;
+  const allowSelfApprovals = projectData.project?.allowSelfApprovals ?? false;
+  const deleteOrPropose = useDeleteOrProposeConfig(requireProposals);
   const [proposalMessage, setProposalMessage] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
   const [pendingProposalData, setPendingProposalData] = useState<any>(null);
@@ -445,8 +446,8 @@ export default function ConfigByNamePage() {
 
           <ConfigForm
             onValuesChange={onValuesChange}
-            mode={org.requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
-            role={org.requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
+            mode={requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
+            role={requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
             currentName={name}
             currentPendingProposalsCount={config.pendingConfigProposals.length}
             variants={config.variants.map(v => ({
@@ -551,7 +552,7 @@ export default function ConfigByNamePage() {
                     <div className="flex-1 text-sm space-y-2">
                       <p className="text-foreground/80 dark:text-foreground/70">
                         This proposal will be automatically rejected if{' '}
-                        {org.requireProposals
+                        {requireProposals
                           ? 'another proposal gets approved'
                           : 'another proposal gets approved or the config is edited directly'}
                         . Only one change can be applied to a config at a time.

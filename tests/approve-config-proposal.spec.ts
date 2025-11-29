@@ -489,9 +489,19 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
 });
 
 describe('approveConfigProposal (allowSelfApprovals=true)', () => {
-  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL, allowSelfApprovals: true});
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   it('should allow self-approval when allowSelfApprovals is true', async () => {
+    // Update project to allow self-approvals
+    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      name: 'Test Project',
+      description: 'Default project for tests',
+      requireProposals: false,
+      allowSelfApprovals: true,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'self_approve_allowed',

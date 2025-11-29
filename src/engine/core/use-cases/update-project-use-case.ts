@@ -8,6 +8,8 @@ export interface UpdateProjectRequest {
   id: string;
   name: string;
   description: string;
+  requireProposals: boolean;
+  allowSelfApprovals: boolean;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -41,6 +43,8 @@ export function createUpdateProjectUseCase(): TransactionalUseCase<
       id: req.id,
       name: req.name,
       description: req.description,
+      requireProposals: req.requireProposals,
+      allowSelfApprovals: req.allowSelfApprovals,
       updatedAt: now,
     });
 
@@ -59,6 +63,8 @@ export function createUpdateProjectUseCase(): TransactionalUseCase<
           id: existing.id,
           name: existing.name,
           description: existing.description,
+          requireProposals: existing.requireProposals,
+          allowSelfApprovals: existing.allowSelfApprovals,
           createdAt: existing.createdAt,
           updatedAt: existing.updatedAt,
         },
@@ -66,6 +72,8 @@ export function createUpdateProjectUseCase(): TransactionalUseCase<
           id: existing.id,
           name: req.name,
           description: req.description,
+          requireProposals: req.requireProposals,
+          allowSelfApprovals: req.allowSelfApprovals,
           createdAt: existing.createdAt,
           updatedAt: now,
         },

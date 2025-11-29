@@ -1,6 +1,8 @@
 import type {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import {ForbiddenError} from './errors';
+import type {OrganizationMemberStore} from './organization-member-store';
+import type {ProjectStore} from './project-store';
 import type {ProjectUserStore} from './project-user-store';
 import {unique} from './utils';
 import type {NormalizedEmail} from './zod';
@@ -10,6 +12,8 @@ export class PermissionService {
     private readonly configUserStore: ConfigUserStore,
     private readonly projectUserStore: ProjectUserStore,
     private readonly configStore: ConfigStore,
+    private readonly projectStore: ProjectStore,
+    private readonly organizationMemberStore: OrganizationMemberStore,
   ) {}
 
   async getConfigOwners(configId: string): Promise<string[]> {
@@ -154,6 +158,58 @@ export class PermissionService {
     return await this.canManageProjectConfigs(projectId, currentUserEmail);
   }
 
+  async canViewProject(projectId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
+    // Check if user has explicit project role
+    const user = await this.projectUserStore.getByProjectIdAndEmail({
+      projectId,
+      userEmail: currentUserEmail,
+    });
+    if (user) return true;
+
+    // Check if user is a member of the project's organization
+    const project = await this.projectStore.getById({
+      id: projectId,
+      currentUserEmail,
+    });
+    if (!project) return false;
+
+    const orgMember = await this.organizationMemberStore.getByOrganizationIdAndEmail({
+      organizationId: project.organizationId,
+      userEmail: currentUserEmail,
+    });
+
+    return !!orgMember;
+  }
+
+  async canViewConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
+    const config = await this.configStore.getById(configId);
+    if (!config) return false;
+
+    return await this.canViewProject(config.projectId, currentUserEmail);
+  }
+
+  async isOrganizationMember(
+    organizationId: string,
+    currentUserEmail: NormalizedEmail,
+  ): Promise<boolean> {
+    const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
+      organizationId,
+      userEmail: currentUserEmail,
+    });
+    return !!member;
+  }
+
+  async isOrganizationAdmin(
+    organizationId: string,
+    currentUserEmail: NormalizedEmail,
+  ): Promise<boolean> {
+    const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
+      organizationId,
+      userEmail: currentUserEmail,
+    });
+    return member?.role === 'admin';
+  }
+
   async ensureCanEditConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<void> {
     const canEdit = await this.canEditConfig(configId, currentUserEmail);
     if (!canEdit) {
@@ -212,6 +268,43 @@ export class PermissionService {
     const canDelete = await this.canDeleteProject(projectId, currentUserEmail);
     if (!canDelete) {
       throw new ForbiddenError('User does not have permission to delete this project');
+    }
+  }
+
+  async ensureCanViewProject(
+    projectId: string,
+    currentUserEmail: NormalizedEmail,
+  ): Promise<void> {
+    const canView = await this.canViewProject(projectId, currentUserEmail);
+    if (!canView) {
+      throw new ForbiddenError('User does not have permission to view this project');
+    }
+  }
+
+  async ensureCanViewConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<void> {
+    const canView = await this.canViewConfig(configId, currentUserEmail);
+    if (!canView) {
+      throw new ForbiddenError('User does not have permission to view this config');
+    }
+  }
+
+  async ensureIsOrganizationMember(
+    organizationId: string,
+    currentUserEmail: NormalizedEmail,
+  ): Promise<void> {
+    const isMember = await this.isOrganizationMember(organizationId, currentUserEmail);
+    if (!isMember) {
+      throw new ForbiddenError('User is not a member of this organization');
+    }
+  }
+
+  async ensureIsOrganizationAdmin(
+    organizationId: string,
+    currentUserEmail: NormalizedEmail,
+  ): Promise<void> {
+    const isAdmin = await this.isOrganizationAdmin(organizationId, currentUserEmail);
+    if (!isAdmin) {
+      throw new ForbiddenError('User is not an admin of this organization');
     }
   }
 }

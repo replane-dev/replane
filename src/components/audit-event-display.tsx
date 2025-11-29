@@ -628,6 +628,58 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
         <div className="text-sm text-muted-foreground">Config variant proposal was rejected</div>
       </div>
     );
+  } else if (type === 'organization_created') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Organization <strong>{payload.organization.name}</strong> was created
+        </div>
+      </div>
+    );
+  } else if (type === 'organization_updated') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Organization <strong>{payload.organization.name}</strong> was updated
+        </div>
+      </div>
+    );
+  } else if (type === 'organization_deleted') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Organization <strong>{payload.organization.name}</strong> was deleted
+        </div>
+      </div>
+    );
+  } else if (type === 'organization_member_added') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Member <strong>{payload.member.email}</strong> was added to organization{' '}
+          <strong>{payload.organization.name}</strong> with role <strong>{payload.member.role}</strong>
+        </div>
+      </div>
+    );
+  } else if (type === 'organization_member_removed') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Member <strong>{payload.member.email}</strong> was removed from organization{' '}
+          <strong>{payload.organization.name}</strong>
+        </div>
+      </div>
+    );
+  } else if (type === 'organization_member_role_changed') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Member <strong>{payload.member.email}</strong> role changed from{' '}
+          <strong>{payload.before.role}</strong> to <strong>{payload.after.role}</strong> in organization{' '}
+          <strong>{payload.organization.name}</strong>
+        </div>
+      </div>
+    );
   } else {
     assertNever(type, 'Unhandled audit event type');
   }

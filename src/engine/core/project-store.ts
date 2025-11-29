@@ -27,6 +27,9 @@ export function Project() {
     id: z.string(),
     name: ProjectName(),
     description: ProjectDescription(),
+    organizationId: z.string(),
+    requireProposals: z.boolean(),
+    allowSelfApprovals: z.boolean(),
     createdAt: z.date(),
     updatedAt: z.date(),
     isExample: z.boolean(),
@@ -39,6 +42,9 @@ export interface ProjectInfo {
   id: string;
   name: string;
   descriptionPreview: string;
+  organizationId: string;
+  requireProposals: boolean;
+  allowSelfApprovals: boolean;
   createdAt: Date;
   updatedAt: Date;
   isExample: boolean;
@@ -49,7 +55,7 @@ export interface ProjectInfo {
 export class ProjectStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getAll(params: {currentUserEmail: NormalizedEmail}): Promise<ProjectInfo[]> {
+  async getUserProjects(params: {currentUserEmail: NormalizedEmail}): Promise<ProjectInfo[]> {
     const projectsQuery = this.db
       .selectFrom('projects')
       .orderBy('projects.name')
@@ -61,11 +67,23 @@ export class ProjectStore {
           ]),
         ),
       )
+      .innerJoin('organizations', 'projects.organization_id', 'organizations.id')
+      .innerJoin('organization_members', jb =>
+        jb.on(eb =>
+          eb.and([
+            eb('organization_members.organization_id', '=', eb.ref('organizations.id')),
+            eb('organization_members.user_email_normalized', '=', params.currentUserEmail),
+          ]),
+        ),
+      )
       .select([
         'projects.created_at',
         'projects.id',
         'projects.name',
         'projects.description',
+        'projects.organization_id',
+        'projects.require_proposals',
+        'projects.allow_self_approvals',
         'projects.updated_at',
         'projects.is_example',
         'project_users.role as myRole',
@@ -77,6 +95,9 @@ export class ProjectStore {
       id: p.id,
       name: p.name,
       descriptionPreview: p.description.substring(0, 100),
+      organizationId: p.organization_id,
+      requireProposals: p.require_proposals,
+      allowSelfApprovals: p.allow_self_approvals,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
       isExample: p.is_example,
@@ -117,6 +138,9 @@ export class ProjectStore {
         'projects.id',
         'projects.name',
         'projects.description',
+        'projects.organization_id',
+        'projects.require_proposals',
+        'projects.allow_self_approvals',
         'projects.updated_at',
         'projects.is_example',
         'project_users.role as myRole',
@@ -143,6 +167,9 @@ export class ProjectStore {
         updated_at: project.updatedAt,
         name: project.name,
         description: project.description,
+        organization_id: project.organizationId,
+        require_proposals: project.requireProposals,
+        allow_self_approvals: project.allowSelfApprovals,
       })
       .execute();
   }
@@ -151,6 +178,8 @@ export class ProjectStore {
     id: string;
     name: string;
     description: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
     updatedAt: Date;
   }): Promise<void> {
     await this.db
@@ -158,6 +187,8 @@ export class ProjectStore {
       .set({
         name: params.name,
         description: params.description,
+        require_proposals: params.requireProposals,
+        allow_self_approvals: params.allowSelfApprovals,
         updated_at: params.updatedAt,
       })
       .where('id', '=', params.id)
@@ -186,6 +217,9 @@ function mapProject(project: Selectable<Projects>): Project {
     id: project.id,
     name: project.name,
     description: project.description,
+    organizationId: project.organization_id,
+    requireProposals: project.require_proposals,
+    allowSelfApprovals: project.allow_self_approvals,
     createdAt: project.created_at,
     updatedAt: project.updated_at,
     isExample: project.is_example,

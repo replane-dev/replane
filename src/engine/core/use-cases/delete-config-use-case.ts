@@ -12,24 +12,36 @@ export interface DeleteConfigRequest {
 
 export interface DeleteConfigResponse {}
 
-export interface DeleteConfigUseCaseDeps {
-  requireProposals: boolean;
-}
+export interface DeleteConfigUseCaseDeps {}
 
 export function createDeleteConfigUseCase(
   deps: DeleteConfigUseCaseDeps,
 ): TransactionalUseCase<DeleteConfigRequest, DeleteConfigResponse> {
   return async (ctx, tx, req) => {
+    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    assert(currentUser, 'Current user not found');
+
+    // Get the config to find the project
+    const config = await tx.configs.getById(req.configId);
+    if (!config) {
+      throw new BadRequestError('Config not found');
+    }
+
+    const project = await tx.projects.getById({
+      id: config.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+    if (!project) {
+      throw new BadRequestError('Project not found');
+    }
+
     // When requireProposals is enabled, forbid direct deletions.
     // Users should use the proposal workflow instead of deleting configs outright.
-    if (deps.requireProposals) {
+    if (project.requireProposals) {
       throw new BadRequestError(
         'Direct config deletion is disabled. Please use the proposal workflow instead.',
       );
     }
-
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-    assert(currentUser, 'Current user not found');
 
     await tx.configService.deleteConfig({
       configId: req.configId,

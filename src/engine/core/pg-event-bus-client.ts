@@ -1,9 +1,9 @@
 // PgEventBusClient.ts
 import assert from 'assert';
 import type {Pool, PoolClient} from 'pg';
+import {GLOBAL_CONTEXT} from './context';
 import type {EventBusClient} from './event-bus';
-
-export type Log = Pick<Console, 'debug' | 'info' | 'warn' | 'error'>;
+import type {Logger} from './logger';
 
 export interface PgEventBusClientBackoffOptions {
   /** Initial delay before first retry (ms). Default 500. */
@@ -34,11 +34,11 @@ export interface PgEventBusClientOptions<T = unknown> {
   /** Called for every NOTIFY. */
   onNotification: PgEventBusClientNotificationHandler<T>;
   /** Optional hooks and behavior. */
-  onReconnect?: (info: {attempt: number; delayMs: number; cause?: Error}) => void;
-  onError?: (err: Error) => void;
+  onReconnect?: (info: {attempt: number; delayMs: number; cause?: unknown}) => void;
+  onError?: (err: unknown) => void;
   healthcheck?: PgEventBusClientHealthcheckOptions;
   backoff?: PgEventBusClientBackoffOptions;
-  logger?: Log;
+  logger?: Logger;
   /** Optional app name to set on the session for observability. */
   applicationName?: string;
 }
@@ -49,7 +49,7 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
   private readonly onNotification: PgEventBusClientNotificationHandler<T>;
   private readonly onReconnect?: PgEventBusClientOptions<T>['onReconnect'];
   private readonly onError?: PgEventBusClientOptions<T>['onError'];
-  private readonly log: Log;
+  private readonly log: Logger;
   private readonly appName?: string;
 
   private readonly hc: Required<PgEventBusClientHealthcheckOptions>;
@@ -99,8 +99,11 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
 
     // periodic health check on the listener session
     this.healthTimer = setInterval(() => {
-      void this.healthCheck().catch(err => {
-        this.log.warn('[PgEventBusClient] healthcheck failed:', err?.message);
+      void this.healthCheck().catch((err: unknown) => {
+        this.log.warn(GLOBAL_CONTEXT, {
+          msg: '[PgEventBusClient] healthcheck failed:',
+          error: err,
+        });
         this.onError?.(err);
         void this.restart('healthcheck-failed', err);
       });
@@ -157,15 +160,18 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
       if (this.connectAttempt > 0) {
         delay = backoffDelay(this.connectAttempt, this.bo);
         this.onReconnect?.({attempt: this.connectAttempt, delayMs: delay});
-        this.log.warn(
-          `[PgEventBusClient] reconnecting (attempt #${this.connectAttempt}) in ${delay}ms; reason: ${reason}`,
-        );
+        this.log.warn(GLOBAL_CONTEXT, {
+          msg: `[PgEventBusClient] reconnecting (attempt #${this.connectAttempt}) in ${delay}ms; reason: ${reason}`,
+        });
         await sleep(delay);
       }
 
       this.connectAttempt++;
 
       const client = await this.pool.connect();
+      this.log.info(GLOBAL_CONTEXT, {
+        msg: `[PgEventBusClient] connected to pool`,
+      });
       try {
         // Session configuration (optional)
         if (this.appName) {
@@ -184,8 +190,10 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
 
         this.client = client;
         this.connectAttempt = 0; // reset backoff
-        this.log.info('[PgEventBusClient] listening on', this.channel);
-      } catch (err) {
+        this.log.info(GLOBAL_CONTEXT, {
+          msg: `[PgEventBusClient] listening on ${this.channel}`,
+        });
+      } catch (err: unknown) {
         // If anything failed, detach handlers and drop the session
         client.removeListener('notification', this.handleNotification);
         client.removeListener('error', this.handleClientError);
@@ -214,37 +222,47 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
     assert(this.channel === msg.channel, 'Received notification on unexpected channel');
 
     if (msg.payload == null) {
-      this.log.error('[PgEventBusClient] received NOTIFY with null payload');
+      this.log.error(GLOBAL_CONTEXT, {
+        msg: '[PgEventBusClient] received NOTIFY with null payload',
+      });
       this.onError?.(new Error('Received NOTIFY with null payload'));
       return;
     }
 
     try {
       this.onNotification(JSON.parse(msg.payload) as T);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Don’t kill the listener on user handler errors; just surface them.
-      this.log.error(
-        '[PgEventBusClient] onNotification handler error:',
-        err?.stack || err?.message || err,
-      );
+      this.log.error(GLOBAL_CONTEXT, {
+        msg: '[PgEventBusClient] onNotification handler error:',
+        error: err,
+      });
       this.onError?.(err);
     }
   };
 
   private handleClientError = (err: Error) => {
     // Most client errors are non-recoverable for that session; restart.
-    this.log.warn('[PgEventBusClient] client error:', err.message);
+    this.log.warn(GLOBAL_CONTEXT, {
+      msg: '[PgEventBusClient] client error:',
+      error: err,
+    });
     this.onError?.(err);
     void this.restart('client-error', err);
   };
 
   private handleClientEnd = () => {
-    this.log.warn('[PgEventBusClient] client ended');
+    this.log.warn(GLOBAL_CONTEXT, {
+      msg: '[PgEventBusClient] client ended',
+    });
     void this.restart('client-ended');
   };
 
-  private async restart(reason: string, cause?: Error): Promise<void> {
-    console.warn('restart', reason, cause);
+  private async restart(reason: string, cause?: unknown): Promise<void> {
+    this.log.warn(GLOBAL_CONTEXT, {
+      msg: `[PgEventBusClient] restarting (reason: ${reason})`,
+      error: cause,
+    });
     if (this.stopping) return;
     await this.teardownClient();
     await this.ensureConnected(reason);
@@ -292,15 +310,6 @@ export class PgEventBusClient<T = unknown> implements EventBusClient<T> {
       } catch {
         /* ignore */
       }
-      throw err;
-    }
-  }
-
-  private async safeQuery(client: PoolClient, sql: string): Promise<void> {
-    try {
-      await client.query(sql);
-    } catch (err) {
-      this.log.warn('[PgEventBusClient] query failed:', sql, (err as Error).message);
       throw err;
     }
   }

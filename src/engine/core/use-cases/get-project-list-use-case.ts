@@ -12,6 +12,9 @@ export interface GetProjectListResponse {
     descriptionPreview: string;
     createdAt: Date;
     updatedAt: Date;
+    organizationId: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
     myRole?: 'admin' | 'maintainer';
     isExample: boolean;
   }>;
@@ -22,7 +25,7 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
   GetProjectListResponse
 > {
   return async (_ctx, tx, req) => {
-    const list = await tx.projects.getAll({currentUserEmail: req.currentUserEmail});
+    const list = await tx.projects.getUserProjects({currentUserEmail: req.currentUserEmail});
     return {
       projects: list.map(p => ({
         id: p.id,
@@ -30,6 +33,9 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
         descriptionPreview: p.descriptionPreview,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
+        organizationId: p.organizationId,
+        requireProposals: p.requireProposals,
+        allowSelfApprovals: p.allowSelfApprovals,
         myRole: p.myRole,
         isExample: p.isExample,
       })),

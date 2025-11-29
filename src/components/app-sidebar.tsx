@@ -3,15 +3,19 @@
 import {BookOpen, FileCog, History, Key, LifeBuoy, Settings} from 'lucide-react';
 import * as React from 'react';
 
-import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useProject, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {NavMain} from '@/components/nav-main';
 import {NavSecondary} from '@/components/nav-secondary';
 import {NavUser} from '@/components/nav-user';
+import {SettingsDialog} from '@/components/settings-dialog';
 import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader} from '@/components/ui/sidebar';
 import {ProjectSwitcher} from './project-switcher';
 
 export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
   const projectId = useProjectId();
+  const project = useProject();
+  const [showSettings, setShowSettings] = React.useState(false);
+
   const data = {
     navSecondary: [
       {
@@ -46,35 +50,31 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
       {
         name: 'Settings',
         icon: Settings,
-        items: [
-          {
-            name: 'General',
-            url: `/app/projects/${projectId}/settings/general`,
-          },
-          {
-            name: 'Environments',
-            url: `/app/projects/${projectId}/settings/environments`,
-          },
-          {
-            name: 'Members',
-            url: `/app/projects/${projectId}/settings/members`,
-          },
-        ],
+        onClick: () => setShowSettings(true),
       },
     ],
   };
+
   return (
-    <Sidebar variant="inset" {...props}>
-      <SidebarHeader>
-        <ProjectSwitcher />
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser />
-      </SidebarFooter>
-    </Sidebar>
+    <>
+      <Sidebar variant="inset" {...props}>
+        <SidebarHeader>
+          <ProjectSwitcher />
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain items={data.navMain} />
+          <NavSecondary items={data.navSecondary} className="mt-auto" />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser />
+        </SidebarFooter>
+      </Sidebar>
+      <SettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        projectId={projectId}
+        organizationId={project.organizationId}
+      />
+    </>
   );
 }

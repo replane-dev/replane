@@ -3,7 +3,6 @@ import {DelayedFullscreenSpinner} from '@/components/delayed-fullscreen-spinner'
 import {ErrorFallback} from '@/components/error-fallback';
 import {ThemeProvider} from '@/components/theme-provider';
 import {Toaster} from '@/components/ui/sonner';
-import {OrgProvider} from '@/contexts/org-context';
 import {TRPCReactProvider} from '@/trpc/client';
 import {HydrateClient} from '@/trpc/server';
 import type {Metadata} from 'next';
@@ -52,7 +51,7 @@ export default function RootLayout({
               <HydrateClient>
                 <ErrorBoundary FallbackComponent={ErrorFallback}>
                   <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>
-                    <OrgProvider>{children}</OrgProvider>
+                    {children}
                   </Suspense>
                 </ErrorBoundary>
               </HydrateClient>

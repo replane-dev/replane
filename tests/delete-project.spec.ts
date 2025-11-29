@@ -14,6 +14,7 @@ describe('deleteProject', () => {
     // Create an extra project so default project is not last one when deleting
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      organizationId: fixture.organizationId,
       name: 'ToDelete',
       description: 'temp',
     });
@@ -46,6 +47,7 @@ describe('deleteProject', () => {
   it('fails when confirmation name does not match', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      organizationId: fixture.organizationId,
       name: 'WrongConfirm',
       description: 'x',
     });
@@ -60,7 +62,7 @@ describe('deleteProject', () => {
   });
 
   it('prevents deleting the last remaining project', async () => {
-    const allProjects = await fixture.engine.testing.projects.getAll({
+    const allProjects = await fixture.engine.testing.projects.getUserProjects({
       currentUserEmail: CURRENT_USER_EMAIL,
     });
     for (const project of allProjects.filter(x => x.id !== fixture.projectId)) {
@@ -80,6 +82,7 @@ describe('deleteProject', () => {
     // Create project with two owners then remove current user to drop ownership
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      organizationId: fixture.organizationId,
       name: 'ForbiddenDelete',
       description: 'x',
     });
@@ -112,14 +115,27 @@ describe('deleteProject', () => {
 });
 
 describe('deleteProject with proposals required', () => {
-  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL, requireProposals: true});
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   it('forbids direct deletion when proposals are required', async () => {
+    // Update project to require proposals
+    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      name: 'Test Project',
+      description: 'Default project for tests',
+      requireProposals: true,
+      allowSelfApprovals: false,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
     // Create an extra project so we are not attempting to delete the last one
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
+      organizationId: fixture.organizationId,
       name: 'ToDeleteWithProposals',
       description: 'temp',
+      requireProposals: true,
+      allowSelfApprovals: false,
     });
 
     await expect(

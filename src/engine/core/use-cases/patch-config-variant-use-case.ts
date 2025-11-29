@@ -18,7 +18,6 @@ export interface PatchConfigVariantResponse {}
 
 export interface PatchConfigVariantUseCaseDeps {
   dateProvider: DateProvider;
-  requireProposals: boolean;
 }
 
 export function createPatchConfigVariantUseCase(
@@ -28,7 +27,26 @@ export function createPatchConfigVariantUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    if (deps.requireProposals) {
+    // Get the config variant to find the config and then the project
+    const variant = await tx.configVariants.getById(req.configVariantId);
+    if (!variant) {
+      throw new BadRequestError('Config variant not found');
+    }
+
+    const config = await tx.configs.getById(variant.configId);
+    if (!config) {
+      throw new BadRequestError('Config not found');
+    }
+
+    const project = await tx.projects.getById({
+      id: config.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+    if (!project) {
+      throw new BadRequestError('Project not found');
+    }
+
+    if (project.requireProposals) {
       throw new BadRequestError(
         'Direct config variant changes are disabled. Please create a proposal instead.',
       );

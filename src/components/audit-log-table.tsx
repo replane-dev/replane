@@ -123,6 +123,36 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
       action: 'Config Variant Proposal Rejected',
       details: `Variant proposal rejected`,
     };
+  } else if (payload.type === 'organization_created') {
+    return {
+      action: 'Organization Created',
+      details: `Organization ${payload.organization.name} created`,
+    };
+  } else if (payload.type === 'organization_updated') {
+    return {
+      action: 'Organization Updated',
+      details: `Organization ${payload.organization.name} updated`,
+    };
+  } else if (payload.type === 'organization_deleted') {
+    return {
+      action: 'Organization Deleted',
+      details: `Organization ${payload.organization.name} deleted`,
+    };
+  } else if (payload.type === 'organization_member_added') {
+    return {
+      action: 'Organization Member Added',
+      details: `Added ${payload.member.email} as ${payload.member.role}`,
+    };
+  } else if (payload.type === 'organization_member_removed') {
+    return {
+      action: 'Organization Member Removed',
+      details: `Removed ${payload.member.email}`,
+    };
+  } else if (payload.type === 'organization_member_role_changed') {
+    return {
+      action: 'Organization Member Role Changed',
+      details: `Changed ${payload.member.email} from ${payload.before.role} to ${payload.after.role}`,
+    };
   } else {
     assertNever(payload, `Unhandled payload type: ${JSON.stringify(payload)}`);
   }

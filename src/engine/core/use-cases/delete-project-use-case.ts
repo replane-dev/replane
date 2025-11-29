@@ -12,23 +12,21 @@ export interface DeleteProjectRequest {
 
 export interface DeleteProjectResponse {}
 
-export interface DeleteProjectUseCaseDeps {
-  requireProposals: boolean;
-}
+export interface DeleteProjectUseCaseDeps {}
 
 export function createDeleteProjectUseCase(
   deps: DeleteProjectUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectRequest, DeleteProjectResponse> {
   return async (_ctx, tx, req) => {
-    if (deps.requireProposals) {
-      throw new ForbiddenError('Direct project deletion is disabled.');
-    }
-
     const project = await tx.projects.getById({
       id: req.id,
       currentUserEmail: req.currentUserEmail,
     });
     if (!project) throw new BadRequestError('Project not found');
+
+    if (project.requireProposals) {
+      throw new ForbiddenError('Direct project deletion is disabled.');
+    }
 
     // confirm project name
     if (project.name !== req.confirmName) {

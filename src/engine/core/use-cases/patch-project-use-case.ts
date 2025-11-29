@@ -12,6 +12,8 @@ export interface PatchProjectRequest {
   details?: {
     name: string;
     description: string;
+    requireProposals?: boolean;
+    allowSelfApprovals?: boolean;
   };
   members?: {
     users: Array<{email: string; role: ProjectUserRole}>;
@@ -40,13 +42,20 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
       const canManage = await tx.permissionService.canManageProject(req.id, req.currentUserEmail);
       if (!canManage) throw new BadRequestError('You are not allowed to manage this project');
 
-      const {name, description} = req.details;
+      const {name, description, requireProposals, allowSelfApprovals} = req.details;
       if (name !== existing.name) {
         const same = await tx.projects.getByName(name);
         if (same) throw new BadRequestError('Project with this name already exists');
       }
 
-      await tx.projects.updateById({id: req.id, name, description, updatedAt: now});
+      await tx.projects.updateById({
+        id: req.id,
+        name,
+        description,
+        requireProposals: requireProposals ?? existing.requireProposals,
+        allowSelfApprovals: allowSelfApprovals ?? existing.allowSelfApprovals,
+        updatedAt: now,
+      });
 
       await tx.auditLogs.create({
         id: createAuditLogId(),

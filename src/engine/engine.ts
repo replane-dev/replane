@@ -14,10 +14,11 @@ import {type ConfigReplicaEvent, ConfigsReplica} from './core/configs-replica';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
-import {ConflictError} from './core/errors';
 import type {EventBusClient} from './core/event-bus';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
+import {OrganizationMemberStore} from './core/organization-member-store';
+import {OrganizationStore} from './core/organization-store';
 import {PermissionService} from './core/permission-service';
 import {
   PgEventBusClient,
@@ -32,14 +33,17 @@ import type {Service} from './core/service';
 import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
+import {createAddOrganizationMemberUseCase} from './core/use-cases/add-organization-member-use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
+import {createCreateOrganizationUseCase} from './core/use-cases/create-organization-use-case';
 import {createCreateProjectEnvironmentUseCase} from './core/use-cases/create-project-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
+import {createDeleteOrganizationUseCase} from './core/use-cases/delete-organization-use-case';
 import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
@@ -56,6 +60,9 @@ import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-con
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
 import {createGetEnvironmentListUseCase} from './core/use-cases/get-environment-list-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
+import {createGetOrganizationListUseCase} from './core/use-cases/get-organization-list-use-case';
+import {createGetOrganizationMembersUseCase} from './core/use-cases/get-organization-members-use-case';
+import {createGetOrganizationUseCase} from './core/use-cases/get-organization-use-case';
 import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
@@ -66,19 +73,21 @@ import {createPatchConfigVariantUseCase} from './core/use-cases/patch-config-var
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
+import {createRemoveOrganizationMemberUseCase} from './core/use-cases/remove-organization-member-use-case';
 import {createRestoreConfigVariantVersionUseCase} from './core/use-cases/restore-config-variant-version-use-case';
+import {createUpdateOrganizationMemberRoleUseCase} from './core/use-cases/update-organization-member-role-use-case';
+import {createUpdateOrganizationUseCase} from './core/use-cases/update-organization-use-case';
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {UserStore} from './core/user-store';
+import {runTransactional} from './core/utils';
 
 export interface EngineOptions {
   logLevel: LogLevel;
   databaseUrl: string;
   dbSchema: string;
-  requireProposals: boolean;
-  allowSelfApprovals: boolean;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
   createEventBusClient?: (
@@ -99,89 +108,71 @@ function toUseCase<TReq, TRes>(
   options: ToUseCaseOptions,
 ): UseCase<TReq, TRes> {
   return async (ctx: Context, req: TReq) => {
-    for (let attempt = 0; attempt <= options.onConflictRetriesCount; attempt++) {
-      const optimisticEffects: Array<() => Promise<void>> = [];
-      function scheduleOptimisticEffect(effect: () => Promise<void>) {
-        optimisticEffects.push(effect);
-      }
+    return await runTransactional({
+      ctx,
+      db,
+      logger,
+      onConflictRetriesCount: options.onConflictRetriesCount,
+      fn: async (ctx, dbTx, scheduleOptimisticEffect) => {
+        const configs = new ConfigStore(dbTx);
+        const configProposals = new ConfigProposalStore(dbTx);
+        const users = new UserStore(dbTx);
+        const configUsers = new ConfigUserStore(dbTx);
+        const sdkKeys = new SdkKeyStore(dbTx);
+        const auditLogs = new AuditLogStore(dbTx);
+        const projectUsers = new ProjectUserStore(dbTx);
+        const projects = new ProjectStore(dbTx);
+        const projectEnvironments = new ProjectEnvironmentStore(dbTx);
+        const organizations = new OrganizationStore(dbTx);
+        const organizationMembers = new OrganizationMemberStore(dbTx);
+        const configVariants = new ConfigVariantStore(
+          dbTx,
+          scheduleOptimisticEffect,
+          options.listener,
+        );
+        const configVariantVersions = new ConfigVariantVersionStore(dbTx);
+        const permissionService = new PermissionService(
+          configUsers,
+          projectUsers,
+          configs,
+          projects,
+          organizationMembers,
+        );
+        const configService = new ConfigService(
+          configs,
+          configProposals,
+          configUsers,
+          permissionService,
+          auditLogs,
+          options.dateProvider,
+          projectEnvironments,
+          configVariants,
+          configVariantVersions,
+        );
 
-      const dbTx = await db.startTransaction().setIsolationLevel('serializable').execute();
-      const configs = new ConfigStore(dbTx);
-      const configProposals = new ConfigProposalStore(dbTx);
-      const users = new UserStore(dbTx);
-      const configUsers = new ConfigUserStore(dbTx);
-      const sdkKeys = new SdkKeyStore(dbTx);
-      const auditLogs = new AuditLogStore(dbTx);
-      const projectUsers = new ProjectUserStore(dbTx);
-      const projects = new ProjectStore(dbTx);
-      const projectEnvironments = new ProjectEnvironmentStore(dbTx);
-      const configVariants = new ConfigVariantStore(
-        dbTx,
-        scheduleOptimisticEffect,
-        options.listener,
-      );
-      const configVariantVersions = new ConfigVariantVersionStore(dbTx);
-      const permissionService = new PermissionService(configUsers, projectUsers, configs);
-      const configService = new ConfigService(
-        configs,
-        configProposals,
-        configUsers,
-        permissionService,
-        auditLogs,
-        options.dateProvider,
-        projectEnvironments,
-        configVariants,
-        configVariantVersions,
-      );
-
-      const tx: UseCaseTransaction = {
-        scheduleOptimisticEffect,
-        configs,
-        configProposals,
-        configService,
-        users,
-        configUsers,
-        permissionService,
-        sdkKeys,
-        auditLogs,
-        projectUsers,
-        projects,
-        projectEnvironments,
-        configVariants,
-        configVariantVersions,
-      };
-      try {
+        const tx: UseCaseTransaction = {
+          scheduleOptimisticEffect,
+          configs,
+          configProposals,
+          configService,
+          users,
+          configUsers,
+          permissionService,
+          sdkKeys,
+          auditLogs,
+          projectUsers,
+          projects,
+          projectEnvironments,
+          configVariants,
+          configVariantVersions,
+          organizations,
+          organizationMembers,
+          db: dbTx,
+        };
         const result = await useCase(ctx, tx, req);
-        await dbTx.commit().execute();
-
-        void Promise.all(optimisticEffects.map(effect => effect()));
-
         return result;
-      } catch (error) {
-        await dbTx.rollback().execute();
-
-        if (error instanceof Error && 'code' in error && error.code === '40001') {
-          // we got SerializationFailure (SQLSTATE 40001), retry
-
-          if (attempt === options.onConflictRetriesCount) {
-            throw new ConflictError(
-              `Transaction failed after ${options.onConflictRetriesCount} attempts due to serialization failure.`,
-              {cause: error},
-            );
-          } else {
-            logger.warn(ctx, {
-              msg: `Transaction failed due to serialization failure, retrying... (attempt ${attempt + 1})`,
-              attempt,
-              error,
-            });
-          }
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    throw new Error('unreachable');
+      },
+    });
   };
 }
 
@@ -251,22 +242,17 @@ export async function createEngine(options: EngineOptions) {
     createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
     approveConfigProposal: createApproveConfigProposalUseCase({
       dateProvider,
-      allowSelfApprovals: options.allowSelfApprovals,
     }),
     rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
     rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
-    patchConfig: createPatchConfigUseCase({
-      dateProvider,
-      requireProposals: options.requireProposals,
-    }),
+    patchConfig: createPatchConfigUseCase({dateProvider}),
     patchConfigVariant: createPatchConfigVariantUseCase({
       dateProvider,
-      requireProposals: options.requireProposals,
     }),
     getConfig: createGetConfigUseCase({}),
-    deleteConfig: createDeleteConfigUseCase({requireProposals: options.requireProposals}),
+    deleteConfig: createDeleteConfigUseCase({}),
     getConfigVariantVersionList: createGetConfigVariantVersionListUseCase(),
     getConfigVariantVersion: createGetConfigVariantVersionUseCase(),
     getApiKeyList: createGetApiKeyListUseCase(),
@@ -275,7 +261,7 @@ export async function createEngine(options: EngineOptions) {
     getProjectList: createGetProjectListUseCase(),
     getProject: createGetProjectUseCase(),
     createProject: createCreateProjectUseCase(),
-    deleteProject: createDeleteProjectUseCase({requireProposals: options.requireProposals}),
+    deleteProject: createDeleteProjectUseCase({}),
     updateProject: createUpdateProjectUseCase(),
     patchProject: createPatchProjectUseCase(),
     getProjectUsers: createGetProjectUsersUseCase(),
@@ -288,6 +274,16 @@ export async function createEngine(options: EngineOptions) {
     restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
     getEnvironmentList: createGetEnvironmentListUseCase({}),
+    // Organization use cases
+    createOrganization: createCreateOrganizationUseCase(),
+    getOrganization: createGetOrganizationUseCase(),
+    getOrganizationList: createGetOrganizationListUseCase(),
+    updateOrganization: createUpdateOrganizationUseCase(),
+    deleteOrganization: createDeleteOrganizationUseCase(),
+    getOrganizationMembers: createGetOrganizationMembersUseCase(),
+    addOrganizationMember: createAddOrganizationMemberUseCase(),
+    removeOrganizationMember: createRemoveOrganizationMemberUseCase(),
+    updateOrganizationMemberRole: createUpdateOrganizationMemberRoleUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;

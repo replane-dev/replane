@@ -5,6 +5,11 @@ import Ajv2019 from 'ajv/dist/2019';
 import Ajv2020 from 'ajv/dist/2020';
 import draft06MetaSchema from 'ajv/dist/refs/json-schema-draft-06.json';
 import assert from 'assert';
+import type {Kysely} from 'kysely';
+import type {Context} from './context';
+import type {DB} from './db';
+import {ConflictError} from './errors';
+import type {Logger} from './logger';
 import type {NormalizedEmail} from './zod';
 
 export type Brand<T, B> = T & {__brand: () => B | undefined};
@@ -28,19 +33,8 @@ function parseBooleanEnv(value: string | undefined): boolean {
   return ['1', 'true', 'yes', 'on'].includes((value ?? '').trim().toLowerCase());
 }
 
-export interface OrganizationConfig {
-  organizationName: string | null;
-  requireProposals: boolean;
-  allowSelfApprovals: boolean;
-}
-
-export function getOrganizationConfig(): OrganizationConfig {
-  const name = process.env.ORGANIZATION_NAME?.trim();
-  return {
-    organizationName: name && name.length > 0 ? name : null,
-    requireProposals: parseBooleanEnv(process.env.REQUIRE_PROPOSALS),
-    allowSelfApprovals: parseBooleanEnv(process.env.ALLOW_SELF_APPROVALS),
-  };
+export function shouldAutoAddToOrganizations(): boolean {
+  return parseBooleanEnv(process.env.AUTO_ADD_TO_ORGANIZATIONS_ON_REGISTRATION);
 }
 
 export function chunkArray<T>(array: T[], size: number): T[][] {
@@ -261,4 +255,56 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-7][0-9a-f]{3}-[89ab][0-9a-f]{3}-
  */
 export function isValidUuid(value: string): boolean {
   return UUID_REGEX.test(value);
+}
+
+export async function runTransactional<T>(params: {
+  ctx: Context;
+  db: Kysely<DB>;
+  fn: (
+    ctx: Context,
+    tx: Kysely<DB>,
+    scheduleOptimisticEffect: (effect: () => Promise<void>) => void,
+  ) => Promise<T>;
+  onConflictRetriesCount: number;
+  logger: Logger;
+}): Promise<T> {
+  for (let attempt = 0; attempt <= params.onConflictRetriesCount; attempt++) {
+    const dbTx = await params.db.startTransaction().setIsolationLevel('serializable').execute();
+    try {
+      const optimisticEffects: Array<() => Promise<void>> = [];
+      function scheduleOptimisticEffect(effect: () => Promise<void>) {
+        optimisticEffects.push(effect);
+      }
+
+      const result = await params.fn(params.ctx, dbTx, scheduleOptimisticEffect);
+      await dbTx.commit().execute();
+
+      void Promise.all(optimisticEffects.map(effect => effect()));
+
+      return result;
+    } catch (error) {
+      await dbTx.rollback().execute();
+
+      if (error instanceof Error && 'code' in error && error.code === '40001') {
+        // we got SerializationFailure (SQLSTATE 40001), retry
+
+        if (attempt === params.onConflictRetriesCount) {
+          throw new ConflictError(
+            `Transaction failed after ${params.onConflictRetriesCount} attempts due to serialization failure.`,
+            {cause: error},
+          );
+        } else {
+          params.logger.warn(params.ctx, {
+            msg: `Transaction failed due to serialization failure, retrying... (attempt ${attempt + 1})`,
+            attempt,
+            error,
+          });
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('runTransactional unreachable');
 }

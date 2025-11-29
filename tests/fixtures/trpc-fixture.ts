@@ -14,8 +14,6 @@ export interface TrpcFixtureOptions {
   authEmail: string;
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
-  requireProposals?: boolean;
-  allowSelfApprovals?: boolean;
 }
 
 function _createCaller() {
@@ -34,6 +32,7 @@ export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
   private overrideNow: Date = new Date();
+  private _organizationId: string | undefined;
   private _projectId: string | undefined;
   private _productionEnvironmentId: string | undefined;
   private _developmentEnvironmentId: string | undefined;
@@ -52,8 +51,6 @@ export class AppFixture {
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
       createEventBusClient: onNotification => eventBus.createClient(onNotification),
-      requireProposals: this.options.requireProposals ?? false,
-      allowSelfApprovals: this.options.allowSelfApprovals ?? false,
     });
 
     const connection = await engine.testing.pool.connect();
@@ -71,8 +68,16 @@ export class AppFixture {
     this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
     this._engine = engine;
 
+    // Create test organization
+    const {organizationId} = await engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+      currentUserEmail: normalizeEmail(this.options.authEmail),
+      name: 'Test Organization',
+    });
+    this._organizationId = organizationId;
+
     const {projectId, environments} = await engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: normalizeEmail(this.options.authEmail),
+      organizationId,
       name: 'Test Project',
       description: 'Default project for tests',
     });
@@ -102,6 +107,11 @@ export class AppFixture {
       throw new Error('engine is not initialized');
     }
     return this._engine;
+  }
+
+  get organizationId(): string {
+    if (!this._organizationId) throw new Error('organizationId not initialized');
+    return this._organizationId;
   }
 
   get projectId(): string {

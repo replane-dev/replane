@@ -228,9 +228,19 @@ describe('deleteConfig', () => {
 });
 
 describe('deleteConfig (requireProposals=true)', () => {
-  const fixture = useAppFixture({authEmail: TEST_USER_EMAIL, requireProposals: true});
+  const fixture = useAppFixture({authEmail: TEST_USER_EMAIL});
 
   it('should forbid direct delete when requireProposals is enabled', async () => {
+    // Update project to require proposals
+    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      name: 'Test Project',
+      description: 'Default project for tests',
+      requireProposals: true,
+      allowSelfApprovals: false,
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'cannot_delete_when_require_proposals',
@@ -253,6 +263,16 @@ describe('deleteConfig (requireProposals=true)', () => {
   });
 
   it('should forbid deletion if version mismatch', async () => {
+    // Update project to require proposals
+    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      name: 'Test Project',
+      description: 'Default project for tests',
+      requireProposals: true,
+      allowSelfApprovals: false,
+      currentUserEmail: TEST_USER_EMAIL,
+    });
+
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'version_mismatch_delete',

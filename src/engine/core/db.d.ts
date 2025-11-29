@@ -20,6 +20,8 @@ export type Generated<T> =
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
+export type OrganizationMemberRole = 'admin' | 'member';
+
 export type ProjectUserRole = 'admin' | 'maintainer';
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
@@ -55,9 +57,9 @@ export interface ConfigProposals {
   config_id: string;
   created_at: Timestamp;
   id: string;
-  original_members: string;
-  original_description: string;
   message: string | null;
+  original_description: string;
+  original_members: string;
   proposed_delete: Generated<boolean>;
   proposed_description: string | null;
   proposed_members: string | null;
@@ -66,6 +68,16 @@ export interface ConfigProposals {
   rejected_in_favor_of_proposal_id: string | null;
   rejection_reason: ConfigProposalRejectionReason | null;
   reviewer_id: number | null;
+}
+
+export interface ConfigProposalVariants {
+  base_variant_version: number;
+  config_variant_id: string;
+  id: string;
+  proposal_id: string;
+  proposed_overrides: string | null;
+  proposed_schema: string | null;
+  proposed_value: string | null;
 }
 
 export interface Configs {
@@ -85,16 +97,6 @@ export interface ConfigUsers {
   role: ConfigUserRole;
   updated_at: Timestamp;
   user_email_normalized: string;
-}
-
-export interface ConfigProposalVariants {
-  id: string;
-  proposal_id: string;
-  config_variant_id: string;
-  base_variant_version: number;
-  proposed_value: string | null;
-  proposed_schema: string | null;
-  proposed_overrides: string | null;
 }
 
 export interface ConfigVariants {
@@ -129,21 +131,40 @@ export interface Migrations {
   sql: string;
 }
 
+export interface OrganizationMembers {
+  created_at: Timestamp;
+  organization_id: string;
+  role: OrganizationMemberRole;
+  updated_at: Timestamp;
+  user_email_normalized: string;
+}
+
+export interface Organizations {
+  created_at: Timestamp;
+  id: string;
+  name: string;
+  personal_org_user_id: number | null;
+  updated_at: Timestamp;
+}
+
 export interface ProjectEnvironments {
   created_at: Timestamp;
   id: string;
   name: string;
-  order: number;
+  order: Generated<number>;
   project_id: string;
   updated_at: Timestamp;
 }
 
 export interface Projects {
+  allow_self_approvals: boolean;
   created_at: Timestamp;
   description: string;
   id: string;
   is_example: Generated<boolean>;
   name: string;
+  organization_id: string;
+  require_proposals: boolean;
   updated_at: Timestamp;
 }
 
@@ -190,13 +211,15 @@ export interface VerificationToken {
 export interface DB {
   accounts: Accounts;
   audit_logs: AuditLogs;
-  config_proposals: ConfigProposals;
   config_proposal_variants: ConfigProposalVariants;
+  config_proposals: ConfigProposals;
   config_users: ConfigUsers;
   config_variant_versions: ConfigVariantVersions;
   config_variants: ConfigVariants;
   configs: Configs;
   migrations: Migrations;
+  organization_members: OrganizationMembers;
+  organizations: Organizations;
   project_environments: ProjectEnvironments;
   project_users: ProjectUsers;
   projects: Projects;
