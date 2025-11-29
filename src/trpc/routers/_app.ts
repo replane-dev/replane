@@ -36,8 +36,6 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         name: OrganizationName(),
-        requireProposals: z.boolean().optional(),
-        allowSelfApprovals: z.boolean().optional(),
       }),
     )
     .mutation(async opts => {
@@ -47,8 +45,6 @@ export const appRouter = createTRPCRouter({
       return await opts.ctx.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
         currentUserEmail: opts.ctx.currentUserEmail,
         name: opts.input.name,
-        requireProposals: opts.input.requireProposals,
-        allowSelfApprovals: opts.input.allowSelfApprovals,
       });
     }),
   updateOrganization: baseProcedure
@@ -66,8 +62,6 @@ export const appRouter = createTRPCRouter({
         organizationId: opts.input.organizationId,
         currentUserEmail: opts.ctx.currentUserEmail,
         name: opts.input.name,
-        requireProposals: opts.input.requireProposals,
-        allowSelfApprovals: opts.input.allowSelfApprovals,
       });
     }),
   deleteOrganization: baseProcedure
@@ -385,6 +379,8 @@ export const appRouter = createTRPCRouter({
         id: Uuid(),
         name: ProjectName(),
         description: ProjectDescription(),
+        requireProposals: z.boolean(),
+        allowSelfApprovals: z.boolean(),
       }),
     )
     .mutation(async opts => {
@@ -395,6 +391,8 @@ export const appRouter = createTRPCRouter({
         id: opts.input.id,
         name: opts.input.name,
         description: opts.input.description,
+        requireProposals: opts.input.requireProposals,
+        allowSelfApprovals: opts.input.allowSelfApprovals,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),

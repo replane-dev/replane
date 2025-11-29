@@ -127,6 +127,8 @@ export interface ProjectUpdatedAuditLogPayload extends BaseAuditLogPayload<'proj
     id: string;
     name: string;
     description: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -134,6 +136,8 @@ export interface ProjectUpdatedAuditLogPayload extends BaseAuditLogPayload<'proj
     id: string;
     name: string;
     description: string;
+    requireProposals: boolean;
+    allowSelfApprovals: boolean;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -260,13 +264,9 @@ export interface OrganizationUpdatedAuditLogPayload
   };
   before: {
     name: string;
-    requireProposals: boolean;
-    allowSelfApprovals: boolean;
   };
   after: {
     name: string;
-    requireProposals: boolean;
-    allowSelfApprovals: boolean;
   };
 }
 

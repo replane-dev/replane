@@ -252,7 +252,9 @@ describe('getConfig', () => {
     });
 
     expect(config?.pendingConfigProposals).toHaveLength(2);
-    expect(config?.pendingConfigProposals.map(x => ({id: x.id, proposerEmail: x.proposerEmail}))).toEqual(
+    expect(
+      config?.pendingConfigProposals.map(x => ({id: x.id, proposerEmail: x.proposerEmail})),
+    ).toEqual(
       expect.arrayContaining([
         {id: proposal1Id, proposerEmail: OTHER_USER_EMAIL},
         {id: proposal2Id, proposerEmail: THIRD_USER_EMAIL},

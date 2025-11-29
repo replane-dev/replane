@@ -1,9 +1,7 @@
-import {type Config} from '@/engine/core/config-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {Override} from '@/engine/core/override-evaluator';
 import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
 import {normalizeEmail} from '@/engine/core/utils';
-import {v4 as uuidv4} from 'uuid';
 import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
@@ -16,10 +14,17 @@ function sleep(ms: number) {
 // Helper to quickly create literal values
 const lit = (value: unknown) => ({type: 'literal' as const, value});
 
+// Type for testing override evaluation (includes value/schema/overrides unlike Config)
+type ConfigForEvaluation = {
+  value: unknown;
+  schema: unknown | null;
+  overrides: Override[];
+};
+
 // Helper to evaluate config with rendering
-async function evaluate(config: Config, context: Record<string, unknown>) {
+async function evaluate(config: ConfigForEvaluation, context: Record<string, unknown>) {
   const rendered = await renderOverrides(config.overrides, () => Promise.resolve(undefined));
-  return evaluateConfigValue({...config, overrides: rendered}, context);
+  return evaluateConfigValue({value: config.value, overrides: rendered}, context);
 }
 
 describe('Override Evaluation', () => {
@@ -27,16 +32,8 @@ describe('Override Evaluation', () => {
 
   describe('Type Casting', () => {
     it('should cast string rule value to number when context is number', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 10,
         overrides: [
           {
@@ -58,16 +55,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should cast number rule value to string when context is string', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'default',
         overrides: [
           {
@@ -89,16 +78,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should cast boolean strings to boolean', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'disabled',
         overrides: [
           {
@@ -122,16 +103,8 @@ describe('Override Evaluation', () => {
 
   describe('Operators', () => {
     it('should work with equals operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'default',
         overrides: [
           {
@@ -154,16 +127,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with not_in operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'blocked',
         overrides: [
           {
@@ -186,16 +151,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with less_than operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 10,
         overrides: [
           {
@@ -219,16 +176,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with less_than_or_equal operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'over',
         overrides: [
           {
@@ -252,16 +201,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with greater_than operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'standard',
         overrides: [
           {
@@ -285,16 +226,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with greater_than_or_equal operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'junior',
         overrides: [
           {
@@ -320,16 +253,8 @@ describe('Override Evaluation', () => {
 
   describe('Composite Operators', () => {
     it('should work with AND operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -367,16 +292,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with OR operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'limited',
         overrides: [
           {
@@ -417,16 +334,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should work with NOT operator', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'normal',
         overrides: [
           {
@@ -452,16 +361,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should handle nested composite rules', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -519,16 +420,8 @@ describe('Override Evaluation', () => {
 
   describe('Multiple Conditions (Implicit AND)', () => {
     it('should require all conditions to match', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -571,16 +464,8 @@ describe('Override Evaluation', () => {
 
   describe('Multiple Overrides (Priority)', () => {
     it('should return first matching override', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -629,16 +514,8 @@ describe('Override Evaluation', () => {
 
   describe('Edge Cases', () => {
     it('should return base value when no overrides defined', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [],
       };
@@ -647,16 +524,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should return base value when overrides array is empty', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [],
       };
@@ -665,16 +534,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should handle missing context properties', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -699,16 +560,8 @@ describe('Override Evaluation', () => {
 
   describe('Debug Information', () => {
     it('should provide detailed evaluation results', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -737,16 +590,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should show why conditions failed', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -774,16 +619,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should provide nested evaluation details', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -828,16 +665,8 @@ describe('Override Evaluation', () => {
     });
 
     it('should show type casting in debug output', async () => {
-      const config: Config = {
-        id: uuidv4(),
-        name: 'test',
-        projectId: 'proj',
-        description: '',
+      const config: ConfigForEvaluation = {
         schema: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        creatorId: 1,
-        version: 1,
         value: 'base',
         overrides: [
           {
@@ -946,7 +775,7 @@ describe('Override Evaluation', () => {
         name: 'feature_flag',
         value: false,
         schema: null,
-        overrides: null,
+        overrides: [],
         description: 'Feature flag',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [],
@@ -956,7 +785,9 @@ describe('Override Evaluation', () => {
 
       // Get the production variant
       const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
-      const productionVariant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
+      const productionVariant = variants.find(
+        v => v.environmentId === fixture.productionEnvironmentId,
+      );
       assert(productionVariant, 'Production variant should exist');
 
       const newOverrides: Override[] = [

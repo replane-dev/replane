@@ -41,15 +41,6 @@ export function createDeleteOrganizationUseCase(): TransactionalUseCase<
       );
     }
 
-    // Check if organization has any projects
-    const projectCount = await tx.organizations.countProjectsByOrganization(req.organizationId);
-
-    if (projectCount > 0) {
-      throw new BadRequestError(
-        'Cannot delete organization with existing projects. Delete all projects first.',
-      );
-    }
-
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 

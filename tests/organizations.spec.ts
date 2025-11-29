@@ -1,5 +1,5 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {BadRequestError, ForbiddenError, NotFoundError} from '@/engine/core/errors';
+import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
@@ -41,7 +41,8 @@ describe('Organizations', () => {
         orderBy: 'created_at desc, id desc',
       });
       const orgCreatedEvent = messages.find(
-        m => m.payload.type === 'organization_created' && m.payload.organization.id === organizationId,
+        m =>
+          m.payload.type === 'organization_created' && m.payload.organization.id === organizationId,
       );
       expect(orgCreatedEvent).toBeDefined();
       expect(orgCreatedEvent?.payload).toMatchObject({
@@ -174,7 +175,7 @@ describe('Organizations', () => {
       expect(orgs.rows.length).toBe(0);
     });
 
-    it('prevents deletion when organization has projects', async () => {
+    it('allows prevents deletion when organization has projects', async () => {
       const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
         currentUserEmail: CURRENT_USER_EMAIL,
         name: 'With Projects',
@@ -193,7 +194,7 @@ describe('Organizations', () => {
           organizationId,
           currentUserEmail: CURRENT_USER_EMAIL,
         }),
-      ).rejects.toThrow(BadRequestError);
+      ).resolves.toEqual({success: true});
     });
 
     it('prevents non-admin from deleting', async () => {
@@ -221,13 +222,10 @@ describe('Organizations', () => {
   describe('Organization Members', () => {
     describe('addOrganizationMember', () => {
       it('allows admin to add members', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await fixture.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
           organizationId,
@@ -249,13 +247,10 @@ describe('Organizations', () => {
       });
 
       it('prevents adding duplicate members', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await fixture.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
           organizationId,
@@ -275,13 +270,10 @@ describe('Organizations', () => {
       });
 
       it('prevents non-admin from adding members', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await fixture.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
           organizationId,
@@ -303,13 +295,10 @@ describe('Organizations', () => {
 
     describe('removeOrganizationMember', () => {
       it('allows admin to remove members', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await fixture.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
           organizationId,
@@ -334,13 +323,10 @@ describe('Organizations', () => {
       });
 
       it('prevents removing last admin', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await expect(
           fixture.engine.useCases.removeOrganizationMember(GLOBAL_CONTEXT, {
@@ -354,13 +340,10 @@ describe('Organizations', () => {
 
     describe('updateOrganizationMemberRole', () => {
       it('allows admin to change member roles', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await fixture.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
           organizationId,
@@ -386,13 +369,10 @@ describe('Organizations', () => {
       });
 
       it('prevents demoting last admin', async () => {
-        const {organizationId} = await fixture.engine.useCases.createOrganization(
-          GLOBAL_CONTEXT,
-          {
-            currentUserEmail: CURRENT_USER_EMAIL,
-            name: 'Test Org',
-          },
-        );
+        const {organizationId} = await fixture.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org',
+        });
 
         await expect(
           fixture.engine.useCases.updateOrganizationMemberRole(GLOBAL_CONTEXT, {

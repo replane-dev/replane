@@ -203,9 +203,10 @@ export class ProjectStore {
     await this.db.deleteFrom('projects').where('id', '=', id).execute();
   }
 
-  async countAll(): Promise<number> {
+  async countByOrganization(organizationId: string): Promise<number> {
     const row = await this.db
       .selectFrom('projects')
+      .where('organization_id', '=', organizationId)
       .select(eb => eb.fn.countAll<number>().as('cnt'))
       .executeTakeFirst();
     return row ? row.cnt : 0;

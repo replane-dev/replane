@@ -75,7 +75,7 @@ describe('Get Config For API Use Case', () => {
       name: configName,
       value: {count: 1},
       schema: null,
-      overrides: null,
+      overrides: [],
       description: 'Test config',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
@@ -87,7 +87,9 @@ describe('Get Config For API Use Case', () => {
 
     // Get the production variant
     const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
-    const productionVariant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
+    const productionVariant = variants.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    );
     assert(productionVariant, 'Production variant should exist');
 
     // Patch the config variant (value is now on variant)
@@ -117,7 +119,7 @@ describe('Get Config For API Use Case', () => {
       name: configName,
       value: 'simple-value',
       schema: null,
-      overrides: null,
+      overrides: [],
       description: 'Config without overrides',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],

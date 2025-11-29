@@ -117,7 +117,7 @@ describe('deleteProject', () => {
 describe('deleteProject with proposals required', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
-  it('forbids direct deletion when proposals are required', async () => {
+  it('allows deletion even when proposals are required (if user has permissions)', async () => {
     // Update project to require proposals
     await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,
@@ -138,12 +138,18 @@ describe('deleteProject with proposals required', () => {
       allowSelfApprovals: false,
     });
 
-    await expect(
-      fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
-        id: projectId,
-        confirmName: 'ToDeleteWithProposals',
-        currentUserEmail: CURRENT_USER_EMAIL,
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    // Should succeed - admins can delete projects even when requireProposals is true
+    await fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
+      id: projectId,
+      confirmName: 'ToDeleteWithProposals',
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    // Verify project is deleted
+    const deletedProject = await fixture.engine.testing.projects.getById({
+      id: projectId,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+    expect(deletedProject).toBeUndefined();
   });
 });

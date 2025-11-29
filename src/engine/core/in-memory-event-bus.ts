@@ -1,13 +1,16 @@
 import type {EventBusClient} from './event-bus';
-import type {Log} from './pg-event-bus-client';
+
+interface Logger {
+  error: (message: string) => void;
+}
 
 interface InMemoryEventBusOptions {
-  logger?: Log;
+  logger?: Logger;
 }
 
 export class InMemoryEventBus<T> {
   private handlers: Array<(event: T) => void> = [];
-  private readonly logger?: Log;
+  private readonly logger?: Logger;
 
   constructor(opts: InMemoryEventBusOptions) {
     this.logger = opts.logger;

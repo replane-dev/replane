@@ -432,7 +432,7 @@ describe('approveConfigProposal', () => {
 });
 
 describe('approveConfigProposal (allowSelfApprovals=false)', () => {
-  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL, allowSelfApprovals: false});
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   beforeEach(async () => {
     const connection = await fixture.engine.testing.pool.connect();
@@ -444,6 +444,16 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
     } finally {
       connection.release();
     }
+
+    // Set allowSelfApprovals to false on the project
+    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      name: 'Test Project',
+      description: 'Default project for tests',
+      requireProposals: false,
+      allowSelfApprovals: false,
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
   });
 
   it('should prevent self-approval when allowSelfApprovals is false', async () => {

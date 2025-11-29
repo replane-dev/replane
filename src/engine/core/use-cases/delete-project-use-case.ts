@@ -1,6 +1,6 @@
 import assert from 'assert';
 import {createAuditLogId} from '../audit-log-store';
-import {BadRequestError, ForbiddenError} from '../errors';
+import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -24,10 +24,6 @@ export function createDeleteProjectUseCase(
     });
     if (!project) throw new BadRequestError('Project not found');
 
-    if (project.requireProposals) {
-      throw new ForbiddenError('Direct project deletion is disabled.');
-    }
-
     // confirm project name
     if (project.name !== req.confirmName) {
       throw new BadRequestError('Project name confirmation does not match');
@@ -36,10 +32,10 @@ export function createDeleteProjectUseCase(
     // Only owners/admins can delete a project
     await tx.permissionService.ensureCanDeleteProject(project.id, req.currentUserEmail);
 
-    // Prevent deleting the last remaining project to keep the app routable
-    const total = await tx.projects.countAll();
-    if (total <= 1) {
-      throw new BadRequestError('Cannot delete the last remaining project');
+    // Prevent deleting the last remaining project within the organization
+    const totalInOrg = await tx.projects.countByOrganization(project.organizationId);
+    if (totalInOrg <= 1) {
+      throw new BadRequestError('Cannot delete the last remaining project in this organization');
     }
 
     // Capture data for audit before deletion

@@ -15,6 +15,7 @@ export interface PendingConfigProposalSummary {
   proposerId: number | null;
   proposerEmail: string | null;
   createdAt: Date;
+  baseConfigVersion: number;
 }
 
 export interface ConfigVariantWithEnvironmentName extends ConfigVariant {

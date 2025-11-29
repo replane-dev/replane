@@ -147,14 +147,6 @@ export class OrganizationStore {
     await this.db.deleteFrom('organizations').where('id', '=', id).execute();
   }
 
-  async countAll(): Promise<number> {
-    const row = await this.db
-      .selectFrom('organizations')
-      .select(eb => eb.fn.countAll<number>().as('cnt'))
-      .executeTakeFirst();
-    return row ? row.cnt : 0;
-  }
-
   async countProjectsByOrganization(organizationId: string): Promise<number> {
     const row = await this.db
       .selectFrom('projects')

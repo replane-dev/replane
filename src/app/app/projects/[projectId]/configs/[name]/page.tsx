@@ -68,7 +68,7 @@ export default function ConfigByNamePage() {
   const project = useProject();
   const requireProposals = projectData.project?.requireProposals ?? false;
   const allowSelfApprovals = projectData.project?.allowSelfApprovals ?? false;
-  const deleteOrPropose = useDeleteOrProposeConfig(requireProposals);
+  const deleteOrPropose = useDeleteOrProposeConfig();
   const [proposalMessage, setProposalMessage] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
   const [pendingProposalData, setPendingProposalData] = useState<any>(null);
