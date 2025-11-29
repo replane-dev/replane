@@ -818,6 +818,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         proposalId: Uuid(),
+        projectId: Uuid(),
       }),
     )
     .query(async opts => {
@@ -827,6 +828,7 @@ export const appRouter = createTRPCRouter({
       const result = await opts.ctx.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
         proposalId: opts.input.proposalId,
         currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
       });
       return result;
     }),

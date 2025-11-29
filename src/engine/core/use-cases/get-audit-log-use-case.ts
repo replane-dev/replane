@@ -29,6 +29,8 @@ export function createGetAuditLogUseCase(): TransactionalUseCase<
   GetAuditLogResponse
 > {
   return async (_ctx, tx, req) => {
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
     let userIds: number[] | undefined = undefined;
     if (req.authorEmails && req.authorEmails.length > 0) {
       const unique = Array.from(new Set(req.authorEmails));

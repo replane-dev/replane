@@ -24,6 +24,8 @@ export function createGetApiKeyUseCase(): TransactionalUseCase<
   GetApiKeyResponse
 > {
   return async (_ctx, tx, req) => {
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
     const token = await tx.sdkKeys.getById({apiKeyId: req.id, projectId: req.projectId});
     if (!token) return {apiKey: null};
     return {

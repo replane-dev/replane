@@ -15,6 +15,8 @@ export function createGetProjectUsersUseCase(): TransactionalUseCase<
   GetProjectUsersResponse
 > {
   return async (_ctx, tx, req) => {
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
     const users = await tx.projectUsers.getByProjectId(req.projectId);
     return {
       users: users.map(u => ({

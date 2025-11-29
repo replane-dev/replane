@@ -57,7 +57,9 @@ export default function ReviewConfigProposalPage() {
   const trpc = useTRPC();
   const project = useProject();
 
-  const {data: proposalData} = useSuspenseQuery(trpc.getConfigProposal.queryOptions({proposalId}));
+  const {data: proposalData} = useSuspenseQuery(
+    trpc.getConfigProposal.queryOptions({proposalId, projectId: project.id}),
+  );
 
   const proposal = proposalData.proposal;
   const proposalsRejectedByThisApproval = proposalData.proposalsRejectedByThisApproval;

@@ -18,15 +18,7 @@ export function createGetProjectEnvironmentsUseCase(): TransactionalUseCase<
   GetProjectEnvironmentsResponse
 > {
   return async (_ctx, tx, req) => {
-    // Verify user has access to this project
-    const projectUser = await tx.projectUsers.getByProjectIdAndEmail({
-      projectId: req.projectId,
-      userEmail: req.currentUserEmail,
-    });
-
-    if (!projectUser) {
-      return {environments: []};
-    }
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
 
     const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
 

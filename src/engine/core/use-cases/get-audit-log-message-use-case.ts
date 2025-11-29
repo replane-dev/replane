@@ -1,4 +1,5 @@
 import type {AuditLogId} from '../audit-log-store';
+import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -26,6 +27,12 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
   return async (_ctx, tx, req) => {
     const base = await tx.auditLogs.getById(req.id);
     if (!base) return {message: undefined};
+
+    if (base.projectId) {
+      await tx.permissionService.ensureCanViewProject(base.projectId, req.currentUserEmail);
+    } else {
+      throw new BadRequestError('Audit log does not belong to a project');
+    }
 
     const user = base.userId ? await tx.users.getById(base.userId) : undefined;
     const config = base.configId ? await tx.configs.getById(base.configId) : undefined;

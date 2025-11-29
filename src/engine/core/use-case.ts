@@ -14,6 +14,16 @@ import type {ProjectStore} from './project-store';
 import type {ProjectUserStore} from './project-user-store';
 import type {SdkKeyStore} from './sdk-key-store';
 import type {UserStore} from './user-store';
+import type {NormalizedEmail} from './zod';
+
+export interface ProjectRequest {
+  projectId: string;
+  currentUserEmail: NormalizedEmail;
+}
+
+export interface TransactionalProjectUseCase<TRequest extends ProjectRequest, TResponse> {
+  (ctx: Context, tx: UseCaseTransaction, request: TRequest): Promise<TResponse>;
+}
 
 export interface TransactionalUseCase<TRequest, TResponse> {
   (ctx: Context, tx: UseCaseTransaction, request: TRequest): Promise<TResponse>;

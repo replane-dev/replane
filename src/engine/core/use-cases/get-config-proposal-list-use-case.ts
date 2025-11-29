@@ -38,7 +38,8 @@ export function createGetConfigProposalListUseCase(): TransactionalUseCase<
   GetConfigProposalListResponse
 > {
   return async (_ctx, tx, req) => {
-    // Permission: rely on existing project membership checks by filtering to projectId
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
     const rows = await tx.configProposals.listFiltered({
       projectId: req.projectId,
       configIds: req.configIds,

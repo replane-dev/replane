@@ -48,6 +48,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -92,6 +93,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -121,6 +123,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -151,6 +154,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -187,6 +191,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -228,6 +233,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -266,6 +272,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -320,6 +327,7 @@ describe('getConfigProposal', () => {
 
     // Get the rejected proposal
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposal1Id,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -350,6 +358,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -384,6 +393,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -413,6 +423,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -425,13 +436,14 @@ describe('getConfigProposal', () => {
 
     await expect(
       fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: nonExistentProposalId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
     ).rejects.toThrow(BadRequestError);
   });
 
-  it('should allow any user to get a proposal', async () => {
+  it('should prevent non-members from viewing proposals', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'get_proposal_any_user',
@@ -451,13 +463,14 @@ describe('getConfigProposal', () => {
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
-    // THIRD_USER (not a member) can get the proposal
-    const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
-      proposalId: configProposalId,
-      currentUserEmail: THIRD_USER_EMAIL,
-    });
-
-    expect(result.proposal.id).toBe(configProposalId);
+    // THIRD_USER (not a project or org member) should NOT be able to view the proposal
+    await expect(
+      fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        proposalId: configProposalId,
+        currentUserEmail: THIRD_USER_EMAIL,
+      }),
+    ).rejects.toThrow('User does not have permission to view this project');
   });
 
   it('should return correct base config version', async () => {
@@ -501,6 +514,7 @@ describe('getConfigProposal', () => {
     );
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: secondProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -539,6 +553,7 @@ describe('getConfigProposal', () => {
     }
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -584,6 +599,7 @@ describe('getConfigProposal', () => {
 
     // Get the proposal - it should show base members from the original snapshot
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -621,6 +637,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -657,6 +674,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -690,6 +708,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -749,6 +768,7 @@ describe('getConfigProposal', () => {
 
     // Get the approved proposal
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposal2Id,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -815,6 +835,7 @@ describe('getConfigProposal', () => {
 
     // Get the approved proposal
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposal2Id,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -856,6 +877,7 @@ describe('getConfigProposal', () => {
 
     // Get the approved proposal
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -899,6 +921,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -952,6 +975,7 @@ describe('getConfigProposal', () => {
     });
 
     const result = await fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });

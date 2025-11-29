@@ -1,3 +1,4 @@
+import assert from 'assert';
 import type {ConfigProposalRejectionReason} from '../db';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-evaluator';
@@ -7,6 +8,7 @@ import type {NormalizedEmail} from '../zod';
 export interface GetConfigProposalRequest {
   proposalId: string;
   currentUserEmail: NormalizedEmail;
+  projectId: string;
 }
 
 export interface ProposedVariantDetails {
@@ -66,16 +68,19 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
   GetConfigProposalResponse
 > {
   return async (ctx, tx, req) => {
-    const proposal = await tx.configProposals.getById(req.proposalId);
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
+    const proposal = await tx.configProposals.getById({
+      id: req.proposalId,
+      projectId: req.projectId,
+    });
     if (!proposal) {
       throw new BadRequestError('Proposal not found');
     }
 
     // Get the config to retrieve its name
     const config = await tx.configs.getById(proposal.configId);
-    if (!config) {
-      throw new BadRequestError('Config not found');
-    }
+    assert(config, 'Config not found');
 
     // Get proposer details
     let proposerEmail: string | null = null;

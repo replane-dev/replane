@@ -42,6 +42,8 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
   GetConfigResponse
 > {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
     const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
       projectId: req.projectId,
       userEmail: req.currentUserEmail,

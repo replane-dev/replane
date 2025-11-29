@@ -201,11 +201,13 @@ export class ConfigProposalStore {
     }));
   }
 
-  async getById(id: string): Promise<ConfigProposal | undefined> {
+  async getById(params: {id: string; projectId: string}): Promise<ConfigProposal | undefined> {
     const result = await this.db
       .selectFrom('config_proposals')
       .selectAll()
-      .where('id', '=', id)
+      .where('id', '=', params.id)
+      .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
+      .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (result) {
