@@ -13,7 +13,13 @@ import {
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
@@ -31,7 +37,7 @@ export default function NewSdkKeyPage() {
 
   // Load environments for this project
   const {data: environmentsData} = useSuspenseQuery(
-    trpc.getEnvironmentList.queryOptions({projectId}),
+    trpc.getProjectEnvironments.queryOptions({projectId}),
   );
   const environments = environmentsData.environments;
 
@@ -195,4 +201,3 @@ export default function NewSdkKeyPage() {
     </Fragment>
   );
 }
-

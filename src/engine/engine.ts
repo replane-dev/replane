@@ -58,7 +58,6 @@ import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
 import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-config-variant-version-list-use-case';
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
-import {createGetEnvironmentListUseCase} from './core/use-cases/get-environment-list-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createGetOrganizationListUseCase} from './core/use-cases/get-organization-list-use-case';
 import {createGetOrganizationMembersUseCase} from './core/use-cases/get-organization-members-use-case';
@@ -273,7 +272,6 @@ export async function createEngine(options: EngineOptions) {
     deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
     restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
-    getEnvironmentList: createGetEnvironmentListUseCase({}),
     // Organization use cases
     createOrganization: createCreateOrganizationUseCase(),
     getOrganization: createGetOrganizationUseCase(),
