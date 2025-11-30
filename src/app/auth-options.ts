@@ -10,12 +10,7 @@ import {ProjectStore} from '@/engine/core/project-store';
 import {ProjectUserStore} from '@/engine/core/project-user-store';
 import {createOrganization} from '@/engine/core/use-cases/create-organization-use-case';
 import {UserStore} from '@/engine/core/user-store';
-import {
-  ensureDefined,
-  normalizeEmail,
-  runTransactional,
-  shouldAutoAddToOrganizations,
-} from '@/engine/core/utils';
+import {ensureDefined, normalizeEmail, runTransactional} from '@/engine/core/utils';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
 import PostgresAdapter from '@auth/pg-adapter';
 import {Kysely, PostgresDialect} from 'kysely';
@@ -158,15 +153,19 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
         now: new Date(),
       });
 
-      // Auto-add new users to all organizations if enabled
-      if (!shouldAutoAddToOrganizations() || !user.email) {
+      // Auto-add new users to organizations that have auto_add_new_users enabled
+      if (!user.email) {
         return;
       }
 
-      // Get all organizations (raw SQL query since user is just being created)
-      const organizations = await tx.selectFrom('organizations').selectAll().execute();
+      // Get organizations that auto-add new users
+      const organizations = await tx
+        .selectFrom('organizations')
+        .selectAll()
+        .where('auto_add_new_users', '=', true)
+        .execute();
 
-      // Add user as member to all organizations
+      // Add user as member to those organizations
       const now = new Date();
       const normalizedEmail = normalizeEmail(user.email);
 

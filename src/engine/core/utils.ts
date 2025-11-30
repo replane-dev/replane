@@ -29,14 +29,6 @@ export function ensureDefined<T>(value: T | undefined, message: string): T {
   return value;
 }
 
-function parseBooleanEnv(value: string | undefined): boolean {
-  return ['1', 'true', 'yes', 'on'].includes((value ?? '').trim().toLowerCase());
-}
-
-export function shouldAutoAddToOrganizations(): boolean {
-  return parseBooleanEnv(process.env.AUTO_ADD_TO_ORGANIZATIONS_ON_REGISTRATION);
-}
-
 export function chunkArray<T>(array: T[], size: number): T[][] {
   if (size <= 0) {
     throw new Error('Chunk size must be greater than 0');

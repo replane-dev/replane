@@ -140,6 +140,7 @@ export interface OrganizationMembers {
 }
 
 export interface Organizations {
+  auto_add_new_users: Generated<boolean>;
   created_at: Timestamp;
   id: string;
   name: string;

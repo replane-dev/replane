@@ -18,6 +18,7 @@ export function Organization() {
   return z.object({
     id: z.string(),
     name: OrganizationName(),
+    autoAddNewUsers: z.boolean(),
     personalOrgUserId: z.number().nullable().optional(),
     createdAt: z.date(),
     updatedAt: z.date(),
@@ -25,12 +26,14 @@ export function Organization() {
 }
 
 export interface Organization extends z.infer<ReturnType<typeof Organization>> {
+  autoAddNewUsers: boolean;
   personalOrgUserId?: number | null;
 }
 
 export interface OrganizationInfo {
   id: string;
   name: string;
+  autoAddNewUsers: boolean;
   createdAt: Date;
   updatedAt: Date;
   myRole?: 'admin' | 'member';
@@ -54,6 +57,7 @@ export class OrganizationStore {
       .select([
         'organizations.id',
         'organizations.name',
+        'organizations.auto_add_new_users',
         'organizations.created_at',
         'organizations.updated_at',
         'organization_members.role as myRole',
@@ -64,6 +68,7 @@ export class OrganizationStore {
     return rows.map(o => ({
       id: o.id,
       name: o.name,
+      autoAddNewUsers: o.auto_add_new_users,
       createdAt: o.created_at,
       updatedAt: o.updated_at,
       myRole: o.myRole ?? undefined,
@@ -87,6 +92,7 @@ export class OrganizationStore {
       .select([
         'organizations.id',
         'organizations.name',
+        'organizations.auto_add_new_users',
         'organizations.created_at',
         'organizations.updated_at',
         'organization_members.role as myRole',
@@ -125,6 +131,7 @@ export class OrganizationStore {
       .values({
         id: organization.id,
         name: organization.name,
+        auto_add_new_users: organization.autoAddNewUsers,
         personal_org_user_id: organization.personalOrgUserId ?? null,
         created_at: organization.createdAt,
         updated_at: organization.updatedAt,
@@ -175,6 +182,7 @@ function mapOrganization(organization: Selectable<Organizations>): Organization 
   return {
     id: organization.id,
     name: organization.name,
+    autoAddNewUsers: organization.auto_add_new_users,
     personalOrgUserId: organization.personal_org_user_id,
     createdAt: organization.created_at,
     updatedAt: organization.updated_at,

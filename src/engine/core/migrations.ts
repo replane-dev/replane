@@ -9,6 +9,7 @@ export interface Migration {
 
 const EXAMPLE_PROJECT_ID = '32234b32-b7d9-4401-91e2-745a0cfb092a';
 const EXAMPLE_USER_ID = 123456789;
+const DEFAULT_ORGANIZATION_ID = '32234b32-b7d9-4401-91e2-745a0cfb092b';
 
 export const migrations: Migration[] = [
   {
@@ -805,7 +806,7 @@ export const migrations: Migration[] = [
       -- Create a default organization for existing projects
       INSERT INTO organizations (id, name, require_proposals, allow_self_approvals, created_at, updated_at)
       SELECT
-        gen_random_uuid(),
+        '${DEFAULT_ORGANIZATION_ID}',
         'Default Organization',
         FALSE,
         FALSE,
@@ -917,6 +918,23 @@ export const migrations: Migration[] = [
       INNER JOIN users u ON o.personal_org_user_id = u.id
       WHERE o.personal_org_user_id IS NOT NULL
       ON CONFLICT (organization_id, user_email_normalized) DO NOTHING;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Add auto_add_new_users column to organizations
+      ALTER TABLE organizations
+      ADD COLUMN auto_add_new_users BOOLEAN NOT NULL DEFAULT false;
+
+      -- Set personal organizations to NOT auto-add users
+      UPDATE organizations
+      SET auto_add_new_users = false
+      WHERE personal_org_user_id IS NOT NULL;
+
+      -- for self-hosted organizations auto add new users
+      UPDATE organizations
+      SET auto_add_new_users = true
+      WHERE id = '${DEFAULT_ORGANIZATION_ID}';
     `,
   },
 ];

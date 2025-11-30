@@ -173,4 +173,42 @@ describe('Read Use Cases - Permission Checks', () => {
       ).rejects.toThrow(ForbiddenError);
     });
   });
+
+  describe('getAuditLogMessage', () => {
+    it('should prevent non-org member from viewing audit log message', async () => {
+      // Create a config to generate an audit log
+      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'audit_test_config',
+        value: {test: true},
+        schema: null,
+        overrides: [],
+        description: 'Test',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL],
+        projectId: fixture.projectId,
+      });
+
+      // Get an audit log entry
+      const auditLogs = await fixture.engine.useCases.getAuditLog(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        currentUserEmail: CURRENT_USER_EMAIL,
+        from: new Date('2020-01-01'),
+        to: new Date('2030-01-01'),
+        limit: 10,
+      });
+
+      const firstLog = auditLogs.messages[0];
+      if (!firstLog) {
+        throw new Error('No audit log found');
+      }
+
+      await expect(
+        fixture.engine.useCases.getAuditLogMessage(GLOBAL_CONTEXT, {
+          id: firstLog.id,
+          currentUserEmail: OUTSIDER_USER_EMAIL,
+        }),
+      ).rejects.toThrow(ForbiddenError);
+    });
+  });
 });

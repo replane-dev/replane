@@ -74,6 +74,7 @@ export async function createOrganization(params: {
   const organization: Organization = {
     id: createOrganizationId(),
     name,
+    autoAddNewUsers: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
