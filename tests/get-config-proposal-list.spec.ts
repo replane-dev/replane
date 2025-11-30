@@ -1,12 +1,15 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
+const NON_MEMBER_USER_EMAIL = normalizeEmail('non-member@example.com');
 
 const OTHER_USER_ID = 2;
+const NON_MEMBER_USER_ID = 3;
 
 function d(iso: string) {
   return new Date(iso);
@@ -20,12 +23,21 @@ describe('getConfigProposalList', () => {
     const connection = await fixture.engine.testing.pool.connect();
     try {
       await connection.query(
-        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW())`,
-        [OTHER_USER_ID, OTHER_USER_EMAIL],
+        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW()), ($3, 'Non-Member', $4, NOW())`,
+        [OTHER_USER_ID, OTHER_USER_EMAIL, NON_MEMBER_USER_ID, NON_MEMBER_USER_EMAIL],
       );
     } finally {
       connection.release();
     }
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
   });
 
   it('supports filtering by configIds, proposalIds, statuses, and date ranges', async () => {
@@ -57,6 +69,7 @@ describe('getConfigProposalList', () => {
     const {configProposalId: P1} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId: configAId,
         proposedDescription: {newDescription: 'A1'},
@@ -69,6 +82,7 @@ describe('getConfigProposalList', () => {
     const {configProposalId: P2} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId: configAId,
         proposedDescription: {newDescription: 'A2'},
@@ -94,6 +108,7 @@ describe('getConfigProposalList', () => {
     const {configProposalId: P3} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId: configBId,
         proposedDescription: {newDescription: 'B1'},
@@ -104,6 +119,7 @@ describe('getConfigProposalList', () => {
     // Reject P3 at T6 by OTHER_USER
     fixture.setNow(T6);
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: P3,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -121,6 +137,7 @@ describe('getConfigProposalList', () => {
     // Approve P2 at T5 by OTHER_USER (maintainer)
     fixture.setNow(T5);
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: P2,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -205,5 +222,14 @@ describe('getConfigProposalList', () => {
       });
       expect(proposals.map(p => p.id)).toEqual([P3]);
     }
+  });
+
+  it('should not return proposals for non-members', async () => {
+    await expect(
+      fixture.engine.useCases.getConfigProposalList(GLOBAL_CONTEXT, {
+        currentUserEmail: NON_MEMBER_USER_EMAIL,
+        projectId: fixture.projectId,
+      }),
+    ).rejects.toThrow(ForbiddenError);
   });
 });

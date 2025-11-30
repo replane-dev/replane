@@ -602,6 +602,7 @@ export default function ConfigByNamePage() {
                   try {
                     // Create unified proposal with both config and variant changes
                     const res = await createConfigProposal.mutateAsync({
+                      projectId: project.id,
                       configId: pendingProposalData.configId,
                       baseVersion: config.config.version,
                       proposedDescription: pendingProposalData.proposedDescription,

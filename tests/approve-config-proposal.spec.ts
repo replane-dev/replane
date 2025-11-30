@@ -9,10 +9,11 @@ import {useAppFixture} from './fixtures/trpc-fixture';
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
 const THIRD_USER_EMAIL = normalizeEmail('third@example.com');
+const NON_MEMBER_USER_EMAIL = normalizeEmail('non-member@example.com');
 
 const OTHER_USER_ID = 2;
 const THIRD_USER_ID = 3;
-
+const NON_MEMBER_USER_ID = 4;
 describe('approveConfigProposal', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
@@ -20,12 +21,38 @@ describe('approveConfigProposal', () => {
     const connection = await fixture.engine.testing.pool.connect();
     try {
       await connection.query(
-        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW()), ($3, 'Third', $4, NOW())`,
-        [OTHER_USER_ID, OTHER_USER_EMAIL, THIRD_USER_ID, THIRD_USER_EMAIL],
+        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW()), ($3, 'Third', $4, NOW()), ($5, 'Non-Member', $6, NOW())`,
+        [
+          OTHER_USER_ID,
+          OTHER_USER_EMAIL,
+          THIRD_USER_ID,
+          THIRD_USER_EMAIL,
+          NON_MEMBER_USER_ID,
+          NON_MEMBER_USER_EMAIL,
+        ],
       );
     } finally {
       connection.release();
     }
+
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: THIRD_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
   });
 
   it('should approve a proposal with proposed description only', async () => {
@@ -42,6 +69,7 @@ describe('approveConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'New description'},
@@ -49,6 +77,7 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -77,6 +106,7 @@ describe('approveConfigProposal', () => {
 
     const newMemberEmail = normalizeEmail('newmember@example.com');
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedMembers: {newMembers: [{email: newMemberEmail, role: 'editor'}]},
@@ -84,6 +114,7 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -110,6 +141,7 @@ describe('approveConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDelete: true,
@@ -117,6 +149,7 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -146,6 +179,7 @@ describe('approveConfigProposal', () => {
     const {configProposalId: proposal1} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Proposal 1'},
@@ -156,6 +190,7 @@ describe('approveConfigProposal', () => {
     const {configProposalId: proposal2} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Proposal 2'},
@@ -165,12 +200,16 @@ describe('approveConfigProposal', () => {
 
     // Approve proposal 1
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposal1,
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
     // Proposal 2 should be rejected
-    const rejectedProposal = await fixture.engine.testing.configProposals.getById(proposal2);
+    const rejectedProposal = await fixture.engine.testing.configProposals.getById({
+      id: proposal2,
+      projectId: fixture.projectId,
+    });
     expect(rejectedProposal?.rejectedAt).not.toBeNull();
     expect(rejectedProposal?.rejectionReason).toBe('another_proposal_approved');
     expect(rejectedProposal?.rejectedInFavorOfProposalId).toBe(proposal1);
@@ -179,6 +218,7 @@ describe('approveConfigProposal', () => {
   it('should throw BadRequestError for non-existent proposal', async () => {
     await expect(
       fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: createUuidV4(),
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
@@ -199,6 +239,7 @@ describe('approveConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated'},
@@ -206,12 +247,14 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
     await expect(
       fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: configProposalId,
         currentUserEmail: OTHER_USER_EMAIL,
       }),
@@ -232,6 +275,7 @@ describe('approveConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated'},
@@ -239,12 +283,14 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
     await expect(
       fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: configProposalId,
         currentUserEmail: OTHER_USER_EMAIL,
       }),
@@ -265,6 +311,7 @@ describe('approveConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Approved description'},
@@ -272,6 +319,7 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -310,6 +358,7 @@ describe('approveConfigProposal', () => {
 
     // Create proposal at version 1
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Proposed change'},
@@ -327,6 +376,7 @@ describe('approveConfigProposal', () => {
     // Trying to approve should fail due to version mismatch
     await expect(
       fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: configProposalId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
@@ -355,6 +405,7 @@ describe('approveConfigProposal', () => {
     )?.variantId;
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedVariants: [
@@ -368,6 +419,7 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -400,6 +452,7 @@ describe('approveConfigProposal', () => {
     )?.variantId;
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -414,6 +467,7 @@ describe('approveConfigProposal', () => {
     });
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -428,6 +482,36 @@ describe('approveConfigProposal', () => {
     // Verify variant value was updated
     const updatedVariant = await fixture.engine.testing.configVariants.getById(prodVariantId!);
     expect(updatedVariant?.value).toEqual({count: 20});
+  });
+
+  it('should not allow non-member user to approve', async () => {
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      overrides: [],
+      name: 'non_member_approve',
+      value: 'test',
+      schema: null,
+      description: 'Test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
+
+    const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      baseVersion: 1,
+      configId,
+      proposedDescription: {newDescription: 'Non-member proposed'},
+      currentUserEmail: CURRENT_USER_EMAIL,
+    });
+
+    await expect(
+      fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        proposalId: configProposalId,
+        currentUserEmail: NON_MEMBER_USER_EMAIL,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
 
@@ -470,6 +554,7 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Self proposed'},
@@ -479,6 +564,7 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
     // Self-approval should be forbidden
     await expect(
       fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: configProposalId,
         currentUserEmail: CURRENT_USER_EMAIL, // Same user who proposed
       }),
@@ -486,6 +572,7 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
 
     // Approval by another user should work
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -525,6 +612,7 @@ describe('approveConfigProposal (allowSelfApprovals=true)', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Self approved'},
@@ -533,6 +621,7 @@ describe('approveConfigProposal (allowSelfApprovals=true)', () => {
 
     // Self-approval should work
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });

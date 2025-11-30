@@ -8,6 +8,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface ApproveConfigProposalRequest {
   proposalId: ConfigProposalId;
+  projectId: string;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -21,7 +22,10 @@ export function createApproveConfigProposalUseCase(
   deps: ApproveConfigProposalUseCaseDeps,
 ): TransactionalUseCase<ApproveConfigProposalRequest, ApproveConfigProposalResponse> {
   return async (ctx, tx, req) => {
-    const proposal = await tx.configProposals.getById(req.proposalId);
+    const proposal = await tx.configProposals.getById({
+      id: req.proposalId,
+      projectId: req.projectId,
+    });
     if (!proposal) {
       throw new BadRequestError('Proposal not found');
     }

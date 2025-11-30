@@ -33,6 +33,7 @@ export function useDeleteOrProposeConfig() {
           configId: params.configId,
           proposedDelete: true,
           baseVersion: params.prevVersion,
+          projectId: project.id,
         });
         const proposalId = (res as any)?.configProposalId ?? (res as any)?.proposalId ?? '';
         await params.onAfterPropose?.(proposalId);

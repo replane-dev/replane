@@ -23,6 +23,25 @@ describe('getConfig', () => {
     } finally {
       connection.release();
     }
+
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: THIRD_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
   });
 
   it('should return requested config with variants', async () => {
@@ -191,6 +210,7 @@ describe('getConfig', () => {
 
     // Create pending config-level proposal (description change)
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -229,6 +249,7 @@ describe('getConfig', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'First description'},
@@ -239,6 +260,7 @@ describe('getConfig', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Second description'},
@@ -277,6 +299,7 @@ describe('getConfig', () => {
 
     // Create and approve a config-level proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Approved description'},
@@ -286,6 +309,7 @@ describe('getConfig', () => {
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: configProposalId,
       currentUserEmail: TEST_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -311,6 +335,7 @@ describe('getConfig', () => {
 
     // Create and reject a config-level proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Rejected description'},
@@ -319,6 +344,7 @@ describe('getConfig', () => {
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
       proposalId: configProposalId,
+      projectId: fixture.projectId,
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -346,6 +372,7 @@ describe('getConfig', () => {
     // Create and approve first proposal
     const {configProposalId: approvedProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Approved description'},
@@ -355,11 +382,13 @@ describe('getConfig', () => {
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: approvedProposalId,
       currentUserEmail: TEST_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     // Create pending proposal
     const {configProposalId: pendingProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         baseVersion: 2,
         configId,
         proposedDescription: {newDescription: 'Pending description'},
@@ -390,6 +419,7 @@ describe('getConfig', () => {
 
     // Create proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Some description'},
@@ -436,6 +466,7 @@ describe('getConfig', () => {
     const {configProposalId: firstProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'First description'},
@@ -446,12 +477,14 @@ describe('getConfig', () => {
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: firstProposalId,
       currentUserEmail: TEST_USER_EMAIL,
+      projectId: fixture.projectId,
     });
 
     // Create second proposal (should have baseConfigVersion = 2)
     const {configProposalId: secondProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 2,
         configId,
         proposedDescription: {newDescription: 'Second description'},
@@ -467,5 +500,6 @@ describe('getConfig', () => {
     expect(config?.config.version).toBe(2);
     expect(config?.pendingConfigProposals).toHaveLength(1);
     expect(config?.pendingConfigProposals[0].baseConfigVersion).toBe(2);
+    expect(config?.pendingConfigProposals[0].id).toBe(secondProposalId);
   });
 });

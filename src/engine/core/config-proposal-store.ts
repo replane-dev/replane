@@ -204,9 +204,9 @@ export class ConfigProposalStore {
   async getById(params: {id: string; projectId: string}): Promise<ConfigProposal | undefined> {
     const result = await this.db
       .selectFrom('config_proposals')
-      .selectAll()
-      .where('id', '=', params.id)
+      .selectAll('config_proposals')
       .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
+      .where('config_proposals.id', '=', params.id)
       .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 

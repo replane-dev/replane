@@ -99,7 +99,7 @@ export default function ReviewConfigProposalPage() {
     configData?.config?.pendingConfigProposals.filter(p => p.id !== proposal.id) ?? [];
 
   async function handleApprove() {
-    await approve.mutateAsync({proposalId: proposal.id});
+    await approve.mutateAsync({proposalId: proposal.id, projectId: project.id});
 
     if (proposal.proposedDelete) {
       router.push(`/app/projects/${project.id}/configs`);
@@ -538,7 +538,7 @@ export default function ReviewConfigProposalPage() {
                 variant="destructive"
                 disabled={approve.isPending || reject.isPending}
                 onClick={async () => {
-                  await reject.mutateAsync({proposalId: proposal.id});
+                  await reject.mutateAsync({proposalId: proposal.id, projectId: project.id});
                   router.push(
                     `/app/projects/${project.id}/configs/${encodeURIComponent(proposal.configName)}`,
                   );

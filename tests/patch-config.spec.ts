@@ -251,6 +251,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 1'},
@@ -261,6 +262,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 2'},
@@ -271,6 +273,7 @@ describe('patchConfig', () => {
     const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 3'},
@@ -293,7 +296,10 @@ describe('patchConfig', () => {
     });
 
     // Verify all proposals are rejected
-    const rejectedProposal1 = await fixture.engine.testing.configProposals.getById(proposal1Id);
+    const rejectedProposal1 = await fixture.engine.testing.configProposals.getById({
+      id: proposal1Id,
+      projectId: fixture.projectId,
+    });
     assert(rejectedProposal1, 'Proposal 1 should exist');
     expect(rejectedProposal1.approvedAt).toBeNull();
     expect(rejectedProposal1.rejectedAt).not.toBeNull();
@@ -301,13 +307,19 @@ describe('patchConfig', () => {
     expect(rejectedProposal1.rejectedInFavorOfProposalId).toBe(null);
     expect(rejectedProposal1.rejectionReason).toBe('config_edited');
 
-    const rejectedProposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
+    const rejectedProposal2 = await fixture.engine.testing.configProposals.getById({
+      id: proposal2Id,
+      projectId: fixture.projectId,
+    });
     assert(rejectedProposal2, 'Proposal 2 should exist');
     expect(rejectedProposal2.approvedAt).toBeNull();
     expect(rejectedProposal2.rejectedAt).not.toBeNull();
     expect(rejectedProposal2.rejectionReason).toBe('config_edited');
 
-    const rejectedProposal3 = await fixture.engine.testing.configProposals.getById(proposal3Id);
+    const rejectedProposal3 = await fixture.engine.testing.configProposals.getById({
+      id: proposal3Id,
+      projectId: fixture.projectId,
+    });
     assert(rejectedProposal3, 'Proposal 3 should exist');
     expect(rejectedProposal3.approvedAt).toBeNull();
     expect(rejectedProposal3.rejectedAt).not.toBeNull();

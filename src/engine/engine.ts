@@ -98,6 +98,7 @@ interface ToUseCaseOptions {
   onConflictRetriesCount: number;
   listener: EventBusClient<ConfigVariantChangePayload>;
   dateProvider: DateProvider;
+  useCaseName: string;
 }
 
 function toUseCase<TReq, TRes>(
@@ -286,19 +287,13 @@ export async function createEngine(options: EngineOptions) {
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;
 
-  const useCaseOptions: ToUseCaseOptions = {
-    onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
-    listener: eventBusClient,
-    dateProvider,
-  };
-
   for (const name of Object.keys(transactionalUseCases) as Array<keyof typeof engineUseCases>) {
-    engineUseCases[name] = toUseCase(
-      db,
-      logger,
-      (transactionalUseCases as UseCaseMap)[name],
-      useCaseOptions,
-    );
+    engineUseCases[name] = toUseCase(db, logger, (transactionalUseCases as UseCaseMap)[name], {
+      onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
+      listener: eventBusClient,
+      dateProvider,
+      useCaseName: name,
+    });
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
@@ -320,6 +315,7 @@ export async function createEngine(options: EngineOptions) {
       projects: new ProjectStore(db),
       configProposals: new ConfigProposalStore(db),
       configVariants: new ConfigVariantStore(db, () => {}, eventBusClient),
+      organizationMembers: new OrganizationMemberStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: async () => {

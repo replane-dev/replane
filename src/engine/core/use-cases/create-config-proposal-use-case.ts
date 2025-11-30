@@ -20,6 +20,7 @@ export interface ProposedVariantChange {
 }
 
 export interface CreateConfigProposalRequest {
+  projectId: string;
   configId: string;
   baseVersion: number;
   proposedDelete?: boolean;
@@ -42,6 +43,8 @@ export function createCreateConfigProposalUseCase(
   deps: CreateConfigProposalUseCaseDeps,
 ): TransactionalUseCase<CreateConfigProposalRequest, CreateConfigProposalResponse> {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
     const config = await tx.configs.getById(req.configId);
     if (!config) {
       throw new BadRequestError('Config not found');

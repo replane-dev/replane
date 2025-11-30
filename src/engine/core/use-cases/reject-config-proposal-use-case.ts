@@ -3,12 +3,14 @@ import {createAuditLogId} from '../audit-log-store';
 import type {ConfigProposalId} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import type {ProjectId} from '../project-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
 export interface RejectConfigProposalRequest {
   proposalId: ConfigProposalId;
   currentUserEmail: NormalizedEmail;
+  projectId: ProjectId;
 }
 
 export interface RejectConfigProposalResponse {}
@@ -21,12 +23,19 @@ export function createRejectConfigProposalUseCase(
   deps: RejectConfigProposalUseCaseDeps,
 ): TransactionalUseCase<RejectConfigProposalRequest, RejectConfigProposalResponse> {
   return async (ctx, tx, req) => {
-    const proposal = await tx.configProposals.getById(req.proposalId);
+    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+
+    const proposal = await tx.configProposals.getById({
+      id: req.proposalId,
+      projectId: req.projectId,
+    });
+
     if (!proposal) {
       throw new BadRequestError('Proposal not found');
     }
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+
     assert(currentUser, 'Current user not found');
 
     // Check if already approved or rejected

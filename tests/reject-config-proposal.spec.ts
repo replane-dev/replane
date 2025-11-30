@@ -26,6 +26,25 @@ describe('rejectConfigProposal', () => {
     } finally {
       connection.release();
     }
+
+    fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: THIRD_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
   });
 
   it('should reject a proposal with description change', async () => {
@@ -42,6 +61,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -49,13 +69,17 @@ describe('rejectConfigProposal', () => {
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     // Verify proposal is rejected
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
-    assert(proposal);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
+    assert(proposal, 'Proposal not found');
     expect(proposal.rejectedAt).toBeDefined();
     expect(proposal.approvedAt).toBeNull();
     expect(proposal.reviewerId).toBe(1); // CURRENT_USER_ID is 1
@@ -73,7 +97,7 @@ describe('rejectConfigProposal', () => {
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
     ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
-    assert(rejectionMessage);
+    assert(rejectionMessage, 'Rejection message not found');
     expect(rejectionMessage.payload).toMatchObject({
       type: 'config_proposal_rejected',
       proposalId: configProposalId,
@@ -96,6 +120,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
@@ -103,12 +128,16 @@ describe('rejectConfigProposal', () => {
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     // Verify proposal is rejected
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     assert(proposal);
     expect(proposal.rejectedAt).toBeDefined();
     expect(proposal.approvedAt).toBeNull();
@@ -125,7 +154,7 @@ describe('rejectConfigProposal', () => {
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
     ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
-    assert(rejectionMessage);
+    assert(rejectionMessage, 'Rejection message not found');
     expect(rejectionMessage.payload.proposedMembers).toBeDefined();
   });
 
@@ -143,6 +172,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDelete: true,
@@ -150,12 +180,16 @@ describe('rejectConfigProposal', () => {
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     // Verify proposal is rejected
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     assert(proposal);
     expect(proposal.rejectedAt).toBeDefined();
     expect(proposal.approvedAt).toBeNull();
@@ -182,6 +216,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -190,6 +225,7 @@ describe('rejectConfigProposal', () => {
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -206,7 +242,7 @@ describe('rejectConfigProposal', () => {
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
     ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
-    assert(rejectionMessage);
+    assert(rejectionMessage, 'Rejection message not found');
     expect(rejectionMessage.payload).toMatchObject({
       type: 'config_proposal_rejected',
       proposalId: configProposalId,
@@ -230,6 +266,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -237,6 +274,7 @@ describe('rejectConfigProposal', () => {
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -253,7 +291,7 @@ describe('rejectConfigProposal', () => {
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
     ) as {payload: ConfigProposalRejectedAuditLogPayload} | undefined;
-    assert(rejectionMessage);
+    assert(rejectionMessage, 'Rejection message not found');
     expect(rejectionMessage.payload.rejectedInFavorOfProposalId).toBeUndefined();
   });
 
@@ -273,6 +311,7 @@ describe('rejectConfigProposal', () => {
 
     // Create proposal by THIRD_USER (who is not a member)
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -281,12 +320,16 @@ describe('rejectConfigProposal', () => {
 
     // THIRD_USER can reject their own proposal (no permission check)
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: THIRD_USER_EMAIL,
     });
 
     // Verify proposal is rejected
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     assert(proposal);
     expect(proposal.rejectedAt).toBeDefined();
   });
@@ -308,6 +351,7 @@ describe('rejectConfigProposal', () => {
     const {configProposalId: proposalId1} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         configId,
         baseVersion: 1,
         proposedDescription: {newDescription: 'Description 1'},
@@ -318,6 +362,7 @@ describe('rejectConfigProposal', () => {
     const {configProposalId: proposalId2} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         configId,
         baseVersion: 1,
         proposedDescription: {newDescription: 'Description 2'},
@@ -327,18 +372,26 @@ describe('rejectConfigProposal', () => {
 
     // Different users reject different proposals
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposalId1,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposalId2,
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
     // Verify both proposals are rejected
-    const p1 = await fixture.engine.testing.configProposals.getById(proposalId1);
-    const p2 = await fixture.engine.testing.configProposals.getById(proposalId2);
+    const p1 = await fixture.engine.testing.configProposals.getById({
+      id: proposalId1,
+      projectId: fixture.projectId,
+    });
+    const p2 = await fixture.engine.testing.configProposals.getById({
+      id: proposalId2,
+      projectId: fixture.projectId,
+    });
     assert(p1 && p2);
     expect(p1.rejectedAt).toBeDefined();
     expect(p2.rejectedAt).toBeDefined();
@@ -349,6 +402,7 @@ describe('rejectConfigProposal', () => {
 
     await expect(
       fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: nonExistentProposalId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
@@ -369,6 +423,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -377,6 +432,7 @@ describe('rejectConfigProposal', () => {
 
     // Reject proposal
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -384,6 +440,7 @@ describe('rejectConfigProposal', () => {
     // Try to reject again
     await expect(
       fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: configProposalId,
         currentUserEmail: OTHER_USER_EMAIL,
       }),
@@ -404,6 +461,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -412,6 +470,7 @@ describe('rejectConfigProposal', () => {
 
     // Approve proposal (OTHER_USER is maintainer, can approve description changes)
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -419,6 +478,7 @@ describe('rejectConfigProposal', () => {
     // Try to reject
     await expect(
       fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         proposalId: configProposalId,
         currentUserEmail: CURRENT_USER_EMAIL,
       }),
@@ -439,6 +499,7 @@ describe('rejectConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -447,12 +508,16 @@ describe('rejectConfigProposal', () => {
 
     // Reject proposal
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
     // Verify proposal has reviewerId
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     assert(proposal);
     expect(proposal.reviewerId).toBe(1); // CURRENT_USER_ID is 1
   });
@@ -477,6 +542,7 @@ describe('rejectConfigProposal', () => {
     const originalVersion = originalConfig?.config.version;
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'New description'},
@@ -485,6 +551,7 @@ describe('rejectConfigProposal', () => {
 
     // Reject proposal
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -513,6 +580,7 @@ describe('rejectConfigProposal', () => {
 
     // Create proposal by OTHER_USER
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -521,6 +589,7 @@ describe('rejectConfigProposal', () => {
 
     // Reject by CURRENT_USER
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: configProposalId,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -537,7 +606,7 @@ describe('rejectConfigProposal', () => {
         msg.payload.type === 'config_proposal_rejected' &&
         msg.payload.proposalId === configProposalId,
     ) as {payload: ConfigProposalRejectedAuditLogPayload; userId: number} | undefined;
-    assert(rejectionMessage);
+    assert(rejectionMessage, 'Rejection message not found');
     expect(rejectionMessage.userId).toBe(1); // CURRENT_USER_ID is 1
   });
 });

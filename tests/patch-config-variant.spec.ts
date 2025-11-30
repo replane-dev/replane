@@ -308,6 +308,7 @@ describe('patchConfigVariant', () => {
 
     // Create a pending config proposal (base version is 1 for newly created config)
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       configId,
       baseVersion: 1,
       proposedDescription: {newDescription: 'New description'},
@@ -315,7 +316,10 @@ describe('patchConfigVariant', () => {
     });
 
     // Verify proposal is pending
-    const proposalBefore = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposalBefore = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     assert(proposalBefore);
     expect(proposalBefore.approvedAt).toBeNull();
     expect(proposalBefore.rejectedAt).toBeNull();
@@ -329,7 +333,10 @@ describe('patchConfigVariant', () => {
     });
 
     // Verify proposal was rejected
-    const proposalAfter = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposalAfter = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     assert(proposalAfter);
     expect(proposalAfter.approvedAt).toBeNull();
     expect(proposalAfter.rejectedAt).not.toBeNull();

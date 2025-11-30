@@ -26,6 +26,25 @@ describe('rejectAllPendingConfigProposals', () => {
     } finally {
       connection.release();
     }
+
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: THIRD_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
   });
 
   it('should reject all pending proposals for a config', async () => {
@@ -45,6 +64,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 1'},
@@ -55,6 +75,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 2'},
@@ -65,6 +86,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal3Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 3'},
@@ -85,9 +107,18 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify all proposals are rejected
-    const proposal1 = await fixture.engine.testing.configProposals.getById(proposal1Id);
-    const proposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
-    const proposal3 = await fixture.engine.testing.configProposals.getById(proposal3Id);
+    const proposal1 = await fixture.engine.testing.configProposals.getById({
+      id: proposal1Id,
+      projectId: fixture.projectId,
+    });
+    const proposal2 = await fixture.engine.testing.configProposals.getById({
+      id: proposal2Id,
+      projectId: fixture.projectId,
+    });
+    const proposal3 = await fixture.engine.testing.configProposals.getById({
+      id: proposal3Id,
+      projectId: fixture.projectId,
+    });
 
     assert(proposal1 && proposal2 && proposal3);
     expect(proposal1.rejectedAt).toBeDefined();
@@ -128,6 +159,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description 1'},
@@ -138,6 +170,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New description 2'},
@@ -202,6 +235,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: descriptionProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
         baseVersion: 1,
+        projectId: fixture.projectId,
         configId,
         proposedDescription: {newDescription: 'Updated description'},
         currentUserEmail: OTHER_USER_EMAIL,
@@ -210,6 +244,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: membersProposalId} =
       await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
         baseVersion: 1,
+        projectId: fixture.projectId,
         configId,
         proposedMembers: {
           newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}],
@@ -220,6 +255,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: deleteProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDelete: true,
@@ -233,10 +269,18 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify all proposals are rejected
-    const descriptionProposal =
-      await fixture.engine.testing.configProposals.getById(descriptionProposalId);
-    const membersProposal = await fixture.engine.testing.configProposals.getById(membersProposalId);
-    const deleteProposal = await fixture.engine.testing.configProposals.getById(deleteProposalId);
+    const descriptionProposal = await fixture.engine.testing.configProposals.getById({
+      id: descriptionProposalId,
+      projectId: fixture.projectId,
+    });
+    const membersProposal = await fixture.engine.testing.configProposals.getById({
+      id: membersProposalId,
+      projectId: fixture.projectId,
+    });
+    const deleteProposal = await fixture.engine.testing.configProposals.getById({
+      id: deleteProposalId,
+      projectId: fixture.projectId,
+    });
 
     assert(descriptionProposal && membersProposal && deleteProposal);
     expect(descriptionProposal.rejectedAt).toBeDefined();
@@ -292,6 +336,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: deleteProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDelete: true,
@@ -302,6 +347,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: descProposalId} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'New desc'},
@@ -315,8 +361,14 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify both proposals are rejected
-    const deleteProposal = await fixture.engine.testing.configProposals.getById(deleteProposalId);
-    const descProposal = await fixture.engine.testing.configProposals.getById(descProposalId);
+    const deleteProposal = await fixture.engine.testing.configProposals.getById({
+      id: deleteProposalId,
+      projectId: fixture.projectId,
+    });
+    const descProposal = await fixture.engine.testing.configProposals.getById({
+      id: descProposalId,
+      projectId: fixture.projectId,
+    });
 
     assert(deleteProposal && descProposal);
     expect(deleteProposal.rejectedAt).toBeDefined();
@@ -400,6 +452,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 1'},
@@ -410,6 +463,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 2'},
@@ -419,6 +473,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     // Approve proposal 1
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposal1Id,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -430,13 +485,19 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify proposal 1 is still approved
-    const proposal1 = await fixture.engine.testing.configProposals.getById(proposal1Id);
+    const proposal1 = await fixture.engine.testing.configProposals.getById({
+      id: proposal1Id,
+      projectId: fixture.projectId,
+    });
     assert(proposal1);
     expect(proposal1.approvedAt).toBeDefined();
     expect(proposal1.rejectedAt).toBeNull();
 
     // Verify proposal 2 is rejected
-    const proposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
+    const proposal2 = await fixture.engine.testing.configProposals.getById({
+      id: proposal2Id,
+      projectId: fixture.projectId,
+    });
     assert(proposal2);
     expect(proposal2.rejectedAt).toBeDefined();
     expect(proposal2.approvedAt).toBeNull();
@@ -458,6 +519,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 1'},
@@ -468,6 +530,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 2'},
@@ -477,6 +540,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     // Manually reject proposal 1
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       proposalId: proposal1Id,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
@@ -488,12 +552,18 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify proposal 1 is still rejected (not double-rejected)
-    const proposal1 = await fixture.engine.testing.configProposals.getById(proposal1Id);
+    const proposal1 = await fixture.engine.testing.configProposals.getById({
+      id: proposal1Id,
+      projectId: fixture.projectId,
+    });
     assert(proposal1);
     expect(proposal1.rejectedAt).toBeDefined();
 
     // Verify proposal 2 is rejected
-    const proposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
+    const proposal2 = await fixture.engine.testing.configProposals.getById({
+      id: proposal2Id,
+      projectId: fixture.projectId,
+    });
     assert(proposal2);
     expect(proposal2.rejectedAt).toBeDefined();
   });
@@ -514,6 +584,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal1Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 1'},
@@ -524,6 +595,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configProposalId: proposal2Id} = await fixture.engine.useCases.createConfigProposal(
       GLOBAL_CONTEXT,
       {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         proposedDescription: {newDescription: 'Description 2'},
@@ -537,8 +609,14 @@ describe('rejectAllPendingConfigProposals', () => {
     });
 
     // Verify all proposals are rejected
-    const proposal1 = await fixture.engine.testing.configProposals.getById(proposal1Id);
-    const proposal2 = await fixture.engine.testing.configProposals.getById(proposal2Id);
+    const proposal1 = await fixture.engine.testing.configProposals.getById({
+      id: proposal1Id,
+      projectId: fixture.projectId,
+    });
+    const proposal2 = await fixture.engine.testing.configProposals.getById({
+      id: proposal2Id,
+      projectId: fixture.projectId,
+    });
 
     assert(proposal1 && proposal2);
     expect(proposal1.rejectedAt).toBeDefined();

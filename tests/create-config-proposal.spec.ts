@@ -2,13 +2,38 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
-import {describe, expect, it} from 'vitest';
+import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
+const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
+
+const OTHER_USER_ID = 2;
 
 describe('createConfigProposal', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
+
+  beforeEach(async () => {
+    const connection = await fixture.engine.testing.pool.connect();
+    try {
+      await connection.query(
+        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW())`,
+        [OTHER_USER_ID, OTHER_USER_EMAIL],
+      );
+    } finally {
+      connection.release();
+    }
+
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+  });
 
   it('should create a proposal with new description', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
@@ -24,6 +49,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'New description'},
@@ -31,7 +57,10 @@ describe('createConfigProposal', () => {
     });
 
     expect(configProposalId).toBeDefined();
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.proposedDescription).toBe('New description');
     expect(proposal?.proposedDelete).toBe(false);
     expect(proposal?.proposedMembers).toBeNull();
@@ -51,13 +80,17 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDelete: true,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal).toBeDefined();
     expect(proposal?.proposedDelete).toBe(true);
     expect(proposal?.proposedDescription).toBeNull();
@@ -79,6 +112,7 @@ describe('createConfigProposal', () => {
 
     const newMemberEmail = normalizeEmail('newowner@example.com');
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedMembers: {newMembers: [{email: newMemberEmail, role: 'maintainer'}]},
@@ -87,7 +121,10 @@ describe('createConfigProposal', () => {
 
     expect(configProposalId).toBeDefined();
 
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.proposedMembers).toEqual({
       newMembers: [{email: newMemberEmail, role: 'maintainer'}],
     });
@@ -108,6 +145,7 @@ describe('createConfigProposal', () => {
 
     const newMemberEmail = normalizeEmail('combined@example.com');
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -115,7 +153,10 @@ describe('createConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.proposedDescription).toBe('Updated description');
     expect(proposal?.proposedMembers).toEqual({
       newMembers: [{email: newMemberEmail, role: 'editor'}],
@@ -137,6 +178,7 @@ describe('createConfigProposal', () => {
 
     const memberEmail = normalizeEmail('auditmember@example.com');
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedMembers: {newMembers: [{email: memberEmail, role: 'editor'}]},
@@ -163,6 +205,7 @@ describe('createConfigProposal', () => {
   it('should throw BadRequestError when config does not exist', async () => {
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId: createUuidV4(),
         proposedDescription: {newDescription: 'test'},
@@ -186,6 +229,7 @@ describe('createConfigProposal', () => {
 
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         baseVersion: 1,
         configId,
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -194,8 +238,6 @@ describe('createConfigProposal', () => {
   });
 
   it('should allow proposal creation without edit permissions', async () => {
-    const otherUserEmail = normalizeEmail('other@example.com');
-
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'permission_test_config',
@@ -208,27 +250,20 @@ describe('createConfigProposal', () => {
       projectId: fixture.projectId,
     });
 
-    // Add the other user to the database
-    const connection = await fixture.engine.testing.pool.connect();
-    try {
-      await connection.query(
-        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other User', $2, NOW())`,
-        [999, otherUserEmail],
-      );
-    } finally {
-      connection.release();
-    }
-
     // Other user (not an editor/owner) should be able to create proposal
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Proposed change'},
-      currentUserEmail: otherUserEmail,
+      currentUserEmail: OTHER_USER_EMAIL,
     });
 
     expect(configProposalId).toBeDefined();
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.proposedDescription).toBe('Proposed change');
   });
 
@@ -246,6 +281,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated via proposal'},
@@ -292,13 +328,17 @@ describe('createConfigProposal', () => {
 
     // Create proposal - should track version 2
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       configId,
       baseVersion: 2,
       proposedDescription: {newDescription: 'Version 3 proposal'},
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.baseConfigVersion).toBe(2);
   });
 
@@ -326,6 +366,7 @@ describe('createConfigProposal', () => {
     // Try to create a proposal based on version 1 (should fail)
     await expect(
       fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
         configId,
         baseVersion: 1,
         proposedDescription: {newDescription: 'Another update'},
@@ -348,6 +389,7 @@ describe('createConfigProposal', () => {
     });
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDelete: true,
@@ -355,7 +397,10 @@ describe('createConfigProposal', () => {
     });
 
     expect(configProposalId).toBeDefined();
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.proposedDelete).toBe(true);
   });
 
@@ -382,6 +427,7 @@ describe('createConfigProposal', () => {
     expect(prodVariantId).toBeDefined();
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedVariants: [
@@ -423,6 +469,7 @@ describe('createConfigProposal', () => {
     )?.variantId;
 
     const {configProposalId} = await fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
       baseVersion: 1,
       configId,
       proposedDescription: {newDescription: 'Updated description'},
@@ -436,7 +483,10 @@ describe('createConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const proposal = await fixture.engine.testing.configProposals.getById(configProposalId);
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
     expect(proposal?.proposedDescription).toBe('Updated description');
 
     const variantChanges =

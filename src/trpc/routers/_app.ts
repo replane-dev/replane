@@ -709,6 +709,7 @@ export const appRouter = createTRPCRouter({
   createConfigProposal: baseProcedure
     .input(
       z.object({
+        projectId: Uuid(),
         configId: Uuid(),
         baseVersion: z.number(),
         proposedDelete: z.boolean().optional(),
@@ -739,6 +740,7 @@ export const appRouter = createTRPCRouter({
       const {configProposalId} = await opts.ctx.engine.useCases.createConfigProposal(
         GLOBAL_CONTEXT,
         {
+          projectId: opts.input.projectId,
           configId: opts.input.configId,
           baseVersion: opts.input.baseVersion,
           proposedDelete: opts.input.proposedDelete,
@@ -755,6 +757,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         proposalId: Uuid(),
+        projectId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -764,12 +767,14 @@ export const appRouter = createTRPCRouter({
       await opts.ctx.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
         proposalId: opts.input.proposalId,
         currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
       });
       return {};
     }),
   rejectConfigProposal: baseProcedure
     .input(
       z.object({
+        projectId: Uuid(),
         proposalId: Uuid(),
       }),
     )
@@ -778,6 +783,7 @@ export const appRouter = createTRPCRouter({
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
       await opts.ctx.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
         proposalId: opts.input.proposalId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });

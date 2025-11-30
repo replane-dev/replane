@@ -435,7 +435,10 @@ export class ConfigService {
     const {reviewer, existingConfig} = params;
 
     if (params.originalProposalId) {
-      const proposal = await this.configProposals.getById(params.originalProposalId);
+      const proposal = await this.configProposals.getById({
+        id: params.originalProposalId,
+        projectId: existingConfig.projectId,
+      });
 
       assert(proposal, 'Proposal to reject in favor of not found');
       assert(proposal.configId === params.configId, 'Config ID must match the proposal config ID');
@@ -457,7 +460,10 @@ export class ConfigService {
       );
 
       // Fetch full proposal details for audit message
-      const proposal = await this.configProposals.getById(proposalInfo.id);
+      const proposal = await this.configProposals.getById({
+        id: proposalInfo.id,
+        projectId: existingConfig.projectId,
+      });
       assert(proposal, 'Proposal must exist');
 
       await this.configProposals.updateById({
