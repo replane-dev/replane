@@ -1,4 +1,4 @@
-import type {OrganizationInfo} from '../organization-store';
+import type {OrganizationInfo} from '../stores/organization-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

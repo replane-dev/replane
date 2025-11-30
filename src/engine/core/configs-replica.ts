@@ -1,7 +1,5 @@
 import type {Pool} from 'pg';
 import {AsyncWorker} from './async-worker';
-import type {ConfigStore} from './config-store';
-import type {ConfigVariantChangePayload} from './config-variant-store';
 import {CONFIGS_REPLICA_PULL_INTERVAL_MS} from './constants';
 import {GLOBAL_CONTEXT} from './context';
 import type {EventBusClient} from './event-bus';
@@ -15,6 +13,8 @@ import {
 } from './override-evaluator';
 import {type PgEventBusClientNotificationHandler} from './pg-event-bus-client';
 import type {Service} from './service';
+import type {ConfigStore} from './stores/config-store';
+import type {ConfigVariantChangePayload} from './stores/config-variant-store';
 import {Subject} from './subject';
 import {Timer} from './timer';
 import type {Brand} from './utils';

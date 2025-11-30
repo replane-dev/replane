@@ -1,10 +1,10 @@
 import assert from 'assert';
-import {AuditLogStore, createAuditLogId} from '../audit-log-store';
-import type {OrganizationMemberStore} from '../organization-member-store';
-import {createOrganizationId, Organization, OrganizationStore} from '../organization-store';
-import type {ProjectEnvironmentStore} from '../project-environment-store';
-import {createProjectId, Project, ProjectStore} from '../project-store';
-import type {ProjectUserStore} from '../project-user-store';
+import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
+import type {OrganizationMemberStore} from '../stores/organization-member-store';
+import {createOrganizationId, Organization, OrganizationStore} from '../stores/organization-store';
+import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
+import {createProjectId, Project, ProjectStore} from '../stores/project-store';
+import type {ProjectUserStore} from '../stores/project-user-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {UserStore} from '../user-store';
 import {createUuidV7} from '../uuid';

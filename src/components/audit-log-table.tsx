@@ -11,7 +11,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
-import type {AuditLogPayload} from '@/engine/core/audit-log-store';
+import type {AuditLogPayload} from '@/engine/core/stores/audit-log-store';
 import {assertNever} from '@/engine/core/utils';
 import {shouldNavigateOnRowClick} from '@/lib/table-row-interaction';
 import {cn} from '@/lib/utils';

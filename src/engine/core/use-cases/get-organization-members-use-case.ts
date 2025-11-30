@@ -1,4 +1,4 @@
-import type {OrganizationMemberRole} from '../organization-member-store';
+import type {OrganizationMemberRole} from '../stores/organization-member-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

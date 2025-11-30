@@ -1,4 +1,4 @@
-import type {AuditLog} from '../audit-log-store';
+import type {AuditLog} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

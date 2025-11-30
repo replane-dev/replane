@@ -1,11 +1,11 @@
-import type {ConfigStore} from './config-store';
-import type {ConfigUserStore} from './config-user-store';
 import type {Context} from './context';
 import {ForbiddenError} from './errors';
 import type {Logger} from './logger';
-import type {OrganizationMemberStore} from './organization-member-store';
-import type {ProjectStore} from './project-store';
-import type {ProjectUserStore} from './project-user-store';
+import type {ConfigStore} from './stores/config-store';
+import type {ConfigUserStore} from './stores/config-user-store';
+import type {OrganizationMemberStore} from './stores/organization-member-store';
+import type {ProjectStore} from './stores/project-store';
+import type {ProjectUserStore} from './stores/project-user-store';
 import {unique} from './utils';
 import type {NormalizedEmail} from './zod';
 

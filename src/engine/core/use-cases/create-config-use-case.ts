@@ -1,10 +1,10 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
-import {createConfigId, type ConfigId} from '../config-store';
-import type {NewConfigUser} from '../config-user-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-condition-schemas';
+import {createAuditLogId} from '../stores/audit-log-store';
+import {createConfigId, type ConfigId} from '../stores/config-store';
+import type {NewConfigUser} from '../stores/config-user-store';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import {createUuidV7} from '../uuid';

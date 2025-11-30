@@ -3,13 +3,7 @@
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
-import {AuditLogStore} from './core/audit-log-store';
-import {ConfigProposalStore} from './core/config-proposal-store';
 import {ConfigService} from './core/config-service';
-import {ConfigStore} from './core/config-store';
-import {ConfigUserStore} from './core/config-user-store';
-import {type ConfigVariantChangePayload, ConfigVariantStore} from './core/config-variant-store';
-import {ConfigVariantVersionStore} from './core/config-variant-version-store';
 import {type ConfigReplicaEvent, ConfigsReplica} from './core/configs-replica';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
@@ -17,19 +11,28 @@ import type {DB} from './core/db';
 import type {EventBusClient} from './core/event-bus';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
-import {OrganizationMemberStore} from './core/organization-member-store';
-import {OrganizationStore} from './core/organization-store';
 import {PermissionService} from './core/permission-service';
 import {
   PgEventBusClient,
   type PgEventBusClientNotificationHandler,
 } from './core/pg-event-bus-client';
 import {getPgPool} from './core/pg-pool-cache';
-import {ProjectEnvironmentStore} from './core/project-environment-store';
-import {ProjectStore} from './core/project-store';
-import {ProjectUserStore} from './core/project-user-store';
-import {SdkKeyStore} from './core/sdk-key-store';
 import type {Service} from './core/service';
+import {AuditLogStore} from './core/stores/audit-log-store';
+import {ConfigProposalStore} from './core/stores/config-proposal-store';
+import {ConfigStore} from './core/stores/config-store';
+import {ConfigUserStore} from './core/stores/config-user-store';
+import {
+  type ConfigVariantChangePayload,
+  ConfigVariantStore,
+} from './core/stores/config-variant-store';
+import {ConfigVariantVersionStore} from './core/stores/config-variant-version-store';
+import {OrganizationMemberStore} from './core/stores/organization-member-store';
+import {OrganizationStore} from './core/stores/organization-store';
+import {ProjectEnvironmentStore} from './core/stores/project-environment-store';
+import {ProjectStore} from './core/stores/project-store';
+import {ProjectUserStore} from './core/stores/project-user-store';
+import {SdkKeyStore} from './core/stores/sdk-key-store';
 import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';

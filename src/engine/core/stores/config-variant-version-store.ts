@@ -1,8 +1,8 @@
 import type {Kysely} from 'kysely';
-import type {DB} from './db';
-import type {Override} from './override-evaluator';
-import {deserializeJson, serializeJson} from './store-utils';
-import {createUuidV7} from './uuid';
+import type {DB} from '../db';
+import type {Override} from '../override-evaluator';
+import {deserializeJson, serializeJson} from '../store-utils';
+import {createUuidV7} from '../uuid';
 
 export function createConfigVariantVersionId() {
   return createUuidV7();
@@ -16,7 +16,7 @@ export interface ConfigVariantVersion {
   description: string;
   value: unknown;
   schema: unknown | null;
-  overrides: Override[];  // NOT NULL - use [] for empty
+  overrides: Override[]; // NOT NULL - use [] for empty
   authorId: number | null;
   proposalId: string | null;
   createdAt: Date;

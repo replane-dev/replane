@@ -1,9 +1,9 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
-import type {ConfigProposalId} from '../config-proposal-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
-import type {ProjectId} from '../project-store';
+import {createAuditLogId} from '../stores/audit-log-store';
+import type {ConfigProposalId} from '../stores/config-proposal-store';
+import type {ProjectId} from '../stores/project-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

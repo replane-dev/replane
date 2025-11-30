@@ -1,7 +1,7 @@
 import type {Kysely} from 'kysely';
-import type {DB} from './db';
-import {normalizeEmail} from './utils';
-import type {NormalizedEmail} from './zod';
+import type {DB} from '../db';
+import {normalizeEmail} from '../utils';
+import type {NormalizedEmail} from '../zod';
 
 export type ProjectUserRole = 'admin' | 'maintainer';
 

@@ -1,5 +1,5 @@
-import type {AuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
+import type {AuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

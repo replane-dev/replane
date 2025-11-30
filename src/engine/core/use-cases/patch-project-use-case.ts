@@ -1,8 +1,8 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
 import {diffMembers} from '../member-diff';
-import type {ProjectUserRole} from '../project-user-store';
+import {createAuditLogId} from '../stores/audit-log-store';
+import type {ProjectUserRole} from '../stores/project-user-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

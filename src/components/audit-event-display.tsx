@@ -1,6 +1,6 @@
 'use client';
 
-import type {AuditLogPayload} from '@/engine/core/audit-log-store';
+import type {AuditLogPayload} from '@/engine/core/stores/audit-log-store';
 import {assertNever} from '@/engine/core/utils';
 import {DiffEditor} from '@monaco-editor/react';
 import {
@@ -657,7 +657,8 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
       <div className="space-y-2">
         <div className="text-sm text-muted-foreground">
           Member <strong>{payload.member.email}</strong> was added to organization{' '}
-          <strong>{payload.organization.name}</strong> with role <strong>{payload.member.role}</strong>
+          <strong>{payload.organization.name}</strong> with role{' '}
+          <strong>{payload.member.role}</strong>
         </div>
       </div>
     );
@@ -675,8 +676,8 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
       <div className="space-y-2">
         <div className="text-sm text-muted-foreground">
           Member <strong>{payload.member.email}</strong> role changed from{' '}
-          <strong>{payload.before.role}</strong> to <strong>{payload.after.role}</strong> in organization{' '}
-          <strong>{payload.organization.name}</strong>
+          <strong>{payload.before.role}</strong> to <strong>{payload.after.role}</strong> in
+          organization <strong>{payload.organization.name}</strong>
         </div>
       </div>
     );

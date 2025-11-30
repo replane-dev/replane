@@ -1,8 +1,8 @@
-import {type ConfigVariantChangePayload} from '@/engine/core/config-variant-store';
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
 import {InMemoryEventBus} from '@/engine/core/in-memory-event-bus';
 import type {LogLevel} from '@/engine/core/logger';
+import {type ConfigVariantChangePayload} from '@/engine/core/stores/config-variant-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/engine/engine-singleton';

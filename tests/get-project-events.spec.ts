@@ -1,12 +1,12 @@
 import type {EventBusClient} from '@/engine/core/event-bus';
 import {normalizeEmail} from '@/engine/core/utils';
 import {afterEach, assert, beforeEach, describe, expect, it} from 'vitest';
-import type {ConfigVariantChangePayload} from '../src/engine/core/config-variant-store';
 import {type ConfigReplicaEvent, ConfigsReplica} from '../src/engine/core/configs-replica';
 import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {InMemoryEventBus} from '../src/engine/core/in-memory-event-bus';
 import type {Logger} from '../src/engine/core/logger';
 import {createLogger} from '../src/engine/core/logger';
+import type {ConfigVariantChangePayload} from '../src/engine/core/stores/config-variant-store';
 import {Subject} from '../src/engine/core/subject';
 import {
   createGetProjectEventsUseCase,

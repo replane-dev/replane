@@ -1,6 +1,6 @@
 import assert from 'assert';
-import type {ConfigId} from '../config-store';
 import {BadRequestError} from '../errors';
+import type {ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

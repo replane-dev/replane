@@ -1,8 +1,8 @@
 import assert from 'assert';
-import type {ConfigId} from '../config-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-evaluator';
+import type {ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigMember, NormalizedEmail} from '../zod';
 

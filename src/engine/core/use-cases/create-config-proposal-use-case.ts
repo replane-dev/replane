@@ -1,13 +1,13 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
+import type {DateProvider} from '../date-provider';
+import {BadRequestError} from '../errors';
+import type {Override} from '../override-evaluator';
+import {createAuditLogId} from '../stores/audit-log-store';
 import {
   createConfigProposalId,
   createConfigProposalVariantId,
   type ConfigProposalId,
-} from '../config-proposal-store';
-import type {DateProvider} from '../date-provider';
-import {BadRequestError} from '../errors';
-import type {Override} from '../override-evaluator';
+} from '../stores/config-proposal-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

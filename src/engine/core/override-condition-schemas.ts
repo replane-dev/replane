@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {ConfigName} from './config-store';
 import {JsonPathSchema} from './json-path';
+import {ConfigName} from './stores/config-store';
 
 const LiteralValueSchema = z.object({
   type: z.literal('literal'),

@@ -1,8 +1,8 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
-import type {ProjectEnvironment} from '../project-environment-store';
-import {createProjectId} from '../project-store';
+import {createAuditLogId} from '../stores/audit-log-store';
+import type {ProjectEnvironment} from '../stores/project-environment-store';
+import {createProjectId} from '../stores/project-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';

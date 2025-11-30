@@ -1,6 +1,6 @@
 import type {Kysely} from 'kysely';
-import type {ConfigUserRole, DB} from './db';
-import {normalizeEmail} from './utils';
+import type {ConfigUserRole, DB} from '../db';
+import {normalizeEmail} from '../utils';
 
 export interface NewConfigUser {
   configId: string;

@@ -1,6 +1,6 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError} from '../errors';
+import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

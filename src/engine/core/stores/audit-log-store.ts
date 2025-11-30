@@ -1,8 +1,8 @@
 import type {Kysely, Selectable} from 'kysely';
+import type {AuditLogs, DB} from '../db';
+import {deserializeJson, serializeJson} from '../store-utils';
+import {createUuidV7} from '../uuid';
 import type {ConfigId} from './config-store';
-import type {AuditLogs, DB} from './db';
-import {deserializeJson, serializeJson} from './store-utils';
-import {createUuidV7} from './uuid';
 
 export type AuditLogId = string;
 

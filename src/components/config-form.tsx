@@ -27,8 +27,8 @@ import {
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
-import {ConfigOverrides} from '@/engine/core/config-store';
 import type {Override} from '@/engine/core/override-evaluator';
+import {ConfigOverrides} from '@/engine/core/stores/config-store';
 import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';

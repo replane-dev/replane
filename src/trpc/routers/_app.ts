@@ -1,14 +1,14 @@
 import {getAuthOptions} from '@/app/auth-options';
+import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {
   ConfigDescription,
   ConfigName,
   ConfigOverrides,
   ConfigSchema,
   ConfigValue,
-} from '@/engine/core/config-store';
-import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {OrganizationName} from '@/engine/core/organization-store';
-import {ProjectDescription, ProjectName} from '@/engine/core/project-store';
+} from '@/engine/core/stores/config-store';
+import {OrganizationName} from '@/engine/core/stores/organization-store';
+import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {ConfigMember, EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';

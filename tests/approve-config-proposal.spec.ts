@@ -1,6 +1,6 @@
-import type {ConfigProposalApprovedAuditLogPayload} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
+import type {ConfigProposalApprovedAuditLogPayload} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
 import {beforeEach, describe, expect, it} from 'vitest';

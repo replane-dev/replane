@@ -1,8 +1,8 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
-import type {DB, Organizations} from './db';
-import {createUuidV7} from './uuid';
-import type {NormalizedEmail} from './zod';
+import type {DB, Organizations} from '../db';
+import {createUuidV7} from '../uuid';
+import type {NormalizedEmail} from '../zod';
 
 export type OrganizationId = string;
 

@@ -1,11 +1,11 @@
+import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {
   ConfigMembersChangedAuditLogPayload,
   ConfigProposalRejectedAuditLogPayload,
   ConfigUpdatedAuditLogPayload,
-} from '@/engine/core/audit-log-store';
-import {createConfigProposalId} from '@/engine/core/config-proposal-store';
-import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
+} from '@/engine/core/stores/audit-log-store';
+import {createConfigProposalId} from '@/engine/core/stores/config-proposal-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';

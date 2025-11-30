@@ -1,8 +1,8 @@
 import type {Kysely} from 'kysely';
-import type {DB} from './db';
-import type {EventBusClient} from './event-bus';
-import type {Override} from './override-evaluator';
-import {deserializeJson, serializeJson} from './store-utils';
+import type {DB} from '../db';
+import type {EventBusClient} from '../event-bus';
+import type {Override} from '../override-evaluator';
+import {deserializeJson, serializeJson} from '../store-utils';
 
 export interface ConfigVariant {
   id: string;

@@ -1,7 +1,7 @@
 import type {Kysely} from 'kysely';
-import type {DB} from './db';
-import {normalizeEmail} from './utils';
-import type {NormalizedEmail} from './zod';
+import type {DB} from '../db';
+import {normalizeEmail} from '../utils';
+import type {NormalizedEmail} from '../zod';
 
 export type OrganizationMemberRole = 'admin' | 'member';
 
@@ -16,10 +16,7 @@ export interface NewOrganizationMember {
 export class OrganizationMemberStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getByOrganizationIdAndEmail(params: {
-    organizationId: string;
-    userEmail: NormalizedEmail;
-  }) {
+  async getByOrganizationIdAndEmail(params: {organizationId: string; userEmail: NormalizedEmail}) {
     return await this.db
       .selectFrom('organization_members')
       .selectAll()

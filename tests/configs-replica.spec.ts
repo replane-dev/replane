@@ -1,10 +1,10 @@
 import type {EventBusClient} from '@/engine/core/event-bus';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import type {ConfigVariantChangePayload} from '../src/engine/core/config-variant-store';
 import {type ConfigReplicaEvent, ConfigsReplica} from '../src/engine/core/configs-replica';
 import {InMemoryEventBus} from '../src/engine/core/in-memory-event-bus';
 import type {Logger} from '../src/engine/core/logger';
 import {createLogger} from '../src/engine/core/logger';
+import type {ConfigVariantChangePayload} from '../src/engine/core/stores/config-variant-store';
 import {Subject} from '../src/engine/core/subject';
 
 function sleep(ms: number) {

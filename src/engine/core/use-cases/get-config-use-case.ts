@@ -1,6 +1,6 @@
-import {Config} from '../config-store';
-import type {ConfigVariant} from '../config-variant-store';
 import {combineConfigAndProjectRoles} from '../role-utils';
+import {Config} from '../stores/config-store';
+import type {ConfigVariant} from '../stores/config-variant-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

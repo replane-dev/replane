@@ -1,10 +1,10 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
-import type {ConfigProposalRejectionReason, ConfigProposals, DB} from './db';
-import type {Override} from './override-evaluator';
-import {deserializeJson, serializeJson} from './store-utils';
-import {createUuidV7} from './uuid';
-import {ConfigMember, Uuid} from './zod';
+import type {ConfigProposalRejectionReason, ConfigProposals, DB} from '../db';
+import type {Override} from '../override-evaluator';
+import {deserializeJson, serializeJson} from '../store-utils';
+import {createUuidV7} from '../uuid';
+import {ConfigMember, Uuid} from '../zod';
 
 export type ConfigProposalId = string;
 export type ConfigProposalVariantId = string;

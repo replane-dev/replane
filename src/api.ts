@@ -1,6 +1,6 @@
-import {ConfigName} from '@/engine/core/config-store';
 import {type Context} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
+import {ConfigName} from '@/engine/core/stores/config-store';
 import {createUuidV4} from '@/engine/core/uuid';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';

@@ -1,7 +1,7 @@
-import type {ConfigVariantUpdatedAuditLogPayload} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {Override} from '@/engine/core/override-condition-schemas';
+import type {ConfigVariantUpdatedAuditLogPayload} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';

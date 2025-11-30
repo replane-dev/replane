@@ -1,7 +1,7 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';

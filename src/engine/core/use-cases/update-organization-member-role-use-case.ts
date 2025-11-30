@@ -1,7 +1,7 @@
 import assert from 'assert';
-import {createAuditLogId} from '../audit-log-store';
 import {BadRequestError, ForbiddenError, NotFoundError} from '../errors';
-import type {OrganizationMemberRole} from '../organization-member-store';
+import {createAuditLogId} from '../stores/audit-log-store';
+import type {OrganizationMemberRole} from '../stores/organization-member-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

@@ -1,5 +1,5 @@
 import {NotFoundError} from '../errors';
-import type {Organization} from '../organization-store';
+import type {Organization} from '../stores/organization-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 

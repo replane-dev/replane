@@ -1,12 +1,12 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
-import type {Configs, DB} from './db';
-import {ConditionSchema, OverrideSchema} from './override-condition-schemas';
-import type {Override} from './override-evaluator';
-import {deserializeJson} from './store-utils';
-import {isValidJsonSchema} from './utils';
-import {createUuidV7} from './uuid';
-import {ConfigInfo, Uuid, type NormalizedEmail} from './zod';
+import type {Configs, DB} from '../db';
+import {ConditionSchema, OverrideSchema} from '../override-condition-schemas';
+import type {Override} from '../override-evaluator';
+import {deserializeJson} from '../store-utils';
+import {isValidJsonSchema} from '../utils';
+import {createUuidV7} from '../uuid';
+import {ConfigInfo, Uuid, type NormalizedEmail} from '../zod';
 
 export type ConfigId = string;
 

@@ -1,5 +1,5 @@
 import type {Kysely} from 'kysely';
-import type {DB} from './db';
+import type {DB} from '../db';
 
 export interface ProjectEnvironment {
   id: string;
