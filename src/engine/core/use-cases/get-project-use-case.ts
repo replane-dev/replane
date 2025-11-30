@@ -24,7 +24,12 @@ export function createGetProjectUseCase(): TransactionalUseCase<
   GetProjectRequest,
   GetProjectResponse
 > {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.id,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const project = await tx.projects.getById({
       id: req.id,
       currentUserEmail: req.currentUserEmail,

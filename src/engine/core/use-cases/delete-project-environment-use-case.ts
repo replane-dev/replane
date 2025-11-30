@@ -7,6 +7,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface DeleteProjectEnvironmentRequest {
   environmentId: string;
+  projectId: string;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -23,16 +24,19 @@ export function createDeleteProjectEnvironmentUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    const environment = await tx.projectEnvironments.getById(req.environmentId);
+    const environment = await tx.projectEnvironments.getById({
+      environmentId: req.environmentId,
+      projectId: req.projectId,
+    });
     if (!environment) {
       throw new BadRequestError('Environment not found');
     }
 
     // Check if user has admin permission
-    await tx.permissionService.ensureCanManageProjectUsers(
-      environment.projectId,
-      req.currentUserEmail,
-    );
+    await tx.permissionService.ensureCanManageProjectEnvironments(ctx, {
+      projectId: environment.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Check if this is the last environment
     const allEnvironments = await tx.projectEnvironments.getByProjectId(environment.projectId);
@@ -42,7 +46,7 @@ export function createDeleteProjectEnvironmentUseCase(
       );
     }
 
-    // Delete all config variants for this environment using efficient single query
+    // Delete all config variants for this environment
     const variantsToDelete = await tx.configVariants.getByEnvironmentId(req.environmentId);
 
     for (const variant of variantsToDelete) {

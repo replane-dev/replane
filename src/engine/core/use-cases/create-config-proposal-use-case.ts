@@ -43,7 +43,10 @@ export function createCreateConfigProposalUseCase(
   deps: CreateConfigProposalUseCaseDeps,
 ): TransactionalUseCase<CreateConfigProposalRequest, CreateConfigProposalResponse> {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+    await tx.permissionService.isOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const config = await tx.configs.getById(req.configId);
     if (!config) {

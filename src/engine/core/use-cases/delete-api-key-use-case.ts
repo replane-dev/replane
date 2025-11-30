@@ -15,36 +15,39 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
   DeleteApiKeyRequest,
   DeleteApiKeyResponse
 > {
-  return async (_ctx, tx, req) => {
-    const token = await tx.sdkKeys.getById({
+  return async (ctx, tx, req) => {
+    const sdkKey = await tx.sdkKeys.getById({
       apiKeyId: req.id,
       projectId: req.projectId,
     });
-    if (!token) {
+    if (!sdkKey) {
       throw new BadRequestError('SDK key not found');
     }
 
-    await tx.permissionService.ensureCanManageApiKeys(token.projectId, req.currentUserEmail);
+    await tx.permissionService.ensureCanManageApiKeys(ctx, {
+      projectId: sdkKey.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Only allow creator to delete for now
     const user = await tx.users.getByEmail(req.currentUserEmail);
-    if (!user || user.id !== token.creatorId) {
+    if (!user || user.id !== sdkKey.creatorId) {
       throw new Error('Not allowed to delete this SDK key');
     }
-    await tx.sdkKeys.deleteById(token.id);
+    await tx.sdkKeys.deleteById(sdkKey.id);
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),
-      projectId: token.projectId,
+      projectId: sdkKey.projectId,
       userId: user.id,
       configId: null,
       payload: {
         type: 'api_key_deleted',
         apiKey: {
-          id: token.id,
-          name: token.name,
-          description: token.description,
-          createdAt: token.createdAt,
+          id: sdkKey.id,
+          name: sdkKey.name,
+          description: sdkKey.description,
+          createdAt: sdkKey.createdAt,
         },
       },
     });

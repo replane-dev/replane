@@ -24,7 +24,12 @@ export interface RestoreConfigVariantVersionUseCaseDeps {
 export function createRestoreConfigVariantVersionUseCase(
   deps: RestoreConfigVariantVersionUseCaseDeps,
 ): TransactionalUseCase<RestoreConfigVariantVersionRequest, RestoreConfigVariantVersionResponse> {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     // Get the config to verify it exists and belongs to the project
     const config = await tx.configs.getById(req.configId);
     if (!config) {
@@ -35,7 +40,10 @@ export function createRestoreConfigVariantVersionUseCase(
     }
 
     // TODO: if the the restore operation doesn't change schema, we might relax permissions to edit config only
-    await tx.permissionService.ensureCanManageConfig(config.id, req.currentUserEmail);
+    await tx.permissionService.ensureCanManageConfig(ctx, {
+      configId: config.id,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Get the variant for this config and environment
     const variant = await tx.configVariants.getByConfigIdAndEnvironmentId({
@@ -62,7 +70,7 @@ export function createRestoreConfigVariantVersionUseCase(
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    await tx.configService.patchConfigVariant({
+    await tx.configService.patchConfigVariant(ctx, {
       configVariantId: variant.id,
       value: {newValue: versionSnapshot.value},
       schema: {newSchema: versionSnapshot.schema},

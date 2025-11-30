@@ -22,8 +22,11 @@ export function createGetApiKeyListUseCase(): TransactionalUseCase<
   GetApiKeyListRequest,
   GetApiKeyListResponse
 > {
-  return async (_ctx, tx, req) => {
-    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+  return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const tokens = await tx.sdkKeys.list({projectId: req.projectId});
     return {

@@ -6,6 +6,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectEnvironmentRequest {
   environmentId: string;
+  projectId: string;
   name: string;
   currentUserEmail: NormalizedEmail;
 }
@@ -20,19 +21,27 @@ export function createUpdateProjectEnvironmentUseCase(
   deps: UpdateProjectEnvironmentUseCaseDeps,
 ): TransactionalUseCase<UpdateProjectEnvironmentRequest, UpdateProjectEnvironmentResponse> {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    const environment = await tx.projectEnvironments.getById(req.environmentId);
+    const environment = await tx.projectEnvironments.getById({
+      environmentId: req.environmentId,
+      projectId: req.projectId,
+    });
     if (!environment) {
       throw new BadRequestError('Environment not found');
     }
 
     // Check if user has admin permission
-    await tx.permissionService.ensureCanManageProjectUsers(
-      environment.projectId,
-      req.currentUserEmail,
-    );
+    await tx.permissionService.ensureCanManageProjectEnvironments(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Validate environment name
     if (!/^[A-Za-z0-9_\s-]{1,50}$/i.test(req.name)) {

@@ -38,7 +38,10 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     assert(user, 'Current user not found');
 
     // Ensure user is a member of the organization
-    await tx.permissionService.ensureIsOrganizationMember(req.organizationId, req.currentUserEmail);
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      organizationId: req.organizationId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const projectId = createProjectId();
 

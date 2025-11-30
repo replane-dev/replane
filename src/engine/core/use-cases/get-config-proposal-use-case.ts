@@ -68,7 +68,10 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
   GetConfigProposalResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const proposal = await tx.configProposals.getById({
       id: req.proposalId,

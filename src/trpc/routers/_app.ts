@@ -524,6 +524,7 @@ export const appRouter = createTRPCRouter({
       z.object({
         environmentId: Uuid(),
         name: z.string().min(1).max(50),
+        projectId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -534,12 +535,14 @@ export const appRouter = createTRPCRouter({
         environmentId: opts.input.environmentId,
         name: opts.input.name,
         currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
       });
     }),
   deleteProjectEnvironment: baseProcedure
     .input(
       z.object({
         environmentId: Uuid(),
+        projectId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -549,6 +552,7 @@ export const appRouter = createTRPCRouter({
       return await opts.ctx.engine.useCases.deleteProjectEnvironment(GLOBAL_CONTEXT, {
         environmentId: opts.input.environmentId,
         currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
       });
     }),
   updateProjectEnvironmentsOrder: baseProcedure

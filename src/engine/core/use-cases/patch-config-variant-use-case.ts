@@ -52,7 +52,7 @@ export function createPatchConfigVariantUseCase(
       );
     }
 
-    await tx.configService.patchConfigVariant({
+    await tx.configService.patchConfigVariant(ctx, {
       configVariantId: req.configVariantId,
       value: req.value,
       schema: req.schema,

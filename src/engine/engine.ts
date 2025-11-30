@@ -137,6 +137,7 @@ function toUseCase<TReq, TRes>(
           configs,
           projects,
           organizationMembers,
+          logger,
         );
         const configService = new ConfigService(
           configs,

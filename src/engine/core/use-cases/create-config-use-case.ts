@@ -36,7 +36,10 @@ export function createCreateConfigUseCase(
   deps: CreateConfigUseCaseDeps,
 ): TransactionalUseCase<CreateConfigRequest, CreateConfigResponse> {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureCanCreateConfig(req.projectId, req.currentUserEmail);
+    await tx.permissionService.ensureCanCreateConfig(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Validate no user appears with multiple roles
     // Map API names (ownerEmails/editorEmails) to database roles (maintainer/editor)

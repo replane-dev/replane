@@ -79,6 +79,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
       await updateEnvironment.mutateAsync({
         environmentId: selectedEnvironment.id,
         name: editEnvironmentName.trim(),
+        projectId,
       });
       toast.success('Environment updated successfully');
       setShowEditDialog(false);
@@ -94,6 +95,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
     try {
       await deleteEnvironment.mutateAsync({
         environmentId: selectedEnvironment.id,
+        projectId,
       });
       toast.success('Environment deleted successfully');
       setShowDeleteDialog(false);

@@ -19,8 +19,10 @@ export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
   UpdateProjectUsersResponse
 > {
   return async (ctx, tx, req) => {
-    // Only owners can manage project users
-    await tx.permissionService.ensureCanManageProjectUsers(req.projectId, req.currentUserEmail);
+    await tx.permissionService.ensureCanManageProjectUsers(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const existing = await tx.projectUsers.getByProjectId(req.projectId);
     const now = new Date();

@@ -28,8 +28,11 @@ export function createGetAuditLogUseCase(): TransactionalUseCase<
   GetAuditLogRequest,
   GetAuditLogResponse
 > {
-  return async (_ctx, tx, req) => {
-    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+  return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     let userIds: number[] | undefined = undefined;
     if (req.authorEmails && req.authorEmails.length > 0) {

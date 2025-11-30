@@ -17,7 +17,7 @@ export interface DeleteProjectUseCaseDeps {}
 export function createDeleteProjectUseCase(
   deps: DeleteProjectUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectRequest, DeleteProjectResponse> {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
     const project = await tx.projects.getById({
       id: req.id,
       currentUserEmail: req.currentUserEmail,
@@ -30,7 +30,10 @@ export function createDeleteProjectUseCase(
     }
 
     // Only owners/admins can delete a project
-    await tx.permissionService.ensureCanDeleteProject(project.id, req.currentUserEmail);
+    await tx.permissionService.ensureCanDeleteProject(ctx, {
+      projectId: project.id,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Prevent deleting the last remaining project within the organization
     const totalInOrg = await tx.projects.countByOrganization(project.organizationId);

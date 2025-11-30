@@ -1,6 +1,6 @@
 import type {ConfigProposalRejectedAuditLogPayload} from '@/engine/core/audit-log-store';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {BadRequestError} from '@/engine/core/errors';
+import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
@@ -9,10 +9,11 @@ import {useAppFixture} from './fixtures/trpc-fixture';
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
 const THIRD_USER_EMAIL = normalizeEmail('third@example.com');
+const NON_PROJECT_MEMBER_EMAIL = normalizeEmail('non-project-member@example.com');
 
 const OTHER_USER_ID = 2;
 const THIRD_USER_ID = 3;
-
+const NON_PROJECT_MEMBER_ID = 4;
 describe('rejectConfigProposal', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
@@ -20,8 +21,15 @@ describe('rejectConfigProposal', () => {
     const connection = await fixture.engine.testing.pool.connect();
     try {
       await connection.query(
-        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW()), ($3, 'Third', $4, NOW())`,
-        [OTHER_USER_ID, OTHER_USER_EMAIL, THIRD_USER_ID, THIRD_USER_EMAIL],
+        `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Other', $2, NOW()), ($3, 'Third', $4, NOW()), ($5, 'Non-Project-Member', $6, NOW())`,
+        [
+          OTHER_USER_ID,
+          OTHER_USER_EMAIL,
+          THIRD_USER_ID,
+          THIRD_USER_EMAIL,
+          NON_PROJECT_MEMBER_ID,
+          NON_PROJECT_MEMBER_EMAIL,
+        ],
       );
     } finally {
       connection.release();
@@ -563,6 +571,22 @@ describe('rejectConfigProposal', () => {
     });
     expect(config?.config.description).toBe('Original description');
     expect(config?.config.version).toBe(originalVersion); // Version should not change
+  });
+
+  it("shouldn't allow creating config in a project that the user is not a member of", async () => {
+    await expect(
+      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        overrides: [],
+        name: 'non_project_member_config',
+        value: {enabled: false},
+        schema: null,
+        description: 'Original description',
+        currentUserEmail: NON_PROJECT_MEMBER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [],
+      }),
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('should record the correct user as the rejector in audit message', async () => {

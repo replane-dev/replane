@@ -13,11 +13,15 @@ export interface ProjectEnvironment {
 export class ProjectEnvironmentStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getById(id: string): Promise<ProjectEnvironment | null> {
+  async getById(params: {
+    environmentId: string;
+    projectId: string;
+  }): Promise<ProjectEnvironment | null> {
     const row = await this.db
       .selectFrom('project_environments')
       .selectAll()
-      .where('id', '=', id)
+      .where('id', '=', params.environmentId)
+      .where('project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (!row) return null;

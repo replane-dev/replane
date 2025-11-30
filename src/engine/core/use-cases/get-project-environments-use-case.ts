@@ -17,8 +17,11 @@ export function createGetProjectEnvironmentsUseCase(): TransactionalUseCase<
   GetProjectEnvironmentsRequest,
   GetProjectEnvironmentsResponse
 > {
-  return async (_ctx, tx, req) => {
-    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+  return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
 

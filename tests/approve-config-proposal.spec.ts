@@ -529,6 +529,15 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
       connection.release();
     }
 
+    await fixture.engine.testing.organizationMembers.create([
+      {
+        organizationId: fixture.organizationId,
+        email: OTHER_USER_EMAIL,
+        role: 'member',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
     // Set allowSelfApprovals to false on the project
     await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,

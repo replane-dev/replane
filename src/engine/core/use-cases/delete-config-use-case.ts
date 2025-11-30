@@ -18,6 +18,11 @@ export function createDeleteConfigUseCase(
   deps: DeleteConfigUseCaseDeps,
 ): TransactionalUseCase<DeleteConfigRequest, DeleteConfigResponse> {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanManageConfig(ctx, {
+      configId: req.configId,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
@@ -43,7 +48,7 @@ export function createDeleteConfigUseCase(
       );
     }
 
-    await tx.configService.deleteConfig({
+    await tx.configService.deleteConfig(ctx, {
       configId: req.configId,
       reviewer: currentUser,
       deleteAuthor: currentUser,

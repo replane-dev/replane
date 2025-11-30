@@ -19,6 +19,11 @@ export function createUpdateOrganizationUseCase(): TransactionalUseCase<
   UpdateOrganizationResponse
 > {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationAdmin(ctx, {
+      organizationId: req.organizationId,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const now = new Date();
 
     const organization = await tx.organizations.getById({

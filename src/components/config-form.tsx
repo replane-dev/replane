@@ -516,7 +516,7 @@ export function ConfigForm(props: ConfigFormProps) {
                 </div>
                 <FormControl>
                   <Input
-                    placeholder="e.g. FeatureFlag-1"
+                    placeholder="e.g. some-config-name"
                     autoCapitalize="none"
                     autoComplete="off"
                     {...field}

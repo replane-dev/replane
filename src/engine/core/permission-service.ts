@@ -1,6 +1,8 @@
 import type {ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
+import type {Context} from './context';
 import {ForbiddenError} from './errors';
+import type {Logger} from './logger';
 import type {OrganizationMemberStore} from './organization-member-store';
 import type {ProjectStore} from './project-store';
 import type {ProjectUserStore} from './project-user-store';
@@ -14,6 +16,7 @@ export class PermissionService {
     private readonly configStore: ConfigStore,
     private readonly projectStore: ProjectStore,
     private readonly organizationMemberStore: OrganizationMemberStore,
+    private readonly logger: Logger,
   ) {}
 
   async getConfigOwners(configId: string): Promise<string[]> {
@@ -56,253 +59,350 @@ export class PermissionService {
     return unique([...configEditorEmails, ...projectOwnerEmails]);
   }
 
-  async canEditConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
-    const config = await this.configStore.getById(configId);
+  async canEditConfig(
+    ctx: Context,
+    params: {configId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<boolean> {
+    const config = await this.configStore.getById(params.configId);
     if (!config) return false;
 
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: config.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const configUser = await this.configUserStore.getByConfigIdAndEmail({
-      configId,
-      userEmail: currentUserEmail,
+      configId: params.configId,
+      userEmail: params.currentUserEmail,
     });
     return (
       configUser?.role === 'editor' ||
       configUser?.role === 'maintainer' ||
-      (await this.canEditProjectConfigs(config.projectId, currentUserEmail))
+      (await this.canEditProjectConfigs(ctx, {
+        projectId: config.projectId,
+        currentUserEmail: params.currentUserEmail,
+      }))
     );
   }
 
-  async canManageConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
-    const config = await this.configStore.getById(configId);
+  async canManageConfig(
+    ctx: Context,
+    params: {configId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<boolean> {
+    const config = await this.configStore.getById(params.configId);
     if (!config) return false;
 
-    const user = await this.configUserStore.getByConfigIdAndEmail({
-      configId,
-      userEmail: currentUserEmail,
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: config.projectId,
+      currentUserEmail: params.currentUserEmail,
     });
-    return (
-      user?.role === 'maintainer' ||
-      (await this.canManageProjectConfigs(config.projectId, currentUserEmail))
-    );
+    if (!isOrgMember) return false;
+
+    const user = await this.configUserStore.getByConfigIdAndEmail({
+      configId: params.configId,
+      userEmail: params.currentUserEmail,
+    });
+
+    if (user?.role === 'maintainer') return true;
+
+    return await this.canManageProjectConfigs(ctx, {
+      projectId: config.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
   }
 
   async canManageProjectApiKeys(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
     if (!user) return false;
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
-  async canManageProject(projectId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
+  async canManageProject(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
     if (!user) return false;
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
-  async canDeleteProject(projectId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
+  async canDeleteProject(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
     if (!user) return false;
     return user.role === 'admin';
   }
 
   async canEditProjectConfigs(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
     if (!user) return false;
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
   async canManageProjectConfigs(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
     if (!user) return false;
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
   async canManageProjectUsers(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
     if (!user) return false;
     return user.role === 'admin';
   }
 
-  async canCreateConfigInProject(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+  async canManageProjectEnvironments(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    return await this.canManageProjectConfigs(projectId, currentUserEmail);
-  }
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
 
-  async canViewProject(projectId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
-    // Check if user has explicit project role
     const user = await this.projectUserStore.getByProjectIdAndEmail({
-      projectId,
-      userEmail: currentUserEmail,
+      projectId: params.projectId,
+      userEmail: params.currentUserEmail,
     });
-    if (user) return true;
-
-    // Check if user is a member of the project's organization
-    const project = await this.projectStore.getById({
-      id: projectId,
-      currentUserEmail,
-    });
-    if (!project) return false;
-
-    const orgMember = await this.organizationMemberStore.getByOrganizationIdAndEmail({
-      organizationId: project.organizationId,
-      userEmail: currentUserEmail,
-    });
-
-    return !!orgMember;
+    if (!user) return false;
+    return user.role === 'admin';
   }
 
-  async canViewConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<boolean> {
-    const config = await this.configStore.getById(configId);
-    if (!config) return false;
+  async canCreateConfig(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<boolean> {
+    const isOrgMember = await this.isOrganizationMember(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!isOrgMember) return false;
 
-    return await this.canViewProject(config.projectId, currentUserEmail);
+    return await this.canManageProjectConfigs(ctx, params);
   }
 
   async isOrganizationMember(
-    organizationId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params:
+      | {projectId: string; currentUserEmail: NormalizedEmail}
+      | {organizationId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
-      organizationId,
-      userEmail: currentUserEmail,
-    });
-    return !!member;
+    if ('projectId' in params) {
+      // Check if user is a member of the project's organization
+      const project = await this.projectStore.getById({
+        id: params.projectId,
+        currentUserEmail: params.currentUserEmail,
+      });
+      if (!project) return false;
+
+      const orgMember = await this.organizationMemberStore.getByOrganizationIdAndEmail({
+        organizationId: project.organizationId,
+        userEmail: params.currentUserEmail,
+      });
+
+      if (!orgMember) {
+        // Check if user has explicit project role
+        const user = await this.projectUserStore.getByProjectIdAndEmail({
+          projectId: params.projectId,
+          userEmail: params.currentUserEmail,
+        });
+        if (user) {
+          // this should never happen
+          this.logger.error(ctx, {
+            msg: `User ${params.currentUserEmail} is not a member of organization ${project.organizationId} but has explicit project role`,
+          });
+        }
+      }
+
+      return !!orgMember;
+    } else {
+      const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
+        organizationId: params.organizationId,
+        userEmail: params.currentUserEmail,
+      });
+      return !!member;
+    }
   }
 
   async isOrganizationAdmin(
-    organizationId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {organizationId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
     const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
-      organizationId,
-      userEmail: currentUserEmail,
+      organizationId: params.organizationId,
+      userEmail: params.currentUserEmail,
     });
     return member?.role === 'admin';
   }
-
-  async ensureCanEditConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<void> {
-    const canEdit = await this.canEditConfig(configId, currentUserEmail);
+  async ensureCanEditConfig(
+    ctx: Context,
+    params: {configId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<void> {
+    const canEdit = await this.canEditConfig(ctx, params);
     if (!canEdit) {
       throw new ForbiddenError('User does not have permission to edit this config');
     }
   }
 
-  async ensureCanManageConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<void> {
-    const canManage = await this.canManageConfig(configId, currentUserEmail);
+  async ensureCanManageConfig(
+    ctx: Context,
+    params: {configId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<void> {
+    const canManage = await this.canManageConfig(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage this config');
     }
   }
 
   async ensureCanManageApiKeys(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canManage = await this.canManageProjectApiKeys(projectId, currentUserEmail);
+    const canManage = await this.canManageProjectApiKeys(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage SDK keys for this project');
     }
   }
 
   async ensureCanManageProject(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canManage = await this.canManageProject(projectId, currentUserEmail);
+    const canManage = await this.canManageProject(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage this project');
     }
   }
 
   async ensureCanManageProjectUsers(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canManage = await this.canManageProjectUsers(projectId, currentUserEmail);
+    const canManage = await this.canManageProjectUsers(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage users for this project');
     }
   }
 
-  async ensureCanCreateConfig(projectId: string, currentUserEmail: NormalizedEmail): Promise<void> {
-    const canCreate = await this.canCreateConfigInProject(projectId, currentUserEmail);
+  async ensureCanManageProjectEnvironments(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<void> {
+    const canManage = await this.canManageProjectEnvironments(ctx, params);
+    if (!canManage) {
+      throw new ForbiddenError(
+        'User does not have permission to manage environments for this project',
+      );
+    }
+  }
+
+  async ensureCanCreateConfig(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<void> {
+    const canCreate = await this.canCreateConfig(ctx, params);
     if (!canCreate) {
       throw new ForbiddenError('User does not have permission to create configs in this project');
     }
   }
 
   async ensureCanDeleteProject(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canDelete = await this.canDeleteProject(projectId, currentUserEmail);
+    const canDelete = await this.canDeleteProject(ctx, params);
     if (!canDelete) {
       throw new ForbiddenError('User does not have permission to delete this project');
     }
   }
 
-  async ensureCanViewProject(
-    projectId: string,
-    currentUserEmail: NormalizedEmail,
+  async ensureIsOrganizationMember(
+    ctx: Context,
+    params:
+      | {projectId: string; currentUserEmail: NormalizedEmail}
+      | {organizationId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canView = await this.canViewProject(projectId, currentUserEmail);
+    const canView = await this.isOrganizationMember(ctx, params);
     if (!canView) {
       throw new ForbiddenError('User does not have permission to view this project');
     }
   }
 
-  async ensureCanViewConfig(configId: string, currentUserEmail: NormalizedEmail): Promise<void> {
-    const canView = await this.canViewConfig(configId, currentUserEmail);
-    if (!canView) {
-      throw new ForbiddenError('User does not have permission to view this config');
-    }
-  }
-
-  async ensureIsOrganizationMember(
-    organizationId: string,
-    currentUserEmail: NormalizedEmail,
-  ): Promise<void> {
-    const isMember = await this.isOrganizationMember(organizationId, currentUserEmail);
-    if (!isMember) {
-      throw new ForbiddenError('User is not a member of this organization');
-    }
-  }
-
   async ensureIsOrganizationAdmin(
-    organizationId: string,
-    currentUserEmail: NormalizedEmail,
+    ctx: Context,
+    params: {organizationId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const isAdmin = await this.isOrganizationAdmin(organizationId, currentUserEmail);
+    const isAdmin = await this.isOrganizationAdmin(ctx, params);
     if (!isAdmin) {
       throw new ForbiddenError('User is not an admin of this organization');
     }

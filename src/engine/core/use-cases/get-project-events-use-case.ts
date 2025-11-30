@@ -18,11 +18,13 @@ export interface GetProjectEventsUseCaseDeps {
   configEventsObservable: Observable<ConfigReplicaEvent>;
 }
 
-// todo: avoid unbounded queue growth in Channel if consumer is slow
+// TODO: avoid unbounded queue growth in Channel if consumer is slow
 export function createGetProjectEventsUseCase(
   deps: GetProjectEventsUseCaseDeps,
 ): (ctx: Context, request: GetProjectEventsRequest) => AsyncIterable<ProjectEvent> {
   return async function* (ctx, request) {
+    // permissions must be checked by the caller
+
     const channel = new Channel<ProjectEvent>();
 
     const unsubscribe = deps.configEventsObservable.subscribe({

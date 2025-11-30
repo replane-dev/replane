@@ -81,17 +81,17 @@ describe('deleteConfig', () => {
     expect(configs.map(c => c.name)).toEqual(['config_to_keep']);
   });
 
-  it('should throw BadRequestError when config does not exist', async () => {
+  it('should throw ForbiddenError when config does not exist', async () => {
     await expect(
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId: '00000000-0000-0000-0000-000000000000', // non-existent id
         currentUserEmail: TEST_USER_EMAIL,
         prevVersion: 1,
       }),
-    ).rejects.toBeInstanceOf(BadRequestError);
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it('should throw BadRequestError on double delete', async () => {
+  it('should throw ForbiddenError on double delete', async () => {
     const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       overrides: [],
       name: 'double_delete',
@@ -116,7 +116,7 @@ describe('deleteConfig', () => {
         currentUserEmail: TEST_USER_EMAIL,
         prevVersion: 1,
       }),
-    ).rejects.toBeInstanceOf(BadRequestError);
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it('should forbid delete when current user is editor (not owner)', async () => {

@@ -27,6 +27,11 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
   PatchProjectResponse
 > {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.id,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const existing = await tx.projects.getById({
       currentUserEmail: req.currentUserEmail,
       id: req.id,
@@ -39,7 +44,10 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
 
     // Patch details
     if (req.details) {
-      const canManage = await tx.permissionService.canManageProject(req.id, req.currentUserEmail);
+      const canManage = await tx.permissionService.canManageProject(ctx, {
+        projectId: req.id,
+        currentUserEmail: req.currentUserEmail,
+      });
       if (!canManage) throw new BadRequestError('You are not allowed to manage this project');
 
       const {name, description, requireProposals, allowSelfApprovals} = req.details;
@@ -89,7 +97,10 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
 
     // Patch members
     if (req.members) {
-      await tx.permissionService.ensureCanManageProjectUsers(req.id, req.currentUserEmail);
+      await tx.permissionService.ensureCanManageProjectUsers(ctx, {
+        projectId: req.id,
+        currentUserEmail: req.currentUserEmail,
+      });
 
       const prevUsers = await tx.projectUsers.getByProjectId(req.id);
       const prev = prevUsers.map(u => ({email: u.user_email_normalized, role: u.role}));

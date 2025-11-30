@@ -5,6 +5,7 @@ import type {Config, ConfigId, ConfigStore} from './config-store';
 import type {ConfigUserStore} from './config-user-store';
 import type {ConfigVariantStore} from './config-variant-store';
 import type {ConfigVariantVersionStore} from './config-variant-version-store';
+import type {Context} from './context';
 import type {DateProvider} from './date-provider';
 import type {ConfigProposalRejectionReason} from './db';
 import {BadRequestError} from './errors';
@@ -70,7 +71,7 @@ export class ConfigService {
     }
   }
 
-  async patchConfig(params: PatchConfigParams): Promise<void> {
+  async patchConfig(ctx: Context, params: PatchConfigParams): Promise<void> {
     const existingConfig = await this.configs.getById(params.configId);
     if (!existingConfig) {
       throw new BadRequestError('Config does not exist');
@@ -87,10 +88,10 @@ export class ConfigService {
 
     // Config-level patches (description, members) always require manage permission
     if (params.members || params.description) {
-      await this.permissionService.ensureCanManageConfig(
-        existingConfig.id,
-        normalizeEmail(reviewer.email),
-      );
+      await this.permissionService.ensureCanManageConfig(ctx, {
+        configId: existingConfig.id,
+        currentUserEmail: normalizeEmail(reviewer.email),
+      });
     }
 
     // Reject all pending CONFIG proposals (not variant proposals)
@@ -214,7 +215,7 @@ export class ConfigService {
     }
   }
 
-  async patchConfigVariant(params: PatchConfigVariantParams): Promise<void> {
+  async patchConfigVariant(ctx: Context, params: PatchConfigVariantParams): Promise<void> {
     const existingVariant = await this.configVariants.getById(params.configVariantId);
     if (!existingVariant) {
       throw new BadRequestError('Config variant does not exist');
@@ -238,9 +239,15 @@ export class ConfigService {
 
     // Schema changes require maintainer permission, other changes require at least edit permission
     if (params.schema) {
-      await this.permissionService.ensureCanManageConfig(config.id, normalizeEmail(reviewer.email));
+      await this.permissionService.ensureCanManageConfig(ctx, {
+        configId: config.id,
+        currentUserEmail: normalizeEmail(reviewer.email),
+      });
     } else {
-      await this.permissionService.ensureCanEditConfig(config.id, normalizeEmail(reviewer.email));
+      await this.permissionService.ensureCanEditConfig(ctx, {
+        configId: config.id,
+        currentUserEmail: normalizeEmail(reviewer.email),
+      });
     }
 
     const nextValue = params.value ? params.value.newValue : existingVariant.value;
@@ -311,7 +318,10 @@ export class ConfigService {
     });
 
     // Get environment information for audit log
-    const environment = await this.projectEnvironments.getById(existingVariant.environmentId);
+    const environment = await this.projectEnvironments.getById({
+      environmentId: existingVariant.environmentId,
+      projectId: config.projectId,
+    });
     assert(environment, `Environment ${existingVariant.environmentId} not found`);
 
     // Create audit log for variant update
@@ -349,7 +359,7 @@ export class ConfigService {
     });
   }
 
-  async deleteConfig(params: DeleteConfigParams): Promise<void> {
+  async deleteConfig(ctx: Context, params: DeleteConfigParams): Promise<void> {
     const existingConfig = await this.configs.getById(params.configId);
     if (!existingConfig) {
       throw new BadRequestError('Config does not exist');
@@ -361,10 +371,10 @@ export class ConfigService {
 
     // Manage permission is required to delete a config
     assert(params.reviewer.email, 'Reviewer must have an email');
-    await this.permissionService.ensureCanManageConfig(
-      existingConfig.id,
-      normalizeEmail(params.reviewer.email),
-    );
+    await this.permissionService.ensureCanManageConfig(ctx, {
+      configId: existingConfig.id,
+      currentUserEmail: normalizeEmail(params.reviewer.email),
+    });
 
     // Reject all pending CONFIG proposals
     await this.rejectConfigProposalsInternal({

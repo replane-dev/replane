@@ -23,11 +23,13 @@ export function createUpdateProjectEnvironmentsOrderUseCase(
   UpdateProjectEnvironmentsOrderResponse
 > {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanManageProjectEnvironments(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
-
-    // Check if user has admin permission
-    await tx.permissionService.ensureCanManageProjectUsers(req.projectId, req.currentUserEmail);
 
     // Verify all environments belong to this project
     const allEnvironments = await tx.projectEnvironments.getByProjectId(req.projectId);
@@ -52,4 +54,3 @@ export function createUpdateProjectEnvironmentsOrderUseCase(
     return {};
   };
 }
-

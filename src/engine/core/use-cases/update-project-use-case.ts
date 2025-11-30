@@ -1,6 +1,6 @@
 import assert from 'assert';
 import {createAuditLogId} from '../audit-log-store';
-import {BadRequestError, ForbiddenError} from '../errors';
+import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -22,17 +22,17 @@ export function createUpdateProjectUseCase(): TransactionalUseCase<
   UpdateProjectResponse
 > {
   return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanManageProject(ctx, {
+      projectId: req.id,
+      currentUserEmail: req.currentUserEmail,
+    });
+
     const existing = await tx.projects.getById({
       currentUserEmail: req.currentUserEmail,
       id: req.id,
     });
     if (!existing) throw new BadRequestError('Project not found');
 
-    // Only owner or admin can manage project
-    const canManage = await tx.permissionService.canManageProject(req.id, req.currentUserEmail);
-    if (!canManage) throw new ForbiddenError('You are not allowed to manage this project');
-
-    // name uniqueness
     if (req.name !== existing.name) {
       const byName = await tx.projects.getByName(req.name);
       if (byName) throw new BadRequestError('Project with this name already exists');

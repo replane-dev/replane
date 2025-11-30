@@ -60,7 +60,7 @@ export function createPatchConfigUseCase(
     // Patch variants first (if any)
     if (req.variants && req.variants.length > 0) {
       for (const variantChange of req.variants) {
-        await tx.configService.patchConfigVariant({
+        await tx.configService.patchConfigVariant(ctx, {
           configVariantId: variantChange.configVariantId,
           value: variantChange.value,
           schema: variantChange.schema,
@@ -74,7 +74,7 @@ export function createPatchConfigUseCase(
 
     // Patch config-level fields (description, members) if any changed
     if (req.description || req.members) {
-      await tx.configService.patchConfig({
+      await tx.configService.patchConfig(ctx, {
         configId: req.configId,
         description: req.description,
         members: req.members,

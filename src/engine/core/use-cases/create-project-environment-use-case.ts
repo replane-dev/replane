@@ -29,7 +29,10 @@ export function createCreateProjectEnvironmentUseCase(
     assert(currentUser, 'Current user not found');
 
     // Check if user has admin permission
-    await tx.permissionService.ensureCanManageProjectUsers(req.projectId, req.currentUserEmail);
+    await tx.permissionService.ensureCanManageProjectUsers(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Validate environment name
     if (!/^[A-Za-z0-9_\s-]{1,50}$/i.test(req.name)) {
@@ -39,7 +42,10 @@ export function createCreateProjectEnvironmentUseCase(
     }
 
     // Verify the source environment exists and belongs to this project
-    const sourceEnvironment = await tx.projectEnvironments.getById(req.copyFromEnvironmentId);
+    const sourceEnvironment = await tx.projectEnvironments.getById({
+      environmentId: req.copyFromEnvironmentId,
+      projectId: req.projectId,
+    });
     if (!sourceEnvironment) {
       throw new BadRequestError('Source environment not found');
     }

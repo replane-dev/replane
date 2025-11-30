@@ -27,19 +27,22 @@ export interface CreateApiKeyResponse {
 export function createCreateApiKeyUseCase(deps: {
   tokenHasher: TokenHashingService;
 }): TransactionalUseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
-  return async (_ctx, tx, req) => {
-    await tx.permissionService.ensureCanManageApiKeys(req.projectId, req.currentUserEmail);
+  return async (ctx, tx, req) => {
+    await tx.permissionService.ensureCanManageApiKeys(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
     const user = await tx.users.getByEmail(req.currentUserEmail);
     if (!user) {
       throw new Error('User not found');
     }
 
-    const env = await tx.projectEnvironments.getById(req.environmentId);
+    const env = await tx.projectEnvironments.getById({
+      environmentId: req.environmentId,
+      projectId: req.projectId,
+    });
     if (!env) {
       throw new BadRequestError('Environment not found');
-    }
-    if (env.projectId !== req.projectId) {
-      throw new BadRequestError('Environment does not belong to the specified project');
     }
 
     const sdkKeyId = createUuidV7();

@@ -24,12 +24,15 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
   GetAuditLogMessageRequest,
   GetAuditLogMessageResponse
 > {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
     const base = await tx.auditLogs.getById(req.id);
     if (!base) return {message: undefined};
 
     if (base.projectId) {
-      await tx.permissionService.ensureCanViewProject(base.projectId, req.currentUserEmail);
+      await tx.permissionService.ensureIsOrganizationMember(ctx, {
+        projectId: base.projectId,
+        currentUserEmail: req.currentUserEmail,
+      });
     } else {
       throw new BadRequestError('Audit log does not belong to a project');
     }

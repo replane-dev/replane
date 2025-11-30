@@ -28,9 +28,12 @@ export function createGetConfigVariantVersionUseCase(): TransactionalUseCase<
   GetConfigVariantVersionRequest,
   GetConfigVariantVersionResponse
 > {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
     // Check permissions - viewing version details requires edit access
-    await tx.permissionService.ensureCanEditConfig(req.configId, req.currentUserEmail);
+    await tx.permissionService.ensureCanEditConfig(ctx, {
+      configId: req.configId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     // Get the config to verify it exists and belongs to the project
     const config = await tx.configs.getById(req.configId);

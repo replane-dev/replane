@@ -102,6 +102,7 @@ export default function EnvironmentsSettingsPage() {
       await updateEnvironment.mutateAsync({
         environmentId: selectedEnvironment.id,
         name: editEnvironmentName.trim(),
+        projectId,
       });
       toast.success('Environment updated successfully');
       setShowEditDialog(false);
@@ -117,6 +118,7 @@ export default function EnvironmentsSettingsPage() {
     try {
       await deleteEnvironment.mutateAsync({
         environmentId: selectedEnvironment.id,
+        projectId,
       });
       toast.success('Environment deleted successfully');
       setShowDeleteDialog(false);

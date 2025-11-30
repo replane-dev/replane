@@ -18,7 +18,10 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
   GetConfigListResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureCanViewProject(req.projectId, req.currentUserEmail);
+    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      projectId: req.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
 
     const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
       projectId: req.projectId,

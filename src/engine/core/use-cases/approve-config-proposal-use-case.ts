@@ -97,7 +97,7 @@ export function createApproveConfigProposalUseCase(
 
     // If this is a deletion proposal, delete the config and reject other pending proposals.
     if (proposal.proposedDelete) {
-      await tx.configService.deleteConfig({
+      await tx.configService.deleteConfig(ctx, {
         configId: proposal.configId,
         deleteAuthor: patchAuthor,
         reviewer: currentUser,
@@ -108,7 +108,7 @@ export function createApproveConfigProposalUseCase(
       const hasConfigChanges =
         proposal.proposedDescription !== null || proposal.proposedMembers !== null;
       if (hasConfigChanges) {
-        await tx.configService.patchConfig({
+        await tx.configService.patchConfig(ctx, {
           configId: proposal.configId,
           description:
             proposal.proposedDescription !== null
@@ -135,7 +135,7 @@ export function createApproveConfigProposalUseCase(
           `Variant version mismatch for ${variantChange.configVariantId}`,
         );
 
-        await tx.configService.patchConfigVariant({
+        await tx.configService.patchConfigVariant(ctx, {
           configVariantId: variantChange.configVariantId,
           value:
             variantChange.proposedValue !== undefined

@@ -20,6 +20,8 @@ export function createGetConfigValueUseCase(
   deps: GetConfigValueUseCaseDeps,
 ): UseCase<GetConfigValueRequest, GetConfigValueResponse> {
   return async (_ctx, req) => {
+    // permissions must be checked by the caller
+
     const configValue = await deps.configsReplica.getConfigValue({
       projectId: req.projectId,
       name: req.name,
