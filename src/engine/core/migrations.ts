@@ -665,6 +665,9 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_config_variant_proposals_rejected_in_favor_of_proposal_id ON config_variant_proposals(rejected_in_favor_of_proposal_id);
 
       -- Step 12: Update config_variant_versions.proposal_id FK to reference config_variant_proposals
+      -- First, clear any existing proposal_id values since we're not migrating proposal data
+      UPDATE config_variant_versions SET proposal_id = NULL WHERE proposal_id IS NOT NULL;
+
       ALTER TABLE config_variant_versions DROP CONSTRAINT config_versions_proposal_id_fkey;
       ALTER TABLE config_variant_versions ADD CONSTRAINT config_variant_versions_proposal_id_fkey
         FOREIGN KEY (proposal_id) REFERENCES config_variant_proposals(id) ON DELETE SET NULL;
@@ -949,6 +952,8 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
         sql TEXT NOT NULL UNIQUE,
         runAt TIMESTAMPTZ(3) NOT NULL
       );
+
+      ALTER TABLE migrations DROP CONSTRAINT IF EXISTS migrations_sql_key;
     `);
 
     const {rows: runMigrations} = await client.query<{id: number; sql: string}>(/*sql*/ `
