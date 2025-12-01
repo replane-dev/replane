@@ -899,7 +899,7 @@ export const migrations: Migration[] = [
       INSERT INTO organizations (id, name, personal_org_user_id, created_at, updated_at)
       SELECT
         gen_random_uuid(),
-        COALESCE(u.name, SPLIT_PART(u.email, '@', 1)) || '''s Organization',
+        COALESCE(u.name, SPLIT_PART(u.email, '@', 1)) || '''s Replane',
         u.id,
         NOW(),
         NOW()
@@ -938,6 +938,73 @@ export const migrations: Migration[] = [
       UPDATE organizations
       SET auto_add_new_users = true
       WHERE id = '${DEFAULT_ORGANIZATION_ID}';
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Create default projects for personal organizations and rename them
+
+      -- Step 1: Create a default project for each personal organization
+      INSERT INTO projects (id, name, description, is_example, organization_id, require_proposals, allow_self_approvals, created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        'Default Project',
+        'Your first project',
+        FALSE,
+        o.id,
+        FALSE,
+        TRUE,
+        NOW(),
+        NOW()
+      FROM organizations o
+      WHERE o.personal_org_user_id IS NOT NULL;
+
+      -- Step 2: Create Production and Development environments for each new project
+      INSERT INTO project_environments (id, project_id, name, "order", created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        p.id,
+        'Production',
+        1,
+        NOW(),
+        NOW()
+      FROM projects p
+      INNER JOIN organizations o ON p.organization_id = o.id
+      WHERE o.personal_org_user_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM project_environments pe
+        WHERE pe.project_id = p.id AND pe.name = 'Production'
+      );
+
+      INSERT INTO project_environments (id, project_id, name, "order", created_at, updated_at)
+      SELECT
+        gen_random_uuid(),
+        p.id,
+        'Development',
+        2,
+        NOW(),
+        NOW()
+      FROM projects p
+      INNER JOIN organizations o ON p.organization_id = o.id
+      WHERE o.personal_org_user_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM project_environments pe
+        WHERE pe.project_id = p.id AND pe.name = 'Development'
+      );
+
+      -- Step 3: Add users as project owners for their personal organization projects
+      INSERT INTO project_users (project_id, user_email_normalized, role, created_at, updated_at)
+      SELECT
+        p.id,
+        LOWER(TRIM(u.email)),
+        'admin',
+        NOW(),
+        NOW()
+      FROM projects p
+      INNER JOIN organizations o ON p.organization_id = o.id
+      INNER JOIN users u ON o.personal_org_user_id = u.id
+      WHERE o.personal_org_user_id IS NOT NULL
+      ON CONFLICT (project_id, user_email_normalized) DO NOTHING;
     `,
   },
 ];
