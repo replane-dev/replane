@@ -31,7 +31,10 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     const now = new Date();
 
-    const existing = await tx.projects.getByName(req.name);
+    const existing = await tx.projects.getByName({
+      name: req.name,
+      organizationId: req.organizationId,
+    });
     if (existing) throw new BadRequestError('Project with this name already exists');
 
     const user = await tx.users.getByEmail(req.currentUserEmail);

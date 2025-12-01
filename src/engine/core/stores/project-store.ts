@@ -105,11 +105,12 @@ export class ProjectStore {
     }));
   }
 
-  async getByName(name: string): Promise<Project | undefined> {
+  async getByName(params: {name: string; organizationId: string}): Promise<Project | undefined> {
     const result = await this.db
       .selectFrom('projects')
       .selectAll()
-      .where('name', '=', name)
+      .where('name', '=', params.name)
+      .where('organization_id', '=', params.organizationId)
       .executeTakeFirst();
     if (result) {
       return mapProject(result);
