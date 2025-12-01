@@ -2,7 +2,7 @@
 
 # Replane
 
-Versioned, auditable application configuration. Self‑hosted.
+Dynamic configuration manager for your apps and services. Self‑hosted.
 
 </div>
 
