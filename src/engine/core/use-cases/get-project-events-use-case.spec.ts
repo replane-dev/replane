@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import type {ConfigReplicaEvent} from '../configs-replica';
+import type {ConfigReplicaEvent} from '../configs-replica-service';
 import {GLOBAL_CONTEXT} from '../context';
 import {Subject} from '../subject';
 import {createGetProjectEventsUseCase, type ProjectEvent} from './get-project-events-use-case';
@@ -62,8 +62,22 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
-      {type: 'updated', configName: 'config1', configId: 'cfg-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
+      {
+        type: 'updated',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 2,
+        value: 'v2',
+      },
     ] satisfies ProjectEvent[]);
   });
 
@@ -119,7 +133,14 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
     ] satisfies ProjectEvent[]);
   });
 
@@ -186,9 +207,30 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
-      {type: 'updated', configName: 'config1', configId: 'cfg-1'},
-      {type: 'deleted', configName: 'config1', configId: 'cfg-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
+      {
+        type: 'updated',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 2,
+        value: 'v2',
+      },
+      {
+        type: 'deleted',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 2,
+        value: 'v2',
+      },
     ] satisfies ProjectEvent[]);
   });
 
@@ -291,11 +333,46 @@ describe('GetProjectEventsUseCase', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'cfg-1'},
-      {type: 'created', configName: 'config2', configId: 'cfg-2'},
-      {type: 'created', configName: 'config3', configId: 'cfg-3'},
-      {type: 'created', configName: 'config4', configId: 'cfg-4'},
-      {type: 'created', configName: 'config5', configId: 'cfg-5'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'cfg-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
+      {
+        type: 'created',
+        configName: 'config2',
+        configId: 'cfg-2',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v2',
+      },
+      {
+        type: 'created',
+        configName: 'config3',
+        configId: 'cfg-3',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v3',
+      },
+      {
+        type: 'created',
+        configName: 'config4',
+        configId: 'cfg-4',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v4',
+      },
+      {
+        type: 'created',
+        configName: 'config5',
+        configId: 'cfg-5',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v5',
+      },
     ] satisfies ProjectEvent[]);
   });
 
@@ -332,6 +409,9 @@ describe('GetProjectEventsUseCase', () => {
       type: 'created',
       configName: 'config1',
       configId: 'cfg-1',
+      renderedOverrides: [],
+      version: 1,
+      value: 'v1',
     } satisfies ProjectEvent);
     expect(result.done).toBe(false);
 

@@ -1,26 +1,26 @@
-import type {ConfigsReplica} from '../configs-replica';
+import type {ConfigsReplicaService} from '../configs-replica-service';
 import type {UseCase} from '../use-case';
 
-export interface GetConfigForApiRequest {
+export interface GetSdkConfigRequest {
   name: string;
   projectId: string;
   environmentId: string;
 }
 
-export interface GetConfigForApiResponse {
+export interface GetSdkConfigResponse {
   name: string;
   value: unknown;
   overrides: unknown;
   version: number;
 }
 
-export interface GetConfigForApiUseCaseDeps {
-  configsReplica: ConfigsReplica;
+export interface GetSdkConfigUseCaseDeps {
+  configsReplica: ConfigsReplicaService;
 }
 
-export function createGetConfigForApiUseCase(
-  deps: GetConfigForApiUseCaseDeps,
-): UseCase<GetConfigForApiRequest, GetConfigForApiResponse | null> {
+export function createGetSdkConfigUseCase(
+  deps: GetSdkConfigUseCaseDeps,
+): UseCase<GetSdkConfigRequest, GetSdkConfigResponse | null> {
   return async (_ctx, req) => {
     const config = deps.configsReplica.getConfig({
       projectId: req.projectId,

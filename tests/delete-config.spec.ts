@@ -232,12 +232,14 @@ describe('deleteConfig (requireProposals=true)', () => {
 
   it('should forbid direct delete when requireProposals is enabled', async () => {
     // Update project to require proposals
-    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,
-      name: 'Test Project',
-      description: 'Default project for tests',
-      requireProposals: true,
-      allowSelfApprovals: false,
+      details: {
+        name: 'Test Project',
+        description: 'Default project for tests',
+        requireProposals: true,
+        allowSelfApprovals: false,
+      },
       currentUserEmail: TEST_USER_EMAIL,
     });
 
@@ -264,12 +266,14 @@ describe('deleteConfig (requireProposals=true)', () => {
 
   it('should forbid deletion if version mismatch', async () => {
     // Update project to require proposals
-    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,
-      name: 'Test Project',
-      description: 'Default project for tests',
-      requireProposals: true,
-      allowSelfApprovals: false,
+      details: {
+        name: 'Test Project',
+        description: 'Default project for tests',
+        requireProposals: true,
+        allowSelfApprovals: false,
+      },
       currentUserEmail: TEST_USER_EMAIL,
     });
 

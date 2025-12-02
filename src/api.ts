@@ -35,11 +35,20 @@ const ConfigResponse = z
     name: ConfigName(),
     value: z.unknown(),
     renderedOverrides: z.array(RenderedOverrideSchema),
+    overrides: z.array(RenderedOverrideSchema),
     version: z.number(),
   })
   .openapi('ConfigResponse');
 
 type ConfigResponse = z.infer<typeof ConfigResponse>;
+
+const ConfigsResponse = z
+  .object({
+    items: z.array(ConfigResponse),
+  })
+  .openapi('ConfigsResponse');
+
+type ConfigsResponse = z.infer<typeof ConfigsResponse>;
 
 // Global error handler
 honoApi.onError((err, c) => {
@@ -162,6 +171,32 @@ honoApi.openapi(
 honoApi.openapi(
   {
     method: 'get',
+    path: '/configs',
+    operationId: 'getConfigs',
+    responses: {
+      200: {
+        description: 'Configs',
+        content: {
+          'application/json': {
+            schema: ConfigsResponse,
+          },
+        },
+      },
+    },
+  },
+  async c => {
+    const engine = await getEngine();
+    const {configs} = await engine.useCases.getSdkConfigs(c.get('context'), {
+      projectId: c.get('projectId'),
+      environmentId: c.get('environmentId'),
+    });
+    return c.json({items: configs}, 200);
+  },
+);
+
+honoApi.openapi(
+  {
+    method: 'get',
     path: '/configs/{name}',
     operationId: 'getConfig',
     request: {
@@ -189,7 +224,7 @@ honoApi.openapi(
 
     const engine = await getEngine();
 
-    const result = await engine.useCases.getConfigForApi(c.get('context'), {
+    const result = await engine.useCases.getSdkConfig(c.get('context'), {
       name,
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
@@ -203,6 +238,20 @@ honoApi.openapi(
   },
 );
 
+const ProjectEventResponse = z
+  .object({
+    type: z.enum(['created', 'updated', 'deleted']),
+    configId: z.string(),
+    configName: ConfigName(),
+    renderedOverrides: z.array(RenderedOverrideSchema),
+    overrides: z.array(RenderedOverrideSchema),
+    version: z.number(),
+    value: z.unknown(),
+  })
+  .openapi('ProjectEventResponse');
+
+type ProjectEventResponse = z.infer<typeof ProjectEventResponse>;
+
 honoApi.openapi(
   {
     method: 'get',
@@ -213,7 +262,7 @@ honoApi.openapi(
         description: 'Server-sent events stream for project updates',
         content: {
           'text/event-stream': {
-            schema: z.object({}),
+            schema: ProjectEventResponse,
           },
         },
       },
@@ -256,7 +305,15 @@ honoApi.openapi(
           controller.enqueue(encoder.encode(`: connected\n\n`));
 
           for await (const event of events) {
-            const data = JSON.stringify(event);
+            const data = JSON.stringify({
+              type: event.type,
+              configId: event.configId,
+              configName: event.configName,
+              renderedOverrides: event.renderedOverrides,
+              overrides: event.renderedOverrides,
+              version: event.version,
+              value: event.value,
+            } satisfies ProjectEventResponse);
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           }
         } catch (err) {

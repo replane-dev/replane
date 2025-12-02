@@ -52,7 +52,7 @@ describe('patchProject', () => {
 
   it('fails on duplicate name', async () => {
     // create second project
-    const {projectId: secondId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       organizationId: fixture.organizationId,
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'SecondProj',

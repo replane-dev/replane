@@ -52,7 +52,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
 
       const {name, description, requireProposals, allowSelfApprovals} = req.details;
       if (name !== existing.name) {
-        const same = await tx.projects.getByName(name);
+        const same = await tx.projects.getByName({name, organizationId: existing.organizationId});
         if (same) throw new BadRequestError('Project with this name already exists');
       }
 

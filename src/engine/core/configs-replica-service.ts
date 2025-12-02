@@ -1,5 +1,6 @@
 import type {Pool} from 'pg';
 import {AsyncWorker} from './async-worker';
+import {ConfigsReplicaStore, type ConfigVariantReplica} from './configs-replica-store';
 import {CONFIGS_REPLICA_PULL_INTERVAL_MS} from './constants';
 import {GLOBAL_CONTEXT} from './context';
 import type {EventBusClient} from './event-bus';
@@ -9,7 +10,6 @@ import {
   renderOverrides,
   type EvaluationContext,
   type EvaluationResult,
-  type RenderedOverride,
 } from './override-evaluator';
 import {type PgEventBusClientNotificationHandler} from './pg-event-bus-client';
 import type {Service} from './service';
@@ -17,27 +17,6 @@ import type {ConfigStore} from './stores/config-store';
 import type {ConfigVariantChangePayload} from './stores/config-variant-store';
 import {Subject} from './subject';
 import {Timer} from './timer';
-import type {Brand} from './utils';
-
-type ConfigVariantKey = Brand<string, 'ConfigVariantKey'>;
-
-function toConfigVariantKey(params: {
-  projectId: string;
-  name: string;
-  environmentId: string;
-}): ConfigVariantKey {
-  return `${params.projectId}::${params.name}::${params.environmentId}` as ConfigVariantKey;
-}
-
-interface ConfigVariantReplica {
-  variantId: string;
-  name: string;
-  projectId: string;
-  environmentId: string;
-  value: unknown;
-  renderedOverrides: RenderedOverride[];
-  version: number;
-}
 
 export type ConfigReplicaEvent =
   | {
@@ -65,9 +44,8 @@ export interface ConfigsReplicaOptions {
   eventsSubject?: Subject<ConfigReplicaEvent>;
 }
 
-export class ConfigsReplica implements Service {
-  private variantsByKey: Map<ConfigVariantKey, ConfigVariantReplica> = new Map();
-  private variantsById: Map<string, ConfigVariantReplica> = new Map();
+export class ConfigsReplicaService implements Service {
+  private store = new ConfigsReplicaStore();
 
   private worker: AsyncWorker;
   private eventBusClient: EventBusClient<ConfigVariantChangePayload>;
@@ -112,13 +90,20 @@ export class ConfigsReplica implements Service {
     });
   }
 
+  getEnvironmentConfigs(params: {
+    projectId: string;
+    environmentId: string;
+  }): ConfigVariantReplica[] {
+    return this.store.getByEnvironment(params);
+  }
+
   getConfigValue<T>(params: {
     projectId: string;
     name: string;
     environmentId: string;
     context?: EvaluationContext;
   }): T | undefined {
-    const variant = this.variantsByKey.get(toConfigVariantKey(params));
+    const variant = this.store.getByVariantKey(params);
     if (!variant) {
       return undefined;
     }
@@ -141,7 +126,7 @@ export class ConfigsReplica implements Service {
     name: string;
     environmentId: string;
   }): ConfigVariantReplica | undefined {
-    return this.variantsByKey.get(toConfigVariantKey(params));
+    return this.store.getByVariantKey(params);
   }
 
   async start(): Promise<void> {
@@ -173,7 +158,7 @@ export class ConfigsReplica implements Service {
       const variant = await this.options.configs.getReplicaConfig(variantId);
 
       if (variant) {
-        const existingVariant = this.variantsById.get(variantId);
+        const existingVariant = this.store.getById(variantId);
         const eventType =
           existingVariant !== undefined
             ? existingVariant.version !== variant.version
@@ -201,15 +186,7 @@ export class ConfigsReplica implements Service {
           version: variant.version,
         };
 
-        this.variantsByKey.set(
-          toConfigVariantKey({
-            projectId: variant.projectId,
-            name: variant.name,
-            environmentId: variant.environmentId,
-          }),
-          configVariantReplica,
-        );
-        this.variantsById.set(variantId, configVariantReplica);
+        this.store.upsert(configVariantReplica);
 
         this.options.logger.info(GLOBAL_CONTEXT, {
           msg: `ConfigsReplica ${eventType} config ${variant.name} (env=${variant.environmentId}, projectId=${variant.projectId})`,
@@ -223,16 +200,9 @@ export class ConfigsReplica implements Service {
           });
         }
       } else {
-        const existing = this.variantsById.get(variantId);
+        const existing = this.store.getById(variantId);
         if (existing) {
-          this.variantsById.delete(variantId);
-          this.variantsByKey.delete(
-            toConfigVariantKey({
-              projectId: existing.projectId,
-              name: existing.name,
-              environmentId: existing.environmentId,
-            }),
-          );
+          this.store.delete(variantId);
           this.options.logger.info(GLOBAL_CONTEXT, {
             msg: `ConfigsReplica deleted config ${existing.name} (projectId=${existing.projectId}, environmentId=${existing.environmentId})`,
           });
@@ -257,11 +227,11 @@ export class ConfigsReplica implements Service {
     const rawVariants = await this.options.configs.getReplicaDump();
     const rawVariantsByKey = new Map(
       rawVariants.map(variant => [
-        toConfigVariantKey({
+        {
           projectId: variant.projectId,
           name: variant.name,
           environmentId: variant.environmentId,
-        }),
+        },
         variant,
       ]),
     );
@@ -275,13 +245,11 @@ export class ConfigsReplica implements Service {
           rawVariant.overrides,
           async ({projectId, configName}) => {
             // For override references, use the same environment as the current config
-            return rawVariantsByKey.get(
-              toConfigVariantKey({
-                projectId,
-                name: configName,
-                environmentId: rawVariant.environmentId,
-              }),
-            )?.value;
+            return rawVariantsByKey.get({
+              projectId,
+              name: configName,
+              environmentId: rawVariant.environmentId,
+            })?.value;
           },
         ),
       });
@@ -289,7 +257,7 @@ export class ConfigsReplica implements Service {
 
     // Track changes if eventsSubject is provided
     if (this.options.eventsSubject) {
-      const oldVariantsById = new Map(this.variantsById);
+      const oldVariantsById = this.store.getAllVariantsById();
       const newVariantsById = new Map(variants.map(c => [c.variantId, c]));
 
       // Detect deleted configs
@@ -321,17 +289,7 @@ export class ConfigsReplica implements Service {
       }
     }
 
-    this.variantsByKey = new Map(
-      variants.map(variant => [
-        toConfigVariantKey({
-          projectId: variant.projectId,
-          name: variant.name,
-          environmentId: variant.environmentId,
-        }),
-        variant,
-      ]),
-    );
-    this.variantsById = new Map(variants.map(v => [v.variantId, v]));
+    this.store = new ConfigsReplicaStore(variants);
 
     this.options.logger.info(GLOBAL_CONTEXT, {
       msg: `ConfigsReplica refreshed ${variants.length} configs`,

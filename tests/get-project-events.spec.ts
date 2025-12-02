@@ -1,7 +1,10 @@
 import type {EventBusClient} from '@/engine/core/event-bus';
 import {normalizeEmail} from '@/engine/core/utils';
 import {afterEach, assert, beforeEach, describe, expect, it} from 'vitest';
-import {type ConfigReplicaEvent, ConfigsReplica} from '../src/engine/core/configs-replica';
+import {
+  type ConfigReplicaEvent,
+  ConfigsReplicaService,
+} from '../src/engine/core/configs-replica-service';
 import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {InMemoryEventBus} from '../src/engine/core/in-memory-event-bus';
 import type {Logger} from '../src/engine/core/logger';
@@ -391,7 +394,7 @@ describe('GetProjectEvents Integration', () => {
     let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
-    const replica = new ConfigsReplica({
+    const replica = new ConfigsReplicaService({
       pool: {} as any,
       configs,
       logger,
@@ -444,9 +447,30 @@ describe('GetProjectEvents Integration', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'var-1'},
-      {type: 'created', configName: 'config2', configId: 'var-2'},
-      {type: 'updated', configName: 'config1', configId: 'var-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
+      {
+        type: 'created',
+        configName: 'config2',
+        configId: 'var-2',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v2',
+      },
+      {
+        type: 'updated',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 2,
+        value: 'v1-updated',
+      },
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -485,7 +509,7 @@ describe('GetProjectEvents Integration', () => {
     let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
-    const replica = new ConfigsReplica({
+    const replica = new ConfigsReplicaService({
       pool: {} as any,
       configs,
       logger,
@@ -533,7 +557,14 @@ describe('GetProjectEvents Integration', () => {
 
     // Should only receive event for project1
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'var-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -566,7 +597,7 @@ describe('GetProjectEvents Integration', () => {
     let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
-    const replica = new ConfigsReplica({
+    const replica = new ConfigsReplicaService({
       pool: {} as any,
       configs,
       logger,
@@ -607,6 +638,9 @@ describe('GetProjectEvents Integration', () => {
       type: 'created',
       configName: 'config1',
       configId: 'var-1',
+      renderedOverrides: [],
+      version: 1,
+      value: 'v1',
     } satisfies ProjectEvent);
 
     // Now delete the config
@@ -617,8 +651,22 @@ describe('GetProjectEvents Integration', () => {
     await consumePromise;
 
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'var-1'},
-      {type: 'deleted', configName: 'config1', configId: 'var-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
+      {
+        type: 'deleted',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -657,7 +705,7 @@ describe('GetProjectEvents Integration', () => {
     let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
-    const replica = new ConfigsReplica({
+    const replica = new ConfigsReplicaService({
       pool: {} as any,
       configs,
       logger,
@@ -714,10 +762,24 @@ describe('GetProjectEvents Integration', () => {
 
     // Each consumer should only receive events for their project
     expect(events1).toEqual([
-      {type: 'created', configName: 'config1', configId: 'var-1'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
     ] satisfies ProjectEvent[]);
     expect(events2).toEqual([
-      {type: 'created', configName: 'config2', configId: 'var-2'},
+      {
+        type: 'created',
+        configName: 'config2',
+        configId: 'var-2',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v2',
+      },
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -759,7 +821,7 @@ describe('GetProjectEvents Integration', () => {
     let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
-    const replica = new ConfigsReplica({
+    const replica = new ConfigsReplicaService({
       pool: {} as any,
       configs,
       logger,
@@ -798,8 +860,22 @@ describe('GetProjectEvents Integration', () => {
 
     // Should receive created events for both configs from initial load
     expect(receivedEvents).toEqual([
-      {type: 'created', configName: 'config1', configId: 'var-1'},
-      {type: 'created', configName: 'config2', configId: 'var-2'},
+      {
+        type: 'created',
+        configName: 'config1',
+        configId: 'var-1',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v1',
+      },
+      {
+        type: 'created',
+        configName: 'config2',
+        configId: 'var-2',
+        renderedOverrides: [],
+        version: 1,
+        value: 'v2',
+      },
     ] satisfies ProjectEvent[]);
 
     await replica.stop();
@@ -822,7 +898,7 @@ describe('GetProjectEvents Integration', () => {
     let mem: EventBusClient<ConfigVariantChangePayload> | null = null;
     const eventsSubject = new Subject<ConfigReplicaEvent>();
 
-    const replica = new ConfigsReplica({
+    const replica = new ConfigsReplicaService({
       pool: {} as any,
       configs,
       logger,
@@ -878,6 +954,9 @@ describe('GetProjectEvents Integration', () => {
         type: 'created',
         configId: `var-${i}`,
         configName: `config${i}`,
+        renderedOverrides: [],
+        version: 1,
+        value: `v${i}`,
       } satisfies ProjectEvent);
     }
 

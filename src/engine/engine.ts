@@ -4,7 +4,7 @@ import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
 import {ConfigService} from './core/config-service';
-import {type ConfigReplicaEvent, ConfigsReplica} from './core/configs-replica';
+import {type ConfigReplicaEvent, ConfigsReplicaService} from './core/configs-replica-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
@@ -53,7 +53,6 @@ import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
-import {createGetConfigForApiUseCase} from './core/use-cases/get-config-for-api-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
 import {createGetConfigProposalListUseCase} from './core/use-cases/get-config-proposal-list-use-case';
 import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
@@ -70,6 +69,8 @@ import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
 import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
+import {createGetSdkConfigUseCase} from './core/use-cases/get-sdk-config-use-case';
+import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
 import {createPatchConfigVariantUseCase} from './core/use-cases/patch-config-variant-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
@@ -81,7 +82,6 @@ import {createUpdateOrganizationMemberRoleUseCase} from './core/use-cases/update
 import {createUpdateOrganizationUseCase} from './core/use-cases/update-organization-use-case';
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
-import {createUpdateProjectUseCase} from './core/use-cases/update-project-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
@@ -223,7 +223,7 @@ export async function createEngine(options: EngineOptions) {
 
   const configEventsSubject = new Subject<ConfigReplicaEvent>();
 
-  const configsReplica = new ConfigsReplica({
+  const configsReplica = new ConfigsReplicaService({
     pool,
     configs: new ConfigStore(db),
     logger,
@@ -266,7 +266,6 @@ export async function createEngine(options: EngineOptions) {
     getProject: createGetProjectUseCase(),
     createProject: createCreateProjectUseCase(),
     deleteProject: createDeleteProjectUseCase({}),
-    updateProject: createUpdateProjectUseCase(),
     patchProject: createPatchProjectUseCase(),
     getProjectUsers: createGetProjectUsersUseCase(),
     updateProjectUsers: createUpdateProjectUsersUseCase(),
@@ -305,7 +304,8 @@ export async function createEngine(options: EngineOptions) {
     useCases: {
       ...engineUseCases,
       getConfigValue: createGetConfigValueUseCase({configsReplica}),
-      getConfigForApi: createGetConfigForApiUseCase({configsReplica}),
+      getSdkConfig: createGetSdkConfigUseCase({configsReplica}),
+      getSdkConfigs: createGetSdkConfigsUseCase({configsReplica}),
       getHealth: createGetHealthUseCase(),
       getProjectEvents: createGetProjectEventsUseCase({
         configEventsObservable: configEventsSubject,

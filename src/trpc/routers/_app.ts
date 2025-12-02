@@ -373,29 +373,6 @@ export const appRouter = createTRPCRouter({
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),
-  updateProject: baseProcedure
-    .input(
-      z.object({
-        id: Uuid(),
-        name: ProjectName(),
-        description: ProjectDescription(),
-        requireProposals: z.boolean(),
-        allowSelfApprovals: z.boolean(),
-      }),
-    )
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      return await opts.ctx.engine.useCases.updateProject(GLOBAL_CONTEXT, {
-        id: opts.input.id,
-        name: opts.input.name,
-        description: opts.input.description,
-        requireProposals: opts.input.requireProposals,
-        allowSelfApprovals: opts.input.allowSelfApprovals,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-    }),
   patchProject: baseProcedure
     .input(
       z.object({

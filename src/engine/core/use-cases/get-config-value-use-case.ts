@@ -1,4 +1,4 @@
-import type {ConfigsReplica} from '../configs-replica';
+import type {ConfigsReplicaService} from '../configs-replica-service';
 import type {UseCase} from '../use-case';
 
 export interface GetConfigValueRequest {
@@ -13,7 +13,7 @@ export interface GetConfigValueResponse {
 }
 
 export interface GetConfigValueUseCaseDeps {
-  configsReplica: ConfigsReplica;
+  configsReplica: ConfigsReplicaService;
 }
 
 export function createGetConfigValueUseCase(

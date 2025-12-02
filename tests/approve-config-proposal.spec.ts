@@ -539,12 +539,14 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
       },
     ]);
     // Set allowSelfApprovals to false on the project
-    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,
-      name: 'Test Project',
-      description: 'Default project for tests',
-      requireProposals: false,
-      allowSelfApprovals: false,
+      details: {
+        name: 'Test Project',
+        description: 'Default project for tests',
+        requireProposals: false,
+        allowSelfApprovals: false,
+      },
       currentUserEmail: CURRENT_USER_EMAIL,
     });
   });
@@ -599,12 +601,14 @@ describe('approveConfigProposal (allowSelfApprovals=true)', () => {
 
   it('should allow self-approval when allowSelfApprovals is true', async () => {
     // Update project to allow self-approvals
-    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,
-      name: 'Test Project',
-      description: 'Default project for tests',
-      requireProposals: false,
-      allowSelfApprovals: true,
+      details: {
+        name: 'Test Project',
+        description: 'Default project for tests',
+        requireProposals: false,
+        allowSelfApprovals: true,
+      },
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 

@@ -42,7 +42,7 @@ describe('Get Config For API Use Case', () => {
 
     await sleep(50); // Wait for replica sync
 
-    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+    const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -59,7 +59,7 @@ describe('Get Config For API Use Case', () => {
   });
 
   it('should return null for non-existent config', async () => {
-    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+    const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: 'non-existent-config',
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -102,7 +102,7 @@ describe('Get Config For API Use Case', () => {
 
     await sleep(50);
 
-    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+    const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -129,7 +129,7 @@ describe('Get Config For API Use Case', () => {
 
     await sleep(50);
 
-    const result = await fixture.engine.useCases.getConfigForApi(GLOBAL_CONTEXT, {
+    const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,

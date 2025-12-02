@@ -1,7 +1,8 @@
 import {Channel} from 'async-channel';
-import type {ConfigReplicaEvent} from '../configs-replica';
+import type {ConfigReplicaEvent} from '../configs-replica-service';
 import type {Context} from '../context';
 import type {Observable} from '../observable';
+import type {RenderedOverride} from '../override-condition-schemas';
 
 export interface GetProjectEventsRequest {
   projectId: string;
@@ -12,6 +13,9 @@ export interface ProjectEvent {
   type: 'created' | 'updated' | 'deleted';
   configId: string;
   configName: string;
+  renderedOverrides: RenderedOverride[];
+  version: number;
+  value: unknown;
 }
 
 export interface GetProjectEventsUseCaseDeps {
@@ -35,6 +39,9 @@ export function createGetProjectEventsUseCase(
             type: event.type,
             configId: event.variant.variantId,
             configName: event.variant.name,
+            renderedOverrides: event.variant.renderedOverrides,
+            version: event.variant.version,
+            value: event.variant.value,
           });
         }
       },

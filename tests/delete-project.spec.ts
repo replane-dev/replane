@@ -119,12 +119,14 @@ describe('deleteProject with proposals required', () => {
 
   it('allows deletion even when proposals are required (if user has permissions)', async () => {
     // Update project to require proposals
-    await fixture.engine.useCases.updateProject(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: fixture.projectId,
-      name: 'Test Project',
-      description: 'Default project for tests',
-      requireProposals: true,
-      allowSelfApprovals: false,
+      details: {
+        name: 'Test Project',
+        description: 'Default project for tests',
+        requireProposals: true,
+        allowSelfApprovals: false,
+      },
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
