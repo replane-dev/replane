@@ -30,11 +30,11 @@ import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {Fragment} from 'react';
 import {toast} from 'sonner';
-import {useOrganization} from '../../utils';
+import {useWorkspace} from '../../utils';
 
-export default function OrganizationGeneralSettingsPage() {
-  const org = useOrganization();
-  const organizationId = org.id;
+export default function WorkspaceGeneralSettingsPage() {
+  const org = useWorkspace();
+  const workspaceId = org.id;
   const trpc = useTRPC();
   const router = useRouter();
 
@@ -44,18 +44,18 @@ export default function OrganizationGeneralSettingsPage() {
     setName(org.name);
   }, [org]);
 
-  const updateOrganization = useMutation(trpc.updateOrganization.mutationOptions());
+  const updateWorkspace = useMutation(trpc.updateWorkspace.mutationOptions());
   const [savingSettings, setSavingSettings] = React.useState(false);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
     try {
-      await updateOrganization.mutateAsync({
-        organizationId,
+      await updateWorkspace.mutateAsync({
+        workspaceId,
         name,
       });
-      toast.success('Organization settings saved');
+      toast.success('Workspace settings saved');
     } catch (e: any) {
       toast.error(e?.message ?? 'Failed to save settings');
     }
@@ -74,8 +74,8 @@ export default function OrganizationGeneralSettingsPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/organizations/${organizationId}/settings/general`}>
-                    Organization Settings
+                  <Link href={`/app/workspaces/${workspaceId}/settings/general`}>
+                    Workspace Settings
                   </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -90,7 +90,7 @@ export default function OrganizationGeneralSettingsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-3xl space-y-8">
           <section>
-            <h2 className="mb-4 text-xl font-semibold">Organization settings</h2>
+            <h2 className="mb-4 text-xl font-semibold">Workspace settings</h2>
             <form onSubmit={handleSaveSettings} className="space-y-4">
               <div className="rounded-lg border bg-card/50 p-4 space-y-4">
                 <div>
@@ -106,7 +106,7 @@ export default function OrganizationGeneralSettingsPage() {
                     aria-readonly={!canEdit}
                   />
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    Organization display name (1-100 chars)
+                    Workspace display name (1-100 chars)
                   </p>
                 </div>
 
@@ -115,7 +115,7 @@ export default function OrganizationGeneralSettingsPage() {
                     <div className="flex items-start gap-2">
                       <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                       <p className="text-xs text-muted-foreground">
-                        Only organization admins can change settings.
+                        Only workspace admins can change settings.
                       </p>
                     </div>
                   </div>
@@ -137,10 +137,10 @@ export default function OrganizationGeneralSettingsPage() {
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
                     <div className="text-sm font-semibold text-foreground mb-1">
-                      Delete organization
+                      Delete workspace
                     </div>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Deleting an organization will permanently remove all its projects. This action
+                      Deleting an workspace will permanently remove all its projects. This action
                       cannot be undone.
                     </p>
                     <Dialog>
@@ -148,24 +148,24 @@ export default function OrganizationGeneralSettingsPage() {
                         <Button
                           variant="destructive"
                           disabled={!canEdit}
-                          title={!canEdit ? 'Only admins can delete an organization' : undefined}
+                          title={!canEdit ? 'Only admins can delete an workspace' : undefined}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete organization
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete workspace
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Delete organization</DialogTitle>
+                          <DialogTitle>Delete workspace</DialogTitle>
                           <DialogDescription>
-                            Please type the organization name to confirm deletion. This action
+                            Please type the workspace name to confirm deletion. This action
                             cannot be undone.
                           </DialogDescription>
                         </DialogHeader>
-                        <DeleteOrganizationForm
-                          organizationId={organizationId}
-                          organizationName={org.name}
+                        <DeleteWorkspaceForm
+                          workspaceId={workspaceId}
+                          workspaceName={org.name}
                           onDeleted={() => {
-                            toast.success('Organization deleted');
+                            toast.success('Workspace deleted');
                             router.push('/app');
                           }}
                         />
@@ -183,29 +183,29 @@ export default function OrganizationGeneralSettingsPage() {
   );
 }
 
-function DeleteOrganizationForm({
-  organizationId,
-  organizationName,
+function DeleteWorkspaceForm({
+  workspaceId,
+  workspaceName,
   onDeleted,
 }: {
-  organizationId: string;
-  organizationName: string;
+  workspaceId: string;
+  workspaceName: string;
   onDeleted: () => void;
 }) {
   const trpc = useTRPC();
   const [confirm, setConfirm] = React.useState('');
   const [isSubmitting, setSubmitting] = React.useState(false);
-  const canDelete = confirm.trim() === organizationName;
-  const deleteOrganization = useMutation(trpc.deleteOrganization.mutationOptions());
+  const canDelete = confirm.trim() === workspaceName;
+  const deleteWorkspace = useMutation(trpc.deleteWorkspace.mutationOptions());
 
   const handleDelete = async () => {
     if (!canDelete) return;
     setSubmitting(true);
     try {
-      await deleteOrganization.mutateAsync({organizationId});
+      await deleteWorkspace.mutateAsync({workspaceId});
       onDeleted();
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete organization');
+      toast.error(e?.message ?? 'Failed to delete workspace');
     } finally {
       setSubmitting(false);
     }
@@ -215,11 +215,11 @@ function DeleteOrganizationForm({
     <div className="space-y-3">
       <div>
         <Label htmlFor="confirm-org-name" className="mb-1 block text-sm font-medium">
-          Type organization name to confirm
+          Type workspace name to confirm
         </Label>
         <Input
           id="confirm-org-name"
-          placeholder={organizationName}
+          placeholder={workspaceName}
           value={confirm}
           onChange={e => setConfirm(e.target.value)}
           autoFocus
@@ -227,7 +227,7 @@ function DeleteOrganizationForm({
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="destructive" disabled={!canDelete || isSubmitting} onClick={handleDelete}>
-          {isSubmitting ? 'Deleting…' : 'Delete organization'}
+          {isSubmitting ? 'Deleting…' : 'Delete workspace'}
         </Button>
       </div>
     </div>

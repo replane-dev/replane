@@ -35,18 +35,18 @@ describe('rejectConfigProposal', () => {
       connection.release();
     }
 
-    fixture.engine.testing.organizationMembers.create([
+    fixture.engine.testing.workspaceMembers.create([
       {
-        organizationId: fixture.organizationId,
+        workspaceId: fixture.workspaceId,
         email: OTHER_USER_EMAIL,
         role: 'member',
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     ]);
-    fixture.engine.testing.organizationMembers.create([
+    fixture.engine.testing.workspaceMembers.create([
       {
-        organizationId: fixture.organizationId,
+        workspaceId: fixture.workspaceId,
         email: THIRD_USER_EMAIL,
         role: 'member',
         createdAt: new Date(),

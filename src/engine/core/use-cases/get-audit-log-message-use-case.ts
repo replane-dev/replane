@@ -29,7 +29,7 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
     if (!base) return {message: undefined};
 
     if (base.projectId) {
-      await tx.permissionService.ensureIsOrganizationMember(ctx, {
+      await tx.permissionService.ensureIsWorkspaceMember(ctx, {
         projectId: base.projectId,
         currentUserEmail: req.currentUserEmail,
       });

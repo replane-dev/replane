@@ -3,7 +3,7 @@
 import {ChevronDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
-import {useOrganization, useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useWorkspace, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,15 +20,15 @@ export function ProjectSwitcher() {
   const projectId = useProjectId();
   const {projects: allProjects} = useProjects();
 
-  const organization = useOrganization();
+  const workspace = useWorkspace();
 
-  const orgProjects = useMemo(() => {
-    return allProjects.filter(project => project.organizationId === organization.id);
-  }, [allProjects, organization.id]);
+  const workspaceProjects = useMemo(() => {
+    return allProjects.filter(project => project.workspaceId === workspace.id);
+  }, [allProjects, workspace.id]);
 
   const activeProject = useMemo(
-    () => orgProjects.find(project => project.id === projectId),
-    [orgProjects, projectId],
+    () => workspaceProjects.find(project => project.id === projectId),
+    [workspaceProjects, projectId],
   );
 
   if (!activeProject) {
@@ -72,7 +72,7 @@ export function ProjectSwitcher() {
             <DropdownMenuLabel className="text-muted-foreground text-xs">
               Projects
             </DropdownMenuLabel>
-            {orgProjects.map(project => (
+            {workspaceProjects.map(project => (
               <DropdownMenuItem asChild key={project.id} className="gap-2 p-2">
                 <Link href={`/app/projects/${project.id}/configs`}>{project.name}</Link>
               </DropdownMenuItem>

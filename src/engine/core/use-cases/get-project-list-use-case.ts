@@ -12,7 +12,7 @@ export interface GetProjectListResponse {
     descriptionPreview: string;
     createdAt: Date;
     updatedAt: Date;
-    organizationId: string;
+    workspaceId: string;
     requireProposals: boolean;
     allowSelfApprovals: boolean;
     myRole?: 'admin' | 'maintainer';
@@ -33,7 +33,7 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
         descriptionPreview: p.descriptionPreview,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
-        organizationId: p.organizationId,
+        workspaceId: p.workspaceId,
         requireProposals: p.requireProposals,
         allowSelfApprovals: p.allowSelfApprovals,
         myRole: p.myRole,

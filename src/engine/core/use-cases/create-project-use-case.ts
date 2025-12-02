@@ -9,7 +9,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectRequest {
   currentUserEmail: NormalizedEmail;
-  organizationId: string;
+  workspaceId: string;
   name: string;
   description: string;
   requireProposals?: boolean;
@@ -33,16 +33,16 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
 
     const existing = await tx.projects.getByName({
       name: req.name,
-      organizationId: req.organizationId,
+      workspaceId: req.workspaceId,
     });
     if (existing) throw new BadRequestError('Project with this name already exists');
 
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 
-    // Ensure user is a member of the organization
-    await tx.permissionService.ensureIsOrganizationMember(ctx, {
-      organizationId: req.organizationId,
+    // Ensure user is a member of the workspace
+    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+      workspaceId: req.workspaceId,
       currentUserEmail: req.currentUserEmail,
     });
 
@@ -52,7 +52,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       id: projectId,
       name: req.name,
       description: req.description,
-      organizationId: req.organizationId,
+      workspaceId: req.workspaceId,
       requireProposals: req.requireProposals ?? false,
       allowSelfApprovals: req.allowSelfApprovals ?? false,
       createdAt: now,

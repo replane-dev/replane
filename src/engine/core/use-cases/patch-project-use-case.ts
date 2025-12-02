@@ -27,7 +27,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
   PatchProjectResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.id,
       currentUserEmail: req.currentUserEmail,
     });
@@ -52,7 +52,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
 
       const {name, description, requireProposals, allowSelfApprovals} = req.details;
       if (name !== existing.name) {
-        const same = await tx.projects.getByName({name, organizationId: existing.organizationId});
+        const same = await tx.projects.getByName({name, workspaceId: existing.workspaceId});
         if (same) throw new BadRequestError('Project with this name already exists');
       }
 

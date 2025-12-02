@@ -29,15 +29,15 @@ export function useProject() {
   return project;
 }
 
-export function useOrganization() {
+export function useWorkspace() {
   const project = useProject();
-  const {organizations} = useProjects();
-  const organization = useMemo(
-    () => organizations.find(o => o.id === project.organizationId),
-    [organizations, project.organizationId],
+  const {workspaces} = useProjects();
+  const workspace = useMemo(
+    () => workspaces.find(w => w.id === project.workspaceId),
+    [workspaces, project.workspaceId],
   );
-  if (!organization) {
-    throw new Error(`Organization with ID ${project.organizationId} not found.`);
+  if (!workspace) {
+    throw new Error(`Workspace with ID ${project.workspaceId} not found.`);
   }
-  return organization;
+  return workspace;
 }

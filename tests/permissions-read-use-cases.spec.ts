@@ -12,7 +12,7 @@ describe('Read Use Cases - Permission Checks', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   beforeEach(async () => {
-    // Create an outsider user who is NOT a member of the organization
+    // Create an outsider user who is NOT a member of the workspace
     const connection = await fixture.engine.testing.pool.connect();
     try {
       await connection.query(

@@ -1,7 +1,7 @@
 import assert from 'assert';
 import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
-import type {OrganizationMemberStore} from '../stores/organization-member-store';
-import {createOrganizationId, Organization, OrganizationStore} from '../stores/organization-store';
+import type {WorkspaceMemberStore} from '../stores/workspace-member-store';
+import {createWorkspaceId, Workspace, WorkspaceStore} from '../stores/workspace-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import {createProjectId, Project, ProjectStore} from '../stores/project-store';
 import type {ProjectUserStore} from '../stores/project-user-store';
@@ -10,19 +10,19 @@ import type {UserStore} from '../user-store';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';
 
-export interface CreateOrganizationRequest {
+export interface CreateWorkspaceRequest {
   currentUserEmail: NormalizedEmail;
   name: string;
 }
 
-export interface CreateOrganizationResponse {
-  organizationId: string;
+export interface CreateWorkspaceResponse {
+  workspaceId: string;
   projectId: string;
 }
 
-export function createCreateOrganizationUseCase(): TransactionalUseCase<
-  CreateOrganizationRequest,
-  CreateOrganizationResponse
+export function createCreateWorkspaceUseCase(): TransactionalUseCase<
+  CreateWorkspaceRequest,
+  CreateWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
     const now = new Date();
@@ -30,11 +30,11 @@ export function createCreateOrganizationUseCase(): TransactionalUseCase<
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 
-    const {organization, project} = await createOrganization({
+    const {workspace, project} = await createWorkspace({
       currentUserEmail: req.currentUserEmail,
       name: req.name,
-      organizationStore: tx.organizations,
-      organizationMemberStore: tx.organizationMembers,
+      workspaceStore: tx.workspaces,
+      workspaceMemberStore: tx.workspaceMembers,
       projectStore: tx.projects,
       projectUserStore: tx.projectUsers,
       projectEnvironmentStore: tx.projectEnvironments,
@@ -42,15 +42,15 @@ export function createCreateOrganizationUseCase(): TransactionalUseCase<
       auditLogs: tx.auditLogs,
       now,
     });
-    return {organizationId: organization.id, projectId: project.id};
+    return {workspaceId: workspace.id, projectId: project.id};
   };
 }
 
-export async function createOrganization(params: {
+export async function createWorkspace(params: {
   currentUserEmail: NormalizedEmail;
   name: string;
-  organizationStore: OrganizationStore;
-  organizationMemberStore: OrganizationMemberStore;
+  workspaceStore: WorkspaceStore;
+  workspaceMemberStore: WorkspaceMemberStore;
   projectStore: ProjectStore;
   projectUserStore: ProjectUserStore;
   projectEnvironmentStore: ProjectEnvironmentStore;
@@ -61,8 +61,8 @@ export async function createOrganization(params: {
   const {
     currentUserEmail,
     name,
-    organizationStore,
-    organizationMemberStore,
+    workspaceStore,
+    workspaceMemberStore,
     projectStore,
     projectUserStore,
     projectEnvironmentStore,
@@ -71,18 +71,18 @@ export async function createOrganization(params: {
     users,
   } = params;
 
-  const organization: Organization = {
-    id: createOrganizationId(),
+  const workspace: Workspace = {
+    id: createWorkspaceId(),
     name,
     autoAddNewUsers: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  await organizationStore.create(organization);
-  await organizationMemberStore.create([
+  await workspaceStore.create(workspace);
+  await workspaceMemberStore.create([
     {
-      organizationId: organization.id,
+      workspaceId: workspace.id,
       email: currentUserEmail,
       role: 'admin',
       createdAt: new Date(),
@@ -93,7 +93,7 @@ export async function createOrganization(params: {
     id: createProjectId(),
     name: 'First project',
     description: 'This is your personal project.',
-    organizationId: organization.id,
+    workspaceId: workspace.id,
     requireProposals: false,
     allowSelfApprovals: false,
     createdAt: new Date(),
@@ -137,13 +137,13 @@ export async function createOrganization(params: {
     userId: currentUser.id,
     configId: null,
     payload: {
-      type: 'organization_created',
-      organization: {
-        id: organization.id,
+      type: 'workspace_created',
+      workspace: {
+        id: workspace.id,
         name: name,
       },
     },
   });
 
-  return {organization, project};
+  return {workspace, project};
 }

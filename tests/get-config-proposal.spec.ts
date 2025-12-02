@@ -35,18 +35,18 @@ describe('getConfigProposal', () => {
       connection.release();
     }
 
-    await fixture.engine.testing.organizationMembers.create([
+    await fixture.engine.testing.workspaceMembers.create([
       {
-        organizationId: fixture.organizationId,
+        workspaceId: fixture.workspaceId,
         email: OTHER_USER_EMAIL,
         role: 'member',
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     ]);
-    await fixture.engine.testing.organizationMembers.create([
+    await fixture.engine.testing.workspaceMembers.create([
       {
-        organizationId: fixture.organizationId,
+        workspaceId: fixture.workspaceId,
         email: THIRD_USER_EMAIL,
         role: 'member',
         createdAt: new Date(),

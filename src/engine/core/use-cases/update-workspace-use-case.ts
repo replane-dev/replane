@@ -4,47 +4,47 @@ import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
-export interface UpdateOrganizationRequest {
-  organizationId: string;
+export interface UpdateWorkspaceRequest {
+  workspaceId: string;
   currentUserEmail: NormalizedEmail;
   name: string;
 }
 
-export interface UpdateOrganizationResponse {
+export interface UpdateWorkspaceResponse {
   success: boolean;
 }
 
-export function createUpdateOrganizationUseCase(): TransactionalUseCase<
-  UpdateOrganizationRequest,
-  UpdateOrganizationResponse
+export function createUpdateWorkspaceUseCase(): TransactionalUseCase<
+  UpdateWorkspaceRequest,
+  UpdateWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsOrganizationAdmin(ctx, {
-      organizationId: req.organizationId,
+    await tx.permissionService.ensureIsWorkspaceAdmin(ctx, {
+      workspaceId: req.workspaceId,
       currentUserEmail: req.currentUserEmail,
     });
 
     const now = new Date();
 
-    const organization = await tx.organizations.getById({
-      id: req.organizationId,
+    const workspace = await tx.workspaces.getById({
+      id: req.workspaceId,
       currentUserEmail: req.currentUserEmail,
     });
 
-    if (!organization) {
-      throw new NotFoundError('Organization not found');
+    if (!workspace) {
+      throw new NotFoundError('Workspace not found');
     }
 
-    // Only admins can update organization settings
-    if (organization.myRole !== 'admin') {
-      throw new ForbiddenError('Only organization admins can update settings');
+    // Only admins can update workspace settings
+    if (workspace.myRole !== 'admin') {
+      throw new ForbiddenError('Only workspace admins can update settings');
     }
 
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 
-    await tx.organizations.updateById({
-      id: req.organizationId,
+    await tx.workspaces.updateById({
+      id: req.workspaceId,
       name: req.name,
       updatedAt: now,
     });
@@ -56,13 +56,13 @@ export function createUpdateOrganizationUseCase(): TransactionalUseCase<
       userId: user.id,
       configId: null,
       payload: {
-        type: 'organization_updated',
-        organization: {
-          id: req.organizationId,
+        type: 'workspace_updated',
+        workspace: {
+          id: req.workspaceId,
           name: req.name,
         },
         before: {
-          name: organization.name,
+          name: workspace.name,
         },
         after: {
           name: req.name,

@@ -15,7 +15,7 @@ describe('createProject', () => {
   it('creates a project with current user as admin and emits audit message', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'Another Project',
       description: 'Second project',
     });
@@ -62,7 +62,7 @@ describe('createProject', () => {
   it('fails with duplicate name', async () => {
     await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'DupProject',
       description: 'First',
     });
@@ -70,7 +70,7 @@ describe('createProject', () => {
     await expect(
       fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
         currentUserEmail: CURRENT_USER_EMAIL,
-        organizationId: fixture.organizationId,
+        workspaceId: fixture.workspaceId,
         name: 'DupProject',
         description: 'Second',
       }),

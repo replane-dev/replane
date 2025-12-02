@@ -43,7 +43,7 @@ export function createCreateConfigProposalUseCase(
   deps: CreateConfigProposalUseCaseDeps,
 ): TransactionalUseCase<CreateConfigProposalRequest, CreateConfigProposalResponse> {
   return async (ctx, tx, req) => {
-    await tx.permissionService.isOrganizationMember(ctx, {
+    await tx.permissionService.isWorkspaceMember(ctx, {
       projectId: req.projectId,
       currentUserEmail: req.currentUserEmail,
     });

@@ -14,7 +14,7 @@ describe('deleteProject', () => {
     // Create an extra project so default project is not last one when deleting
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'ToDelete',
       description: 'temp',
     });
@@ -47,7 +47,7 @@ describe('deleteProject', () => {
   it('fails when confirmation name does not match', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'WrongConfirm',
       description: 'x',
     });
@@ -82,7 +82,7 @@ describe('deleteProject', () => {
     // Create project with two owners then remove current user to drop ownership
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'ForbiddenDelete',
       description: 'x',
     });
@@ -133,7 +133,7 @@ describe('deleteProject with proposals required', () => {
     // Create an extra project so we are not attempting to delete the last one
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'ToDeleteWithProposals',
       description: 'temp',
       requireProposals: true,

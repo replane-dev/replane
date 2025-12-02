@@ -7,8 +7,8 @@ import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariantStore} from './stores/config-variant-store';
 import type {ConfigVariantVersionStore} from './stores/config-variant-version-store';
-import type {OrganizationMemberStore} from './stores/organization-member-store';
-import type {OrganizationStore} from './stores/organization-store';
+import type {WorkspaceMemberStore} from './stores/workspace-member-store';
+import type {WorkspaceStore} from './stores/workspace-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
@@ -49,9 +49,9 @@ export interface UseCaseTransaction {
   projectEnvironments: ProjectEnvironmentStore;
   configVariants: ConfigVariantStore;
   configVariantVersions: ConfigVariantVersionStore;
-  // Organization stores
-  organizations: OrganizationStore;
-  organizationMembers: OrganizationMemberStore;
+  // Workspace stores
+  workspaces: WorkspaceStore;
+  workspaceMembers: WorkspaceMemberStore;
   // Needed for permission checks
   db: any;
 }

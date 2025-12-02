@@ -35,10 +35,10 @@ export function createDeleteProjectUseCase(
       currentUserEmail: req.currentUserEmail,
     });
 
-    // Prevent deleting the last remaining project within the organization
-    const totalInOrg = await tx.projects.countByOrganization(project.organizationId);
-    if (totalInOrg <= 1) {
-      throw new BadRequestError('Cannot delete the last remaining project in this organization');
+    // Prevent deleting the last remaining project within the workspace
+    const totalInWorkspace = await tx.projects.countByWorkspace(project.workspaceId);
+    if (totalInWorkspace <= 1) {
+      throw new BadRequestError('Cannot delete the last remaining project in this workspace');
     }
 
     // Capture data for audit before deletion

@@ -8,12 +8,12 @@ import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
-import {useOrganization} from '../utils';
+import {useWorkspace} from '../utils';
 
 export default function NewProjectPage() {
   const trpc = useTRPC();
   const router = useRouter();
-  const org = useOrganization();
+  const workspace = useWorkspace();
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
@@ -29,7 +29,7 @@ export default function NewProjectPage() {
     setError(null);
     try {
       const {projectId} = await createProject.mutateAsync({
-        organizationId: org.id,
+        workspaceId: workspace.id,
         name,
         description,
       });

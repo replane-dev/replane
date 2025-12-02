@@ -31,13 +31,13 @@ import {Fragment} from 'react';
 import {toast} from 'sonner';
 import {useProjectId} from '../utils';
 
-export default function OrganizationsPage() {
+export default function WorkspacesPage() {
   const trpc = useTRPC();
   const router = useRouter();
   const projectId = useProjectId();
 
-  const orgsQuery = trpc.getOrganizationList.queryOptions();
-  const {data: organizations, refetch} = useSuspenseQuery({...orgsQuery});
+  const orgsQuery = trpc.getWorkspaceList.queryOptions();
+  const {data: workspaces, refetch} = useSuspenseQuery({...orgsQuery});
 
   return (
     <Fragment>
@@ -48,7 +48,7 @@ export default function OrganizationsPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>Organizations</BreadcrumbPage>
+                <BreadcrumbPage>Workspaces</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -58,27 +58,27 @@ export default function OrganizationsPage() {
         <div className="max-w-5xl space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Manage your organizations and their settings
+              Manage your workspaces and their settings
             </p>
             <Dialog>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  New organization
+                  New workspace
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create organization</DialogTitle>
+                  <DialogTitle>Create workspace</DialogTitle>
                   <DialogDescription>
-                    Create a new organization to group related projects together.
+                    Create a new workspace to group related projects together.
                   </DialogDescription>
                 </DialogHeader>
-                <CreateOrganizationForm
+                <CreateWorkspaceForm
                   onCreated={orgId => {
                     refetch();
-                    toast.success('Organization created');
-                    router.push(`/app/organizations/${orgId}/settings/general`);
+                    toast.success('Workspace created');
+                    router.push(`/app/workspaces/${orgId}/settings/general`);
                   }}
                 />
               </DialogContent>
@@ -86,20 +86,20 @@ export default function OrganizationsPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {organizations.map(org => (
+            {workspaces.map(org => (
               <Card key={org.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <Building2 className="h-8 w-8 text-muted-foreground" />
                     <div className="flex items-center gap-1">
                       {org.myRole === 'admin' && (
-                        <Link href={`/app/organizations/${org.id}/settings/general`}>
+                        <Link href={`/app/workspaces/${org.id}/settings/general`}>
                           <Button variant="ghost" size="sm">
                             <Settings className="h-4 w-4" />
                           </Button>
                         </Link>
                       )}
-                      <Link href={`/app/organizations/${org.id}/settings/members`}>
+                      <Link href={`/app/workspaces/${org.id}/settings/members`}>
                         <Button variant="ghost" size="sm">
                           <Users className="h-4 w-4" />
                         </Button>
@@ -110,7 +110,7 @@ export default function OrganizationsPage() {
                   <CardDescription>{org.myRole === 'admin' ? 'Admin' : 'Member'}</CardDescription>
                 </CardHeader>
                 <CardFooter>
-                  <Link href={`/app/organizations/${org.id}/settings/general`} className="w-full">
+                  <Link href={`/app/workspaces/${org.id}/settings/general`} className="w-full">
                     <Button variant="outline" className="w-full">
                       View details
                     </Button>
@@ -120,12 +120,12 @@ export default function OrganizationsPage() {
             ))}
           </div>
 
-          {organizations.length === 0 && (
+          {workspaces.length === 0 && (
             <div className="text-center py-12">
               <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No organizations</h3>
+              <h3 className="mt-4 text-lg font-semibold">No workspaces</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Get started by creating your first organization.
+                Get started by creating your first workspace.
               </p>
             </div>
           )}
@@ -135,22 +135,22 @@ export default function OrganizationsPage() {
   );
 }
 
-function CreateOrganizationForm({onCreated}: {onCreated: (orgId: string) => void}) {
+function CreateWorkspaceForm({onCreated}: {onCreated: (orgId: string) => void}) {
   const trpc = useTRPC();
   const [name, setName] = React.useState('');
   const [isSubmitting, setSubmitting] = React.useState(false);
 
-  const createOrganization = useMutation(trpc.createOrganization.mutationOptions());
+  const createWorkspace = useMutation(trpc.createWorkspace.mutationOptions());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const {organizationId} = await createOrganization.mutateAsync({name});
-      onCreated(organizationId);
+      const {workspaceId} = await createWorkspace.mutateAsync({name});
+      onCreated(workspaceId);
       setName('');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to create organization');
+      toast.error(e?.message ?? 'Failed to create workspace');
     } finally {
       setSubmitting(false);
     }
@@ -164,18 +164,18 @@ function CreateOrganizationForm({onCreated}: {onCreated: (orgId: string) => void
         </Label>
         <Input
           id="org-name"
-          placeholder="My Organization"
+          placeholder="My Workspace"
           value={name}
           onChange={e => setName(e.target.value)}
           required
         />
         <p className="mt-1.5 text-xs text-muted-foreground">
-          A name for your organization (1-100 characters)
+          A name for your workspace (1-100 characters)
         </p>
       </div>
       <DialogFooter>
         <Button type="submit" disabled={isSubmitting || name.trim() === ''}>
-          {isSubmitting ? 'Creating…' : 'Create organization'}
+          {isSubmitting ? 'Creating…' : 'Create workspace'}
         </Button>
       </DialogFooter>
     </form>

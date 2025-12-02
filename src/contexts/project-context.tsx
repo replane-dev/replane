@@ -7,23 +7,23 @@ import React from 'react';
 export interface ProjectSummary {
   id: string;
   name: string;
-  organizationId: string;
+  workspaceId: string;
   isExample: boolean;
   requireProposals: boolean;
   allowSelfApprovals: boolean;
   myRole: 'admin' | 'maintainer' | undefined;
 }
 
-export interface OrganizationSummary {
+export interface WorkspaceSummary {
   id: string;
   name: string;
   myRole: 'admin' | 'member' | undefined;
 }
 
 interface ProjectContextValue {
-  organizations: OrganizationSummary[];
+  workspaces: WorkspaceSummary[];
   projects: ProjectSummary[];
-  // refreshes project and organization lists
+  // refreshes project and workspace lists
   refresh: () => Promise<void>;
 }
 
@@ -33,15 +33,15 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const projectsQuery = trpc.getProjectList.queryOptions();
-  const organizationsQuery = trpc.getOrganizationList.queryOptions();
+  const workspacesQuery = trpc.getWorkspaceList.queryOptions();
   const {data: projectsData} = useSuspenseQuery({...projectsQuery});
-  const {data: organizationsData} = useSuspenseQuery({...organizationsQuery});
+  const {data: workspacesData} = useSuspenseQuery({...workspacesQuery});
   const projects: ProjectSummary[] = React.useMemo(
     () =>
       projectsData.projects.map(p => ({
         id: p.id,
         name: p.name,
-        organizationId: p.organizationId,
+        workspaceId: p.workspaceId,
         requireProposals: p.requireProposals,
         allowSelfApprovals: p.allowSelfApprovals,
         myRole: p.myRole,
@@ -49,9 +49,9 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
       })),
     [projectsData.projects],
   );
-  const organizations: OrganizationSummary[] = React.useMemo(
-    () => organizationsData.map(o => ({id: o.id, name: o.name, myRole: o.myRole})),
-    [organizationsData],
+  const workspaces: WorkspaceSummary[] = React.useMemo(
+    () => workspacesData.map(w => ({id: w.id, name: w.name, myRole: w.myRole})),
+    [workspacesData],
   );
 
   // Assert non-empty list (backend guarantees at least one project)
@@ -64,8 +64,8 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
   }, [queryClient, projectsQuery.queryKey]);
 
   const value = React.useMemo<ProjectContextValue>(
-    () => ({projects, organizations, refresh}),
-    [projects, organizations, refresh],
+    () => ({projects, workspaces, refresh}),
+    [projects, workspaces, refresh],
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

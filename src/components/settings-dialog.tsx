@@ -17,11 +17,11 @@ import {Globe, Settings as SettingsIcon, User, Users} from 'lucide-react';
 import * as React from 'react';
 import {Suspense} from 'react';
 import {AccountPreferencesSettings} from './settings/account-preferences-settings';
-import {OrganizationGeneralSettings} from './settings/organization-general-settings';
-import {OrganizationMembersSettings} from './settings/organization-members-settings';
 import {ProjectEnvironmentsSettings} from './settings/project-environments-settings';
 import {ProjectGeneralSettings} from './settings/project-general-settings';
 import {ProjectMembersSettings} from './settings/project-members-settings';
+import {WorkspaceGeneralSettings} from './settings/workspace-general-settings';
+import {WorkspaceMembersSettings} from './settings/workspace-members-settings';
 
 type SettingsSection =
   | 'account-preferences'
@@ -35,7 +35,7 @@ interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  organizationId: string;
+  workspaceId: string;
   initialSection?: SettingsSection;
 }
 
@@ -43,7 +43,7 @@ export function SettingsDialog({
   open,
   onOpenChange,
   projectId,
-  organizationId,
+  workspaceId,
   initialSection = 'project-general',
 }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSection>(initialSection);
@@ -54,7 +54,7 @@ export function SettingsDialog({
       items: [{name: 'Preferences', icon: User, section: 'account-preferences' as SettingsSection}],
     },
     {
-      label: 'Organization',
+      label: 'Workspace',
       items: [
         {name: 'General', icon: SettingsIcon, section: 'org-general' as SettingsSection},
         {name: 'Members', icon: Users, section: 'org-members' as SettingsSection},
@@ -73,8 +73,8 @@ export function SettingsDialog({
   const getSectionTitle = (section: SettingsSection): {title: string; breadcrumb: string[]} => {
     const map: Record<SettingsSection, {title: string; breadcrumb: string[]}> = {
       'account-preferences': {title: 'Preferences', breadcrumb: ['Account', 'Preferences']},
-      'org-general': {title: 'Organization Settings', breadcrumb: ['Organization', 'General']},
-      'org-members': {title: 'Organization Members', breadcrumb: ['Organization', 'Members']},
+      'org-general': {title: 'Workspace Settings', breadcrumb: ['Workspace', 'General']},
+      'org-members': {title: 'Workspace Members', breadcrumb: ['Workspace', 'Members']},
       'project-general': {title: 'Project Settings', breadcrumb: ['Project', 'General']},
       'project-environments': {
         title: 'Project Environments',
@@ -117,15 +117,15 @@ export function SettingsDialog({
               ))}
             </SidebarContent>
           </Sidebar>
-          <main className="flex h-[600px] flex-1 flex-col overflow-hidden px-8 py-4">
+          <main className="flex h-[600px] flex-1 flex-col overflow-hidden py-4">
             <div className="flex flex-1 flex-col overflow-y-auto p-6">
               <Suspense fallback={<SettingsLoadingFallback />}>
                 {activeSection === 'account-preferences' && <AccountPreferencesSettings />}
                 {activeSection === 'org-general' && (
-                  <OrganizationGeneralSettings organizationId={organizationId} />
+                  <WorkspaceGeneralSettings workspaceId={workspaceId} />
                 )}
                 {activeSection === 'org-members' && (
-                  <OrganizationMembersSettings organizationId={organizationId} />
+                  <WorkspaceMembersSettings workspaceId={workspaceId} />
                 )}
                 {activeSection === 'project-general' && (
                   <ProjectGeneralSettings projectId={projectId} />

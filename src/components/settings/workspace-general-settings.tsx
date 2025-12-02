@@ -10,27 +10,27 @@ import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {toast} from 'sonner';
 
-export function OrganizationGeneralSettings({organizationId}: {organizationId: string}) {
+export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
   const trpc = useTRPC();
   const router = useRouter();
 
-  const {data: org} = useSuspenseQuery(trpc.getOrganization.queryOptions({organizationId}));
+  const {data: org} = useSuspenseQuery(trpc.getWorkspace.queryOptions({workspaceId}));
   const [name, setName] = React.useState(org.name);
 
   React.useEffect(() => {
     setName(org.name);
   }, [org.name]);
 
-  const updateOrganization = useMutation(trpc.updateOrganization.mutationOptions());
-  const deleteOrganization = useMutation(trpc.deleteOrganization.mutationOptions());
+  const updateWorkspace = useMutation(trpc.updateWorkspace.mutationOptions());
+  const deleteWorkspace = useMutation(trpc.deleteWorkspace.mutationOptions());
   const [saving, setSaving] = React.useState(false);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateOrganization.mutateAsync({organizationId, name});
-      toast.success('Organization settings saved');
+      await updateWorkspace.mutateAsync({workspaceId, name});
+      toast.success('Workspace settings saved');
     } catch (e: any) {
       toast.error(e?.message ?? 'Failed to save');
     }
@@ -38,13 +38,13 @@ export function OrganizationGeneralSettings({organizationId}: {organizationId: s
   };
 
   const canEdit = org.myRole === 'admin';
-  const isPersonal = !!org.personalOrgUserId;
+  const isPersonal = !!org.personalWorkspaceUserId;
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h3 className="text-lg font-semibold">General</h3>
-        <p className="text-sm text-muted-foreground">Manage organization details</p>
+        <p className="text-sm text-muted-foreground">Manage workspace details</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-4">
@@ -59,7 +59,7 @@ export function OrganizationGeneralSettings({organizationId}: {organizationId: s
           />
           {isPersonal && (
             <p className="text-xs text-muted-foreground mt-1.5">
-              This is your personal organization
+              This is your personal workspace
             </p>
           )}
         </div>
@@ -74,7 +74,7 @@ export function OrganizationGeneralSettings({organizationId}: {organizationId: s
             <div>
               <h4 className="text-sm font-semibold mb-1">Danger Zone</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Permanently delete this organization and all its projects
+                Permanently delete this workspace and all its projects
               </p>
             </div>
             <Button
@@ -82,18 +82,18 @@ export function OrganizationGeneralSettings({organizationId}: {organizationId: s
               variant="outline"
               className="text-destructive"
               onClick={async () => {
-                if (!confirm(`Delete organization "${org.name}"? This will delete all projects.`))
+                if (!confirm(`Delete workspace "${org.name}"? This will delete all projects.`))
                   return;
                 try {
-                  await deleteOrganization.mutateAsync({organizationId});
-                  toast.success('Organization deleted');
+                  await deleteWorkspace.mutateAsync({workspaceId});
+                  toast.success('Workspace deleted');
                   router.push('/app');
                 } catch (e: any) {
                   toast.error(e?.message ?? 'Failed to delete');
                 }
               }}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Organization
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Workspace
             </Button>
           </div>
         </div>

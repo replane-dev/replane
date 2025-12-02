@@ -72,8 +72,8 @@ export default function PrivacyPage() {
               <p className="text-muted-foreground mb-4">
                 Configuration data, feature flags, and related metadata you create within Replane
                 are stored to provide the service functionality. This data is associated with your
-                account and organization and is accessible only to authorized users within your
-                organization.
+                account and workspace and is accessible only to authorized users within your
+                workspace.
               </p>
             </section>
 

@@ -248,17 +248,17 @@ export interface ConfigVariantProposalApprovedAuditLogPayload
   proposedOverrides?: {newOverrides: unknown};
 }
 
-export interface OrganizationCreatedAuditLogPayload
-  extends BaseAuditLogPayload<'organization_created'> {
-  organization: {
+export interface WorkspaceCreatedAuditLogPayload
+  extends BaseAuditLogPayload<'workspace_created'> {
+  workspace: {
     id: string;
     name: string;
   };
 }
 
-export interface OrganizationUpdatedAuditLogPayload
-  extends BaseAuditLogPayload<'organization_updated'> {
-  organization: {
+export interface WorkspaceUpdatedAuditLogPayload
+  extends BaseAuditLogPayload<'workspace_updated'> {
+  workspace: {
     id: string;
     name: string;
   };
@@ -270,29 +270,17 @@ export interface OrganizationUpdatedAuditLogPayload
   };
 }
 
-export interface OrganizationDeletedAuditLogPayload
-  extends BaseAuditLogPayload<'organization_deleted'> {
-  organization: {
+export interface WorkspaceDeletedAuditLogPayload
+  extends BaseAuditLogPayload<'workspace_deleted'> {
+  workspace: {
     id: string;
     name: string;
   };
 }
 
-export interface OrganizationMemberAddedAuditLogPayload
-  extends BaseAuditLogPayload<'organization_member_added'> {
-  organization: {
-    id: string;
-    name: string;
-  };
-  member: {
-    email: string;
-    role: string;
-  };
-}
-
-export interface OrganizationMemberRemovedAuditLogPayload
-  extends BaseAuditLogPayload<'organization_member_removed'> {
-  organization: {
+export interface WorkspaceMemberAddedAuditLogPayload
+  extends BaseAuditLogPayload<'workspace_member_added'> {
+  workspace: {
     id: string;
     name: string;
   };
@@ -302,9 +290,21 @@ export interface OrganizationMemberRemovedAuditLogPayload
   };
 }
 
-export interface OrganizationMemberRoleChangedAuditLogPayload
-  extends BaseAuditLogPayload<'organization_member_role_changed'> {
-  organization: {
+export interface WorkspaceMemberRemovedAuditLogPayload
+  extends BaseAuditLogPayload<'workspace_member_removed'> {
+  workspace: {
+    id: string;
+    name: string;
+  };
+  member: {
+    email: string;
+    role: string;
+  };
+}
+
+export interface WorkspaceMemberRoleChangedAuditLogPayload
+  extends BaseAuditLogPayload<'workspace_member_role_changed'> {
+  workspace: {
     id: string;
     name: string;
   };
@@ -341,12 +341,12 @@ export type AuditLogPayload =
   | ConfigVariantProposalCreatedAuditLogPayload
   | ConfigVariantProposalRejectedAuditLogPayload
   | ConfigVariantProposalApprovedAuditLogPayload
-  | OrganizationCreatedAuditLogPayload
-  | OrganizationUpdatedAuditLogPayload
-  | OrganizationDeletedAuditLogPayload
-  | OrganizationMemberAddedAuditLogPayload
-  | OrganizationMemberRemovedAuditLogPayload
-  | OrganizationMemberRoleChangedAuditLogPayload;
+  | WorkspaceCreatedAuditLogPayload
+  | WorkspaceUpdatedAuditLogPayload
+  | WorkspaceDeletedAuditLogPayload
+  | WorkspaceMemberAddedAuditLogPayload
+  | WorkspaceMemberRemovedAuditLogPayload
+  | WorkspaceMemberRoleChangedAuditLogPayload;
 
 export interface AuditLog {
   id: AuditLogId;

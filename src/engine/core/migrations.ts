@@ -9,7 +9,7 @@ export interface Migration {
 
 const EXAMPLE_PROJECT_ID = '32234b32-b7d9-4401-91e2-745a0cfb092a';
 const EXAMPLE_USER_ID = 123456789;
-const DEFAULT_ORGANIZATION_ID = '32234b32-b7d9-4401-91e2-745a0cfb092b';
+const DEFAULT_WORKSPACE_ID = '32234b32-b7d9-4401-91e2-745a0cfb092b';
 
 export const migrations: Migration[] = [
   {
@@ -809,8 +809,8 @@ export const migrations: Migration[] = [
       -- Create a default organization for existing projects
       INSERT INTO organizations (id, name, require_proposals, allow_self_approvals, created_at, updated_at)
       SELECT
-        '${DEFAULT_ORGANIZATION_ID}',
-        'Default Organization',
+        '${DEFAULT_WORKSPACE_ID}',
+        'Default Workspace',
         FALSE,
         FALSE,
         NOW(),
@@ -934,10 +934,10 @@ export const migrations: Migration[] = [
       SET auto_add_new_users = false
       WHERE personal_org_user_id IS NOT NULL;
 
-      -- for self-hosted organizations auto add new users
+      -- for self-hosted workspaces auto add new users
       UPDATE organizations
       SET auto_add_new_users = true
-      WHERE id = '${DEFAULT_ORGANIZATION_ID}';
+      WHERE id = '${DEFAULT_WORKSPACE_ID}';
     `,
   },
   {
@@ -1005,6 +1005,41 @@ export const migrations: Migration[] = [
       INNER JOIN users u ON o.personal_org_user_id = u.id
       WHERE o.personal_org_user_id IS NOT NULL
       ON CONFLICT (project_id, user_email_normalized) DO NOTHING;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Migration: Rename organizations to workspaces
+
+      -- Rename the enum type
+      ALTER TYPE organization_member_role RENAME TO workspace_member_role;
+
+      -- Rename the organizations table
+      ALTER TABLE organizations RENAME TO workspaces;
+
+      -- Rename indexes on workspaces table
+      ALTER INDEX idx_organizations_name RENAME TO idx_workspaces_name;
+      ALTER INDEX idx_organizations_created_at RENAME TO idx_workspaces_created_at;
+      ALTER INDEX idx_organizations_personal_user_id RENAME TO idx_workspaces_personal_user_id;
+
+      -- Rename organization_members table
+      ALTER TABLE organization_members RENAME TO workspace_members;
+
+      -- Rename indexes on workspace_members table
+      ALTER INDEX idx_organization_members_user_email_normalized RENAME TO idx_workspace_members_user_email_normalized;
+      ALTER INDEX idx_organization_members_organization_id RENAME TO idx_workspace_members_workspace_id;
+
+      -- Rename columns in workspace_members table
+      ALTER TABLE workspace_members RENAME COLUMN organization_id TO workspace_id;
+
+      -- Rename column in projects table
+      ALTER TABLE projects RENAME COLUMN organization_id TO workspace_id;
+
+      -- Rename index on projects table
+      ALTER INDEX idx_projects_organization_id RENAME TO idx_projects_workspace_id;
+
+      -- Rename column in workspaces table
+      ALTER TABLE workspaces RENAME COLUMN personal_org_user_id TO personal_workspace_user_id;
     `,
   },
 ];

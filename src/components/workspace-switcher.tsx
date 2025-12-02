@@ -3,7 +3,7 @@
 import {ChevronsUpDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
-import {useOrganization, useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useWorkspace, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {ReplaneIcon} from '@/components/replane-icon';
 import {
   DropdownMenu,
@@ -20,21 +20,21 @@ import {useMemo} from 'react';
 export function OrgSwitcher() {
   const {isMobile} = useSidebar();
   const projectId = useProjectId();
-  const organization = useOrganization();
-  const {organizations, projects} = useProjects();
+  const workspace = useWorkspace();
+  const {workspaces, projects} = useProjects();
 
-  // For each organization, find the first project to navigate to
-  const orgLinks = useMemo(() => {
-    return organizations.map(org => {
-      const firstProjectInOrg = projects.find(p => p.organizationId === org.id);
+  // For each workspace, find the first project to navigate to
+  const workspaceLinks = useMemo(() => {
+    return workspaces.map(ws => {
+      const firstProjectInWorkspace = projects.find(p => p.workspaceId === ws.id);
       return {
-        org,
-        href: firstProjectInOrg
-          ? `/app/projects/${firstProjectInOrg.id}/configs`
-          : `/app/projects/${org.id}/new-project`,
+        workspace: ws,
+        href: firstProjectInWorkspace
+          ? `/app/projects/${firstProjectInWorkspace.id}/configs`
+          : `/app/projects/${ws.id}/new-project`,
       };
     });
-  }, [organizations, projects]);
+  }, [workspaces, projects]);
 
   return (
     <SidebarMenu>
@@ -49,7 +49,7 @@ export function OrgSwitcher() {
                 <ReplaneIcon className="size-5" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{organization.name}</span>
+                <span className="truncate font-semibold">{workspace.name}</span>
                 <span className="truncate text-xs text-muted-foreground">Self-hosted</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -61,20 +61,20 @@ export function OrgSwitcher() {
             sideOffset={4}
           >
             <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Organizations
+              Workspaces
             </DropdownMenuLabel>
-            {orgLinks.map(({org, href}) => (
-              <DropdownMenuItem asChild key={org.id} className="gap-2 p-2">
-                <Link href={href}>{org.name}</Link>
+            {workspaceLinks.map(({workspace: ws, href}) => (
+              <DropdownMenuItem asChild key={ws.id} className="gap-2 p-2">
+                <Link href={href}>{ws.name}</Link>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="gap-2 p-2">
-              <Link href={`/app/projects/${projectId}/new-organization`}>
+              <Link href={`/app/projects/${projectId}/new-workspace`}>
                 <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                   <Plus className="size-4" />
                 </div>
-                <div className="text-muted-foreground font-medium">New organization</div>
+                <div className="text-muted-foreground font-medium">New workspace</div>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

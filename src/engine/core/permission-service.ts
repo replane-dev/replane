@@ -3,7 +3,7 @@ import {ForbiddenError} from './errors';
 import type {Logger} from './logger';
 import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
-import type {OrganizationMemberStore} from './stores/organization-member-store';
+import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
 import {unique} from './utils';
@@ -15,7 +15,7 @@ export class PermissionService {
     private readonly projectUserStore: ProjectUserStore,
     private readonly configStore: ConfigStore,
     private readonly projectStore: ProjectStore,
-    private readonly organizationMemberStore: OrganizationMemberStore,
+    private readonly workspaceMemberStore: WorkspaceMemberStore,
     private readonly logger: Logger,
   ) {}
 
@@ -66,11 +66,11 @@ export class PermissionService {
     const config = await this.configStore.getById(params.configId);
     if (!config) return false;
 
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: config.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const configUser = await this.configUserStore.getByConfigIdAndEmail({
       configId: params.configId,
@@ -93,11 +93,11 @@ export class PermissionService {
     const config = await this.configStore.getById(params.configId);
     if (!config) return false;
 
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: config.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.configUserStore.getByConfigIdAndEmail({
       configId: params.configId,
@@ -116,11 +116,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -134,11 +134,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -152,11 +152,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -170,11 +170,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -188,11 +188,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -206,11 +206,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -224,11 +224,11 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -242,35 +242,35 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isOrgMember = await this.isOrganizationMember(ctx, {
+    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
-    if (!isOrgMember) return false;
+    if (!isWorkspaceMember) return false;
 
     return await this.canManageProjectConfigs(ctx, params);
   }
 
-  async isOrganizationMember(
+  async isWorkspaceMember(
     ctx: Context,
     params:
       | {projectId: string; currentUserEmail: NormalizedEmail}
-      | {organizationId: string; currentUserEmail: NormalizedEmail},
+      | {workspaceId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
     if ('projectId' in params) {
-      // Check if user is a member of the project's organization
+      // Check if user is a member of the project's workspace
       const project = await this.projectStore.getById({
         id: params.projectId,
         currentUserEmail: params.currentUserEmail,
       });
       if (!project) return false;
 
-      const orgMember = await this.organizationMemberStore.getByOrganizationIdAndEmail({
-        organizationId: project.organizationId,
+      const workspaceMember = await this.workspaceMemberStore.getByWorkspaceIdAndEmail({
+        workspaceId: project.workspaceId,
         userEmail: params.currentUserEmail,
       });
 
-      if (!orgMember) {
+      if (!workspaceMember) {
         // Check if user has explicit project role
         const user = await this.projectUserStore.getByProjectIdAndEmail({
           projectId: params.projectId,
@@ -279,27 +279,27 @@ export class PermissionService {
         if (user) {
           // this should never happen
           this.logger.error(ctx, {
-            msg: `User ${params.currentUserEmail} is not a member of organization ${project.organizationId} but has explicit project role`,
+            msg: `User ${params.currentUserEmail} is not a member of workspace ${project.workspaceId} but has explicit project role`,
           });
         }
       }
 
-      return !!orgMember;
+      return !!workspaceMember;
     } else {
-      const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
-        organizationId: params.organizationId,
+      const member = await this.workspaceMemberStore.getByWorkspaceIdAndEmail({
+        workspaceId: params.workspaceId,
         userEmail: params.currentUserEmail,
       });
       return !!member;
     }
   }
 
-  async isOrganizationAdmin(
+  async isWorkspaceAdmin(
     ctx: Context,
-    params: {organizationId: string; currentUserEmail: NormalizedEmail},
+    params: {workspaceId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const member = await this.organizationMemberStore.getByOrganizationIdAndEmail({
-      organizationId: params.organizationId,
+    const member = await this.workspaceMemberStore.getByWorkspaceIdAndEmail({
+      workspaceId: params.workspaceId,
       userEmail: params.currentUserEmail,
     });
     return member?.role === 'admin';
@@ -386,25 +386,25 @@ export class PermissionService {
     }
   }
 
-  async ensureIsOrganizationMember(
+  async ensureIsWorkspaceMember(
     ctx: Context,
     params:
       | {projectId: string; currentUserEmail: NormalizedEmail}
-      | {organizationId: string; currentUserEmail: NormalizedEmail},
+      | {workspaceId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canView = await this.isOrganizationMember(ctx, params);
+    const canView = await this.isWorkspaceMember(ctx, params);
     if (!canView) {
       throw new ForbiddenError('User does not have permission to view this project');
     }
   }
 
-  async ensureIsOrganizationAdmin(
+  async ensureIsWorkspaceAdmin(
     ctx: Context,
-    params: {organizationId: string; currentUserEmail: NormalizedEmail},
+    params: {workspaceId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const isAdmin = await this.isOrganizationAdmin(ctx, params);
+    const isAdmin = await this.isWorkspaceAdmin(ctx, params);
     if (!isAdmin) {
-      throw new ForbiddenError('User is not an admin of this organization');
+      throw new ForbiddenError('User is not an admin of this workspace');
     }
   }
 }

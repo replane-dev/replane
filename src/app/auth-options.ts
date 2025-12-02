@@ -3,12 +3,12 @@ import type {DB} from '@/engine/core/db';
 import {createLogger, type Logger} from '@/engine/core/logger';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {AuditLogStore} from '@/engine/core/stores/audit-log-store';
-import {OrganizationMemberStore} from '@/engine/core/stores/organization-member-store';
-import {OrganizationStore} from '@/engine/core/stores/organization-store';
 import {ProjectEnvironmentStore} from '@/engine/core/stores/project-environment-store';
 import {ProjectStore} from '@/engine/core/stores/project-store';
 import {ProjectUserStore} from '@/engine/core/stores/project-user-store';
-import {createOrganization} from '@/engine/core/use-cases/create-organization-use-case';
+import {WorkspaceMemberStore} from '@/engine/core/stores/workspace-member-store';
+import {WorkspaceStore} from '@/engine/core/stores/workspace-store';
+import {createWorkspace} from '@/engine/core/use-cases/create-workspace-use-case';
 import {UserStore} from '@/engine/core/user-store';
 import {ensureDefined, normalizeEmail, runTransactional} from '@/engine/core/utils';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
@@ -134,17 +134,17 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
     logger,
     onConflictRetriesCount: 16,
     fn: async (_ctx, tx) => {
-      const organizationStore = new OrganizationStore(tx);
-      const organizationMemberStore = new OrganizationMemberStore(tx);
+      const workspaceStore = new WorkspaceStore(tx);
+      const workspaceMemberStore = new WorkspaceMemberStore(tx);
       const projectStore = new ProjectStore(tx);
       const projectUserStore = new ProjectUserStore(tx);
       const projectEnvironmentStore = new ProjectEnvironmentStore(tx);
 
-      await createOrganization({
+      await createWorkspace({
         currentUserEmail: normalizeEmail(user.email ?? 'unknown@replane.dev'),
         name: 'Personal',
-        organizationStore,
-        organizationMemberStore,
+        workspaceStore,
+        workspaceMemberStore,
         projectStore,
         projectUserStore,
         projectEnvironmentStore,
@@ -153,33 +153,33 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
         now: new Date(),
       });
 
-      // Auto-add new users to organizations that have auto_add_new_users enabled
+      // Auto-add new users to workspaces that have auto_add_new_users enabled
       if (!user.email) {
         return;
       }
 
-      // Get organizations that auto-add new users
-      const organizations = await tx
-        .selectFrom('organizations')
+      // Get workspaces that auto-add new users
+      const workspaces = await tx
+        .selectFrom('workspaces')
         .selectAll()
         .where('auto_add_new_users', '=', true)
         .execute();
 
-      // Add user as member to those organizations
+      // Add user as member to those workspaces
       const now = new Date();
       const normalizedEmail = normalizeEmail(user.email);
 
-      for (const org of organizations) {
+      for (const org of workspaces) {
         // Check if already a member
-        const existingMember = await organizationMemberStore.getByOrganizationIdAndEmail({
-          organizationId: org.id,
+        const existingMember = await workspaceMemberStore.getByWorkspaceIdAndEmail({
+          workspaceId: org.id,
           userEmail: normalizedEmail,
         });
 
         if (!existingMember) {
-          await organizationMemberStore.create([
+          await workspaceMemberStore.create([
             {
-              organizationId: org.id,
+              workspaceId: org.id,
               email: user.email,
               role: 'member',
               createdAt: now,

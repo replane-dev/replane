@@ -20,7 +20,7 @@ export type Generated<T> =
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
-export type OrganizationMemberRole = 'admin' | 'member';
+export type WorkspaceMemberRole = 'admin' | 'member';
 
 export type ProjectUserRole = 'admin' | 'maintainer';
 
@@ -131,20 +131,20 @@ export interface Migrations {
   sql: string;
 }
 
-export interface OrganizationMembers {
+export interface WorkspaceMembers {
   created_at: Timestamp;
-  organization_id: string;
-  role: OrganizationMemberRole;
+  workspace_id: string;
+  role: WorkspaceMemberRole;
   updated_at: Timestamp;
   user_email_normalized: string;
 }
 
-export interface Organizations {
+export interface Workspaces {
   auto_add_new_users: Generated<boolean>;
   created_at: Timestamp;
   id: string;
   name: string;
-  personal_org_user_id: number | null;
+  personal_workspace_user_id: number | null;
   updated_at: Timestamp;
 }
 
@@ -164,7 +164,7 @@ export interface Projects {
   id: string;
   is_example: Generated<boolean>;
   name: string;
-  organization_id: string;
+  workspace_id: string;
   require_proposals: boolean;
   updated_at: Timestamp;
 }
@@ -219,8 +219,8 @@ export interface DB {
   config_variants: ConfigVariants;
   configs: Configs;
   migrations: Migrations;
-  organization_members: OrganizationMembers;
-  organizations: Organizations;
+  workspace_members: WorkspaceMembers;
+  workspaces: Workspaces;
   project_environments: ProjectEnvironments;
   project_users: ProjectUsers;
   projects: Projects;

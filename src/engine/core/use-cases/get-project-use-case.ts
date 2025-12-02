@@ -11,7 +11,7 @@ export interface GetProjectResponse {
     id: string;
     name: string;
     description: string;
-    organizationId: string;
+    workspaceId: string;
     requireProposals: boolean;
     allowSelfApprovals: boolean;
     createdAt: Date;
@@ -25,7 +25,7 @@ export function createGetProjectUseCase(): TransactionalUseCase<
   GetProjectResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.id,
       currentUserEmail: req.currentUserEmail,
     });
@@ -40,7 +40,7 @@ export function createGetProjectUseCase(): TransactionalUseCase<
         id: project.id,
         name: project.name,
         description: project.description,
-        organizationId: project.organizationId,
+        workspaceId: project.workspaceId,
         requireProposals: project.requireProposals,
         allowSelfApprovals: project.allowSelfApprovals,
         createdAt: project.createdAt,

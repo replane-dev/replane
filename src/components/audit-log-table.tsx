@@ -123,34 +123,34 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
       action: 'Config Variant Proposal Rejected',
       details: `Variant proposal rejected`,
     };
-  } else if (payload.type === 'organization_created') {
+  } else if (payload.type === 'workspace_created') {
     return {
-      action: 'Organization Created',
-      details: `Organization ${payload.organization.name} created`,
+      action: 'Workspace Created',
+      details: `Workspace ${payload.workspace.name} created`,
     };
-  } else if (payload.type === 'organization_updated') {
+  } else if (payload.type === 'workspace_updated') {
     return {
-      action: 'Organization Updated',
-      details: `Organization ${payload.organization.name} updated`,
+      action: 'Workspace Updated',
+      details: `Workspace ${payload.workspace.name} updated`,
     };
-  } else if (payload.type === 'organization_deleted') {
+  } else if (payload.type === 'workspace_deleted') {
     return {
-      action: 'Organization Deleted',
-      details: `Organization ${payload.organization.name} deleted`,
+      action: 'Workspace Deleted',
+      details: `Workspace ${payload.workspace.name} deleted`,
     };
-  } else if (payload.type === 'organization_member_added') {
+  } else if (payload.type === 'workspace_member_added') {
     return {
-      action: 'Organization Member Added',
+      action: 'Workspace Member Added',
       details: `Added ${payload.member.email} as ${payload.member.role}`,
     };
-  } else if (payload.type === 'organization_member_removed') {
+  } else if (payload.type === 'workspace_member_removed') {
     return {
-      action: 'Organization Member Removed',
+      action: 'Workspace Member Removed',
       details: `Removed ${payload.member.email}`,
     };
-  } else if (payload.type === 'organization_member_role_changed') {
+  } else if (payload.type === 'workspace_member_role_changed') {
     return {
-      action: 'Organization Member Role Changed',
+      action: 'Workspace Member Role Changed',
       details: `Changed ${payload.member.email} from ${payload.before.role} to ${payload.after.role}`,
     };
   } else {

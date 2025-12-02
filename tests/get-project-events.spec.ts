@@ -28,7 +28,7 @@ describe('getProjectEvents Integration', () => {
     // Create a test project (automatically creates Production and Development environments)
     const {projectId: pid} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       currentUserEmail: TEST_USER_EMAIL,
-      organizationId: fixture.organizationId,
+      workspaceId: fixture.workspaceId,
       name: 'test-project',
       description: 'Test project',
     });
@@ -188,7 +188,7 @@ describe('getProjectEvents Integration', () => {
     const {projectId: otherProjectId} = await fixture.engine.useCases.createProject(
       GLOBAL_CONTEXT,
       {
-        organizationId: fixture.organizationId,
+        workspaceId: fixture.workspaceId,
         currentUserEmail: TEST_USER_EMAIL,
         name: 'other-project',
         description: 'Other project',

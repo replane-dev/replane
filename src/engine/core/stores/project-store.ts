@@ -27,7 +27,7 @@ export function Project() {
     id: z.string(),
     name: ProjectName(),
     description: ProjectDescription(),
-    organizationId: z.string(),
+    workspaceId: z.string(),
     requireProposals: z.boolean(),
     allowSelfApprovals: z.boolean(),
     createdAt: z.date(),
@@ -42,7 +42,7 @@ export interface ProjectInfo {
   id: string;
   name: string;
   descriptionPreview: string;
-  organizationId: string;
+  workspaceId: string;
   requireProposals: boolean;
   allowSelfApprovals: boolean;
   createdAt: Date;
@@ -67,12 +67,12 @@ export class ProjectStore {
           ]),
         ),
       )
-      .innerJoin('organizations', 'projects.organization_id', 'organizations.id')
-      .innerJoin('organization_members', jb =>
+      .innerJoin('workspaces', 'projects.workspace_id', 'workspaces.id')
+      .innerJoin('workspace_members', jb =>
         jb.on(eb =>
           eb.and([
-            eb('organization_members.organization_id', '=', eb.ref('organizations.id')),
-            eb('organization_members.user_email_normalized', '=', params.currentUserEmail),
+            eb('workspace_members.workspace_id', '=', eb.ref('workspaces.id')),
+            eb('workspace_members.user_email_normalized', '=', params.currentUserEmail),
           ]),
         ),
       )
@@ -81,7 +81,7 @@ export class ProjectStore {
         'projects.id',
         'projects.name',
         'projects.description',
-        'projects.organization_id',
+        'projects.workspace_id',
         'projects.require_proposals',
         'projects.allow_self_approvals',
         'projects.updated_at',
@@ -95,7 +95,7 @@ export class ProjectStore {
       id: p.id,
       name: p.name,
       descriptionPreview: p.description.substring(0, 100),
-      organizationId: p.organization_id,
+      workspaceId: p.workspace_id,
       requireProposals: p.require_proposals,
       allowSelfApprovals: p.allow_self_approvals,
       createdAt: p.created_at,
@@ -105,12 +105,12 @@ export class ProjectStore {
     }));
   }
 
-  async getByName(params: {name: string; organizationId: string}): Promise<Project | undefined> {
+  async getByName(params: {name: string; workspaceId: string}): Promise<Project | undefined> {
     const result = await this.db
       .selectFrom('projects')
       .selectAll()
       .where('name', '=', params.name)
-      .where('organization_id', '=', params.organizationId)
+      .where('workspace_id', '=', params.workspaceId)
       .executeTakeFirst();
     if (result) {
       return mapProject(result);
@@ -139,7 +139,7 @@ export class ProjectStore {
         'projects.id',
         'projects.name',
         'projects.description',
-        'projects.organization_id',
+        'projects.workspace_id',
         'projects.require_proposals',
         'projects.allow_self_approvals',
         'projects.updated_at',
@@ -168,7 +168,7 @@ export class ProjectStore {
         updated_at: project.updatedAt,
         name: project.name,
         description: project.description,
-        organization_id: project.organizationId,
+        workspace_id: project.workspaceId,
         require_proposals: project.requireProposals,
         allow_self_approvals: project.allowSelfApprovals,
       })
@@ -204,10 +204,10 @@ export class ProjectStore {
     await this.db.deleteFrom('projects').where('id', '=', id).execute();
   }
 
-  async countByOrganization(organizationId: string): Promise<number> {
+  async countByWorkspace(workspaceId: string): Promise<number> {
     const row = await this.db
       .selectFrom('projects')
-      .where('organization_id', '=', organizationId)
+      .where('workspace_id', '=', workspaceId)
       .select(eb => eb.fn.countAll<number>().as('cnt'))
       .executeTakeFirst();
     return row ? row.cnt : 0;
@@ -219,7 +219,7 @@ function mapProject(project: Selectable<Projects>): Project {
     id: project.id,
     name: project.name,
     description: project.description,
-    organizationId: project.organization_id,
+    workspaceId: project.workspace_id,
     requireProposals: project.require_proposals,
     allowSelfApprovals: project.allow_self_approvals,
     createdAt: project.created_at,

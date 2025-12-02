@@ -7,7 +7,7 @@ import {useProject, useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {NavMain} from '@/components/nav-main';
 import {NavSecondary} from '@/components/nav-secondary';
 import {NavUser} from '@/components/nav-user';
-import {OrgSwitcher} from '@/components/org-switcher';
+import {OrgSwitcher} from '@/components/workspace-switcher';
 import {ProjectSwitcher} from '@/components/project-switcher';
 import {SettingsDialog} from '@/components/settings-dialog';
 import {
@@ -85,7 +85,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
         open={showSettings}
         onOpenChange={setShowSettings}
         projectId={projectId}
-        organizationId={project.organizationId}
+        workspaceId={project.workspaceId}
       />
     </>
   );

@@ -7,7 +7,7 @@ import {
   ConfigSchema,
   ConfigValue,
 } from '@/engine/core/stores/config-store';
-import {OrganizationName} from '@/engine/core/stores/organization-store';
+import {WorkspaceName} from '@/engine/core/stores/workspace-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {ConfigMember, EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
@@ -15,81 +15,81 @@ import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
 
 export const appRouter = createTRPCRouter({
-  getOrganization: baseProcedure.input(z.object({organizationId: Uuid()})).query(async opts => {
+  getWorkspace: baseProcedure.input(z.object({workspaceId: Uuid()})).query(async opts => {
     if (!opts.ctx.currentUserEmail) {
       throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
     }
-    return await opts.ctx.engine.useCases.getOrganization(GLOBAL_CONTEXT, {
-      organizationId: opts.input.organizationId,
+    return await opts.ctx.engine.useCases.getWorkspace(GLOBAL_CONTEXT, {
+      workspaceId: opts.input.workspaceId,
       currentUserEmail: opts.ctx.currentUserEmail,
     });
   }),
-  getOrganizationList: baseProcedure.query(async opts => {
+  getWorkspaceList: baseProcedure.query(async opts => {
     if (!opts.ctx.currentUserEmail) {
       throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
     }
-    return await opts.ctx.engine.useCases.getOrganizationList(GLOBAL_CONTEXT, {
+    return await opts.ctx.engine.useCases.getWorkspaceList(GLOBAL_CONTEXT, {
       currentUserEmail: opts.ctx.currentUserEmail,
     });
   }),
-  createOrganization: baseProcedure
+  createWorkspace: baseProcedure
     .input(
       z.object({
-        name: OrganizationName(),
+        name: WorkspaceName(),
       }),
     )
     .mutation(async opts => {
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.createOrganization(GLOBAL_CONTEXT, {
+      return await opts.ctx.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
         currentUserEmail: opts.ctx.currentUserEmail,
         name: opts.input.name,
       });
     }),
-  updateOrganization: baseProcedure
+  updateWorkspace: baseProcedure
     .input(
       z.object({
-        organizationId: Uuid(),
-        name: OrganizationName(),
+        workspaceId: Uuid(),
+        name: WorkspaceName(),
       }),
     )
     .mutation(async opts => {
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.updateOrganization(GLOBAL_CONTEXT, {
-        organizationId: opts.input.organizationId,
+      return await opts.ctx.engine.useCases.updateWorkspace(GLOBAL_CONTEXT, {
+        workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
         name: opts.input.name,
       });
     }),
-  deleteOrganization: baseProcedure
-    .input(z.object({organizationId: Uuid()}))
+  deleteWorkspace: baseProcedure
+    .input(z.object({workspaceId: Uuid()}))
     .mutation(async opts => {
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.deleteOrganization(GLOBAL_CONTEXT, {
-        organizationId: opts.input.organizationId,
+      return await opts.ctx.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
+        workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),
-  getOrganizationMembers: baseProcedure
-    .input(z.object({organizationId: Uuid()}))
+  getWorkspaceMembers: baseProcedure
+    .input(z.object({workspaceId: Uuid()}))
     .query(async opts => {
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.getOrganizationMembers(GLOBAL_CONTEXT, {
-        organizationId: opts.input.organizationId,
+      return await opts.ctx.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
+        workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),
-  addOrganizationMember: baseProcedure
+  addWorkspaceMember: baseProcedure
     .input(
       z.object({
-        organizationId: Uuid(),
+        workspaceId: Uuid(),
         memberEmail: Email(),
         role: z.enum(['admin', 'member']),
       }),
@@ -98,17 +98,17 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.addOrganizationMember(GLOBAL_CONTEXT, {
-        organizationId: opts.input.organizationId,
+      return await opts.ctx.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+        workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
         memberEmail: opts.input.memberEmail,
         role: opts.input.role,
       });
     }),
-  removeOrganizationMember: baseProcedure
+  removeWorkspaceMember: baseProcedure
     .input(
       z.object({
-        organizationId: Uuid(),
+        workspaceId: Uuid(),
         memberEmail: Email(),
       }),
     )
@@ -116,16 +116,16 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.removeOrganizationMember(GLOBAL_CONTEXT, {
-        organizationId: opts.input.organizationId,
+      return await opts.ctx.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
+        workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
         memberEmail: opts.input.memberEmail,
       });
     }),
-  updateOrganizationMemberRole: baseProcedure
+  updateWorkspaceMemberRole: baseProcedure
     .input(
       z.object({
-        organizationId: Uuid(),
+        workspaceId: Uuid(),
         memberEmail: Email(),
         role: z.enum(['admin', 'member']),
       }),
@@ -134,8 +134,8 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.updateOrganizationMemberRole(GLOBAL_CONTEXT, {
-        organizationId: opts.input.organizationId,
+      return await opts.ctx.engine.useCases.updateWorkspaceMemberRole(GLOBAL_CONTEXT, {
+        workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
         memberEmail: opts.input.memberEmail,
         role: opts.input.role,
@@ -621,7 +621,7 @@ export const appRouter = createTRPCRouter({
   createProject: baseProcedure
     .input(
       z.object({
-        organizationId: Uuid(),
+        workspaceId: Uuid(),
         name: z.string().min(1).max(100),
         description: z.string().max(1_000_000).default(''),
       }),
@@ -632,7 +632,7 @@ export const appRouter = createTRPCRouter({
       }
       const {projectId} = await opts.ctx.engine.useCases.createProject(GLOBAL_CONTEXT, {
         currentUserEmail: opts.ctx.currentUserEmail,
-        organizationId: opts.input.organizationId,
+        workspaceId: opts.input.workspaceId,
         name: opts.input.name,
         description: opts.input.description,
       });

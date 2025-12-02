@@ -24,7 +24,7 @@ export function createGetApiKeyUseCase(): TransactionalUseCase<
   GetApiKeyResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsOrganizationMember(ctx, {
+    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
       currentUserEmail: req.currentUserEmail,
     });

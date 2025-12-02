@@ -27,28 +27,28 @@ import {
   ConfigVariantStore,
 } from './core/stores/config-variant-store';
 import {ConfigVariantVersionStore} from './core/stores/config-variant-version-store';
-import {OrganizationMemberStore} from './core/stores/organization-member-store';
-import {OrganizationStore} from './core/stores/organization-store';
 import {ProjectEnvironmentStore} from './core/stores/project-environment-store';
 import {ProjectStore} from './core/stores/project-store';
 import {ProjectUserStore} from './core/stores/project-user-store';
 import {SdkKeyStore} from './core/stores/sdk-key-store';
+import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
+import {WorkspaceStore} from './core/stores/workspace-store';
 import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
-import {createAddOrganizationMemberUseCase} from './core/use-cases/add-organization-member-use-case';
+import {createAddWorkspaceMemberUseCase} from './core/use-cases/add-workspace-member-use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
-import {createCreateOrganizationUseCase} from './core/use-cases/create-organization-use-case';
 import {createCreateProjectEnvironmentUseCase} from './core/use-cases/create-project-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
+import {createCreateWorkspaceUseCase} from './core/use-cases/create-workspace-use-case';
 import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
-import {createDeleteOrganizationUseCase} from './core/use-cases/delete-organization-use-case';
 import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
+import {createDeleteWorkspaceUseCase} from './core/use-cases/delete-workspace-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
@@ -61,9 +61,6 @@ import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use
 import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-config-variant-version-list-use-case';
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
-import {createGetOrganizationListUseCase} from './core/use-cases/get-organization-list-use-case';
-import {createGetOrganizationMembersUseCase} from './core/use-cases/get-organization-members-use-case';
-import {createGetOrganizationUseCase} from './core/use-cases/get-organization-use-case';
 import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
@@ -71,18 +68,21 @@ import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createGetSdkConfigUseCase} from './core/use-cases/get-sdk-config-use-case';
 import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-case';
+import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
+import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
+import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
 import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
 import {createPatchConfigVariantUseCase} from './core/use-cases/patch-config-variant-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
-import {createRemoveOrganizationMemberUseCase} from './core/use-cases/remove-organization-member-use-case';
+import {createRemoveWorkspaceMemberUseCase} from './core/use-cases/remove-workspace-member-use-case';
 import {createRestoreConfigVariantVersionUseCase} from './core/use-cases/restore-config-variant-version-use-case';
-import {createUpdateOrganizationMemberRoleUseCase} from './core/use-cases/update-organization-member-role-use-case';
-import {createUpdateOrganizationUseCase} from './core/use-cases/update-organization-use-case';
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
+import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
+import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
 
@@ -126,8 +126,8 @@ function toUseCase<TReq, TRes>(
         const projectUsers = new ProjectUserStore(dbTx);
         const projects = new ProjectStore(dbTx);
         const projectEnvironments = new ProjectEnvironmentStore(dbTx);
-        const organizations = new OrganizationStore(dbTx);
-        const organizationMembers = new OrganizationMemberStore(dbTx);
+        const workspaces = new WorkspaceStore(dbTx);
+        const workspaceMembers = new WorkspaceMemberStore(dbTx);
         const configVariants = new ConfigVariantStore(
           dbTx,
           scheduleOptimisticEffect,
@@ -139,7 +139,7 @@ function toUseCase<TReq, TRes>(
           projectUsers,
           configs,
           projects,
-          organizationMembers,
+          workspaceMembers,
           logger,
         );
         const configService = new ConfigService(
@@ -169,8 +169,8 @@ function toUseCase<TReq, TRes>(
           projectEnvironments,
           configVariants,
           configVariantVersions,
-          organizations,
-          organizationMembers,
+          workspaces,
+          workspaceMembers,
           db: dbTx,
         };
         const result = await useCase(ctx, tx, req);
@@ -276,16 +276,16 @@ export async function createEngine(options: EngineOptions) {
     deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
     restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
-    // Organization use cases
-    createOrganization: createCreateOrganizationUseCase(),
-    getOrganization: createGetOrganizationUseCase(),
-    getOrganizationList: createGetOrganizationListUseCase(),
-    updateOrganization: createUpdateOrganizationUseCase(),
-    deleteOrganization: createDeleteOrganizationUseCase(),
-    getOrganizationMembers: createGetOrganizationMembersUseCase(),
-    addOrganizationMember: createAddOrganizationMemberUseCase(),
-    removeOrganizationMember: createRemoveOrganizationMemberUseCase(),
-    updateOrganizationMemberRole: createUpdateOrganizationMemberRoleUseCase(),
+    // Workspace use cases
+    createWorkspace: createCreateWorkspaceUseCase(),
+    getWorkspace: createGetWorkspaceUseCase(),
+    getWorkspaceList: createGetWorkspaceListUseCase(),
+    updateWorkspace: createUpdateWorkspaceUseCase(),
+    deleteWorkspace: createDeleteWorkspaceUseCase(),
+    getWorkspaceMembers: createGetWorkspaceMembersUseCase(),
+    addWorkspaceMember: createAddWorkspaceMemberUseCase(),
+    removeWorkspaceMember: createRemoveWorkspaceMemberUseCase(),
+    updateWorkspaceMemberRole: createUpdateWorkspaceMemberRoleUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;
@@ -319,7 +319,7 @@ export async function createEngine(options: EngineOptions) {
       projects: new ProjectStore(db),
       configProposals: new ConfigProposalStore(db),
       configVariants: new ConfigVariantStore(db, () => {}, eventBusClient),
-      organizationMembers: new OrganizationMemberStore(db),
+      workspaceMembers: new WorkspaceMemberStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
     destroy: async () => {

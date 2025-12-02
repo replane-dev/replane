@@ -17,11 +17,11 @@ import {toast} from 'sonner';
 
 type Role = 'admin' | 'member';
 
-export function OrganizationMembersSettings({organizationId}: {organizationId: string}) {
+export function WorkspaceMembersSettings({workspaceId}: {workspaceId: string}) {
   const trpc = useTRPC();
-  const {data: org} = useSuspenseQuery(trpc.getOrganization.queryOptions({organizationId}));
+  const {data: org} = useSuspenseQuery(trpc.getWorkspace.queryOptions({workspaceId}));
   const {data: membersData} = useSuspenseQuery(
-    trpc.getOrganizationMembers.queryOptions({organizationId}),
+    trpc.getWorkspaceMembers.queryOptions({workspaceId}),
   );
 
   const [members, setMembers] = React.useState<Array<{email: string; role: Role}>>(
@@ -32,13 +32,13 @@ export function OrganizationMembersSettings({organizationId}: {organizationId: s
     setMembers(membersData.map(m => ({email: m.email, role: m.role as Role})) ?? []);
   }, [membersData]);
 
-  const addMember = useMutation(trpc.addOrganizationMember.mutationOptions());
-  const removeMember = useMutation(trpc.removeOrganizationMember.mutationOptions());
-  const updateMemberRole = useMutation(trpc.updateOrganizationMemberRole.mutationOptions());
+  const addMember = useMutation(trpc.addWorkspaceMember.mutationOptions());
+  const removeMember = useMutation(trpc.removeWorkspaceMember.mutationOptions());
+  const updateMemberRole = useMutation(trpc.updateWorkspaceMemberRole.mutationOptions());
 
   const [savingMembers, setSavingMembers] = React.useState(false);
 
-  const isPersonal = !!org.personalOrgUserId;
+  const isPersonal = !!org.personalWorkspaceUserId;
   const canManage = org.myRole === 'admin' && !isPersonal;
 
   const handleAddMember = () => {
@@ -53,7 +53,7 @@ export function OrganizationMembersSettings({organizationId}: {organizationId: s
     }
 
     try {
-      await removeMember.mutateAsync({organizationId, memberEmail: email});
+      await removeMember.mutateAsync({workspaceId, memberEmail: email});
       toast.success('Member removed');
       setMembers(prev => prev.filter((_, i) => i !== idx));
     } catch (e: any) {
@@ -72,7 +72,7 @@ export function OrganizationMembersSettings({organizationId}: {organizationId: s
       // Add new members
       for (const member of newMembers) {
         await addMember.mutateAsync({
-          organizationId,
+          workspaceId,
           memberEmail: member.email.trim(),
           role: member.role,
         });
@@ -86,7 +86,7 @@ export function OrganizationMembersSettings({organizationId}: {organizationId: s
         );
         if (original && original.role !== member.role) {
           await updateMemberRole.mutateAsync({
-            organizationId,
+            workspaceId,
             memberEmail: member.email.trim(),
             role: member.role,
           });
@@ -106,7 +106,7 @@ export function OrganizationMembersSettings({organizationId}: {organizationId: s
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Members</h3>
-          <p className="text-sm text-muted-foreground">Manage who can access this organization</p>
+          <p className="text-sm text-muted-foreground">Manage who can access this workspace</p>
         </div>
         {!isPersonal && canManage && (
           <Button size="sm" variant="outline" onClick={handleAddMember}>
@@ -121,7 +121,7 @@ export function OrganizationMembersSettings({organizationId}: {organizationId: s
             <Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
             <div>
               <p className="text-sm text-foreground/80">
-                This is your personal organization. You cannot add or remove members.
+                This is your personal workspace. You cannot add or remove members.
               </p>
             </div>
           </div>

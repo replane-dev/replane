@@ -43,14 +43,14 @@ import Link from 'next/link';
 import * as React from 'react';
 import {Fragment} from 'react';
 import {toast} from 'sonner';
-import {useOrganization} from '../../utils';
+import {useWorkspace} from '../../utils';
 
-export default function OrganizationMembersPage() {
-  const org = useOrganization();
-  const organizationId = org.id;
+export default function WorkspaceMembersPage() {
+  const org = useWorkspace();
+  const workspaceId = org.id;
   const trpc = useTRPC();
 
-  const membersQuery = trpc.getOrganizationMembers.queryOptions({organizationId});
+  const membersQuery = trpc.getWorkspaceMembers.queryOptions({workspaceId});
   const {data: members, refetch: refetchMembers} = useSuspenseQuery({...membersQuery});
 
   const canManage = org.myRole === 'admin';
@@ -65,8 +65,8 @@ export default function OrganizationMembersPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink asChild>
-                  <Link href={`/app/organizations/${organizationId}/settings/general`}>
-                    Organization Settings
+                  <Link href={`/app/workspaces/${workspaceId}/settings/general`}>
+                    Workspace Settings
                   </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -82,9 +82,9 @@ export default function OrganizationMembersPage() {
         <div className="max-w-4xl space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Organization members</h2>
+              <h2 className="text-xl font-semibold">Workspace members</h2>
               <p className="text-sm text-muted-foreground">
-                Manage who has access to this organization
+                Manage who has access to this workspace
               </p>
             </div>
             {canManage && (
@@ -97,14 +97,14 @@ export default function OrganizationMembersPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Add organization member</DialogTitle>
+                    <DialogTitle>Add workspace member</DialogTitle>
                     <DialogDescription>
-                      Add a new member to this organization. They will have access to view all
+                      Add a new member to this workspace. They will have access to view all
                       projects.
                     </DialogDescription>
                   </DialogHeader>
                   <AddMemberForm
-                    organizationId={organizationId}
+                    workspaceId={workspaceId}
                     onAdded={() => {
                       refetchMembers();
                       toast.success('Member added successfully');
@@ -120,7 +120,7 @@ export default function OrganizationMembersPage() {
               <div className="flex items-start gap-2">
                 <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground">
-                  Only organization admins can manage members.
+                  Only workspace admins can manage members.
                 </p>
               </div>
             </div>
@@ -155,7 +155,7 @@ export default function OrganizationMembersPage() {
                         {canManage && (
                           <MemberActionsMenu
                             member={member}
-                            organizationId={organizationId}
+                            workspaceId={workspaceId}
                             onSuccess={refetchMembers}
                             canManage={canManage}
                           />
@@ -173,21 +173,21 @@ export default function OrganizationMembersPage() {
   );
 }
 
-function AddMemberForm({organizationId, onAdded}: {organizationId: string; onAdded: () => void}) {
+function AddMemberForm({workspaceId, onAdded}: {workspaceId: string; onAdded: () => void}) {
   const trpc = useTRPC();
   const [email, setEmail] = React.useState('');
   const [role, setRole] = React.useState<'admin' | 'member'>('member');
   const [isSubmitting, setSubmitting] = React.useState(false);
   const [open, setOpen] = React.useState(true);
 
-  const addMember = useMutation(trpc.addOrganizationMember.mutationOptions());
+  const addMember = useMutation(trpc.addWorkspaceMember.mutationOptions());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await addMember.mutateAsync({
-        organizationId,
+        workspaceId,
         memberEmail: email,
         role,
       });
@@ -232,7 +232,7 @@ function AddMemberForm({organizationId, onAdded}: {organizationId: string; onAdd
         </Select>
         <p className="mt-1.5 text-xs text-muted-foreground">
           {role === 'admin'
-            ? 'Admins can manage organization settings and members'
+            ? 'Admins can manage workspace settings and members'
             : 'Members can view all projects but need explicit roles to edit'}
         </p>
       </div>
@@ -247,25 +247,25 @@ function AddMemberForm({organizationId, onAdded}: {organizationId: string; onAdd
 
 function MemberActionsMenu({
   member,
-  organizationId,
+  workspaceId,
   onSuccess,
   canManage,
 }: {
   member: {email: string; role: string};
-  organizationId: string;
+  workspaceId: string;
   onSuccess: () => void;
   canManage: boolean;
 }) {
   const trpc = useTRPC();
-  const removeMember = useMutation(trpc.removeOrganizationMember.mutationOptions());
-  const updateRole = useMutation(trpc.updateOrganizationMemberRole.mutationOptions());
+  const removeMember = useMutation(trpc.removeWorkspaceMember.mutationOptions());
+  const updateRole = useMutation(trpc.updateWorkspaceMemberRole.mutationOptions());
 
   const handleRemove = async () => {
-    if (!confirm(`Remove ${member.email} from this organization?`)) return;
+    if (!confirm(`Remove ${member.email} from this workspace?`)) return;
 
     try {
       await removeMember.mutateAsync({
-        organizationId,
+        workspaceId,
         memberEmail: member.email,
       });
       toast.success('Member removed');
@@ -279,7 +279,7 @@ function MemberActionsMenu({
     const newRole = member.role === 'admin' ? 'member' : 'admin';
     try {
       await updateRole.mutateAsync({
-        organizationId,
+        workspaceId,
         memberEmail: member.email,
         role: newRole as 'admin' | 'member',
       });
