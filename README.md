@@ -148,43 +148,51 @@ yarn add replane-sdk
 Basic usage:
 
 ```ts
-import {createReplaneClient} from 'replane-sdk';
+import {createReplaneClient, createInMemoryReplaneClient} from 'replane-sdk';
 
-const client = createReplaneClient({
-  // Each API key is tied to one project only
-  apiKey: process.env.REPLANE_API_KEY!,
-  baseUrl: 'https://api.my-replane-host.com',
-});
-
-// One-off fetch
-
-const featureFlag = await client
-  .getConfigValue<boolean>('new-onboarding')
-  // Ignore errors and use `false` if config is missing or fetch fails
-  .catch(() => false);
-
-// Typed example
 interface PasswordRequirements {
   minLength: number;
   requireSymbol: boolean;
 }
 
-const passwordRequirements = await client
-  .getConfigValue<PasswordRequirements>('password-requirements')
-  .catch(() => ({minLength: 8, requireSymbol: false}));
+interface Configs {
+  'new-onboarding': boolean;
+  'password-requirements': PasswordRequirements;
+  'billing-enabled': boolean;
+}
 
-// Watching a config with realtime updates via SSE (initial fetch must succeed)
-const billingEnabled = await client.watchConfigValue<boolean>('billing-enabled');
+const client = await createReplaneClient<Configs>({
+  // Each API key is tied to one project only
+  apiKey: process.env.REPLANE_API_KEY!,
+  baseUrl: 'https://api.my-replane-host.com',
+});
 
-// Later, read the latest value (automatically updated in realtime)
-if (billingEnabled.get()) {
-  console.log('Billing enabled!');
+// Get config value (receives realtime updates via SSE in background)
+try {
+  const featureFlag = client.getConfig('new-onboarding'); // TypeScript knows: boolean
+  console.log('Feature flag:', featureFlag);
+} catch (error) {
+  // Handle error (e.g., config not found)
+  console.log('Feature flag not found, using default: false');
+}
+
+// Typed config - no need to specify type again
+const passwordRequirements = client.getConfig('password-requirements');
+console.log('Min length:', passwordRequirements.minLength);
+
+// With context for override evaluation
+const billingEnabled = client.getConfig('billing-enabled', {
+  context: {
+    userId: 'user-123',
+    plan: 'premium',
+  },
+});
+
+if (billingEnabled) {
+  console.log('Billing enabled for this user!');
 }
 
 // When done, clean up resources
-billingEnabled.close();
-
-// Or, if you don't need the client anymore
 client.close();
 ```
 
@@ -192,8 +200,8 @@ Notes
 
 - Create an API key in the Replane UI. It's shown once; store it securely.
 - Each API key is tied to a specific project. If you need configs from multiple projects, create separate API keys and initialize separate clients for each project.
-- The client logs errors and returns the provided fallback if the request fails.
-- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn't expose `fetch`.\
+- The client receives realtime updates via SSE in the background and maintains an up-to-date cache.
+- Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn't expose `fetch`.
 
 ## Backups
 

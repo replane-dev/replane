@@ -38,17 +38,20 @@ yarn add replane-sdk`;
 
   const basicUsageSnippet = `import { createReplaneClient } from 'replane-sdk';
 
-const replane = createReplaneClient({
+interface Configs {
+  'new-onboarding': boolean;
+}
+
+const replane = await createReplaneClient<Configs>({
   // Each API key is tied to one project only
   apiKey: '${apiKeyValue}',
   baseUrl: '${baseUrl}',
 });
 
-// Watch a config (receives realtime updates)
-const featureFlag = await replane.watchConfig<boolean>('new-onboarding');
+// Get a config value (receives realtime updates via SSE)
+const featureFlag = replane.getConfig('new-onboarding');
 
-// Get the current value
-if (featureFlag.getValue()) {
+if (featureFlag) {
   console.log('New onboarding enabled!');
 }`;
 
@@ -57,21 +60,36 @@ if (featureFlag.getValue()) {
   requireSymbol: boolean;
 }
 
-const passwordReqs = await replane.watchConfig<PasswordRequirements>(
-  'password-requirements'
-);
+interface Configs {
+  'password-requirements': PasswordRequirements;
+}
 
-// Read value anytime (always up-to-date via realtime updates)
-const { minLength } = passwordReqs.getValue();`;
+const replane = await createReplaneClient<Configs>({
+  apiKey: '${apiKeyValue}',
+  baseUrl: '${baseUrl}',
+});
 
-  const realtimeSnippet = `// Watch with context for override evaluation
-const billingEnabled = await replane.watchConfig<boolean>('billing-enabled');
+const passwordReqs = replane.getConfig('password-requirements');
 
-// Evaluate with user context - overrides apply automatically
-const enabled = billingEnabled.getValue({
-  userId: 'user-123',
-  plan: 'premium',
-  region: 'us-east',
+// Use the value directly (always up-to-date via realtime updates)
+const { minLength } = passwordReqs;`;
+
+  const realtimeSnippet = `interface Configs {
+  'billing-enabled': boolean;
+}
+
+const replane = await createReplaneClient<Configs>({
+  apiKey: '${apiKeyValue}',
+  baseUrl: '${baseUrl}',
+});
+
+// Get config with context for override evaluation
+const enabled = replane.getConfig('billing-enabled', {
+  context: {
+    userId: 'user-123',
+    plan: 'premium',
+    region: 'us-east',
+  },
 });
 
 if (enabled) {
@@ -79,7 +97,7 @@ if (enabled) {
 }
 
 // Clean up when done
-billingEnabled.close();`;
+replane.close();`;
 
   return (
     <div className="rounded-lg border bg-card/50 overflow-hidden">
@@ -165,8 +183,8 @@ billingEnabled.close();`;
           </div>
           <CodeSnippet code={realtimeSnippet} language="typescript" />
           <p className="text-xs text-muted-foreground">
-            All watchers automatically receive realtime updates via SSE. Use context to evaluate
-            overrides for feature flags, A/B testing, and gradual rollouts.
+            The client automatically receives realtime updates via SSE in the background. Use context
+            to evaluate overrides for feature flags, A/B testing, and gradual rollouts.
           </p>
         </div>
       </div>
