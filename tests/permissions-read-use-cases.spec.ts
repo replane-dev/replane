@@ -3,6 +3,7 @@ import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OUTSIDER_USER_EMAIL = normalizeEmail('outsider@example.com');
@@ -26,7 +27,7 @@ describe('Read Use Cases - Permission Checks', () => {
 
   describe('getConfig', () => {
     it('should prevent non-org member from viewing config', async () => {
-      const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      const {configId} = await fixture.createConfig({
         name: 'secret_config',
         value: {secret: true},
         schema: null,
@@ -141,7 +142,7 @@ describe('Read Use Cases - Permission Checks', () => {
   describe('getConfigProposal', () => {
     it('should prevent non-org member from viewing proposal details', async () => {
       // Create a config and proposal first
-      const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      const {configId} = await fixture.createConfig({
         name: 'test_config',
         value: {test: true},
         schema: null,
@@ -177,7 +178,7 @@ describe('Read Use Cases - Permission Checks', () => {
   describe('getAuditLogMessage', () => {
     it('should prevent non-org member from viewing audit log message', async () => {
       // Create a config to generate an audit log
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'audit_test_config',
         value: {test: true},
         schema: null,

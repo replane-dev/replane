@@ -5,6 +5,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -56,7 +57,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should reject a proposal with description change', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_description',
       value: {enabled: false},
@@ -115,7 +116,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should reject a proposal with member changes', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_members',
       value: {enabled: false},
@@ -167,7 +168,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should reject a deletion proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_delete',
       value: {enabled: false},
@@ -211,7 +212,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should reject a proposal with multiple changes (description + members)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_multiple',
       value: {enabled: false},
@@ -261,7 +262,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should set rejectedInFavorOfProposalId to undefined (explicit rejection)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_explicit',
       value: {enabled: false},
@@ -305,7 +306,7 @@ describe('rejectConfigProposal', () => {
 
   it('should allow anyone to reject a proposal (no permission check)', async () => {
     // Create config with CURRENT_USER as editor, OTHER_USER as maintainer
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_no_permission',
       value: {enabled: false},
@@ -343,7 +344,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should allow multiple users to reject different proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_multiple_users',
       value: {enabled: false},
@@ -418,7 +419,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should throw BadRequestError when rejecting already rejected proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_already_rejected',
       value: {enabled: false},
@@ -456,7 +457,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should throw BadRequestError when rejecting already approved proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_already_approved',
       value: {enabled: false},
@@ -494,7 +495,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should set reviewerId when rejecting a proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_reviewer_id',
       value: {enabled: false},
@@ -531,7 +532,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should not apply any changes to the config when rejecting', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_no_changes',
       value: {enabled: false},
@@ -575,7 +576,7 @@ describe('rejectConfigProposal', () => {
 
   it("shouldn't allow creating config in a project that the user is not a member of", async () => {
     await expect(
-      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      fixture.createConfig({
         projectId: fixture.projectId,
         overrides: [],
         name: 'non_project_member_config',
@@ -590,7 +591,7 @@ describe('rejectConfigProposal', () => {
   });
 
   it('should record the correct user as the rejector in audit message', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_correct_user',
       value: {enabled: false},

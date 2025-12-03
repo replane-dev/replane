@@ -56,7 +56,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should approve a proposal with proposed description only', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approve_description_only',
       value: {x: 1},
@@ -92,7 +92,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should approve a proposal with member changes', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approve_members',
       value: 'test',
@@ -128,7 +128,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should approve a deletion proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approve_deletion',
       value: {x: 1},
@@ -163,7 +163,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should reject other pending proposals when approving', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_others_on_approve',
       value: {x: 1},
@@ -226,7 +226,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should throw BadRequestError for already approved proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'already_approved',
       value: 'test',
@@ -262,7 +262,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should throw BadRequestError for already rejected proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'already_rejected',
       value: 'test',
@@ -298,7 +298,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should create audit message for approval', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'audit_approve',
       value: 'test',
@@ -344,7 +344,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should throw BadRequestError when config version has changed', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version_conflict',
       value: 'test',
@@ -384,20 +384,17 @@ describe('approveConfigProposal', () => {
   });
 
   it('should approve a proposal with variant value changes', async () => {
-    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
-      GLOBAL_CONTEXT,
-      {
-        overrides: [],
-        name: 'approve_variant_value',
-        value: {enabled: true},
-        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
-        description: 'Variant test',
-        currentUserEmail: CURRENT_USER_EMAIL,
-        editorEmails: [],
-        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-        projectId: fixture.projectId,
-      },
-    );
+    const {configId, configVariantIds} = await fixture.createConfig({
+      name: 'approve_variant_value',
+      value: {enabled: true},
+      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      overrides: [],
+      description: 'Variant test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
 
     // Get the production variant
     const prodVariantId = configVariantIds.find(
@@ -431,20 +428,17 @@ describe('approveConfigProposal', () => {
   });
 
   it('should approve a proposal with both config and variant changes', async () => {
-    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
-      GLOBAL_CONTEXT,
-      {
-        overrides: [],
-        name: 'approve_combined_changes',
-        value: {count: 10},
-        schema: {type: 'object', properties: {count: {type: 'number'}}},
-        description: 'Original description',
-        currentUserEmail: CURRENT_USER_EMAIL,
-        editorEmails: [],
-        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-        projectId: fixture.projectId,
-      },
-    );
+    const {configId, configVariantIds} = await fixture.createConfig({
+      name: 'approve_combined_changes',
+      value: {count: 10},
+      schema: {type: 'object', properties: {count: {type: 'number'}}},
+      overrides: [],
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
 
     // Get the production variant
     const prodVariantId = configVariantIds.find(
@@ -485,7 +479,7 @@ describe('approveConfigProposal', () => {
   });
 
   it('should not allow non-member user to approve', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'non_member_approve',
       value: 'test',
@@ -552,7 +546,7 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
   });
 
   it('should prevent self-approval when allowSelfApprovals is false', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'no_self_approve',
       value: 'test',
@@ -612,7 +606,7 @@ describe('approveConfigProposal (allowSelfApprovals=true)', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'self_approve_allowed',
       value: 'test',

@@ -11,7 +11,6 @@ export interface GetProjectEventsRequest {
 
 export interface ProjectEvent {
   type: 'created' | 'updated' | 'deleted';
-  configId: string;
   configName: string;
   renderedOverrides: RenderedOverride[];
   version: number;
@@ -37,7 +36,6 @@ export function createGetProjectEventsUseCase(
         if (event.variant.projectId === request.projectId) {
           channel.push({
             type: event.type,
-            configId: event.variant.variantId,
             configName: event.variant.name,
             renderedOverrides: event.variant.renderedOverrides,
             version: event.variant.version,

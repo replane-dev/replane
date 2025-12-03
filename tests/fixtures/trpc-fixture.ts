@@ -130,6 +130,50 @@ export class AppFixture {
     return this._developmentEnvironmentId;
   }
 
+  get environments() {
+    return [
+      {id: this.productionEnvironmentId, name: 'Production'},
+      {id: this.developmentEnvironmentId, name: 'Development'},
+    ];
+  }
+
+  /**
+   * Helper to create a config using old API format (for backward compatibility in tests)
+   * Automatically creates environment-specific variants for all environments
+   */
+  async createConfig(params: {
+    name: string;
+    value: unknown;
+    schema: unknown;
+    overrides: any[];
+    description: string;
+    currentUserEmail: string;
+    editorEmails: string[];
+    maintainerEmails: string[];
+    projectId: string;
+  }) {
+    // Fetch environments for the specific project
+    const {environments} = await this.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: params.projectId,
+      currentUserEmail: normalizeEmail(params.currentUserEmail),
+    });
+
+    return this.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: params.name,
+      description: params.description,
+      currentUserEmail: normalizeEmail(params.currentUserEmail),
+      editorEmails: params.editorEmails,
+      maintainerEmails: params.maintainerEmails,
+      projectId: params.projectId,
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: params.value,
+        schema: params.schema,
+        overrides: params.overrides,
+      })),
+    });
+  }
+
   async destroy(ctx: Context) {
     if (this._engine) {
       await this._engine.testing.dropDb(ctx);

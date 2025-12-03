@@ -4,6 +4,7 @@ import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evalu
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -720,7 +721,7 @@ describe('Override Evaluation', () => {
         },
       ];
 
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'max_items_config',
         value: {maxItems: 10},
         schema: null,
@@ -771,7 +772,7 @@ describe('Override Evaluation', () => {
     });
 
     it('should update overrides via patchConfigVariant', async () => {
-      const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      const {configId} = await fixture.createConfig({
         name: 'feature_flag',
         value: false,
         schema: null,
@@ -848,7 +849,7 @@ describe('Override Evaluation', () => {
         },
       ];
 
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'age_restricted',
         value: {access: 'child'},
         schema: null,

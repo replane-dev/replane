@@ -19,7 +19,6 @@ import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
 import {Button} from '@/components/ui/button';
-import {Checkbox} from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -85,36 +84,9 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
 
   const columns = React.useMemo<ColumnDef<ApiKeyRow>[]>(
     () => [
-      {
-        id: 'select',
-        header: ({table}) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && 'indeterminate')
-            }
-            onCheckedChange={value => table.toggleAllPageRowsSelected(!!value)}
-            onClick={e => e.stopPropagation()}
-            onMouseDown={e => e.stopPropagation()}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({row}) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={value => row.toggleSelected(!!value)}
-            onClick={e => e.stopPropagation()}
-            onMouseDown={e => e.stopPropagation()}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
       {
         accessorKey: 'name',
         header: 'SDK Key Name',
@@ -231,12 +203,10 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
     },
   });
 
@@ -316,7 +286,6 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
               table.getRowModel().rows.map(row => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
                   onClick={e => handleRowClick(e, row.original.id)}
                   className="cursor-pointer select-text"
                 >

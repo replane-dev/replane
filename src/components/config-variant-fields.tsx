@@ -20,6 +20,7 @@ import type {Control} from 'react-hook-form';
 interface ConfigVariantFieldsProps {
   control: Control<any>;
   variantIndex: number;
+  fieldPrefix: string; // e.g., 'defaultVariant' or 'environmentVariants'
   environmentId: string;
   environmentName: string;
   editorIdPrefix?: string;
@@ -28,14 +29,20 @@ interface ConfigVariantFieldsProps {
   canEditValue: boolean;
   canEditSchema: boolean;
   canEditOverrides: boolean;
-  watchedVariants?: any[];
+  watchedVariant?: any;
   overrideBuilderDefaultValue: unknown;
   liveSchema: any | undefined;
+  // For schema inheritance
+  isEnvironmentVariant?: boolean;
+  hasDefaultVariant?: boolean; // Whether a default variant exists at all
+  defaultSchemaAvailable?: boolean; // Whether default variant has a schema enabled
+  defaultSchema?: any; // The actual default schema for validation
 }
 
 export function ConfigVariantFields({
   control,
   variantIndex,
+  fieldPrefix,
   environmentId,
   environmentName,
   editorIdPrefix,
@@ -44,19 +51,34 @@ export function ConfigVariantFields({
   canEditValue,
   canEditSchema,
   canEditOverrides,
-  watchedVariants,
+  watchedVariant,
   overrideBuilderDefaultValue,
   liveSchema,
+  isEnvironmentVariant = false,
+  hasDefaultVariant = true,
+  defaultSchemaAvailable = false,
+  defaultSchema,
 }: ConfigVariantFieldsProps) {
+  // Build field name based on whether this is default variant or environment variant
+  const getFieldName = (field: string) => {
+    if (fieldPrefix === 'defaultVariant') {
+      return `defaultVariant.${field}`;
+    }
+    return `${fieldPrefix}.${variantIndex}.${field}`;
+  };
+
+  // Determine which schema to use for the JSON editor
+  const effectiveSchema = watchedVariant?.useDefaultSchema ? defaultSchema : liveSchema;
+
   return (
     <>
       <FormField
         control={control}
-        name={`variants.${variantIndex}.overrides`}
+        name={getFieldName('overrides')}
         render={({field}) => (
           <FormItem>
             <div className="flex items-center gap-1.5">
-              <FormLabel>Value overrides</FormLabel>
+              <FormLabel>Conditional Overrides</FormLabel>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -64,17 +86,17 @@ export function ConfigVariantFields({
                 <TooltipContent className="max-w-sm">
                   <div className="space-y-2">
                     <p className="text-sm">
-                      Overrides allow you to conditionally return different values based on context
-                      properties like user email, tier, country, etc.
+                      Return different values based on runtime context like user attributes, feature
+                      flags, or request properties.
                     </p>
                     <div className="space-y-1.5 text-xs">
-                      <p className="font-medium">Examples:</p>
+                      <p className="font-medium">Common use cases:</p>
                       <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
                         <li>Premium users get higher rate limits</li>
-                        <li>VIP customers see beta features</li>
-                        <li>Regional pricing based on country</li>
-                        <li>A/B testing by user ID</li>
-                        <li>Internal employees bypass restrictions</li>
+                        <li>Beta features for specific users</li>
+                        <li>Regional pricing by country</li>
+                        <li>A/B testing variations</li>
+                        <li>Staff access to internal features</li>
                       </ul>
                     </div>
                   </div>
@@ -101,14 +123,16 @@ export function ConfigVariantFields({
 
       <FormField
         control={control}
-        name={`variants.${variantIndex}.value`}
+        name={getFieldName('value')}
         render={({field}) => (
           <FormItem>
             <div className="flex items-center gap-1.5">
               <FormLabel>
-                {(watchedVariants?.[variantIndex]?.overrides?.length ?? 0) > 0
-                  ? 'Default Value'
-                  : 'Value'}
+                {(watchedVariant?.overrides?.length ?? 0) > 0
+                  ? 'Base Value'
+                  : isEnvironmentVariant
+                    ? 'Value'
+                    : 'Configuration Value'}
               </FormLabel>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -116,8 +140,11 @@ export function ConfigVariantFields({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
-                    The configuration value as valid JSON. This is the actual data that will be
-                    stored and retrieved for this config in the {environmentName} environment.
+                    {isEnvironmentVariant
+                      ? `The configuration value for the ${environmentName} environment. This overrides the base configuration.`
+                      : (watchedVariant?.overrides?.length ?? 0) > 0
+                        ? 'The default value returned when no override conditions match.'
+                        : 'The configuration value as valid JSON. This will be used by all environments unless overridden.'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -129,7 +156,7 @@ export function ConfigVariantFields({
                 value={field.value}
                 onChange={field.onChange}
                 aria-label={`Config JSON for ${environmentName}`}
-                schema={liveSchema}
+                schema={effectiveSchema}
                 readOnly={!canEditValue}
               />
             </FormControl>
@@ -144,69 +171,136 @@ export function ConfigVariantFields({
       />
 
       <div className="space-y-4">
-        <FormField
-          control={control}
-          name={`variants.${variantIndex}.schemaEnabled`}
-          render={({field}) => (
-            <FormItem>
-              <div className="flex items-center justify-between space-x-2">
-                <div className="flex items-center gap-1.5">
-                  <Label
-                    htmlFor={`${editorIdPrefix ?? 'config'}-use-schema-${environmentId}`}
-                    className="text-sm font-medium cursor-pointer gap-1"
-                  >
-                    Enforce{' '}
-                    <a
-                      href="https://json-schema.org/"
-                      target="_blank"
-                      className="text-primary underline"
-                    >
-                      JSON schema
-                    </a>
-                  </Label>
+        {/* Inherit Base Schema toggle - shown for environment variants when default variant exists */}
+        {isEnvironmentVariant && hasDefaultVariant && (
+          <FormField
+            control={control}
+            name={getFieldName('useDefaultSchema')}
+            render={({field}) => (
+              <FormItem
+                className={`rounded-lg border p-3 transition-colors ${
+                  field.value
+                    ? 'border-primary/30 bg-primary/5'
+                    : 'border-border/50 bg-transparent'
+                }`}
+              >
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex items-center gap-2">
+                    <FormControl>
+                      <Switch
+                        id={`${editorIdPrefix ?? 'config'}-use-default-schema-${environmentId}`}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={!canEditSchema || !defaultSchemaAvailable}
+                      />
+                    </FormControl>
+                    <div>
+                      <Label
+                        htmlFor={`${editorIdPrefix ?? 'config'}-use-default-schema-${environmentId}`}
+                        className={`text-sm font-medium ${defaultSchemaAvailable ? 'cursor-pointer' : 'text-muted-foreground'}`}
+                      >
+                        Inherit base schema
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {field.value
+                          ? 'Using the same schema as base configuration'
+                          : defaultSchemaAvailable
+                            ? 'Use custom schema for this environment'
+                            : 'No base schema defined'}
+                      </p>
+                    </div>
+                  </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <CircleHelp className="h-3.5 w-3.5 text-muted-foreground shrink-0 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      <p>
-                        When enabled, the config value must validate against the JSON Schema before
-                        it can be saved. This helps ensure data consistency and catch errors early.
-                      </p>
+                      {defaultSchemaAvailable ? (
+                        <p>
+                          When enabled, this environment uses the same JSON Schema as the base
+                          configuration. Disable to define a custom schema for this environment.
+                        </p>
+                      ) : (
+                        <p>
+                          Enable schema validation on the base configuration first to use this option.
+                        </p>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <FormControl>
-                  <Switch
-                    id={`${editorIdPrefix ?? 'config'}-use-schema-${environmentId}`}
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={!canEditSchema}
-                  />
-                </FormControl>
-              </div>
-              {!canEditSchema && (
-                <p className="text-xs text-muted-foreground">
-                  Only maintainers can change schema enforcement.
-                </p>
-              )}
-            </FormItem>
-          )}
-        />
+              </FormItem>
+            )}
+          />
+        )}
 
-        {watchedVariants?.[variantIndex]?.schemaEnabled && (
+        {/* Schema enabled toggle - hidden when using inherited schema */}
+        {!watchedVariant?.useDefaultSchema && (
           <FormField
             control={control}
-            name={`variants.${variantIndex}.schema`}
+            name={getFieldName('schemaEnabled')}
+            render={({field}) => (
+              <FormItem>
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label
+                      htmlFor={`${editorIdPrefix ?? 'config'}-use-schema-${environmentId}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Validate with{' '}
+                      <a
+                        href="https://json-schema.org/"
+                        target="_blank"
+                        className="text-primary underline hover:text-primary/80"
+                      >
+                        JSON Schema
+                      </a>
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <CircleHelp className="h-3.5 w-3.5 text-muted-foreground shrink-0 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>
+                          Enforce that the configuration value matches a JSON Schema. This helps catch
+                          errors early and ensures data consistency.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      id={`${editorIdPrefix ?? 'config'}-use-schema-${environmentId}`}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={!canEditSchema}
+                    />
+                  </FormControl>
+                </div>
+                {!canEditSchema && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Only maintainers can change schema settings.
+                  </p>
+                )}
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Schema editor - shown when schema is enabled and not using inherited schema */}
+        {watchedVariant?.schemaEnabled && !watchedVariant?.useDefaultSchema && (
+          <FormField
+            control={control}
+            name={getFieldName('schema')}
             render={({field}) => (
               <FormItem className="space-y-2">
+                <FormLabel className="text-sm font-medium">Schema Definition</FormLabel>
                 <FormControl>
                   <JsonEditor
                     id={`${editorIdPrefix ?? 'config'}-schema-${environmentId}`}
                     height={mode === 'new' ? 300 : 360}
                     value={field.value ?? ''}
                     onChange={field.onChange}
-                    aria-label={`Config JSON Schema for ${environmentName}`}
+                    aria-label={`JSON Schema for ${environmentName}`}
                     readOnly={!canEditSchema}
                   />
                 </FormControl>

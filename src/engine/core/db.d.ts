@@ -102,11 +102,12 @@ export interface ConfigUsers {
 export interface ConfigVariants {
   config_id: string;
   created_at: Timestamp;
-  environment_id: string;
+  environment_id: string | null;
   id: string;
   overrides: string;
   schema: string | null;
   updated_at: Timestamp;
+  use_default_schema: boolean;
   value: string;
   version: number;
 }

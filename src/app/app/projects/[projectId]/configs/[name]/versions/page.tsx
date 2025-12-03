@@ -39,28 +39,36 @@ export default function ConfigVersionsPage() {
   const configInfo = configData?.config;
 
   // Select environment: use selected, or default to Production, or first variant
+  // Filter out default variants (where environmentId is null)
+  const environmentVariants = useMemo(
+    () =>
+      configInfo?.variants.filter(v => v.environmentId !== null && v.environmentName !== null) ??
+      [],
+    [configInfo?.variants],
+  );
+
   const variant = useMemo(() => {
-    if (!configInfo?.variants) return null;
+    if (environmentVariants.length === 0) return null;
 
     // TODO: we should always have a selected env
     if (selectedEnvironmentId) {
-      const v = configInfo.variants.find(v => v.environmentId === selectedEnvironmentId);
+      const v = environmentVariants.find(v => v.environmentId === selectedEnvironmentId);
       if (v) return v;
 
       throw new Error('Variant not found');
     }
 
     return (
-      configInfo.variants.find(v => v.environmentName === 'Production') ?? configInfo.variants[0]
+      environmentVariants.find(v => v.environmentName === 'Production') ?? environmentVariants[0]
     );
-  }, [configInfo?.variants, selectedEnvironmentId]);
+  }, [environmentVariants, selectedEnvironmentId]);
 
   // Load versions for the selected variant (only if we have config and variant)
   const hasVariant = !!configInfo && !!variant;
   const {data: versionsData} = useSuspenseQuery(
     trpc.getConfigVariantVersionList.queryOptions({
       configId: hasVariant ? configInfo.config.id : '',
-      environmentId: hasVariant ? variant.environmentId : '',
+      environmentId: hasVariant ? variant.environmentId! : '',
       projectId,
     }),
   );
@@ -98,7 +106,7 @@ export default function ConfigVersionsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-6xl space-y-6">
           {/* Environment Selector */}
-          {configInfo?.variants && configInfo.variants.length > 1 && (
+          {environmentVariants.length > 1 && (
             <div className="flex items-center gap-4">
               <Label htmlFor="environment-select" className="text-sm font-medium shrink-0">
                 Environment:
@@ -108,8 +116,8 @@ export default function ConfigVersionsPage() {
                   <SelectValue placeholder="Select environment" />
                 </SelectTrigger>
                 <SelectContent>
-                  {configInfo.variants.map(v => (
-                    <SelectItem key={v.environmentId} value={v.environmentId}>
+                  {environmentVariants.map(v => (
+                    <SelectItem key={v.environmentId!} value={v.environmentId!}>
                       {v.environmentName}
                     </SelectItem>
                   ))}
@@ -125,7 +133,7 @@ export default function ConfigVersionsPage() {
             <ConfigVersionsTable
               name={name}
               configId={configInfo.config.id}
-              environmentId={variant.environmentId}
+              environmentId={variant.environmentId!}
             />
           )}
         </div>

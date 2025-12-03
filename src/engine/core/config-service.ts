@@ -38,6 +38,7 @@ export interface PatchConfigVariantParams {
   reviewer: User;
   originalProposalId?: string;
   prevVersion: number;
+  useDefaultSchema?: boolean; // If true, inherit schema from default variant
 }
 
 export interface DeleteConfigParams {
@@ -251,14 +252,33 @@ export class ConfigService {
     }
 
     const nextValue = params.value ? params.value.newValue : existingVariant.value;
-    const nextSchema = params.schema ? params.schema.newSchema : existingVariant.schema;
+    // When useDefaultSchema is true, we set schema to null (will inherit via COALESCE)
+    const nextSchema = params.useDefaultSchema
+      ? null
+      : params.schema
+        ? params.schema.newSchema
+        : existingVariant.schema;
     const nextOverrides = params.overrides
       ? params.overrides.newOverrides
       : existingVariant.overrides;
 
-    // Validate schema if present
-    if (nextSchema !== null) {
-      const result = validateAgainstJsonSchema(nextValue, nextSchema);
+    // Determine which schema to use for validation
+    let schemaForValidation = nextSchema;
+
+    if (params.useDefaultSchema) {
+      // Fetch the default variant's schema for validation
+      const defaultVariant = await this.configVariants.getDefaultVariant(config.id);
+      if (!defaultVariant) {
+        throw new BadRequestError(
+          'Cannot use default schema when no default variant exists for this config',
+        );
+      }
+      schemaForValidation = defaultVariant.schema;
+    }
+
+    // Validate against the appropriate schema
+    if (schemaForValidation !== null) {
+      const result = validateAgainstJsonSchema(nextValue, schemaForValidation);
       if (!result.ok) {
         throw new BadRequestError(
           `Config value does not match schema: ${result.errors.join('; ')}`,
@@ -278,11 +298,13 @@ export class ConfigService {
     // Update the variant
     await this.configVariants.update({
       id: existingVariant.id,
+      configId: existingVariant.configId,
       value: nextValue,
       schema: nextSchema,
       overrides: nextOverrides,
       version: nextVersion,
       updatedAt: now,
+      useDefaultSchema: params.useDefaultSchema,
     });
 
     // Update the config's updated_at as well (variant change affects the config)
@@ -318,11 +340,14 @@ export class ConfigService {
     });
 
     // Get environment information for audit log
-    const environment = await this.projectEnvironments.getById({
-      environmentId: existingVariant.environmentId,
-      projectId: config.projectId,
-    });
-    assert(environment, `Environment ${existingVariant.environmentId} not found`);
+    const environmentName = existingVariant.environmentId
+      ? ((
+          await this.projectEnvironments.getById({
+            environmentId: existingVariant.environmentId,
+            projectId: config.projectId,
+          })
+        )?.name ?? 'Unknown')
+      : 'Default';
 
     // Create audit log for variant update
     await this.auditLogs.create({
@@ -338,7 +363,7 @@ export class ConfigService {
           configId: existingVariant.configId,
           configName: config.name,
           environmentId: existingVariant.environmentId,
-          environmentName: environment.name,
+          environmentName,
           value: existingVariant.value,
           schema: existingVariant.schema,
           overrides: existingVariant.overrides,
@@ -349,7 +374,7 @@ export class ConfigService {
           configId: existingVariant.configId,
           configName: config.name,
           environmentId: existingVariant.environmentId,
-          environmentName: environment.name,
+          environmentName,
           value: nextValue,
           schema: nextSchema,
           overrides: nextOverrides,
@@ -388,7 +413,7 @@ export class ConfigService {
     // Delete each variant (triggers notifications)
     const variants = await this.configVariants.getByConfigId(existingConfig.id);
     for (const variant of variants) {
-      await this.configVariants.delete(variant.id);
+      await this.configVariants.delete({configId: variant.configId, variantId: variant.id});
     }
 
     // Delete the config metadata

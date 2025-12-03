@@ -48,7 +48,7 @@ export interface AuditLogPayloadConfigVariant {
   id: string;
   configId: string;
   configName: string;
-  environmentId: string;
+  environmentId: string | null;
   environmentName: string;
   value: unknown;
   schema: unknown | null;

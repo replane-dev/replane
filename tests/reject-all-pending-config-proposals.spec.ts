@@ -5,6 +5,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -48,7 +49,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should reject all pending proposals for a config', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_test',
       value: {enabled: false},
@@ -144,7 +145,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should create audit messages for all rejected proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_audit',
       value: {enabled: false},
@@ -219,7 +220,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should handle proposals with different change types', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_types',
       value: {enabled: false},
@@ -321,7 +322,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should handle deletion proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_delete',
       value: {enabled: false},
@@ -393,7 +394,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should return successfully when there are no pending proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_empty',
       value: {enabled: false},
@@ -437,7 +438,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should skip already approved proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_skip_approved',
       value: {enabled: false},
@@ -504,7 +505,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should skip already rejected proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_skip_rejected',
       value: {enabled: false},
@@ -569,7 +570,7 @@ describe('rejectAllPendingConfigProposals', () => {
   });
 
   it('should work via tRPC endpoint', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_trpc',
       value: {enabled: false},

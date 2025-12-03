@@ -35,16 +35,23 @@ export default function ConfigVersionDetailsPage() {
   const configInfo = configData?.config;
 
   // TODO: Add environment selector - for now use Production or first variant
-  const variant = configInfo
-    ? configInfo.variants.find(v => v.environmentName === 'Production') ?? configInfo.variants[0]
-    : null;
+  // Filter out default variants (where environmentId is null)
+  const environmentVariants = configInfo
+    ? configInfo.variants.filter(v => v.environmentId !== null && v.environmentName !== null)
+    : [];
+
+  const variant =
+    environmentVariants.length > 0
+      ? (environmentVariants.find(v => v.environmentName === 'Production') ??
+        environmentVariants[0])
+      : null;
 
   // Load version for the selected variant
   const hasVariant = !!configInfo && !!variant;
   const {data} = useSuspenseQuery(
     trpc.getConfigVariantVersion.queryOptions({
       configId: hasVariant ? configInfo.config.id : '',
-      environmentId: hasVariant ? variant.environmentId : '',
+      environmentId: hasVariant ? variant.environmentId! : '',
       version: versionNumber,
       projectId,
     }),
@@ -153,7 +160,7 @@ export default function ConfigVersionDetailsPage() {
                             try {
                               await restoreMutation.mutateAsync({
                                 configId: configInfo.config.id,
-                                environmentId: variant.environmentId,
+                                environmentId: variant.environmentId!,
                                 versionToRestore: version.version,
                                 expectedCurrentVersion: currentVariantVersion,
                                 projectId,

@@ -3,6 +3,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {v4 as uuidv4} from 'uuid';
 import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -16,7 +17,7 @@ describe('Get Config For API Use Case', () => {
   it('should return config with name, value, overrides, and version', async () => {
     const configName = `test-config-${uuidv4()}`;
 
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       name: configName,
       value: {feature: 'enabled'},
       schema: null,
@@ -71,7 +72,7 @@ describe('Get Config For API Use Case', () => {
   it('should return updated version after patch', async () => {
     const configName = `test-config-${uuidv4()}`;
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: configName,
       value: {count: 1},
       schema: null,
@@ -115,7 +116,7 @@ describe('Get Config For API Use Case', () => {
   it('should include null overrides when none are defined', async () => {
     const configName = `test-config-${uuidv4()}`;
 
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       name: configName,
       value: 'simple-value',
       schema: null,

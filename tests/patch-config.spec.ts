@@ -9,6 +9,7 @@ import {createConfigProposalId} from '@/engine/core/stores/config-proposal-store
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -34,7 +35,7 @@ describe('patchConfig', () => {
   });
 
   it('should patch description (maintainer permission)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_description',
       value: {flag: true},
       schema: null,
@@ -63,7 +64,7 @@ describe('patchConfig', () => {
   });
 
   it('should enforce manage permission when changing members', async () => {
-    const {configId: editorOnlyId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: editorOnlyId} = await fixture.createConfig({
       name: 'patch_members_forbidden',
       value: 'v',
       schema: {type: 'string'},
@@ -87,7 +88,7 @@ describe('patchConfig', () => {
   });
 
   it('should update members (add & remove) when user is maintainer', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_members_success',
       value: 'v1',
       schema: {type: 'string'},
@@ -133,7 +134,7 @@ describe('patchConfig', () => {
   });
 
   it('should fail with version mismatch', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_version_conflict',
       value: 1,
       schema: {type: 'number'},
@@ -156,7 +157,7 @@ describe('patchConfig', () => {
   });
 
   it('creates audit message (config_updated) on description change', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_audit_desc',
       value: {a: 1},
       schema: {type: 'object', properties: {a: {type: 'number'}}},
@@ -193,7 +194,7 @@ describe('patchConfig', () => {
   });
 
   it('creates audit message (config_members_changed) on membership edit', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_members_audit',
       value: 'v1',
       schema: {type: 'string'},
@@ -235,7 +236,7 @@ describe('patchConfig', () => {
 
   it('should reject all pending config proposals when patching', async () => {
     // Create a config
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'proposal_test_config',
       value: {count: 1},
       schema: null,
@@ -333,7 +334,7 @@ describe('patchConfig', () => {
   });
 
   it('should create audit messages for rejected config proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'audit_proposal_rejection',
       value: {x: 1},
       schema: null,
@@ -445,7 +446,7 @@ describe('patchConfig', () => {
   });
 
   it('should throw BadRequestError when patching with user in multiple roles', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_duplicate_user',
       value: {x: 1},
       schema: null,
@@ -484,7 +485,7 @@ describe('patchConfig', () => {
   });
 
   it('should throw BadRequestError for duplicate users in members (case insensitive)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_case_insensitive_duplicate',
       value: {x: 1},
       schema: null,
@@ -520,7 +521,7 @@ describe('patchConfig', () => {
   });
 
   it('should successfully patch with unique members', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_unique_members',
       value: {x: 1},
       schema: null,
@@ -560,7 +561,7 @@ describe('patchConfig', () => {
   });
 
   it('should increment version on patch', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_version',
       value: {x: 1},
       schema: null,
@@ -597,7 +598,7 @@ describe('patchConfig', () => {
   });
 
   it('should patch both description and members at once', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: 'patch_both',
       value: {x: 1},
       schema: null,
@@ -652,7 +653,7 @@ describe('patchConfig with requireProposals enabled', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: `require_proposals_${Date.now()}`,
       value: {x: 1},
       schema: null,

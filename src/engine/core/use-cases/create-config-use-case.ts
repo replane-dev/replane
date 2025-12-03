@@ -13,19 +13,29 @@ import type {NormalizedEmail} from '../zod';
 
 export interface CreateConfigRequest {
   name: string;
-  value: any;
   description: string;
-  schema: unknown;
-  overrides: Override[];
   currentUserEmail: NormalizedEmail;
   editorEmails: string[];
   maintainerEmails: string[];
   projectId: string;
+  // New flexible variant structure
+  defaultVariant?: {
+    value: any;
+    schema: unknown;
+    overrides: Override[];
+  };
+  environmentVariants?: Array<{
+    environmentId: string;
+    value: any;
+    schema: unknown;
+    overrides: Override[];
+    useDefaultSchema?: boolean; // If true, inherit schema from default variant
+  }>;
 }
 
 export interface CreateConfigResponse {
   configId: ConfigId;
-  configVariantIds: Array<{variantId: string; environmentId: string}>;
+  configVariantIds: Array<{variantId: string; environmentId: string | null}>;
 }
 
 export interface CreateConfigUseCaseDeps {
@@ -42,7 +52,6 @@ export function createCreateConfigUseCase(
     });
 
     // Validate no user appears with multiple roles
-    // Map API names (ownerEmails/editorEmails) to database roles (maintainer/editor)
     const allMembers = [
       ...req.editorEmails.map(email => ({email, role: 'editor' as const})),
       ...req.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
@@ -57,29 +66,89 @@ export function createCreateConfigUseCase(
       throw new BadRequestError('Config with this name already exists');
     }
 
-    if (req.schema !== null) {
-      const result = validateAgainstJsonSchema(req.value, req.schema as any);
-      if (!result.ok) {
-        throw new BadRequestError(
-          `Config value does not match schema: ${result.errors.join('; ')}`,
-        );
-      }
+    // Get all environments for this project
+    const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
+    if (environments.length === 0) {
+      throw new BadRequestError('Project has no environments. Create an environment first.');
     }
 
-    // Validate override references use the same project ID
-    validateOverrideReferences({
-      overrides: req.overrides as Override[] | null,
-      configProjectId: req.projectId,
-    });
+    // Validate variant structure
+    if (!req.defaultVariant && !req.environmentVariants) {
+      throw new BadRequestError('Must provide either defaultVariant or environmentVariants');
+    }
+
+    const environmentVariants = req.environmentVariants ?? [];
+    const envVariantIds = new Set(environmentVariants.map(v => v.environmentId));
+    const allEnvironmentIds = new Set(environments.map(e => e.id));
+    const missingEnvironments = environments.filter(e => !envVariantIds.has(e.id));
+
+    // Validation: if any environment is missing, default variant is required
+    if (missingEnvironments.length > 0 && !req.defaultVariant) {
+      throw new BadRequestError(
+        `Default variant is required when environment-specific variants are not provided for all environments. Missing: ${missingEnvironments.map(e => e.name).join(', ')}`,
+      );
+    }
+
+    // Validate default variant if provided
+    if (req.defaultVariant) {
+      if (req.defaultVariant.schema !== null && req.defaultVariant.schema !== undefined) {
+        const result = validateAgainstJsonSchema(
+          req.defaultVariant.value,
+          req.defaultVariant.schema as any,
+        );
+        if (!result.ok) {
+          throw new BadRequestError(
+            `Default variant value does not match schema: ${result.errors.join('; ')}`,
+          );
+        }
+      }
+      validateOverrideReferences({
+        overrides: req.defaultVariant.overrides,
+        configProjectId: req.projectId,
+      });
+    }
+
+    // Validate environment variants
+    for (const envVariant of environmentVariants) {
+      if (!allEnvironmentIds.has(envVariant.environmentId)) {
+        throw new BadRequestError(`Invalid environment ID: ${envVariant.environmentId}`);
+      }
+
+      // Determine which schema to use for validation
+      let schemaToValidate: unknown = null;
+      if (envVariant.useDefaultSchema) {
+        // Use default schema for validation
+        if (!req.defaultVariant) {
+          throw new BadRequestError(
+            'Cannot use default schema when no default variant is provided',
+          );
+        }
+        schemaToValidate = req.defaultVariant.schema;
+      } else if (envVariant.schema !== null && envVariant.schema !== undefined) {
+        schemaToValidate = envVariant.schema;
+      }
+
+      if (schemaToValidate !== null && schemaToValidate !== undefined) {
+        const result = validateAgainstJsonSchema(envVariant.value, schemaToValidate as any);
+        if (!result.ok) {
+          throw new BadRequestError(
+            `Environment variant value does not match schema: ${result.errors.join('; ')}`,
+          );
+        }
+      }
+      validateOverrideReferences({
+        overrides: envVariant.overrides,
+        configProjectId: req.projectId,
+      });
+    }
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     const configId = createConfigId();
-
-    // Create config (metadata only)
     const now = deps.dateProvider.now();
 
+    // Create config (metadata only)
     await tx.configs.create({
       id: configId,
       name: req.name,
@@ -91,31 +160,59 @@ export function createCreateConfigUseCase(
       version: 1,
     });
 
-    // Get all environments for this project
-    const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
+    const configVariantIds: Array<{variantId: string; environmentId: string | null}> = [];
 
-    if (environments.length === 0) {
-      throw new BadRequestError('Project has no environments. Create an environment first.');
-    }
-
-    // Create a variant for each environment with the same initial value
-    const configVariantIds: Array<{variantId: string; environmentId: string}> = [];
-    for (const environment of environments) {
+    // Create default variant if provided
+    if (req.defaultVariant) {
       const variantId = createUuidV7();
-
       await tx.configVariants.create({
         id: variantId,
         configId,
-        environmentId: environment.id,
-        value: req.value,
-        schema: req.schema,
-        overrides: req.overrides,
+        environmentId: null,
+        value: req.defaultVariant.value,
+        schema: req.defaultVariant.schema,
+        overrides: req.defaultVariant.overrides,
         version: 1,
         createdAt: now,
         updatedAt: now,
+        useDefaultSchema: false, // Default variant doesn't inherit from itself
       });
 
-      configVariantIds.push({variantId, environmentId: environment.id});
+      configVariantIds.push({variantId, environmentId: null});
+
+      // Create version history for default variant
+      await tx.configVariantVersions.create({
+        id: createUuidV7(),
+        configVariantId: variantId,
+        version: 1,
+        name: req.name,
+        description: req.description,
+        value: req.defaultVariant.value,
+        schema: req.defaultVariant.schema,
+        overrides: req.defaultVariant.overrides,
+        authorId: currentUser.id,
+        proposalId: null,
+        createdAt: now,
+      });
+    }
+
+    // Create environment-specific variants
+    for (const envVariant of environmentVariants) {
+      const variantId = createUuidV7();
+      await tx.configVariants.create({
+        id: variantId,
+        configId,
+        environmentId: envVariant.environmentId,
+        value: envVariant.value,
+        schema: envVariant.useDefaultSchema ? null : envVariant.schema, // null when using default schema
+        overrides: envVariant.overrides,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+        useDefaultSchema: envVariant.useDefaultSchema ?? false,
+      });
+
+      configVariantIds.push({variantId, environmentId: envVariant.environmentId});
 
       // Create version history for this variant
       await tx.configVariantVersions.create({
@@ -124,9 +221,9 @@ export function createCreateConfigUseCase(
         version: 1,
         name: req.name,
         description: req.description,
-        value: req.value,
-        schema: req.schema,
-        overrides: req.overrides,
+        value: envVariant.value,
+        schema: envVariant.schema,
+        overrides: envVariant.overrides,
         authorId: currentUser.id,
         proposalId: null,
         createdAt: now,
@@ -148,7 +245,7 @@ export function createCreateConfigUseCase(
           req.maintainerEmails.map(
             (email): NewConfigUser => ({
               email,
-              role: 'maintainer', // owners map to maintainer role in database
+              role: 'maintainer',
               configId,
               createdAt: now,
               updatedAt: now,
@@ -158,10 +255,9 @@ export function createCreateConfigUseCase(
     );
 
     const fullConfig = await tx.configs.getById(configId);
-
     assert(fullConfig, 'Just created config not found');
 
-    // One audit log for config creation (not per environment)
+    // One audit log for config creation
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: now,

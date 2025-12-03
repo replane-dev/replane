@@ -58,6 +58,9 @@ export default function ConfigByNamePage() {
   const projectId = useProjectId();
   const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const {data: projectData} = useSuspenseQuery(trpc.getProject.queryOptions({id: projectId}));
+  const {data: environmentsData} = useSuspenseQuery(
+    trpc.getProjectEnvironments.queryOptions({projectId}),
+  );
   const patchConfig = useMutation(trpc.patchConfig.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
   const rejectAllPendingProposals = useMutation(
@@ -99,29 +102,29 @@ export default function ConfigByNamePage() {
   );
 
   const onValuesChange = useCallback(
-    (environmentId: string, values: {value: string; overrides: Override[]}) => {
-      // Only update if this is the environment we're currently testing
-      if (activeTestEnvironmentId === environmentId) {
-        setLiveOverrides(values.overrides);
-        try {
-          setLiveValue(JSON.parse(values.value));
-        } catch {
-          const variant = config?.variants.find(v => v.environmentId === environmentId);
-          setLiveValue(variant?.value);
-        }
+    (values: {value: string; overrides: Override[]}) => {
+      // Update live values for override testing
+      setLiveOverrides(values.overrides);
+      try {
+        setLiveValue(JSON.parse(values.value));
+      } catch {
+        // Use default variant value if parsing fails
+        const defaultVar = config?.variants.find(v => v.environmentId === null);
+        setLiveValue(defaultVar?.value ?? null);
       }
     },
-    [activeTestEnvironmentId, config?.variants],
+    [config?.variants],
   );
 
   async function executePatchConfig(data: {
-    variants: Array<{
+    environmentVariants: Array<{
       configVariantId?: string;
       environmentId: string;
       value: unknown;
       schema: unknown | null;
       overrides: Override[];
       version?: number;
+      useDefaultSchema?: boolean;
     }>;
     description: string;
     maintainerEmails: string[];
@@ -129,11 +132,25 @@ export default function ConfigByNamePage() {
   }) {
     if (!config) return;
 
-    // Build variant changes array
+    // Build variant changes array (for existing variants)
     const variantChanges = [];
-    for (const variantData of data.variants) {
+    // Build create variants array (for new variants)
+    const createVariants = [];
+
+    for (const variantData of data.environmentVariants) {
       const originalVariant = config.variants.find(v => v.id === variantData.configVariantId);
-      if (!originalVariant) continue;
+
+      if (!originalVariant) {
+        // This is a new environment variant - needs to be created
+        createVariants.push({
+          environmentId: variantData.environmentId,
+          value: variantData.value,
+          schema: variantData.schema,
+          overrides: variantData.overrides as Override[],
+          useDefaultSchema: variantData.useDefaultSchema,
+        });
+        continue;
+      }
 
       // Check if this variant has changes
       const valueChanged =
@@ -142,23 +159,33 @@ export default function ConfigByNamePage() {
         JSON.stringify(variantData.schema) !== JSON.stringify(originalVariant.schema);
       const overridesChanged =
         JSON.stringify(variantData.overrides) !== JSON.stringify(originalVariant.overrides);
+      // Check if useDefaultSchema changed (compare with current schema being null as proxy)
+      const useDefaultSchemaChanged = variantData.useDefaultSchema === true;
 
-      if (valueChanged || schemaChanged || overridesChanged) {
+      if (valueChanged || schemaChanged || overridesChanged || useDefaultSchemaChanged) {
         variantChanges.push({
           configVariantId: originalVariant.id,
           prevVersion: originalVariant.version,
           value: valueChanged ? {newValue: variantData.value} : undefined,
           schema:
-            config.myRole === 'maintainer' && schemaChanged
+            config.myRole === 'maintainer' && (schemaChanged || useDefaultSchemaChanged)
               ? {newSchema: variantData.schema}
               : undefined,
           overrides:
             config.myRole === 'maintainer' && overridesChanged
               ? {newOverrides: variantData.overrides}
               : undefined,
+          useDefaultSchema: variantData.useDefaultSchema,
         });
       }
     }
+
+    // Detect variants that should be deleted (existed before but not in current submission)
+    const submittedEnvironmentIds = new Set(data.environmentVariants.map(v => v.environmentId));
+    const existingEnvironmentVariants = config.variants.filter(v => v.environmentId !== null);
+    const deleteVariants = existingEnvironmentVariants
+      .filter(v => v.environmentId !== null && !submittedEnvironmentIds.has(v.environmentId))
+      .map(v => ({environmentId: v.environmentId!}));
 
     // Check config-level changes (description, members)
     const current = config.config;
@@ -189,6 +216,8 @@ export default function ConfigByNamePage() {
             }
           : undefined,
       variants: variantChanges.length > 0 ? variantChanges : undefined,
+      createVariants: createVariants.length > 0 ? createVariants : undefined,
+      deleteVariants: deleteVariants.length > 0 ? deleteVariants : undefined,
     });
 
     toast.success('Config updated successfully');
@@ -201,13 +230,19 @@ export default function ConfigByNamePage() {
   async function handleSubmit(data: {
     action: 'save' | 'propose';
     name: string;
-    variants: Array<{
+    defaultVariant?: {
+      value: unknown;
+      schema: unknown | null;
+      overrides: Override[];
+    };
+    environmentVariants: Array<{
       configVariantId?: string;
       environmentId: string;
       value: unknown;
       schema: unknown | null;
       overrides: Override[];
       version?: number;
+      useDefaultSchema?: boolean;
     }>;
     description: string;
     maintainerEmails: string[];
@@ -242,7 +277,7 @@ export default function ConfigByNamePage() {
 
       // Collect variant-level changes
       const proposedVariants = [];
-      for (const variantData of data.variants) {
+      for (const variantData of data.environmentVariants) {
         const originalVariant = config.variants.find(v => v.id === variantData.configVariantId);
         if (!originalVariant) continue;
 
@@ -450,17 +485,34 @@ export default function ConfigByNamePage() {
             role={requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
             currentName={name}
             currentPendingProposalsCount={config.pendingConfigProposals.length}
-            variants={config.variants.map(v => ({
+            environments={environmentsData.environments.map(env => ({
+              id: env.id,
+              name: env.name,
+            }))}
+            defaultVariant={(() => {
+              const defaultVar = config.variants.find(v => v.environmentId === null);
+              if (defaultVar) {
+                return {
+                  value: defaultVar.value,
+                  schema: defaultVar.schema,
+                  overrides: defaultVar.overrides as Override[],
+                };
+              }
+              return undefined;
+            })()}
+            environmentVariants={config.variants
+              .filter((v): v is typeof v & {environmentId: string; environmentName: string} => 
+                v.environmentId !== null && v.environmentName !== null
+              )
+              .map(v => ({
               configVariantId: v.id,
               environmentId: v.environmentId,
-              environmentName: v.environmentName,
               value: v.value,
               schema: v.schema,
               overrides: v.overrides as Override[],
               version: v.version,
+              useDefaultSchema: v.useDefaultSchema,
             }))}
-            initialEnvironmentId={initialEnvironmentId}
-            onEnvironmentChange={handleEnvironmentChange}
             defaultDescription={config.config?.description ?? ''}
             defaultMaintainerEmails={config.maintainerEmails}
             defaultEditorEmails={config.editorEmails}
@@ -485,23 +537,23 @@ export default function ConfigByNamePage() {
               });
             }}
             onSubmit={handleSubmit}
-            onTestOverrides={environmentId => {
-              setActiveTestEnvironmentId(environmentId);
+            onTestOverrides={() => {
               setShowOverrideTester(true);
             }}
           />
 
           {/* Override Tester Dialog */}
-          {activeTestEnvironmentId && (
+          {showOverrideTester && (
             <OverrideTester
               baseValue={
                 liveValue ||
-                config.variants.find(v => v.environmentId === activeTestEnvironmentId)?.value
+                config.variants.find(v => v.environmentId === null)?.value ||
+                {}
               }
               overrides={
                 liveOverrides ||
-                (config.variants.find(v => v.environmentId === activeTestEnvironmentId)
-                  ?.overrides as any)
+                (config.variants.find(v => v.environmentId === null)?.overrides as any) ||
+                []
               }
               open={showOverrideTester}
               onOpenChange={setShowOverrideTester}

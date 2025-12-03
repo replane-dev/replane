@@ -241,7 +241,6 @@ honoApi.openapi(
 const ProjectEventResponse = z
   .object({
     type: z.enum(['created', 'updated', 'deleted']),
-    configId: z.string(),
     configName: ConfigName(),
     renderedOverrides: z.array(RenderedOverrideSchema),
     overrides: z.array(RenderedOverrideSchema),
@@ -307,7 +306,6 @@ honoApi.openapi(
           for await (const event of events) {
             const data = JSON.stringify({
               type: event.type,
-              configId: event.configId,
               configName: event.configName,
               renderedOverrides: event.renderedOverrides,
               overrides: event.renderedOverrides,

@@ -36,8 +36,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -49,8 +49,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'updated',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v2',
@@ -65,7 +65,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 1,
         value: 'v1',
@@ -73,7 +72,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'updated',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 2,
         value: 'v2',
@@ -106,8 +104,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-other',
         environmentId: 'env-1',
-        variantId: 'cfg-other',
         name: 'config-other',
         projectId: 'proj-2',
         value: 'v1',
@@ -120,8 +118,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -136,7 +134,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 1,
         value: 'v1',
@@ -168,8 +165,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -181,8 +178,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'updated',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v2',
@@ -194,8 +191,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'deleted',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v2',
@@ -210,7 +207,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 1,
         value: 'v1',
@@ -218,7 +214,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'updated',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 2,
         value: 'v2',
@@ -226,7 +221,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'deleted',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 2,
         value: 'v2',
@@ -259,8 +253,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -277,8 +271,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-2',
         environmentId: 'env-1',
-        variantId: 'cfg-2',
         name: 'config2',
         projectId: 'proj-1',
         value: 'v1',
@@ -319,8 +313,8 @@ describe('GetProjectEventsUseCase', () => {
       subject.next({
         type: 'created',
         variant: {
+          configId: `config-${i}`,
           environmentId: 'env-1',
-          variantId: `cfg-${i}`,
           name: `config${i}`,
           projectId: 'proj-1',
           value: `v${i}`,
@@ -336,7 +330,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        configId: 'cfg-1',
         renderedOverrides: [],
         version: 1,
         value: 'v1',
@@ -344,7 +337,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config2',
-        configId: 'cfg-2',
         renderedOverrides: [],
         version: 1,
         value: 'v2',
@@ -352,7 +344,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config3',
-        configId: 'cfg-3',
         renderedOverrides: [],
         version: 1,
         value: 'v3',
@@ -360,7 +351,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config4',
-        configId: 'cfg-4',
         renderedOverrides: [],
         version: 1,
         value: 'v4',
@@ -368,7 +358,6 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config5',
-        configId: 'cfg-5',
         renderedOverrides: [],
         version: 1,
         value: 'v5',
@@ -393,8 +382,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',
@@ -408,7 +397,6 @@ describe('GetProjectEventsUseCase', () => {
     expect(result.value).toEqual({
       type: 'created',
       configName: 'config1',
-      configId: 'cfg-1',
       renderedOverrides: [],
       version: 1,
       value: 'v1',
@@ -436,8 +424,8 @@ describe('GetProjectEventsUseCase', () => {
     subject.next({
       type: 'created',
       variant: {
+        configId: 'config-1',
         environmentId: 'env-1',
-        variantId: 'cfg-1',
         name: 'config1',
         projectId: 'proj-1',
         value: 'v1',

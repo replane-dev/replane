@@ -19,7 +19,7 @@ export interface PendingConfigProposalSummary {
 }
 
 export interface ConfigVariantWithEnvironmentName extends ConfigVariant {
-  environmentName: string;
+  environmentName: string | null; // null for default variant
 }
 
 export interface ConfigDetails {
@@ -65,8 +65,11 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
     const myConfigRole =
       configUsers.find(cu => cu.user_email_normalized === req.currentUserEmail)?.role ?? 'viewer';
 
-    // Get all variants for this config
-    const variants = await tx.configVariants.getByConfigId(config.id);
+    // Get all variants for this config (including default variant with environmentId=null)
+    const allVariants = await tx.configVariants.getByConfigId(config.id);
+    
+    // Include all variants - the UI will handle separating default from environment-specific
+    const variants: ConfigVariantWithEnvironmentName[] = allVariants;
 
     // Get pending config-level proposals (deletion, members, description)
     const pendingConfigProposals = await tx.configProposals.getPendingProposalsWithProposerEmails({

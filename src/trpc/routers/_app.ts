@@ -7,8 +7,8 @@ import {
   ConfigSchema,
   ConfigValue,
 } from '@/engine/core/stores/config-store';
-import {WorkspaceName} from '@/engine/core/stores/workspace-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
+import {WorkspaceName} from '@/engine/core/stores/workspace-store';
 import {ConfigMember, EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
@@ -64,28 +64,24 @@ export const appRouter = createTRPCRouter({
         name: opts.input.name,
       });
     }),
-  deleteWorkspace: baseProcedure
-    .input(z.object({workspaceId: Uuid()}))
-    .mutation(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      return await opts.ctx.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
-        workspaceId: opts.input.workspaceId,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-    }),
-  getWorkspaceMembers: baseProcedure
-    .input(z.object({workspaceId: Uuid()}))
-    .query(async opts => {
-      if (!opts.ctx.currentUserEmail) {
-        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
-      }
-      return await opts.ctx.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
-        workspaceId: opts.input.workspaceId,
-        currentUserEmail: opts.ctx.currentUserEmail,
-      });
-    }),
+  deleteWorkspace: baseProcedure.input(z.object({workspaceId: Uuid()})).mutation(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
+      workspaceId: opts.input.workspaceId,
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
+  }),
+  getWorkspaceMembers: baseProcedure.input(z.object({workspaceId: Uuid()})).query(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
+      workspaceId: opts.input.workspaceId,
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
+  }),
   addWorkspaceMember: baseProcedure
     .input(
       z.object({
@@ -185,13 +181,28 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         name: ConfigName(),
-        value: ConfigValue(),
         description: ConfigDescription(),
-        schema: ConfigSchema(),
-        overrides: ConfigOverrides(),
         editorEmails: EditorArray(),
         maintainerEmails: MaintainerArray(),
         projectId: Uuid(),
+        defaultVariant: z
+          .object({
+            value: ConfigValue(),
+            schema: ConfigSchema(),
+            overrides: ConfigOverrides(),
+          })
+          .optional(),
+        environmentVariants: z
+          .array(
+            z.object({
+              environmentId: Uuid(),
+              value: ConfigValue(),
+              schema: ConfigSchema(),
+              overrides: ConfigOverrides(),
+              useDefaultSchema: z.boolean().optional(),
+            }),
+          )
+          .optional(),
       }),
     )
     .mutation(async opts => {
@@ -200,7 +211,6 @@ export const appRouter = createTRPCRouter({
       }
       await opts.ctx.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         ...opts.input,
-        projectId: opts.input.projectId,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
       return {};
@@ -224,6 +234,25 @@ export const appRouter = createTRPCRouter({
               value: z.object({newValue: z.any()}).optional(),
               schema: z.object({newSchema: z.any()}).optional(),
               overrides: z.object({newOverrides: ConfigOverrides()}).optional(),
+              useDefaultSchema: z.boolean().optional(),
+            }),
+          )
+          .optional(),
+        createVariants: z
+          .array(
+            z.object({
+              environmentId: Uuid(),
+              value: z.any(),
+              schema: z.any().nullable(),
+              overrides: ConfigOverrides(),
+              useDefaultSchema: z.boolean().optional(),
+            }),
+          )
+          .optional(),
+        deleteVariants: z
+          .array(
+            z.object({
+              environmentId: Uuid(),
             }),
           )
           .optional(),

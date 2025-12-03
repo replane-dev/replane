@@ -3,6 +3,7 @@ import {createAuditLogId} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const TEST_USER_EMAIL = normalizeEmail('auditor@example.com');
 
@@ -26,7 +27,7 @@ describe('getAuditLog', () => {
   it('lists messages with pagination & cursor', async () => {
     // Initial state: 1 message (project_created)
     // create two configs (each generates an audit entry)
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'cfg_a',
       value: 1,
@@ -38,7 +39,7 @@ describe('getAuditLog', () => {
       projectId: fixture.projectId,
     });
     advance(fixture, 10);
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'cfg_b',
       value: 2,
@@ -95,7 +96,7 @@ describe('getAuditLog', () => {
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'cfg_c',
       value: 3,
@@ -116,7 +117,7 @@ describe('getAuditLog', () => {
   });
 
   it('filters by config names', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'cfg_filter_me',
       value: 3,
@@ -127,7 +128,7 @@ describe('getAuditLog', () => {
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'cfg_dont_filter_me',
       value: 4,
@@ -147,7 +148,7 @@ describe('getAuditLog', () => {
   });
 
   it('returns empty when filters resolve to no user/config', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'cfg_exists',
       value: 5,

@@ -4,6 +4,7 @@ import {BadRequestError} from '../errors';
 import type {Override} from '../override-evaluator';
 import type {ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
+import {createUuidV7} from '../uuid';
 import type {ConfigMember, NormalizedEmail} from '../zod';
 
 export interface PatchConfigVariantChange {
@@ -12,6 +13,7 @@ export interface PatchConfigVariantChange {
   value?: {newValue: any};
   schema?: {newSchema: any};
   overrides?: {newOverrides: Override[]};
+  useDefaultSchema?: boolean; // If true, inherit schema from default variant
 }
 
 export interface PatchConfigRequest {
@@ -21,6 +23,14 @@ export interface PatchConfigRequest {
   members?: {newMembers: ConfigMember[]};
   prevVersion: number;
   variants?: PatchConfigVariantChange[];
+  createVariants?: Array<{
+    environmentId: string;
+    value: any;
+    schema: any | null;
+    overrides: Override[];
+    useDefaultSchema?: boolean;
+  }>; // Create new environment-specific variants
+  deleteVariants?: Array<{environmentId: string}>; // Delete environment-specific variants
 }
 
 export interface PatchConfigResponse {}
@@ -68,6 +78,37 @@ export function createPatchConfigUseCase(
           patchAuthor: currentUser,
           reviewer: currentUser,
           prevVersion: variantChange.prevVersion,
+          useDefaultSchema: variantChange.useDefaultSchema,
+        });
+      }
+    }
+
+    // Create new environment-specific variants (if any)
+    if (req.createVariants && req.createVariants.length > 0) {
+      const now = deps.dateProvider.now();
+      for (const createVariant of req.createVariants) {
+        const variantId = createUuidV7();
+        await tx.configVariants.create({
+          id: variantId,
+          configId: req.configId,
+          environmentId: createVariant.environmentId,
+          value: createVariant.value,
+          schema: createVariant.useDefaultSchema ? null : createVariant.schema,
+          overrides: createVariant.overrides,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+          useDefaultSchema: createVariant.useDefaultSchema ?? false,
+        });
+      }
+    }
+
+    // Delete environment-specific variants (if any)
+    if (req.deleteVariants && req.deleteVariants.length > 0) {
+      for (const deleteVariant of req.deleteVariants) {
+        await tx.configVariants.deleteByEnvironmentId({
+          configId: req.configId,
+          environmentId: deleteVariant.environmentId,
         });
       }
     }

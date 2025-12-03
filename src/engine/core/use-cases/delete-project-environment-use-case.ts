@@ -50,7 +50,7 @@ export function createDeleteProjectEnvironmentUseCase(
     const variantsToDelete = await tx.configVariants.getByEnvironmentId(req.environmentId);
 
     for (const variant of variantsToDelete) {
-      await tx.configVariants.delete(variant.id);
+      await tx.configVariants.delete({configId: variant.configId, variantId: variant.id});
     }
 
     // Create audit log before deleting

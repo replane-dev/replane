@@ -78,77 +78,84 @@ export function Config() {
 
 export interface Config extends z.infer<ReturnType<typeof Config>> {}
 
+export interface ConfigReplicaDump {
+  configId: string;
+  name: string;
+  projectId: string;
+  environmentId: string;
+  value: unknown;
+  overrides: Override[];
+  version: number;
+}
+
 export class ConfigStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  // TODO: Update replica methods to work with config_variants
-  // For now, these methods will need to be refactored to join with config_variants
-  async getReplicaDump(): Promise<
-    Array<{
-      variant_id: string;
-      name: string;
-      projectId: string;
-      environmentId: string;
-      value: unknown;
-      overrides: Override[];
-      version: number;
-    }>
-  > {
-    const rows = await this.db
-      .selectFrom('config_variants as cv')
-      .innerJoin('configs as c', 'c.id', 'cv.config_id')
-      .select([
-        'cv.id as variant_id',
+  // Materialize config values for all (config, environment) pairs
+  // Uses COALESCE to fall back to default variant when environment-specific variant doesn't exist
+  async getReplicaDump(params: {configId?: string} = {}): Promise<Array<ConfigReplicaDump>> {
+    const query = this.db
+      .selectFrom('configs as c')
+      .innerJoin('project_environments as pe', 'pe.project_id', 'c.project_id')
+      .leftJoin('config_variants as cv', join =>
+        join.onRef('cv.config_id', '=', 'c.id').onRef('cv.environment_id', '=', 'pe.id'),
+      )
+      .leftJoin('config_variants as dv', join =>
+        join.onRef('dv.config_id', '=', 'c.id').on('dv.environment_id', 'is', null),
+      )
+      .select(eb => [
         'c.name',
         'c.project_id',
-        'cv.environment_id',
-        'cv.value',
-        'cv.overrides',
-        'cv.version',
+        'c.id as config_id',
+        'pe.id as environment_id',
+        eb.fn.coalesce('cv.value', 'dv.value').as('value'),
+        eb.fn.coalesce('cv.schema', 'dv.schema').as('schema'),
+        eb.fn.coalesce('cv.overrides', 'dv.overrides').as('overrides'),
+        eb.fn.coalesce('cv.version', 'dv.version', eb.lit(1)).as('version'),
       ])
-      .execute();
+      // Only include configs that have at least a default variant or environment-specific variant
+      .where(eb => eb.or([eb('cv.id', 'is not', null), eb('dv.id', 'is not', null)]));
+
+    if (params.configId) {
+      query.where('c.id', '=', params.configId);
+    }
+
+    const rows = await query.execute();
     return rows.map(row => ({
-      variant_id: row.variant_id,
+      configId: row.config_id,
       name: row.name,
       projectId: row.project_id,
       environmentId: row.environment_id,
-      value: deserializeJson(row.value),
-      overrides: deserializeJson(row.overrides) ?? [],
-      version: row.version,
+      value: deserializeJson(row.value as string),
+      overrides: deserializeJson(row.overrides as string) ?? [],
+      version: row.version as number,
     }));
   }
 
-  async getReplicaConfig(variantId: string): Promise<{
-    name: string;
-    projectId: string;
+  async getDefaultVariant(configId: string): Promise<{
+    id: string;
     value: unknown;
+    schema: unknown | null;
     overrides: Override[];
     version: number;
-    environmentId: string;
   } | null> {
     const row = await this.db
-      .selectFrom('config_variants as cv')
-      .innerJoin('configs as c', 'c.id', 'cv.config_id')
-      .select([
-        'c.name',
-        'c.project_id',
-        'cv.value',
-        'cv.overrides',
-        'cv.version',
-        'cv.environment_id',
-      ])
-      .where('cv.id', '=', variantId)
+      .selectFrom('config_variants')
+      .select(['id', 'value', 'schema', 'overrides', 'version'])
+      .where('config_id', '=', configId)
+      .where('environment_id', 'is', null)
       .executeTakeFirst();
+
     if (!row) {
       return null;
     }
+
     return {
-      name: row.name,
+      id: row.id,
       value: deserializeJson(row.value),
+      schema: row.schema ? deserializeJson(row.schema) : null,
       overrides: deserializeJson(row.overrides) ?? [],
       version: row.version,
-      environmentId: row.environment_id,
-      projectId: row.project_id,
     };
   }
 
@@ -156,7 +163,7 @@ export class ConfigStore {
     Array<{
       name: string;
       projectId: string;
-      environmentId: string;
+      environmentId: string | null;
       value: unknown;
       overrides: Override[];
       version: number;

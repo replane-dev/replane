@@ -44,7 +44,12 @@ export default function NewConfigPage() {
 
   async function handleSubmit(data: {
     name: string;
-    variants: Array<{
+    defaultVariant?: {
+      value: unknown;
+      schema: unknown | null;
+      overrides: Override[];
+    };
+    environmentVariants: Array<{
       environmentId: string;
       value: unknown;
       schema: unknown | null;
@@ -54,19 +59,14 @@ export default function NewConfigPage() {
     maintainerEmails: string[];
     editorEmails: string[];
   }) {
-    // For new config, use the first variant's data for creation
-    // All variants should have the same schema/overrides initially
-    const firstVariant = data.variants[0];
-
     await createConfig.mutateAsync({
       name: data.name,
-      schema: firstVariant.schema,
-      value: firstVariant.value,
-      overrides: firstVariant.overrides,
       description: data.description ?? '',
       editorEmails: data.editorEmails,
       maintainerEmails: data.maintainerEmails,
       projectId,
+      defaultVariant: data.defaultVariant,
+      environmentVariants: data.environmentVariants,
     });
     router.push(`/app/projects/${projectId}/configs`);
   }
@@ -106,13 +106,16 @@ export default function NewConfigPage() {
             <ConfigForm
               mode="new"
               role="maintainer"
-              variants={environments.map(env => ({
-                environmentId: env.id,
-                environmentName: env.name,
+              environments={environments.map(env => ({
+                id: env.id,
+                name: env.name,
+              }))}
+              defaultVariant={{
                 value: null,
                 schema: null,
                 overrides: [],
-              }))}
+              }}
+              environmentVariants={[]}
               defaultMaintainerEmails={[userEmail!]}
               defaultEditorEmails={[]}
               defaultDescription={''}

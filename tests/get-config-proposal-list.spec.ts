@@ -3,6 +3,7 @@ import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -52,7 +53,7 @@ describe('getConfigProposalList', () => {
 
     // Create config A with maintainer permissions for proposal creation
     fixture.setNow(T1);
-    const {configId: configAId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: configAId} = await fixture.createConfig({
       overrides: [],
       name: 'config_a',
       value: {a: 1},
@@ -92,7 +93,7 @@ describe('getConfigProposalList', () => {
 
     // Create config B at T3 and its proposal (P3) at T4
     fixture.setNow(T3);
-    const {configId: configBId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: configBId} = await fixture.createConfig({
       overrides: [],
       name: 'config_b',
       value: {b: 1},

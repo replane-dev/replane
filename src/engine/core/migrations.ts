@@ -1042,6 +1042,31 @@ export const migrations: Migration[] = [
       ALTER TABLE workspaces RENAME COLUMN personal_org_user_id TO personal_workspace_user_id;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Add support for default config variants (environment_id = NULL)
+
+      -- Drop the existing unique constraint
+      ALTER TABLE config_variants DROP CONSTRAINT config_variants_config_id_environment_id_key;
+
+      -- Make environment_id nullable
+      ALTER TABLE config_variants ALTER COLUMN environment_id DROP NOT NULL;
+
+      -- Add new unique constraint that allows only one default variant per config
+      -- Uses COALESCE to map NULL to a sentinel UUID for the unique constraint
+      CREATE UNIQUE INDEX config_variants_config_id_environment_id_unique
+        ON config_variants(config_id, COALESCE(environment_id, '00000000-0000-0000-0000-000000000000'));
+
+      -- Note: No data migration needed - existing configs already have environment-specific variants
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Add use_default_schema column to config_variants
+      -- When true, the variant inherits its schema from the default variant
+      ALTER TABLE config_variants ADD COLUMN use_default_schema BOOLEAN NOT NULL DEFAULT FALSE;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

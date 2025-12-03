@@ -10,7 +10,7 @@ describe('createConfig', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   it('should create a new config', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'new_config',
       value: {flag: true},
@@ -46,7 +46,7 @@ describe('createConfig', () => {
 
   it('should allow letters (any case), numbers and hyphen in name', async () => {
     const name = 'FeatureFlag-123';
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name,
       value: {enabled: true},
@@ -63,7 +63,7 @@ describe('createConfig', () => {
   });
 
   it('should throw BadRequestError when config with this name already exists', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'dup_config',
       value: 'v1',
@@ -76,7 +76,7 @@ describe('createConfig', () => {
     });
 
     await expect(
-      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      fixture.createConfig({
         overrides: [],
         name: 'dup_config',
         value: 'v2',
@@ -101,7 +101,7 @@ describe('createConfig', () => {
   });
 
   it('should accept config without a schema', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'no_schema_config',
       value: 'v1',
@@ -126,7 +126,7 @@ describe('createConfig', () => {
 
   it('should reject creation when value does not match schema', async () => {
     await expect(
-      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      fixture.createConfig({
         overrides: [],
         name: 'schema_mismatch_on_create',
         value: {flag: 'not_boolean'},
@@ -141,7 +141,7 @@ describe('createConfig', () => {
   });
 
   it('should create config with members and set myRole=maintainer', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'config_with_members_owner',
       value: 1,
@@ -169,7 +169,7 @@ describe('createConfig', () => {
   });
 
   it('should set myRole=editor when current user only an editor', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'config_with_editor_role',
       value: 'x',
@@ -200,7 +200,7 @@ describe('createConfig', () => {
   });
 
   it('creates audit message (config_created)', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'audit_config_created',
       value: 123,
@@ -232,7 +232,7 @@ describe('createConfig', () => {
     const duplicateEmail = 'duplicate@example.com';
 
     await expect(
-      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      fixture.createConfig({
         overrides: [],
         name: 'duplicate_user_config',
         value: {x: 1},
@@ -248,7 +248,7 @@ describe('createConfig', () => {
 
   it('should throw BadRequestError for duplicate users (case insensitive)', async () => {
     await expect(
-      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      fixture.createConfig({
         overrides: [],
         name: 'case_insensitive_duplicate',
         value: {x: 1},
@@ -264,7 +264,7 @@ describe('createConfig', () => {
 
   it('should throw BadRequestError for duplicate users in the same role', async () => {
     await expect(
-      fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      fixture.createConfig({
         overrides: [],
         name: 'case_insensitive_duplicate',
         value: {x: 1},
@@ -279,7 +279,7 @@ describe('createConfig', () => {
   });
 
   it('should create config variants for each environment', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'variant_per_env_config',
       value: {x: 1},

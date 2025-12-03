@@ -3,6 +3,7 @@ import type {GetConfigListResponse} from '@/engine/core/use-cases/get-config-lis
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -16,7 +17,7 @@ describe('getConfigList', () => {
   });
 
   it('should return all existing configs', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'first-config',
       value: 'first-value',
@@ -27,7 +28,7 @@ describe('getConfigList', () => {
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'second-config',
       value: {nested: 42},
@@ -74,7 +75,7 @@ describe('getConfigList', () => {
 
   it('should include myRole correctly for viewer, editor, owner and be name ordered', async () => {
     // owner role
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'z_owner_config',
       value: 1,
@@ -86,7 +87,7 @@ describe('getConfigList', () => {
       projectId: fixture.projectId,
     });
     // editor role
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'm_editor_config',
       value: 2,
@@ -98,7 +99,7 @@ describe('getConfigList', () => {
       projectId: fixture.projectId,
     });
     // viewer (no membership)
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'a_viewer_config',
       value: 3,
@@ -133,7 +134,7 @@ describe('getConfigList', () => {
 
   it('should truncate description to 100 chars for descriptionPreview', async () => {
     const longDescription = 'x'.repeat(150);
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'long_desc_config',
       value: 'v',

@@ -45,7 +45,7 @@ describe('getConfig', () => {
   });
 
   it('should return requested config with variants', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'test-config',
       value: 'test-value',
@@ -98,7 +98,7 @@ describe('getConfig', () => {
   });
 
   it('should reflect owner role and owner/editor lists', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'owner-role-config',
       value: 'x',
@@ -124,7 +124,7 @@ describe('getConfig', () => {
   });
 
   it('should reflect editor role', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'editor-role-config',
       value: 'x',
@@ -150,7 +150,7 @@ describe('getConfig', () => {
   });
 
   it('should reflect viewer role when not a member', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'viewer-role-config',
       value: 'x',
@@ -175,7 +175,7 @@ describe('getConfig', () => {
   });
 
   it('should include empty pending config proposals when no proposals exist', async () => {
-    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    await fixture.createConfig({
       overrides: [],
       name: 'no-proposals-config',
       value: {enabled: false},
@@ -196,7 +196,7 @@ describe('getConfig', () => {
   });
 
   it('should include pending config proposals with proposer information', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'with-proposals-config',
       value: {enabled: false},
@@ -233,7 +233,7 @@ describe('getConfig', () => {
   });
 
   it('should include multiple pending config proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'multiple-proposals-config',
       value: {enabled: false},
@@ -285,7 +285,7 @@ describe('getConfig', () => {
   });
 
   it('should not include approved config proposals in pending list', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approved-proposal-config',
       value: {enabled: false},
@@ -321,7 +321,7 @@ describe('getConfig', () => {
   });
 
   it('should not include rejected config proposals in pending list', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'rejected-proposal-config',
       value: {enabled: false},
@@ -357,7 +357,7 @@ describe('getConfig', () => {
   });
 
   it('should show only pending config proposals when both approved and pending exist', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'mixed-proposals-config',
       value: {enabled: false},
@@ -405,7 +405,7 @@ describe('getConfig', () => {
   });
 
   it('should handle pending config proposal with null proposerId', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'null-proposer-config',
       value: {enabled: false},
@@ -450,7 +450,7 @@ describe('getConfig', () => {
   });
 
   it('should include correct base config version for proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version-tracking-config',
       value: {enabled: false},

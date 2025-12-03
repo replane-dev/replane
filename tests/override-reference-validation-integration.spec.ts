@@ -4,6 +4,7 @@ import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
 import {normalizeEmail} from '../src/engine/core/utils';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -24,7 +25,7 @@ describe('Override Reference Validation - Integration Tests', () => {
 
   describe('createConfig', () => {
     it('should allow config creation without overrides', async () => {
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'test-config',
         value: {enabled: true},
         description: 'Test config',
@@ -46,7 +47,7 @@ describe('Override Reference Validation - Integration Tests', () => {
 
     it('should allow config creation with valid same-project reference', async () => {
       // Create referenced config first
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'vip-users',
         value: {users: ['alice@example.com', 'bob@example.com']},
         description: 'VIP user list',
@@ -78,7 +79,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         },
       ];
 
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'user-limits',
         value: {maxItems: 10},
         description: 'User limits with VIP override',
@@ -123,7 +124,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       ];
 
       await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        fixture.createConfig({
           name: 'test-config-invalid',
           value: {enabled: false},
           description: 'Config with invalid reference',
@@ -137,7 +138,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       ).rejects.toThrow(BadRequestError);
 
       await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        fixture.createConfig({
           name: 'test-config-invalid',
           value: {enabled: false},
           description: 'Config with invalid reference',
@@ -182,7 +183,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       ];
 
       await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        fixture.createConfig({
           name: 'test-config-nested-invalid',
           value: {feature: false},
           description: 'Config with nested invalid reference',
@@ -200,7 +201,7 @@ describe('Override Reference Validation - Integration Tests', () => {
   describe('patchConfig', () => {
     it('should allow patching config with valid same-project reference', async () => {
       // Create a config to patch
-      const configResult = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      const configResult = await fixture.createConfig({
         name: 'patchable-config',
         value: {enabled: false},
         description: 'Config to patch',
@@ -214,7 +215,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       const configId = configResult.configId;
 
       // Create referenced config
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'allowed-users',
         value: {users: ['user1@example.com']},
         description: 'Allowed users',
@@ -270,7 +271,7 @@ describe('Override Reference Validation - Integration Tests', () => {
 
     it('should reject patching config variant with cross-project reference', async () => {
       // Create a config to patch
-      const configResult = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      const configResult = await fixture.createConfig({
         name: 'patchable-config-2',
         value: {enabled: false},
         description: 'Config to patch',
@@ -368,7 +369,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       ];
 
       try {
-        await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        await fixture.createConfig({
           name: 'multi-ref-config',
           value: {x: 0},
           description: 'Multiple invalid references',
@@ -391,7 +392,7 @@ describe('Override Reference Validation - Integration Tests', () => {
 
     it('should allow mix of literal and valid reference values', async () => {
       // Create referenced config
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'premium-list',
         value: {users: ['premium@example.com']},
         description: 'Premium users',
@@ -433,7 +434,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         },
       ];
 
-      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      await fixture.createConfig({
         name: 'rate-limits',
         value: {limit: 100},
         description: 'Rate limits',

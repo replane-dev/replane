@@ -26,7 +26,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
   });
 
   it('loads initial dump on start and updates on notify', async () => {
-    const variantId = 'var-1';
+    const configId = 'config-1';
     const projectId = 'proj-1';
     const environmentId = 'env-1';
     const name = 'featureFlag';
@@ -36,7 +36,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
       async getReplicaDump() {
         return [
           {
-            variant_id: variantId,
+            configId,
             name,
             projectId,
             environmentId,
@@ -45,18 +45,6 @@ describe('ConfigsReplica with InMemoryListener', () => {
             overrides: [],
           },
         ];
-      },
-      async getReplicaConfig(vId: string) {
-        if (vId !== variantId) return null;
-        return {
-          variant_id: variantId,
-          name,
-          projectId,
-          environmentId,
-          value: currentValue,
-          version: 1,
-          overrides: [],
-        };
       },
     };
 
@@ -86,7 +74,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
     // simulate an update notification
     currentValue = {on: true};
 
-    await mem!.notify({variantId});
+    await mem!.notify({configId});
     await sleep(10);
     expect(replica.getConfigValue<{on: boolean}>({projectId, name, environmentId})).toEqual({
       on: true,
@@ -96,7 +84,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
   });
 
   it('removes config on delete notification', async () => {
-    const variantId = 'var-2';
+    const configId = 'config-2';
     const projectId = 'proj-1';
     const environmentId = 'env-1';
     const name = 'toDelete';
@@ -107,7 +95,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
         return exists
           ? [
               {
-                variant_id: variantId,
+                configId,
                 name,
                 projectId,
                 environmentId,
@@ -117,20 +105,6 @@ describe('ConfigsReplica with InMemoryListener', () => {
               },
             ]
           : [];
-      },
-      async getReplicaConfig(vId: string) {
-        if (vId !== variantId) return null;
-        return exists
-          ? {
-              variant_id: variantId,
-              name,
-              projectId,
-              environmentId,
-              value: 1,
-              version: 1,
-              overrides: [],
-            }
-          : null;
       },
     };
 
@@ -155,7 +129,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
     // now delete and notify
     exists = false;
-    await mem!.notify({variantId});
+    await mem!.notify({configId});
     await sleep(10);
     expect(replica.getConfigValue<number>({projectId, name, environmentId})).toBeUndefined();
 
@@ -164,37 +138,39 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
   it('processes multiple queued notifications for different ids', async () => {
     const envId = 'env-1';
-    const a = {variantId: 'var-a', name: 'A', projectId: 'p', environmentId: envId, version: 1};
-    const b = {variantId: 'var-b', name: 'B', projectId: 'p', environmentId: envId, version: 1};
+    const a = {configId: 'config-a', name: 'A', projectId: 'p', environmentId: envId, version: 1};
+    const b = {configId: 'config-b', name: 'B', projectId: 'p', environmentId: envId, version: 1};
     let valueA: any = 10;
     let valueB: any = 20;
+    let configsExist = false;
 
     const configs = {
-      async getReplicaDump() {
-        return [];
-      },
-      async getReplicaConfig(vId: string) {
-        if (vId === a.variantId)
-          return {
-            variant_id: a.variantId,
+      async getReplicaDump(params?: {configId?: string}) {
+        if (!configsExist) return [];
+        const result = [];
+        if (!params?.configId || params.configId === a.configId) {
+          result.push({
+            configId: a.configId,
             name: a.name,
             projectId: a.projectId,
             environmentId: a.environmentId,
             value: valueA,
             version: a.version,
             overrides: [],
-          };
-        if (vId === b.variantId)
-          return {
-            variant_id: b.variantId,
+          });
+        }
+        if (!params?.configId || params.configId === b.configId) {
+          result.push({
+            configId: b.configId,
             name: b.name,
             projectId: b.projectId,
             environmentId: b.environmentId,
             value: valueB,
             version: b.version,
             overrides: [],
-          };
-        return null;
+          });
+        }
+        return result;
       },
     };
 
@@ -229,8 +205,14 @@ describe('ConfigsReplica with InMemoryListener', () => {
       }),
     ).toBeUndefined();
 
-    await mem!.notify({variantId: a.variantId});
-    await mem!.notify({variantId: b.variantId});
+    // Enable configs and notify
+    configsExist = true;
+    await mem!.notify({
+      configId: a.configId,
+    });
+    await mem!.notify({
+      configId: b.configId,
+    });
     await sleep(20);
 
     expect(
@@ -251,8 +233,12 @@ describe('ConfigsReplica with InMemoryListener', () => {
     // update values and notify again
     valueA = 11;
     valueB = 22;
-    await mem!.notify({variantId: b.variantId});
-    await mem!.notify({variantId: a.variantId});
+    await mem!.notify({
+      configId: b.configId,
+    });
+    await mem!.notify({
+      configId: a.configId,
+    });
     await sleep(20);
 
     expect(
@@ -274,7 +260,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
   });
 
   it('publishes events to subject on config changes', async () => {
-    const variantId = 'var-events';
+    const configId = 'config-events';
     const projectId = 'proj-events';
     const environmentId = 'env-events';
     const name = 'eventsConfig';
@@ -283,21 +269,19 @@ describe('ConfigsReplica with InMemoryListener', () => {
     let exists = true;
 
     const configs = {
-      async getReplicaDump() {
-        return [];
-      },
-      async getReplicaConfig(vId: string) {
-        if (vId !== variantId) return null;
-        if (!exists) return null;
-        return {
-          variant_id: variantId,
-          name,
-          projectId,
-          environmentId,
-          value: currentValue,
-          version: currentVersion,
-          overrides: [],
-        };
+      async getReplicaDump(params?: {configId?: string}) {
+        if (!exists) return [];
+        return [
+          {
+            configId,
+            name,
+            projectId,
+            environmentId,
+            value: currentValue,
+            version: currentVersion,
+            overrides: [],
+          },
+        ];
       },
     };
 
@@ -329,14 +313,14 @@ describe('ConfigsReplica with InMemoryListener', () => {
     await sleep(10);
 
     // Notify about new config - should trigger 'created' event
-    await mem!.notify({variantId});
+    await mem!.notify({configId});
     await sleep(10);
 
     expect(eventsSpy).toHaveBeenCalledTimes(1);
     expect(eventsSpy).toHaveBeenCalledWith({
       type: 'created',
       variant: {
-        variantId,
+        configId,
         name,
         projectId,
         environmentId,
@@ -349,14 +333,14 @@ describe('ConfigsReplica with InMemoryListener', () => {
     // Update config - should trigger 'updated' event
     currentValue = {enabled: true};
     currentVersion = 2;
-    await mem!.notify({variantId});
+    await mem!.notify({configId});
     await sleep(10);
 
     expect(eventsSpy).toHaveBeenCalledTimes(2);
     expect(eventsSpy).toHaveBeenCalledWith({
       type: 'updated',
       variant: {
-        variantId,
+        configId,
         name,
         projectId,
         environmentId,
@@ -368,14 +352,14 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
     // Delete config - should trigger 'deleted' event
     exists = false;
-    await mem!.notify({variantId});
+    await mem!.notify({configId});
     await sleep(10);
 
     expect(eventsSpy).toHaveBeenCalledTimes(3);
     expect(eventsSpy).toHaveBeenCalledWith({
       type: 'deleted',
       variant: {
-        variantId,
+        configId,
         name,
         projectId,
         environmentId,
@@ -389,26 +373,24 @@ describe('ConfigsReplica with InMemoryListener', () => {
   });
 
   it('does not publish events when subject is not provided', async () => {
-    const variantId = 'var-no-subject';
+    const configId = 'config-no-subject';
     const projectId = 'proj-no-subject';
     const environmentId = 'env-no-subject';
     const name = 'noSubjectConfig';
 
     const configs = {
-      async getReplicaDump() {
-        return [];
-      },
-      async getReplicaConfig(vId: string) {
-        if (vId !== variantId) return null;
-        return {
-          variant_id: variantId,
-          name,
-          projectId,
-          environmentId,
-          value: 1,
-          version: 1,
-          overrides: [],
-        };
+      async getReplicaDump(params?: {configId?: string}) {
+        return [
+          {
+            configId,
+            name,
+            projectId,
+            environmentId,
+            value: 1,
+            version: 1,
+            overrides: [],
+          },
+        ];
       },
     };
 
@@ -432,7 +414,7 @@ describe('ConfigsReplica with InMemoryListener', () => {
     await sleep(10);
 
     // Should not throw even without subject
-    await mem!.notify({variantId});
+    await mem!.notify({configId});
     await sleep(10);
 
     expect(replica.getConfigValue<number>({projectId, name, environmentId})).toBe(1);
@@ -503,7 +485,6 @@ describe('ConfigsReplica with InMemoryListener', () => {
       expect.objectContaining({
         type: 'created',
         variant: expect.objectContaining({
-          variantId: config1.variant_id,
           name: config1.name,
           projectId: config1.projectId,
           environmentId: config1.environmentId,
@@ -517,7 +498,6 @@ describe('ConfigsReplica with InMemoryListener', () => {
       expect.objectContaining({
         type: 'created',
         variant: expect.objectContaining({
-          variantId: config2.variant_id,
           name: config2.name,
           projectId: config2.projectId,
           environmentId: config2.environmentId,
@@ -594,7 +574,6 @@ describe('ConfigsReplica with InMemoryListener', () => {
       expect(envConfigs).toHaveLength(3);
       expect(envConfigs.map(c => c.name)).toEqual(['featureA', 'featureB', 'featureC']);
       expect(envConfigs[0]).toMatchObject({
-        variantId: 'var-1',
         name: 'featureA',
         projectId,
         environmentId,
@@ -718,34 +697,32 @@ describe('ConfigsReplica with InMemoryListener', () => {
     it('updates environment configs when configs are added', async () => {
       const projectId = 'proj-1';
       const environmentId = 'env-1';
+      let includeNew = false;
 
       const configs = {
-        async getReplicaDump() {
-          return [
-            {
-              variant_id: 'var-1',
-              name: 'existing',
-              projectId,
-              environmentId,
-              value: 'initial',
-              version: 1,
-              overrides: [],
-            },
-          ];
-        },
-        async getReplicaConfig(vId: string) {
-          if (vId === 'var-2') {
-            return {
-              variant_id: 'var-2',
+        async getReplicaDump(params?: {configId?: string}) {
+          const result = [];
+          result.push({
+            configId: 'config-1',
+            name: 'existing',
+            projectId,
+            environmentId,
+            value: 'initial',
+            version: 1,
+            overrides: [],
+          });
+          if (includeNew) {
+            result.push({
+              configId: 'config-2',
               name: 'new',
               projectId,
               environmentId,
               value: 'added',
               version: 1,
               overrides: [],
-            };
+            });
           }
-          return null;
+          return result;
         },
       };
 
@@ -770,7 +747,10 @@ describe('ConfigsReplica with InMemoryListener', () => {
       expect(envConfigs[0].name).toBe('existing');
 
       // Add new config
-      await mem!.notify({variantId: 'var-2'});
+      includeNew = true;
+      await mem!.notify({
+        configId: 'config-2',
+      });
       await sleep(10);
 
       envConfigs = replica.getEnvironmentConfigs({projectId, environmentId});
@@ -786,10 +766,10 @@ describe('ConfigsReplica with InMemoryListener', () => {
       let configExists = true;
 
       const configs = {
-        async getReplicaDump() {
-          return [
+        async getReplicaDump(params?: {configId?: string}) {
+          const allConfigs = [
             {
-              variant_id: 'var-1',
+              configId: 'config-1',
               name: 'toKeep',
               projectId,
               environmentId,
@@ -797,22 +777,23 @@ describe('ConfigsReplica with InMemoryListener', () => {
               version: 1,
               overrides: [],
             },
-            {
-              variant_id: 'var-2',
+          ];
+          if (configExists) {
+            allConfigs.push({
+              configId: 'config-2',
               name: 'toRemove',
               projectId,
               environmentId,
               value: 'remove',
               version: 1,
               overrides: [],
-            },
-          ];
-        },
-        async getReplicaConfig(vId: string) {
-          if (vId === 'var-2' && !configExists) {
-            return null;
+            });
           }
-          return null;
+          // Filter by configId if specified
+          if (params?.configId) {
+            return allConfigs.filter(c => c.configId === params.configId);
+          }
+          return allConfigs;
         },
       };
 
@@ -838,7 +819,9 @@ describe('ConfigsReplica with InMemoryListener', () => {
 
       // Remove config
       configExists = false;
-      await mem!.notify({variantId: 'var-2'});
+      await mem!.notify({
+        configId: 'config-2',
+      });
       await sleep(10);
 
       envConfigs = replica.getEnvironmentConfigs({projectId, environmentId});
@@ -975,7 +958,10 @@ describe('ConfigsReplica with InMemoryListener', () => {
       await sleep(10);
 
       const devConfigs = replica.getEnvironmentConfigs({projectId, environmentId: 'env-dev'});
-      const stagingConfigs = replica.getEnvironmentConfigs({projectId, environmentId: 'env-staging'});
+      const stagingConfigs = replica.getEnvironmentConfigs({
+        projectId,
+        environmentId: 'env-staging',
+      });
       const prodConfigs = replica.getEnvironmentConfigs({projectId, environmentId: 'env-prod'});
 
       expect(devConfigs).toHaveLength(1);

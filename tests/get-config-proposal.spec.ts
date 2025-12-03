@@ -56,7 +56,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should get a pending proposal with description change', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_description',
       value: {enabled: false},
@@ -102,7 +102,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should indicate maintainers as approvers for member changes', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_members',
       value: {enabled: false},
@@ -133,7 +133,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should indicate maintainers as approvers for deletion proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_delete',
       value: {enabled: false},
@@ -165,7 +165,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should get a pending proposal with member changes', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_member_changes',
       value: {enabled: false},
@@ -202,7 +202,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should get a pending proposal with multiple changes', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_multiple',
       value: {enabled: false},
@@ -240,7 +240,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should get an approved proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_approved',
       value: {enabled: false},
@@ -281,7 +281,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should get a rejected proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_rejected',
       value: {enabled: false},
@@ -323,7 +323,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should get a rejected proposal with rejectedInFavorOfProposalId', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_rejected_in_favor',
       value: {enabled: false},
@@ -378,7 +378,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should include proposer email when proposer exists', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_proposer',
       value: {enabled: false},
@@ -409,7 +409,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should include reviewer email when proposal is reviewed', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_reviewer',
       value: {enabled: false},
@@ -446,7 +446,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should include config name in response', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'my_special_config',
       value: {enabled: false},
@@ -488,7 +488,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should prevent non-members from viewing proposals', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_any_user',
       value: {enabled: false},
@@ -519,7 +519,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should return correct base config version', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_version',
       value: {enabled: false},
@@ -571,7 +571,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should handle proposal with null proposerId', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_null_proposer',
       value: {enabled: false},
@@ -613,7 +613,7 @@ describe('getConfigProposal', () => {
 
   it('should return base members from original snapshot', async () => {
     // Create a config with initial members
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'base_members_test',
       value: {count: 1},
@@ -661,7 +661,7 @@ describe('getConfigProposal', () => {
 
   it('should handle member changes in proposal diff correctly', async () => {
     // Create config with initial members
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'member_diff_test',
       value: {x: 1},
@@ -705,7 +705,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should return empty proposalsRejectedByThisApproval for pending proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'pending_rejected_list',
       value: {enabled: false},
@@ -735,7 +735,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should return empty proposalsRejectedByThisApproval for rejected proposal', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'rejected_rejected_list',
       value: {enabled: false},
@@ -771,7 +771,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should return proposalsRejectedByThisApproval when proposal is approved', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approved_with_rejected',
       value: {enabled: false},
@@ -842,7 +842,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should return proposalsRejectedByThisApproval with null proposerEmail when proposer was deleted', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approved_with_null_proposer',
       value: {enabled: false},
@@ -910,7 +910,7 @@ describe('getConfigProposal', () => {
   });
 
   it('should return empty proposalsRejectedByThisApproval when no other proposals were rejected', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approved_no_others',
       value: {enabled: false},
@@ -950,20 +950,17 @@ describe('getConfigProposal', () => {
   });
 
   it('should get a proposal with variant changes', async () => {
-    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
-      GLOBAL_CONTEXT,
-      {
-        overrides: [],
-        name: 'get_proposal_with_variants',
-        value: {enabled: true},
-        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
-        description: 'Variant proposal test',
-        currentUserEmail: CURRENT_USER_EMAIL,
-        editorEmails: [],
-        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
-        projectId: fixture.projectId,
-      },
-    );
+    const {configId, configVariantIds} = await fixture.createConfig({
+      overrides: [],
+      name: 'get_proposal_with_variants',
+      value: {enabled: true},
+      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      description: 'Variant proposal test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
 
     // Get the production variant
     const prodVariantId = configVariantIds.find(
@@ -1000,20 +997,17 @@ describe('getConfigProposal', () => {
   });
 
   it('should indicate maintainers as approvers for schema changes in variants', async () => {
-    const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
-      GLOBAL_CONTEXT,
-      {
-        overrides: [],
-        name: 'get_proposal_schema_change',
-        value: {enabled: true},
-        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
-        description: 'Schema change test',
-        currentUserEmail: CURRENT_USER_EMAIL,
-        editorEmails: [OTHER_USER_EMAIL],
-        maintainerEmails: [CURRENT_USER_EMAIL],
-        projectId: fixture.projectId,
-      },
-    );
+    const {configId, configVariantIds} = await fixture.createConfig({
+      overrides: [],
+      name: 'get_proposal_schema_change',
+      value: {enabled: true},
+      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      description: 'Schema change test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [OTHER_USER_EMAIL],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
+    });
 
     // Get the production variant
     const prodVariantId = configVariantIds.find(

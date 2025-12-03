@@ -1,6 +1,6 @@
 import type {Pool} from 'pg';
 import {AsyncWorker} from './async-worker';
-import {ConfigsReplicaStore, type ConfigVariantReplica} from './configs-replica-store';
+import {ConfigsReplicaStore, type ConfigReplica} from './configs-replica-store';
 import {CONFIGS_REPLICA_PULL_INTERVAL_MS} from './constants';
 import {GLOBAL_CONTEXT} from './context';
 import type {EventBusClient} from './event-bus';
@@ -13,7 +13,7 @@ import {
 } from './override-evaluator';
 import {type PgEventBusClientNotificationHandler} from './pg-event-bus-client';
 import type {Service} from './service';
-import type {ConfigStore} from './stores/config-store';
+import type {ConfigReplicaDump, ConfigStore} from './stores/config-store';
 import type {ConfigVariantChangePayload} from './stores/config-variant-store';
 import {Subject} from './subject';
 import {Timer} from './timer';
@@ -21,15 +21,15 @@ import {Timer} from './timer';
 export type ConfigReplicaEvent =
   | {
       type: 'created';
-      variant: ConfigVariantReplica;
+      variant: ConfigReplica;
     }
   | {
       type: 'updated';
-      variant: ConfigVariantReplica;
+      variant: ConfigReplica;
     }
   | {
       type: 'deleted';
-      variant: ConfigVariantReplica;
+      variant: ConfigReplica;
     };
 
 export interface ConfigsReplicaOptions {
@@ -53,7 +53,7 @@ export class ConfigsReplicaService implements Service {
 
   readonly name = 'ConfigsReplica';
 
-  private changesVariantIds: string[] = [];
+  private changesVariants: ConfigVariantChangePayload[] = [];
   private fullRefreshRequested = false;
 
   constructor(private readonly options: ConfigsReplicaOptions) {
@@ -70,8 +70,8 @@ export class ConfigsReplicaService implements Service {
     const onNotification: PgEventBusClientNotificationHandler<
       ConfigVariantChangePayload
     > = async msg => {
-      if (msg?.variantId) {
-        this.changesVariantIds.push(msg.variantId);
+      if (msg?.configId) {
+        this.changesVariants.push(msg);
         this.worker.wakeup();
       }
     };
@@ -90,10 +90,7 @@ export class ConfigsReplicaService implements Service {
     });
   }
 
-  getEnvironmentConfigs(params: {
-    projectId: string;
-    environmentId: string;
-  }): ConfigVariantReplica[] {
+  getEnvironmentConfigs(params: {projectId: string; environmentId: string}): ConfigReplica[] {
     return this.store.getByEnvironment(params);
   }
 
@@ -125,7 +122,7 @@ export class ConfigsReplicaService implements Service {
     projectId: string;
     name: string;
     environmentId: string;
-  }): ConfigVariantReplica | undefined {
+  }): ConfigReplica | undefined {
     return this.store.getByVariantKey(params);
   }
 
@@ -146,80 +143,103 @@ export class ConfigsReplicaService implements Service {
   private async processEvents() {
     if (this.fullRefreshRequested) {
       this.fullRefreshRequested = false;
-      this.changesVariantIds = [];
+      this.changesVariants = [];
       await this.refreshAllConfigVariants();
       return;
     }
 
-    if (this.changesVariantIds.length > 0) {
-      const variantId = this.changesVariantIds.shift()!;
+    if (this.changesVariants.length > 0) {
+      const change = this.changesVariants.shift()!;
       // When a config changes, we need to refresh all its variants across all environments
       // Get all variants for this config
-      const variant = await this.options.configs.getReplicaConfig(variantId);
+      const variants = await this.options.configs.getReplicaDump({configId: change.configId});
 
-      if (variant) {
-        const existingVariant = this.store.getById(variantId);
-        const eventType =
-          existingVariant !== undefined
-            ? existingVariant.version !== variant.version
-              ? 'updated'
-              : 'spurious_notify'
-            : 'created';
-
-        const configVariantReplica: ConfigVariantReplica = {
-          variantId,
-          name: variant.name,
-          projectId: variant.projectId,
-          environmentId: variant.environmentId,
-          value: variant.value,
-          renderedOverrides: await renderOverrides(
-            variant.overrides,
-            async ({projectId, configName}) => {
-              // For override references, use the same environment as the current variant
-              return this.getConfigValue({
-                projectId,
-                name: configName,
-                environmentId: variant.environmentId,
-              });
-            },
-          ),
-          version: variant.version,
-        };
-
-        this.store.upsert(configVariantReplica);
-
-        this.options.logger.info(GLOBAL_CONTEXT, {
-          msg: `ConfigsReplica ${eventType} config ${variant.name} (env=${variant.environmentId}, projectId=${variant.projectId})`,
-        });
-
-        // Publish event
-        if (eventType !== 'spurious_notify') {
-          this.options.eventsSubject?.next({
-            type: eventType,
-            variant: configVariantReplica,
-          });
+      if (variants.length > 0) {
+        for (const variant of variants) {
+          await this.processChangedVariant(variant);
         }
       } else {
-        const existing = this.store.getById(variantId);
-        if (existing) {
-          this.store.delete(variantId);
-          this.options.logger.info(GLOBAL_CONTEXT, {
-            msg: `ConfigsReplica deleted config ${existing.name} (projectId=${existing.projectId}, environmentId=${existing.environmentId})`,
-          });
-
-          // Publish delete event
-          if (this.options.eventsSubject) {
-            this.options.eventsSubject.next({
-              type: 'deleted',
-              variant: existing,
-            });
-          }
+        const existing = this.store.getByConfigId(change.configId);
+        for (const variant of existing) {
+          await this.processDeletedVariant(variant);
         }
       }
     }
 
-    if (this.changesVariantIds.length > 0 || this.fullRefreshRequested) {
+    if (this.changesVariants.length > 0 || this.fullRefreshRequested) {
       this.worker.wakeup();
+    }
+  }
+
+  private async processChangedVariant(variant: ConfigReplicaDump) {
+    // Skip if this is the default variant (environmentId is null)
+    // Default variants are materialized through getReplicaDump, not directly stored
+    // TypeScript narrowing: environmentId is now guaranteed to be non-null
+    const environmentId = variant.environmentId;
+
+    const existingVariant = this.store.getByVariantKey({
+      projectId: variant.projectId,
+      name: variant.name,
+      environmentId,
+    });
+    const eventType =
+      existingVariant !== undefined
+        ? existingVariant.version !== variant.version
+          ? 'updated'
+          : 'spurious_notify'
+        : 'created';
+
+    const configReplica: ConfigReplica = {
+      configId: variant.configId,
+      name: variant.name,
+      projectId: variant.projectId,
+      environmentId,
+      value: variant.value,
+      renderedOverrides: await renderOverrides(
+        variant.overrides,
+        async ({projectId, configName}) => {
+          // For override references, use the same environment as the current variant
+          return this.getConfigValue({
+            projectId,
+            name: configName,
+            environmentId,
+          });
+        },
+      ),
+      version: variant.version,
+    };
+
+    this.store.upsert(configReplica);
+
+    this.options.logger.info(GLOBAL_CONTEXT, {
+      msg: `ConfigsReplica ${eventType} config ${variant.name} (env=${environmentId}, projectId=${variant.projectId})`,
+    });
+
+    // Publish event
+    if (eventType !== 'spurious_notify') {
+      this.options.eventsSubject?.next({
+        type: eventType,
+        variant: configReplica,
+      });
+    }
+  }
+
+  private async processDeletedVariant(existing: ConfigReplica) {
+    this.store.delete({
+      projectId: existing.projectId,
+      name: existing.name,
+      environmentId: existing.environmentId,
+    });
+    this.options.logger.info(GLOBAL_CONTEXT, {
+      msg: `ConfigsReplica deleted config ${existing.name} (projectId=${existing.projectId}, environmentId=${existing.environmentId})`,
+    });
+
+    // Publish delete event
+    if (this.options.eventsSubject) {
+      this.options.eventsSubject.next({
+        type: 'deleted',
+        variant: existing,
+      });
     }
   }
 
@@ -227,52 +247,64 @@ export class ConfigsReplicaService implements Service {
     const rawVariants = await this.options.configs.getReplicaDump();
     const rawVariantsByKey = new Map(
       rawVariants.map(variant => [
-        {
+        JSON.stringify({
           projectId: variant.projectId,
           name: variant.name,
           environmentId: variant.environmentId,
-        },
+        }),
         variant,
       ]),
     );
 
-    const variants: ConfigVariantReplica[] = [];
+    const variants: ConfigReplica[] = [];
     for (const rawVariant of rawVariants) {
       variants.push({
-        ...rawVariant,
-        variantId: rawVariant.variant_id,
+        configId: rawVariant.configId,
+        name: rawVariant.name,
+        projectId: rawVariant.projectId,
+        environmentId: rawVariant.environmentId,
+        value: rawVariant.value,
         renderedOverrides: await renderOverrides(
           rawVariant.overrides,
           async ({projectId, configName}) => {
             // For override references, use the same environment as the current config
-            return rawVariantsByKey.get({
+            const key = JSON.stringify({
               projectId,
               name: configName,
               environmentId: rawVariant.environmentId,
-            })?.value;
+            });
+            return rawVariantsByKey.get(key)?.value;
           },
         ),
+        version: rawVariant.version,
       });
     }
 
-    // Track changes if eventsSubject is provided
+    // Track changes if eventsSubject is provided (compare by key now, not by ID)
     if (this.options.eventsSubject) {
-      const oldVariantsById = this.store.getAllVariantsById();
-      const newVariantsById = new Map(variants.map(c => [c.variantId, c]));
+      const oldVariantsByKey = new Map(
+        variants.map(v => [
+          JSON.stringify({
+            projectId: v.projectId,
+            name: v.name,
+            environmentId: v.environmentId,
+          }),
+          this.store.getByVariantKey({
+            projectId: v.projectId,
+            name: v.name,
+            environmentId: v.environmentId,
+          }),
+        ]),
+      );
 
-      // Detect deleted configs
-      for (const [id, oldVariant] of oldVariantsById) {
-        if (!newVariantsById.has(id)) {
-          this.options.eventsSubject.next({
-            type: 'deleted',
-            variant: oldVariant,
-          });
-        }
-      }
-
-      // Detect created and updated configs
+      // Simplified: just compare versions to detect updates
       for (const newVariant of variants) {
-        const oldVariant = oldVariantsById.get(newVariant.variantId);
+        const key = JSON.stringify({
+          projectId: newVariant.projectId,
+          name: newVariant.name,
+          environmentId: newVariant.environmentId,
+        });
+        const oldVariant = oldVariantsByKey.get(key);
         if (!oldVariant) {
           // New config variant created
           this.options.eventsSubject.next({

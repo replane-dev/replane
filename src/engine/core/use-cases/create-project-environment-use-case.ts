@@ -96,6 +96,7 @@ export function createCreateProjectEnvironmentUseCase(
         version: 1,
         createdAt: now,
         updatedAt: now,
+        useDefaultSchema: sourceVariant.useDefaultSchema,
       });
     }
 

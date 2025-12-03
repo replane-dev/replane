@@ -7,13 +7,14 @@ import {deserializeJson, serializeJson} from '../store-utils';
 export interface ConfigVariant {
   id: string;
   configId: string;
-  environmentId: string;
+  environmentId: string | null;
   value: unknown;
   schema: unknown | null;
   overrides: Override[];
   version: number;
   createdAt: Date;
   updatedAt: Date;
+  useDefaultSchema: boolean;
 }
 
 export class ConfigVariantStore {
@@ -51,10 +52,12 @@ export class ConfigVariantStore {
     return this.mapRow(row);
   }
 
-  async getByConfigId(configId: string): Promise<(ConfigVariant & {environmentName: string})[]> {
+  async getByConfigId(
+    configId: string,
+  ): Promise<(ConfigVariant & {environmentName: string | null})[]> {
     const rows = await this.db
       .selectFrom('config_variants as cv')
-      .innerJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
+      .leftJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
       .select([
         'cv.id',
         'cv.config_id',
@@ -65,6 +68,7 @@ export class ConfigVariantStore {
         'cv.version',
         'cv.created_at',
         'cv.updated_at',
+        'cv.use_default_schema',
         'pe.name as environment_name',
       ])
       .where('cv.config_id', '=', configId)
@@ -73,8 +77,32 @@ export class ConfigVariantStore {
 
     return rows.map(r => ({
       ...this.mapRow(r),
-      environmentName: r.environment_name,
+      environmentName: r.environment_name ?? null,
     }));
+  }
+
+  async getDefaultVariant(configId: string): Promise<ConfigVariant | null> {
+    const row = await this.db
+      .selectFrom('config_variants')
+      .selectAll()
+      .where('config_id', '=', configId)
+      .where('environment_id', 'is', null)
+      .executeTakeFirst();
+
+    if (!row) return null;
+
+    return this.mapRow(row);
+  }
+
+  async deleteByEnvironmentId(params: {configId: string; environmentId: string}): Promise<void> {
+    await this.db
+      .deleteFrom('config_variants')
+      .where('config_id', '=', params.configId)
+      .where('environment_id', '=', params.environmentId)
+      .execute();
+
+    // Note: We don't have a specific variant ID here, but the event bus will trigger a refresh
+    // The caller should handle notifying the change
   }
 
   async getByEnvironmentId(environmentId: string): Promise<ConfigVariant[]> {
@@ -100,19 +128,24 @@ export class ConfigVariantStore {
         version: variant.version,
         created_at: variant.createdAt,
         updated_at: variant.updatedAt,
+        use_default_schema: variant.useDefaultSchema,
       })
       .execute();
 
-    this.notifyConfigChange({variantId: variant.id});
+    this.notifyConfigChange({
+      configId: variant.configId,
+    });
   }
 
   async update(params: {
     id: string;
+    configId: string;
     value?: unknown;
     schema?: unknown | null;
     overrides?: Override[];
     version: number;
     updatedAt: Date;
+    useDefaultSchema?: boolean;
   }): Promise<void> {
     const updateData: any = {
       version: params.version,
@@ -128,6 +161,9 @@ export class ConfigVariantStore {
     if (params.overrides !== undefined) {
       updateData.overrides = serializeJson(params.overrides);
     }
+    if (params.useDefaultSchema !== undefined) {
+      updateData.use_default_schema = params.useDefaultSchema;
+    }
 
     await this.db
       .updateTable('config_variants')
@@ -135,25 +171,43 @@ export class ConfigVariantStore {
       .where('id', '=', params.id)
       .execute();
 
-    this.notifyConfigChange({variantId: params.id});
+    const variant = await this.db
+      .selectFrom('config_variants')
+      .innerJoin('configs', 'configs.id', 'config_variants.config_id')
+      .select(['configs.name', 'configs.project_id', 'config_variants.environment_id'])
+      .where('config_variants.id', '=', params.id)
+      .executeTakeFirst();
+
+    if (!variant) {
+      return;
+    }
+
+    this.notifyConfigChange({
+      configId: params.configId,
+    });
   }
 
-  async delete(id: string): Promise<void> {
-    await this.db.deleteFrom('config_variants').where('id', '=', id).execute();
+  async delete(params: {configId: string; variantId: string}): Promise<void> {
+    await this.db
+      .deleteFrom('config_variants')
+      .where('config_variants.id', '=', params.variantId)
+      .where('config_variants.config_id', '=', params.configId)
+      .execute();
 
-    this.notifyConfigChange({variantId: id});
+    this.notifyConfigChange({configId: params.configId});
   }
 
   private mapRow(row: {
     id: string;
     config_id: string;
-    environment_id: string;
+    environment_id: string | null;
     value: string;
     schema: string | null;
     overrides: string;
     version: number;
     created_at: Date;
     updated_at: Date;
+    use_default_schema: boolean;
   }): ConfigVariant {
     return {
       id: row.id,
@@ -165,6 +219,7 @@ export class ConfigVariantStore {
       version: row.version,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      useDefaultSchema: row.use_default_schema,
     };
   }
 
@@ -176,5 +231,5 @@ export class ConfigVariantStore {
 }
 
 export interface ConfigVariantChangePayload {
-  variantId: string;
+  configId: string;
 }

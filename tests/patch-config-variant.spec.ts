@@ -5,6 +5,7 @@ import type {ConfigVariantUpdatedAuditLogPayload} from '@/engine/core/stores/aud
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -41,7 +42,7 @@ describe('patchConfigVariant', () => {
           ? []
           : [CURRENT_USER_EMAIL];
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: `test_config_${Date.now()}`,
       value: options?.value ?? {enabled: false},
       schema: options?.schema ?? null,
@@ -473,7 +474,7 @@ describe('patchConfigVariant with requireProposals enabled', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       name: `require_proposals_${Date.now()}`,
       value: {x: 1},
       schema: null,

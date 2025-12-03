@@ -3,6 +3,7 @@ import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
+import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -11,7 +12,7 @@ describe('deleteConfig', () => {
 
   it('should delete an existing config', async () => {
     // Create two configs
-    const {configId: deleteId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: deleteId} = await fixture.createConfig({
       overrides: [],
       name: 'config_to_delete',
       value: {enabled: true},
@@ -23,7 +24,7 @@ describe('deleteConfig', () => {
       projectId: fixture.projectId,
     });
 
-    const {configId: keepId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId: keepId} = await fixture.createConfig({
       overrides: [],
       name: 'config_to_keep',
       value: 'keep',
@@ -92,7 +93,7 @@ describe('deleteConfig', () => {
   });
 
   it('should throw ForbiddenError on double delete', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'double_delete',
       value: 1,
@@ -120,7 +121,7 @@ describe('deleteConfig', () => {
   });
 
   it('should forbid delete when current user is editor (not owner)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'cannot_delete_as_editor',
       value: 123,
@@ -155,7 +156,7 @@ describe('deleteConfig', () => {
   });
 
   it('should forbid delete when current user is viewer (no membership)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'cannot_delete_as_viewer',
       value: 'v',
@@ -189,7 +190,7 @@ describe('deleteConfig', () => {
   });
 
   it('creates audit messages (config_created & config_deleted)', async () => {
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'delete_audit',
       value: 'x',
@@ -243,7 +244,7 @@ describe('deleteConfig (requireProposals=true)', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'cannot_delete_when_require_proposals',
       value: 42,
@@ -277,7 +278,7 @@ describe('deleteConfig (requireProposals=true)', () => {
       currentUserEmail: TEST_USER_EMAIL,
     });
 
-    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+    const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version_mismatch_delete',
       value: 'test',
