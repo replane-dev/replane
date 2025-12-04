@@ -20,11 +20,11 @@ export type Generated<T> =
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
-export type WorkspaceMemberRole = 'admin' | 'member';
-
 export type ProjectUserRole = 'admin' | 'maintainer';
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+export type WorkspaceMemberRole = 'admin' | 'member';
 
 export interface Accounts {
   access_token: string | null;
@@ -78,7 +78,7 @@ export interface ConfigProposalVariants {
   proposed_overrides: string | null;
   proposed_schema: string | null;
   proposed_value: string | null;
-  use_default_schema: boolean;
+  use_default_schema: Generated<boolean>;
 }
 
 export interface Configs {
@@ -108,7 +108,7 @@ export interface ConfigVariants {
   overrides: string;
   schema: string | null;
   updated_at: Timestamp;
-  use_default_schema: boolean;
+  use_default_schema: Generated<boolean>;
   value: string;
 }
 
@@ -126,27 +126,23 @@ export interface ConfigVariantVersions {
   version: number;
 }
 
+export interface EventConsumers {
+  created_at: Timestamp;
+  id: Generated<Int8>;
+  last_used_at: Timestamp;
+}
+
+export interface Events {
+  consumer_id: Int8;
+  created_at: Timestamp;
+  data: string;
+  id: Generated<Int8>;
+}
+
 export interface Migrations {
   id: number;
   runat: Timestamp;
   sql: string;
-}
-
-export interface WorkspaceMembers {
-  created_at: Timestamp;
-  workspace_id: string;
-  role: WorkspaceMemberRole;
-  updated_at: Timestamp;
-  user_email_normalized: string;
-}
-
-export interface Workspaces {
-  auto_add_new_users: Generated<boolean>;
-  created_at: Timestamp;
-  id: string;
-  name: string;
-  personal_workspace_user_id: number | null;
-  updated_at: Timestamp;
 }
 
 export interface ProjectEnvironments {
@@ -165,9 +161,9 @@ export interface Projects {
   id: string;
   is_example: Generated<boolean>;
   name: string;
-  workspace_id: string;
   require_proposals: boolean;
   updated_at: Timestamp;
+  workspace_id: string;
 }
 
 export interface ProjectUsers {
@@ -210,6 +206,23 @@ export interface VerificationToken {
   token: string;
 }
 
+export interface WorkspaceMembers {
+  created_at: Timestamp;
+  role: WorkspaceMemberRole;
+  updated_at: Timestamp;
+  user_email_normalized: string;
+  workspace_id: string;
+}
+
+export interface Workspaces {
+  auto_add_new_users: Generated<boolean>;
+  created_at: Timestamp;
+  id: string;
+  name: string;
+  personal_workspace_user_id: number | null;
+  updated_at: Timestamp;
+}
+
 export interface DB {
   accounts: Accounts;
   audit_logs: AuditLogs;
@@ -219,9 +232,9 @@ export interface DB {
   config_variant_versions: ConfigVariantVersions;
   config_variants: ConfigVariants;
   configs: Configs;
+  event_consumers: EventConsumers;
+  events: Events;
   migrations: Migrations;
-  workspace_members: WorkspaceMembers;
-  workspaces: Workspaces;
   project_environments: ProjectEnvironments;
   project_users: ProjectUsers;
   projects: Projects;
@@ -229,4 +242,6 @@ export interface DB {
   sessions: Sessions;
   users: Users;
   verification_token: VerificationToken;
+  workspace_members: WorkspaceMembers;
+  workspaces: Workspaces;
 }

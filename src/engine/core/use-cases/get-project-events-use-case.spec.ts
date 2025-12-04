@@ -12,7 +12,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should yield events for the specified project', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';
@@ -65,14 +65,14 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v1',
       },
       {
         type: 'updated',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 2,
         value: 'v2',
       },
@@ -82,7 +82,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should filter out events from other projects', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';
@@ -134,7 +134,7 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v1',
       },
@@ -144,7 +144,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should yield all event types', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';
@@ -207,21 +207,21 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v1',
       },
       {
         type: 'updated',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 2,
         value: 'v2',
       },
       {
         type: 'deleted',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 2,
         value: 'v2',
       },
@@ -231,7 +231,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should unsubscribe when iterator is disposed', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';
@@ -290,7 +290,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should handle multiple events in quick succession', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';
@@ -330,35 +330,35 @@ describe('GetProjectEventsUseCase', () => {
       {
         type: 'created',
         configName: 'config1',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v1',
       },
       {
         type: 'created',
         configName: 'config2',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v2',
       },
       {
         type: 'created',
         configName: 'config3',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v3',
       },
       {
         type: 'created',
         configName: 'config4',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v4',
       },
       {
         type: 'created',
         configName: 'config5',
-        renderedOverrides: [],
+        overrides: [],
         version: 1,
         value: 'v5',
       },
@@ -368,7 +368,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should handle events queued before iteration starts', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';
@@ -397,7 +397,7 @@ describe('GetProjectEventsUseCase', () => {
     expect(result.value).toEqual({
       type: 'created',
       configName: 'config1',
-      renderedOverrides: [],
+      overrides: [],
       version: 1,
       value: 'v1',
     } satisfies ProjectEvent);
@@ -410,7 +410,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should handle return() to cleanup resources', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      configEventsObservable: subject,
+      replicaEventsObservable: subject,
     });
 
     const projectId = 'proj-1';

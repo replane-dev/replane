@@ -2,11 +2,9 @@ import {match} from 'ts-pattern';
 import {getValueByPath} from './json-path';
 import type {
   Condition,
-  NotCondition,
   Override,
   RenderedCondition,
   RenderedOverride,
-  SegmentationCondition,
   Value,
 } from './override-condition-schemas';
 import {assertNever} from './utils';
@@ -43,27 +41,35 @@ function fnv1a32ToUnit(input: string): number {
 export type ConfigValueResolver = (params: {
   projectId: string;
   configName: string;
+  environmentId: string;
 }) => Promise<unknown | undefined> | unknown | undefined;
 
-async function renderValue(
-  value: Value,
-  configResolver: ConfigValueResolver,
-): Promise<unknown | undefined> {
-  if (value.type === 'literal') {
-    return value.value;
-  } else if (value.type === 'reference') {
-    const config = await configResolver({projectId: value.projectId, configName: value.configName});
-    return getValueByPath(config, value.path);
+async function renderValue(params: {
+  value: Value;
+  environmentId: string;
+  configResolver: ConfigValueResolver;
+}): Promise<unknown | undefined> {
+  if (params.value.type === 'literal') {
+    return params.value.value;
+  } else if (params.value.type === 'reference') {
+    const config = await params.configResolver({
+      projectId: params.value.projectId,
+      configName: params.value.configName,
+      environmentId: params.environmentId,
+    });
+    return getValueByPath(config, params.value.path);
   } else {
-    console.warn(`Unknown value type: ${JSON.stringify(value)}`);
+    console.warn(`Unknown value type: ${JSON.stringify(params.value)}`);
     return undefined;
   }
 }
 
-async function renderConditionInternal(
-  condition: Condition,
-  configResolver: ConfigValueResolver,
-): Promise<RenderedCondition> {
+async function renderConditionInternal(params: {
+  condition: Condition;
+  configResolver: ConfigValueResolver;
+  environmentId: string;
+}): Promise<RenderedCondition> {
+  const {condition, configResolver, environmentId} = params;
   if (
     condition.operator === 'equals' ||
     condition.operator === 'in' ||
@@ -76,19 +82,30 @@ async function renderConditionInternal(
     return {
       operator: condition.operator,
       property: condition.property,
-      value: await renderValue(condition.value, configResolver),
+      value: await renderValue({
+        value: condition.value,
+        environmentId: environmentId,
+        configResolver: configResolver,
+      }),
     };
   } else if (condition.operator === 'and' || condition.operator === 'or') {
     return {
       operator: condition.operator,
       conditions: await Promise.all(
-        condition.conditions.map(c => renderConditionInternal(c, configResolver)),
+        condition.conditions.map(c =>
+          renderConditionInternal({condition: c, configResolver, environmentId}),
+        ),
       ),
     };
   } else if (condition.operator === 'not') {
     return {
+      __sentinel: undefined,
       operator: 'not',
-      condition: await renderConditionInternal(condition.condition, configResolver),
+      condition: await renderConditionInternal({
+        condition: condition.condition,
+        configResolver,
+        environmentId,
+      }),
     };
   } else if (condition.operator === 'segmentation') {
     return {
@@ -111,16 +128,23 @@ export type ConditionEvaluationResult = 'matched' | 'not_matched' | 'unknown';
  * Render overrides by resolving all config references to literal values.
  * This must be called before evaluateConfigValue.
  */
-export async function renderOverrides(
-  overrides: Override[],
-  configResolver: ConfigValueResolver,
-): Promise<RenderedOverride[]> {
+export async function renderOverrides(params: {
+  overrides: Override[];
+  configResolver: ConfigValueResolver;
+  environmentId: string;
+}): Promise<RenderedOverride[]> {
   return Promise.all(
-    overrides.map(async override => ({
+    params.overrides.map(async override => ({
       name: override.name,
       value: override.value,
       conditions: await Promise.all(
-        override.conditions.map(c => renderConditionInternal(c, configResolver)),
+        override.conditions.map(c =>
+          renderConditionInternal({
+            condition: c,
+            configResolver: params.configResolver,
+            environmentId: params.environmentId,
+          }),
+        ),
       ),
     })),
   );
@@ -238,12 +262,9 @@ function evaluateConditionWithDebug(
   condition: RenderedCondition,
   context: EvaluationContext,
 ): ConditionEvaluation {
-  const operator = condition.operator;
-
   // NOT condition
-  if (operator === 'not') {
-    const notCondition = condition as NotCondition;
-    const nestedEval = evaluateConditionWithDebug(notCondition.condition, context);
+  if (condition.operator === 'not') {
+    const nestedEval = evaluateConditionWithDebug(condition.condition, context);
     const result = match(nestedEval.result)
       .with('matched', (): ConditionEvaluationResult => 'not_matched')
       .with('not_matched', (): ConditionEvaluationResult => 'matched')
@@ -262,7 +283,7 @@ function evaluateConditionWithDebug(
     };
   }
 
-  if (operator === 'and') {
+  if (condition.operator === 'and') {
     const nestedEvaluations = condition.conditions.map(c => evaluateConditionWithDebug(c, context));
     let result: ConditionEvaluationResult = 'matched';
     if (nestedEvaluations.some(x => x.result === 'not_matched')) {
@@ -276,7 +297,7 @@ function evaluateConditionWithDebug(
       reason: `AND: ${nestedEvaluations.filter(x => x.result === 'matched').length}/${nestedEvaluations.length} conditions matched`,
       nestedEvaluations,
     };
-  } else if (operator === 'or') {
+  } else if (condition.operator === 'or') {
     const nestedEvaluations = condition.conditions.map(c => evaluateConditionWithDebug(c, context));
     let result: ConditionEvaluationResult = 'not_matched';
     if (nestedEvaluations.some(x => x.result === 'matched')) {
@@ -293,9 +314,8 @@ function evaluateConditionWithDebug(
   }
 
   // Handle segmentation separately (doesn't have value field)
-  if (operator === 'segmentation') {
-    const typedCondition = condition as SegmentationCondition;
-    const segProperty = typedCondition.property;
+  if (condition.operator === 'segmentation') {
+    const segProperty = condition.property;
     const segContextValue = context[segProperty];
 
     if (segContextValue === undefined || segContextValue === null) {
@@ -308,18 +328,17 @@ function evaluateConditionWithDebug(
     }
 
     // FNV-1a hash to bucket [0, 100)
-    const hashInput = String(segContextValue) + typedCondition.seed;
+    const hashInput = String(segContextValue) + condition.seed;
     const unitValue = fnv1a32ToUnit(hashInput);
     const matched =
-      unitValue >= typedCondition.fromPercentage / 100 &&
-      unitValue < typedCondition.toPercentage / 100;
+      unitValue >= condition.fromPercentage / 100 && unitValue < condition.toPercentage / 100;
 
     return {
       condition,
       result: matched ? 'matched' : 'not_matched',
       reason: matched
-        ? `${segProperty} (${segContextValue}) in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (unit value: ${unitValue})`
-        : `${segProperty} (${segContextValue}) not in range [${typedCondition.fromPercentage}, ${typedCondition.toPercentage}) (unit value: ${unitValue})`,
+        ? `${segProperty} (${segContextValue}) in range [${condition.fromPercentage}, ${condition.toPercentage}) (unit value: ${unitValue})`
+        : `${segProperty} (${segContextValue}) not in range [${condition.fromPercentage}, ${condition.toPercentage}) (unit value: ${unitValue})`,
       contextValue: segContextValue,
     };
   }
@@ -344,7 +363,7 @@ function evaluateConditionWithDebug(
   let matched = false;
   let reason = '';
 
-  switch (operator) {
+  switch (condition.operator) {
     case 'equals':
       matched = contextValue === castedValue;
       reason = matched
@@ -440,11 +459,11 @@ function evaluateConditionWithDebug(
       break;
 
     default:
-      const _: never = operator;
+      const _: never = condition;
       return {
         condition,
         result: 'unknown',
-        reason: `Unknown operator: ${JSON.stringify(operator)}`,
+        reason: `Unknown condition: ${JSON.stringify(condition)}`,
         contextValue,
         expectedValue: castedValue,
       };

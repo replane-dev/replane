@@ -1,1 +1,4 @@
 export const CONFIGS_REPLICA_PULL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+export const REPLICA_STEP_INTERVAL_MS = 200;
+export const REPLICA_STEP_EVENTS_COUNT = 100;

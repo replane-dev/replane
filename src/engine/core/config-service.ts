@@ -335,23 +335,13 @@ export class ConfigService {
     const nextVersion = existingConfig.version + 1;
     const now = this.dateProvider.now();
 
-    // Update config description if changed
-    if (descriptionChanged) {
-      await this.configs.updateDescription({
-        id: existingConfig.id,
-        description: params.description,
-        version: nextVersion,
-        updatedAt: now,
-      });
-    } else {
-      // Even if description didn't change, update version and updatedAt
-      await this.configs.updateDescription({
-        id: existingConfig.id,
-        description: existingConfig.description,
-        version: nextVersion,
-        updatedAt: now,
-      });
-    }
+    await this.configs.update({
+      ctx,
+      id: existingConfig.id,
+      description: params.description,
+      version: nextVersion,
+      updatedAt: now,
+    });
 
     // Update members if changed
     if (membersChanged) {
@@ -614,7 +604,7 @@ export class ConfigService {
     }
 
     // Delete the config metadata
-    await this.configs.deleteById(existingConfig.id);
+    await this.configs.deleteById(ctx, existingConfig.id);
 
     // One audit log for config deletion (not per environment)
     await this.auditLogs.create({

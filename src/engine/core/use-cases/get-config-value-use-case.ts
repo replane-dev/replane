@@ -1,4 +1,4 @@
-import type {ConfigsReplicaService} from '../configs-replica-service';
+import type {ReplicaService} from '../replica';
 import type {UseCase} from '../use-case';
 
 export interface GetConfigValueRequest {
@@ -13,7 +13,7 @@ export interface GetConfigValueResponse {
 }
 
 export interface GetConfigValueUseCaseDeps {
-  configsReplica: ConfigsReplicaService;
+  configsReplica: ReplicaService;
 }
 
 export function createGetConfigValueUseCase(
@@ -22,11 +22,10 @@ export function createGetConfigValueUseCase(
   return async (_ctx, req) => {
     // permissions must be checked by the caller
 
-    const configValue = await deps.configsReplica.getConfigValue({
+    const configValue = deps.configsReplica.getConfigValue({
       projectId: req.projectId,
-      name: req.name,
+      configName: req.name,
       environmentId: req.environmentId,
-      context: req.context,
     });
     return {value: configValue};
   };

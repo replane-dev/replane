@@ -300,3 +300,27 @@ export async function runTransactional<T>(params: {
 
   throw new Error('runTransactional unreachable');
 }
+
+// orders properties by key for stable JSON serialization, arrays aren't sorted
+export function toStableJson(value: unknown): string {
+  return JSON.stringify(value, (key, value) => {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      return Object.keys(value).sort();
+    }
+    return value;
+  });
+}
+
+export function groupBy<T, K>(items: T[], toKey: (item: T) => K): Array<[K, T[]]> {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = toKey(item);
+    const combinedKey = toStableJson(key);
+    if (!groups.has(combinedKey)) {
+      groups.set(combinedKey, []);
+    }
+    groups.get(combinedKey)!.push(item);
+  }
+
+  return Array.from(groups.entries()).map(([key, value]) => [JSON.parse(key) as K, value]);
+}

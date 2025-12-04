@@ -1,6 +1,5 @@
 import type {Kysely} from 'kysely';
 import type {DB} from '../db';
-import type {EventBusClient} from '../event-bus';
 import type {Override} from '../override-evaluator';
 import {deserializeJson, serializeJson} from '../store-utils';
 
@@ -17,11 +16,7 @@ export interface ConfigVariant {
 }
 
 export class ConfigVariantStore {
-  constructor(
-    private readonly db: Kysely<DB>,
-    private readonly scheduleOptimisticEffect: (effect: () => Promise<void>) => void,
-    private readonly eventBusClient: EventBusClient<ConfigVariantChangePayload>,
-  ) {}
+  constructor(private readonly db: Kysely<DB>) {}
 
   async getById(id: string): Promise<ConfigVariant | null> {
     const row = await this.db
@@ -128,10 +123,6 @@ export class ConfigVariantStore {
         use_default_schema: variant.useDefaultSchema,
       })
       .execute();
-
-    this.notifyConfigChange({
-      configId: variant.configId,
-    });
   }
 
   async update(params: {
@@ -165,21 +156,6 @@ export class ConfigVariantStore {
       .set(updateData)
       .where('id', '=', params.id)
       .execute();
-
-    const variant = await this.db
-      .selectFrom('config_variants')
-      .innerJoin('configs', 'configs.id', 'config_variants.config_id')
-      .select(['configs.name', 'configs.project_id', 'config_variants.environment_id'])
-      .where('config_variants.id', '=', params.id)
-      .executeTakeFirst();
-
-    if (!variant) {
-      return;
-    }
-
-    this.notifyConfigChange({
-      configId: params.configId,
-    });
   }
 
   async delete(params: {configId: string; variantId: string}): Promise<void> {
@@ -188,8 +164,6 @@ export class ConfigVariantStore {
       .where('config_variants.id', '=', params.variantId)
       .where('config_variants.config_id', '=', params.configId)
       .execute();
-
-    this.notifyConfigChange({configId: params.configId});
   }
 
   private mapRow(row: {
@@ -215,14 +189,4 @@ export class ConfigVariantStore {
       useDefaultSchema: row.use_default_schema,
     };
   }
-
-  private notifyConfigChange(payload: ConfigVariantChangePayload): void {
-    this.scheduleOptimisticEffect(async () => {
-      await this.eventBusClient.notify(payload);
-    });
-  }
-}
-
-export interface ConfigVariantChangePayload {
-  configId: string;
 }

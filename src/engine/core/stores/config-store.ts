@@ -1,9 +1,11 @@
-import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
+import type {Context} from '../context';
 import type {Configs, DB} from '../db';
-import {ConditionSchema, OverrideSchema} from '../override-condition-schemas';
+import type {EventHubPublisher} from '../event-hub';
+import {OverrideSchema} from '../override-condition-schemas';
 import type {Override} from '../override-evaluator';
+import type {ConfigChangeEvent} from '../replica';
 import {deserializeJson} from '../store-utils';
 import {isValidJsonSchema} from '../utils';
 import {createUuidV7} from '../uuid';
@@ -52,16 +54,8 @@ export function ConfigDescription() {
   return z.string().max(1_000_000);
 }
 
-export function ConfigOverride() {
-  return OverrideSchema.extend({
-    name: z.string().min(1).max(100),
-    conditions: z.array(ConditionSchema).max(100),
-    value: ConfigValue(),
-  });
-}
-
 export function ConfigOverrides() {
-  return z.array(ConfigOverride()).max(100);
+  return z.array(OverrideSchema).max(100);
 }
 
 export function Config() {
@@ -90,52 +84,10 @@ export interface ConfigReplicaDump {
 }
 
 export class ConfigStore {
-  constructor(private readonly db: Kysely<DB>) {}
-
-  // Materialize config values for all (config, environment) pairs
-  // Uses COALESCE to fall back to default variant when environment-specific variant doesn't exist
-  async getReplicaDump(params: {configId?: string} = {}): Promise<Array<ConfigReplicaDump>> {
-    const query = this.db
-      .selectFrom('configs as c')
-      .innerJoin('project_environments as pe', 'pe.project_id', 'c.project_id')
-      .leftJoin('config_variants as cv', join =>
-        join.onRef('cv.config_id', '=', 'c.id').onRef('cv.environment_id', '=', 'pe.id'),
-      )
-      .leftJoin('config_variants as dv', join =>
-        join.onRef('dv.config_id', '=', 'c.id').on('dv.environment_id', 'is', null),
-      )
-      .select(eb => [
-        'c.name',
-        'c.project_id',
-        'c.id as config_id',
-        'pe.id as environment_id',
-        eb.fn.coalesce('cv.value', 'dv.value').as('value'),
-        eb.fn.coalesce('cv.schema', 'dv.schema').as('schema'),
-        eb.fn.coalesce('cv.overrides', 'dv.overrides').as('overrides'),
-        'c.version',
-      ]);
-
-    if (params.configId) {
-      query.where('c.id', '=', params.configId);
-    }
-
-    const rows = await query.execute();
-    return rows.map(row => {
-      assert(row.environment_id !== null, 'Environment ID is required');
-      assert(row.value !== null, 'Value is required');
-      assert(row.overrides !== null, 'Overrides are required');
-
-      return {
-        configId: row.config_id,
-        name: row.name,
-        projectId: row.project_id,
-        environmentId: row.environment_id,
-        value: deserializeJson(row.value),
-        overrides: deserializeJson(row.overrides) ?? [],
-        version: row.version,
-      };
-    });
-  }
+  constructor(
+    private readonly db: Kysely<DB>,
+    private readonly hub: EventHubPublisher<ConfigChangeEvent>,
+  ) {}
 
   async getDefaultVariant(configId: string): Promise<{
     id: string;
@@ -265,7 +217,7 @@ export class ConfigStore {
     return undefined;
   }
 
-  async create(config: Config): Promise<void> {
+  async create(ctx: Context, config: Config): Promise<void> {
     await this.db
       .insertInto('configs')
       .values({
@@ -279,9 +231,12 @@ export class ConfigStore {
         version: config.version,
       })
       .execute();
+
+    await this.hub.pushEvent(ctx, {configId: config.id});
   }
 
-  async updateDescription(params: {
+  async update(params: {
+    ctx: Context;
     id: string;
     description: string;
     version: number;
@@ -296,10 +251,14 @@ export class ConfigStore {
       })
       .where('id', '=', params.id)
       .execute();
+
+    await this.hub.pushEvent(params.ctx, {configId: params.id});
   }
 
-  async deleteById(id: string): Promise<void> {
+  async deleteById(ctx: Context, id: string): Promise<void> {
     await this.db.deleteFrom('configs').where('id', '=', id).execute();
+
+    await this.hub.pushEvent(ctx, {configId: id});
   }
 }
 

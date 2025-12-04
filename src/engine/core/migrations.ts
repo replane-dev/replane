@@ -1091,6 +1091,24 @@ export const migrations: Migration[] = [
       ALTER TABLE config_proposal_variants ADD COLUMN use_default_schema BOOLEAN NOT NULL DEFAULT FALSE;
     `,
   },
+  {
+    sql: /*sql*/ `
+      CREATE TABLE event_consumers (
+        id BIGSERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        last_used_at TIMESTAMPTZ(3) NOT NULL -- background job will delete consumers that haven't been used in the last 24 hours
+      );
+
+      CREATE TABLE events (
+        id BIGSERIAL PRIMARY KEY,
+        consumer_id BIGINT NOT NULL REFERENCES event_consumers(id) ON DELETE CASCADE,
+        data TEXT NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE INDEX idx_events_consumer_id ON events(consumer_id, created_at);
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

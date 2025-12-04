@@ -1,35 +1,30 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
+import BetterSqlite3 from 'better-sqlite3';
 import {Kysely, PostgresDialect} from 'kysely';
 import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
 import {ConfigService} from './core/config-service';
-import {type ConfigReplicaEvent, ConfigsReplicaService} from './core/configs-replica-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
-import type {EventBusClient} from './core/event-bus';
+import {EventHub, EventHubPublisher} from './core/event-hub';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
-import {
-  PgEventBusClient,
-  type PgEventBusClientNotificationHandler,
-} from './core/pg-event-bus-client';
 import {getPgPool} from './core/pg-pool-cache';
+import {type ReplicaEvent, ReplicaService} from './core/replica';
 import type {Service} from './core/service';
 import {AuditLogStore} from './core/stores/audit-log-store';
 import {ConfigProposalStore} from './core/stores/config-proposal-store';
 import {ConfigStore} from './core/stores/config-store';
 import {ConfigUserStore} from './core/stores/config-user-store';
-import {
-  type ConfigVariantChangePayload,
-  ConfigVariantStore,
-} from './core/stores/config-variant-store';
+import {ConfigVariantStore} from './core/stores/config-variant-store';
 import {ConfigVariantVersionStore} from './core/stores/config-variant-version-store';
 import {ProjectEnvironmentStore} from './core/stores/project-environment-store';
 import {ProjectStore} from './core/stores/project-store';
 import {ProjectUserStore} from './core/stores/project-user-store';
+import {ReplicaStore} from './core/stores/replica-store';
 import {SdkKeyStore} from './core/stores/sdk-key-store';
 import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
 import {WorkspaceStore} from './core/stores/workspace-store';
@@ -91,14 +86,11 @@ export interface EngineOptions {
   dbSchema: string;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
-  createEventBusClient?: (
-    onNotification: PgEventBusClientNotificationHandler<ConfigVariantChangePayload>,
-  ) => EventBusClient<ConfigVariantChangePayload>;
+  onFatalError: (error: unknown) => void;
 }
 
 interface ToUseCaseOptions {
   onConflictRetriesCount: number;
-  listener: EventBusClient<ConfigVariantChangePayload>;
   dateProvider: DateProvider;
   useCaseName: string;
 }
@@ -116,7 +108,8 @@ function toUseCase<TReq, TRes>(
       logger,
       onConflictRetriesCount: options.onConflictRetriesCount,
       fn: async (ctx, dbTx, scheduleOptimisticEffect) => {
-        const configs = new ConfigStore(dbTx);
+        const hub = new EventHubPublisher(dbTx, logger, options.dateProvider);
+        const configs = new ConfigStore(dbTx, hub);
         const configProposals = new ConfigProposalStore(dbTx);
         const users = new UserStore(dbTx);
         const configUsers = new ConfigUserStore(dbTx);
@@ -127,11 +120,7 @@ function toUseCase<TReq, TRes>(
         const projectEnvironments = new ProjectEnvironmentStore(dbTx);
         const workspaces = new WorkspaceStore(dbTx);
         const workspaceMembers = new WorkspaceMemberStore(dbTx);
-        const configVariants = new ConfigVariantStore(
-          dbTx,
-          scheduleOptimisticEffect,
-          options.listener,
-        );
+        const configVariants = new ConfigVariantStore(dbTx);
         const configVariantVersions = new ConfigVariantVersionStore(dbTx);
         const permissionService = new PermissionService(
           configUsers,
@@ -202,35 +191,21 @@ export async function createEngine(options: EngineOptions) {
 
   const apiTokenService = new ApiTokenService(db, tokenHasher);
 
-  const createEventBusClient = options.createEventBusClient
-    ? (_name: string, onNotification: (event: ConfigVariantChangePayload) => void) =>
-        options.createEventBusClient!(onNotification)
-    : (name: string, onNotification: (event: ConfigVariantChangePayload) => void) =>
-        new PgEventBusClient<ConfigVariantChangePayload>({
-          pool,
-          channel: 'replane_events',
-          onNotification,
-          logger,
-          applicationName: 'replane-engine',
-          onError: error => {
-            logger.error(GLOBAL_CONTEXT, {msg: `${name} Listener error`, error});
-          },
-        });
+  const replicaEventsSubject = new Subject<ReplicaEvent>();
 
-  // Shared listener/publisher instance to publish config changes
-  const eventBusClient = createEventBusClient('ConfigChanges', () => {});
-
-  const configEventsSubject = new Subject<ConfigReplicaEvent>();
-
-  const configsReplica = new ConfigsReplicaService({
-    pool,
-    configs: new ConfigStore(db),
+  const replicaService = new ReplicaService(
+    db,
+    ReplicaStore.create(new BetterSqlite3(':memory:')), // TODO: support WAL mode for SQLite
+    new EventHub(db, dateProvider),
     logger,
-    eventsSubject: configEventsSubject,
-    createEventBusClient: onNotification => createEventBusClient('ConfigReplica', onNotification),
-  });
+    error => {
+      logger.error(GLOBAL_CONTEXT, {msg: 'Replica fatal error', error});
+      options.onFatalError?.(error);
+    },
+    replicaEventsSubject,
+  );
 
-  const services: Service[] = [apiTokenService, configsReplica];
+  const services: Service[] = [apiTokenService, replicaService];
 
   for (const service of services) {
     logger.info(GLOBAL_CONTEXT, {msg: `Starting service: ${service.name}...`});
@@ -289,7 +264,6 @@ export async function createEngine(options: EngineOptions) {
   for (const name of Object.keys(transactionalUseCases) as Array<keyof typeof engineUseCases>) {
     engineUseCases[name] = toUseCase(db, logger, (transactionalUseCases as UseCaseMap)[name], {
       onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
-      listener: eventBusClient,
       dateProvider,
       useCaseName: name,
     });
@@ -299,12 +273,13 @@ export async function createEngine(options: EngineOptions) {
   return {
     useCases: {
       ...engineUseCases,
-      getConfigValue: createGetConfigValueUseCase({configsReplica}),
-      getSdkConfig: createGetSdkConfigUseCase({configsReplica}),
-      getSdkConfigs: createGetSdkConfigsUseCase({configsReplica}),
+      getConfigValue: createGetConfigValueUseCase({configsReplica: replicaService}),
+      getSdkConfig: createGetSdkConfigUseCase({replicaService: replicaService}),
+      getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
       getHealth: createGetHealthUseCase(),
       getProjectEvents: createGetProjectEventsUseCase({
-        configEventsObservable: configEventsSubject,
+        replicaEventsObservable: replicaEventsSubject,
+        replicaService: replicaService,
       }),
     },
     verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
@@ -314,16 +289,16 @@ export async function createEngine(options: EngineOptions) {
       auditLogs: new AuditLogStore(db),
       projects: new ProjectStore(db),
       configProposals: new ConfigProposalStore(db),
-      configVariants: new ConfigVariantStore(db, () => {}, eventBusClient),
+      configVariants: new ConfigVariantStore(db),
       workspaceMembers: new WorkspaceMemberStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
-    destroy: async () => {
-      freePool();
+    stop: async () => {
       for (const service of services) {
         logger.info(GLOBAL_CONTEXT, {msg: `Stopping service: ${service.name}...`});
         await service.stop(GLOBAL_CONTEXT);
       }
+      freePool();
     },
   };
 }

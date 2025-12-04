@@ -1,8 +1,6 @@
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
-import {InMemoryEventBus} from '@/engine/core/in-memory-event-bus';
 import type {LogLevel} from '@/engine/core/logger';
-import {type ConfigVariantChangePayload} from '@/engine/core/stores/config-variant-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
@@ -14,6 +12,7 @@ export interface TrpcFixtureOptions {
   authEmail: string;
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
+  onFatalError?: (error: unknown) => void;
 }
 
 function _createCaller() {
@@ -42,15 +41,15 @@ export class AppFixture {
   async init() {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
 
-    const eventBus = new InMemoryEventBus<ConfigVariantChangePayload>({});
-
     const engine = await createEngine({
       databaseUrl: getDatabaseUrl(),
       dbSchema: `test_${Math.random().toString(36).substring(2, 15)}`,
       logLevel: this.options.logLevel ?? 'warn',
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
-      createEventBusClient: onNotification => eventBus.createClient(onNotification),
+      onFatalError: error => {
+        this.options.onFatalError?.(error);
+      },
     });
 
     const connection = await engine.testing.pool.connect();
@@ -177,7 +176,7 @@ export class AppFixture {
   async destroy(ctx: Context) {
     if (this._engine) {
       await this._engine.testing.dropDb(ctx);
-      this._engine.destroy();
+      this._engine.stop();
     }
 
     this._trpc = undefined;

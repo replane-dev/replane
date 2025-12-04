@@ -1,4 +1,5 @@
-import type {ConfigsReplicaService} from '../configs-replica-service';
+import type {RenderedOverride} from '../override-condition-schemas';
+import type {ReplicaService} from '../replica';
 import type {UseCase} from '../use-case';
 
 export interface GetSdkConfigRequest {
@@ -10,21 +11,21 @@ export interface GetSdkConfigRequest {
 export interface GetSdkConfigResponse {
   name: string;
   value: unknown;
-  overrides: unknown;
+  overrides: RenderedOverride[];
   version: number;
 }
 
 export interface GetSdkConfigUseCaseDeps {
-  configsReplica: ConfigsReplicaService;
+  replicaService: ReplicaService;
 }
 
 export function createGetSdkConfigUseCase(
   deps: GetSdkConfigUseCaseDeps,
 ): UseCase<GetSdkConfigRequest, GetSdkConfigResponse | null> {
   return async (_ctx, req) => {
-    const config = deps.configsReplica.getConfig({
+    const config = await deps.replicaService.getConfig({
       projectId: req.projectId,
-      name: req.name,
+      configName: req.name,
       environmentId: req.environmentId,
     });
 
@@ -35,7 +36,7 @@ export function createGetSdkConfigUseCase(
     return {
       name: config.name,
       value: config.value,
-      overrides: config.renderedOverrides,
+      overrides: config.overrides,
       version: config.version,
     };
   };

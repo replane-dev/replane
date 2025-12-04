@@ -14,7 +14,7 @@ const ReferenceValueSchema = z.object({
   path: JsonPathSchema,
 });
 
-const ValueSchema = z.discriminatedUnion('type', [LiteralValueSchema, ReferenceValueSchema]);
+export const ValueSchema = z.discriminatedUnion('type', [LiteralValueSchema, ReferenceValueSchema]);
 
 export type Value = z.infer<typeof ValueSchema>;
 
@@ -211,6 +211,7 @@ export type RenderedOrCondition = {
 };
 
 export type RenderedNotCondition = {
+  __sentinel: undefined;
   operator: 'not';
   condition: RenderedCondition;
 };
@@ -246,6 +247,7 @@ export const RenderedOrConditionSchema: z.ZodType<RenderedOrCondition> = z.lazy(
 
 export const RenderedNotConditionSchema: z.ZodType<RenderedNotCondition> = z.lazy(() =>
   z.object({
+    __sentinel: z.undefined(),
     operator: z.literal('not'),
     condition: RenderedConditionSchema,
   }),
@@ -275,7 +277,7 @@ export const RenderedConditionSchema: z.ZodType<RenderedCondition> = z.lazy(() =
 export const OverrideSchema = z.object({
   name: z.string(),
   conditions: z.array(ConditionSchema),
-  value: z.unknown(),
+  value: ValueSchema,
 });
 
 export type Override = z.infer<typeof OverrideSchema>;

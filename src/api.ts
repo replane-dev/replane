@@ -238,16 +238,43 @@ honoApi.openapi(
   },
 );
 
-const ProjectEventResponse = z
+const ConfigCreatedEventResponse = z
   .object({
-    type: z.enum(['created', 'updated', 'deleted']),
+    type: z.literal('config_created'),
     configName: ConfigName(),
-    renderedOverrides: z.array(RenderedOverrideSchema),
     overrides: z.array(RenderedOverrideSchema),
     version: z.number(),
     value: z.unknown(),
   })
-  .openapi('ProjectEventResponse');
+  .openapi('ConfigCreatedEventResponse');
+
+const ConfigUpdatedEventResponse = z
+  .object({
+    type: z.literal('config_updated'),
+    configName: ConfigName(),
+    overrides: z.array(RenderedOverrideSchema),
+    version: z.number(),
+    value: z.unknown(),
+  })
+  .openapi('ConfigUpdatedEventResponse');
+
+const ConfigDeletedEventResponse = z
+  .object({
+    type: z.literal('config_deleted'),
+    configName: ConfigName(),
+    version: z.number(),
+  })
+  .openapi('ConfigDeletedEventResponse');
+
+const ProjectEventResponse = z
+  .discriminatedUnion('type', [
+    ConfigCreatedEventResponse,
+    ConfigUpdatedEventResponse,
+    ConfigDeletedEventResponse,
+  ])
+  .openapi('ProjectEventResponse', {
+    description: 'Server-sent events stream for project updates',
+  });
 
 type ProjectEventResponse = z.infer<typeof ProjectEventResponse>;
 
@@ -285,6 +312,7 @@ honoApi.openapi(
 
     const events = engine.useCases.getProjectEvents(context, {
       projectId,
+      environmentId: c.get('environmentId'),
       abortSignal: abortController.signal,
     });
 
@@ -304,14 +332,7 @@ honoApi.openapi(
           controller.enqueue(encoder.encode(`: connected\n\n`));
 
           for await (const event of events) {
-            const data = JSON.stringify({
-              type: event.type,
-              configName: event.configName,
-              renderedOverrides: event.renderedOverrides,
-              overrides: event.renderedOverrides,
-              version: event.version,
-              value: event.value,
-            } satisfies ProjectEventResponse);
+            const data = JSON.stringify(event satisfies ProjectEventResponse);
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           }
         } catch (err) {

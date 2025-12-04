@@ -20,14 +20,14 @@ export interface CreateConfigRequest {
   projectId: string;
   // New flexible variant structure
   defaultVariant?: {
-    value: any;
-    schema: unknown;
+    value: unknown;
+    schema: unknown | null;
     overrides: Override[];
   };
   environmentVariants?: Array<{
     environmentId: string;
     value: any;
-    schema: unknown;
+    schema: unknown | null;
     overrides: Override[];
     useDefaultSchema?: boolean; // If true, inherit schema from default variant
   }>;
@@ -149,7 +149,7 @@ export function createCreateConfigUseCase(
     const now = deps.dateProvider.now();
 
     // Create config (metadata only)
-    await tx.configs.create({
+    await tx.configs.create(ctx, {
       id: configId,
       name: req.name,
       projectId: req.projectId,

@@ -1,5 +1,6 @@
 'use client';
 
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
@@ -15,12 +16,13 @@ import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {EvaluationResult, Override} from '@/engine/core/override-evaluator';
 import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
 import {useTRPC} from '@/trpc/client';
-import {useQueryClient} from '@tanstack/react-query';
+import {useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {CheckCircle2, ChevronRight, HelpCircle, PlayCircle, XCircle} from 'lucide-react';
 import React, {useState} from 'react';
 import {match} from 'ts-pattern';
 import {ConditionEvaluationDebug} from './condition-evaluation-debug';
 import {JsonEditor} from './json-editor';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from './ui/select';
 
 interface OverrideTesterProps {
   baseValue: any;
@@ -89,17 +91,38 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
-  const configResolver = async (params: {projectId: string; configName: string}) => {
+  const configResolver = async (params: {
+    projectId: string;
+    configName: string;
+    environmentId: string;
+  }) => {
     const config = await queryClient.fetchQuery(
       trpc.getConfig.queryOptions({projectId: params.projectId, name: params.configName}),
     );
-    // TODO: use the same environment as the current variant
-    // Use Production variant or first variant
     const variant =
-      config.config?.variants.find(v => v.environmentName === 'Production') ??
-      config.config?.variants[0];
-    return variant?.value;
+      config.config?.variants.find(v => v.environmentId === params.environmentId) ??
+      config.config?.variants.find(v => v.environmentId === null);
+
+    if (!variant) {
+      throw new Error(
+        `No variant found for project ${params.projectId} and config ${params.configName} and environment ${params.environmentId}`,
+      );
+    }
+
+    return variant.value;
   };
+
+  const projectId = useProjectId();
+
+  const environments = useSuspenseQuery(trpc.getProjectEnvironments.queryOptions({projectId}));
+
+  if (environments.data.environments.length === 0) {
+    throw new Error(`No environments found for project ${projectId}`);
+  }
+
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>(
+    environments.data.environments[0].id,
+  );
 
   const handleTest = async () => {
     try {
@@ -110,7 +133,11 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
       }
 
       // Render overrides (resolve references)
-      const renderedOverrides = await renderOverrides(overrides, configResolver);
+      const renderedOverrides = await renderOverrides({
+        overrides,
+        configResolver,
+        environmentId: selectedEnvironmentId,
+      });
 
       // Evaluate with debug information
       const config = {value: baseValue, overrides: renderedOverrides};
@@ -139,6 +166,21 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium block mb-2">Environment</Label>
+            <Select value={selectedEnvironmentId} onValueChange={setSelectedEnvironmentId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select an environment" />
+              </SelectTrigger>
+              <SelectContent>
+                {environments.data.environments.map(environment => (
+                  <SelectItem key={environment.id} value={environment.id}>
+                    {environment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label className="text-sm font-medium block mb-2">Context</Label>
             <p className="text-xs text-muted-foreground mb-3">
