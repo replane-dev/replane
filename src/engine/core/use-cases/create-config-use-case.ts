@@ -172,7 +172,6 @@ export function createCreateConfigUseCase(
         value: req.defaultVariant.value,
         schema: req.defaultVariant.schema,
         overrides: req.defaultVariant.overrides,
-        version: 1,
         createdAt: now,
         updatedAt: now,
         useDefaultSchema: false, // Default variant doesn't inherit from itself
@@ -206,7 +205,6 @@ export function createCreateConfigUseCase(
         value: envVariant.value,
         schema: envVariant.useDefaultSchema ? null : envVariant.schema, // null when using default schema
         overrides: envVariant.overrides,
-        version: 1,
         createdAt: now,
         updatedAt: now,
         useDefaultSchema: envVariant.useDefaultSchema ?? false,

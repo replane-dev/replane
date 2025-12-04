@@ -187,7 +187,7 @@ export interface ConfigProposalCreatedAuditLogPayload
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
   proposedOverrides?: {newOverrides: unknown};
-  proposedMembers?: {newMembers: Array<{email: string; role: string}>};
+  proposedMembers?: Array<{email: string; role: string}>;
   message?: string;
 }
 
@@ -201,7 +201,7 @@ export interface ConfigProposalRejectedAuditLogPayload
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
   proposedOverrides?: {newOverrides: unknown};
-  proposedMembers?: {newMembers: Array<{email: string; role: string}>};
+  proposedMembers?: Array<{email: string; role: string}>;
 }
 
 export interface ConfigProposalApprovedAuditLogPayload
@@ -213,7 +213,7 @@ export interface ConfigProposalApprovedAuditLogPayload
   proposedDescription?: string;
   proposedSchema?: {newSchema: unknown};
   proposedOverrides?: {newOverrides: unknown};
-  proposedMembers?: {newMembers: Array<{email: string; role: string}>};
+  proposedMembers?: Array<{email: string; role: string}>;
 }
 
 export interface ConfigVariantProposalCreatedAuditLogPayload

@@ -160,7 +160,13 @@ describe('Read Use Cases - Permission Checks', () => {
           baseVersion: 1,
           configId,
           projectId: fixture.projectId,
-          proposedDescription: {newDescription: 'Updated'},
+          description: 'Updated',
+          editorEmails: [],
+          maintainerEmails: [CURRENT_USER_EMAIL],
+          environmentVariants: [
+            {environmentId: fixture.productionEnvironmentId, value: {test: true}, schema: null, overrides: []},
+            {environmentId: fixture.developmentEnvironmentId, value: {test: true}, schema: null, overrides: []},
+          ],
           currentUserEmail: CURRENT_USER_EMAIL,
         },
       );

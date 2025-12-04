@@ -1,3 +1,4 @@
+import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {Configs, DB} from '../db';
@@ -111,25 +112,29 @@ export class ConfigStore {
         eb.fn.coalesce('cv.value', 'dv.value').as('value'),
         eb.fn.coalesce('cv.schema', 'dv.schema').as('schema'),
         eb.fn.coalesce('cv.overrides', 'dv.overrides').as('overrides'),
-        eb.fn.coalesce('cv.version', 'dv.version', eb.lit(1)).as('version'),
-      ])
-      // Only include configs that have at least a default variant or environment-specific variant
-      .where(eb => eb.or([eb('cv.id', 'is not', null), eb('dv.id', 'is not', null)]));
+        'c.version',
+      ]);
 
     if (params.configId) {
       query.where('c.id', '=', params.configId);
     }
 
     const rows = await query.execute();
-    return rows.map(row => ({
-      configId: row.config_id,
-      name: row.name,
-      projectId: row.project_id,
-      environmentId: row.environment_id,
-      value: deserializeJson(row.value as string),
-      overrides: deserializeJson(row.overrides as string) ?? [],
-      version: row.version as number,
-    }));
+    return rows.map(row => {
+      assert(row.environment_id !== null, 'Environment ID is required');
+      assert(row.value !== null, 'Value is required');
+      assert(row.overrides !== null, 'Overrides are required');
+
+      return {
+        configId: row.config_id,
+        name: row.name,
+        projectId: row.project_id,
+        environmentId: row.environment_id,
+        value: deserializeJson(row.value),
+        overrides: deserializeJson(row.overrides) ?? [],
+        version: row.version,
+      };
+    });
   }
 
   async getDefaultVariant(configId: string): Promise<{
@@ -140,10 +145,11 @@ export class ConfigStore {
     version: number;
   } | null> {
     const row = await this.db
-      .selectFrom('config_variants')
-      .select(['id', 'value', 'schema', 'overrides', 'version'])
-      .where('config_id', '=', configId)
-      .where('environment_id', 'is', null)
+      .selectFrom('config_variants as cv')
+      .innerJoin('configs as c', 'c.id', 'cv.config_id')
+      .select(['cv.id', 'cv.value', 'cv.schema', 'cv.overrides', 'c.version'])
+      .where('cv.config_id', '=', configId)
+      .where('cv.environment_id', 'is', null)
       .executeTakeFirst();
 
     if (!row) {
@@ -178,7 +184,7 @@ export class ConfigStore {
         'cv.environment_id',
         'cv.value',
         'cv.overrides',
-        'cv.version',
+        'c.version',
       ])
       .where('cv.config_id', '=', configId)
       .execute();

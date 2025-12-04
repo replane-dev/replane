@@ -73,7 +73,13 @@ describe('getConfigProposalList', () => {
         projectId: fixture.projectId,
         baseVersion: 1,
         configId: configAId,
-        proposedDescription: {newDescription: 'A1'},
+        description: 'A1',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
+          {environmentId: fixture.developmentEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
+        ],
         currentUserEmail: CURRENT_USER_EMAIL,
       },
     );
@@ -86,7 +92,13 @@ describe('getConfigProposalList', () => {
         projectId: fixture.projectId,
         baseVersion: 1,
         configId: configAId,
-        proposedDescription: {newDescription: 'A2'},
+        description: 'A2',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
+          {environmentId: fixture.developmentEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
+        ],
         currentUserEmail: CURRENT_USER_EMAIL,
       },
     );
@@ -112,7 +124,13 @@ describe('getConfigProposalList', () => {
         projectId: fixture.projectId,
         baseVersion: 1,
         configId: configBId,
-        proposedDescription: {newDescription: 'B1'},
+        description: 'B1',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {b: 1}, schema: {type: 'object', properties: {b: {type: 'number'}}}, overrides: []},
+          {environmentId: fixture.developmentEnvironmentId, value: {b: 1}, schema: {type: 'object', properties: {b: {type: 'number'}}}, overrides: []},
+        ],
         currentUserEmail: CURRENT_USER_EMAIL,
       },
     );

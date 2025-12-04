@@ -73,7 +73,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -132,7 +138,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
+      description: 'Original description',
+      editorEmails: [THIRD_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -228,8 +240,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
-      proposedMembers: {newMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}]},
+      description: 'Updated description',
+      editorEmails: [THIRD_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -278,7 +295,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -323,7 +346,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: THIRD_USER_EMAIL,
     });
 
@@ -363,7 +392,13 @@ describe('rejectConfigProposal', () => {
         projectId: fixture.projectId,
         configId,
         baseVersion: 1,
-        proposedDescription: {newDescription: 'Description 1'},
+        description: 'Description 1',
+        editorEmails: [CURRENT_USER_EMAIL],
+        maintainerEmails: [OTHER_USER_EMAIL, THIRD_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        ],
         currentUserEmail: OTHER_USER_EMAIL,
       },
     );
@@ -374,7 +409,13 @@ describe('rejectConfigProposal', () => {
         projectId: fixture.projectId,
         configId,
         baseVersion: 1,
-        proposedDescription: {newDescription: 'Description 2'},
+        description: 'Description 2',
+        editorEmails: [CURRENT_USER_EMAIL],
+        maintainerEmails: [OTHER_USER_EMAIL, THIRD_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        ],
         currentUserEmail: THIRD_USER_EMAIL,
       },
     );
@@ -435,7 +476,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -473,7 +520,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
@@ -511,7 +564,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -554,7 +613,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'New description'},
+      description: 'New description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 
@@ -608,7 +673,13 @@ describe('rejectConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
-      proposedDescription: {newDescription: 'Updated description'},
+      description: 'Updated description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+      ],
       currentUserEmail: OTHER_USER_EMAIL,
     });
 

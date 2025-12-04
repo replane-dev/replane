@@ -55,10 +55,12 @@ export function ConfigVersionsTable({
   name,
   configId,
   environmentId,
+  currentVersion,
 }: {
   name: string;
   configId: string;
   environmentId: string;
+  currentVersion: number;
 }) {
   const router = useRouter();
   const projectId = useProjectId();
@@ -74,8 +76,8 @@ export function ConfigVersionsTable({
   );
   const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
   const variant = configData.config?.variants.find(v => v.environmentId === environmentId);
-  const currentVariantVersion = variant?.version as number | undefined;
-  const restoreMutation = useMutation(trpc.restoreConfigVariantVersion.mutationOptions());
+  const currentConfigVersion = currentVersion;
+  // Note: Restore functionality removed since we now use config-level versioning instead of variant-level versioning
   const tableData = React.useMemo(
     () =>
       (versions ?? []).map(v => ({
@@ -204,44 +206,21 @@ export function ConfigVersionsTable({
                 >
                   View
                 </DropdownMenuItem>
-                {currentVariantVersion !== undefined && (
-                  <DropdownMenuItem
-                    disabled={
-                      restoreMutation.isPending || currentVariantVersion !== variant?.version
-                    }
-                    onClick={async e => {
-                      e.stopPropagation();
-                      if (
-                        !confirm(
-                          `Restore version v${version.version}? This will create a new version with the same contents (current v${currentVariantVersion}).`,
-                        )
-                      ) {
-                        return;
-                      }
-                      try {
-                        await restoreMutation.mutateAsync({
-                          configId,
-                          environmentId,
-                          versionToRestore: version.version,
-                          expectedCurrentVersion: currentVariantVersion,
-                          projectId,
-                        });
-                        toast.success(`Restored v${version.version} to new latest version`);
-                      } catch (e) {
-                        alert((e as Error).message);
-                      }
-                    }}
-                  >
-                    {restoreMutation.isPending ? 'Restoring…' : 'Restore'}
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [name, router, currentVariantVersion, restoreMutation, variant, configId, environmentId, projectId],
+    [
+      name,
+      router,
+      currentConfigVersion,
+      variant,
+      configId,
+      environmentId,
+      projectId,
+    ],
   );
 
   const table = useReactTable({

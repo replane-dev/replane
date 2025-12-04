@@ -71,13 +71,14 @@ export interface ConfigProposals {
 }
 
 export interface ConfigProposalVariants {
-  base_variant_version: number;
   config_variant_id: string;
+  environment_id: string | null;
   id: string;
   proposal_id: string;
   proposed_overrides: string | null;
   proposed_schema: string | null;
   proposed_value: string | null;
+  use_default_schema: boolean;
 }
 
 export interface Configs {
@@ -109,7 +110,6 @@ export interface ConfigVariants {
   updated_at: Timestamp;
   use_default_schema: boolean;
   value: string;
-  version: number;
 }
 
 export interface ConfigVariantVersions {

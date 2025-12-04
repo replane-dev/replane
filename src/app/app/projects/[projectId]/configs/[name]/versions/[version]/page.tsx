@@ -57,8 +57,8 @@ export default function ConfigVersionDetailsPage() {
     }),
   );
 
-  const currentVariantVersion = variant?.version as number | undefined;
-  const restoreMutation = useMutation(trpc.restoreConfigVariantVersion.mutationOptions());
+  const currentConfigVersion = configInfo?.config.version as number | undefined;
+  // Note: Restore functionality removed since we now use config-level versioning instead of variant-level versioning
   const router = useRouter();
   const version = data.version;
 
@@ -135,48 +135,12 @@ export default function ConfigVersionDetailsPage() {
                       <Badge variant="secondary" className="text-sm font-semibold px-3 py-1">
                         Version {version.version}
                       </Badge>
-                      {currentVariantVersion === version.version && (
+                      {currentConfigVersion === version.version && (
                         <Badge variant="outline" className="text-xs">
                           Current
                         </Badge>
                       )}
                     </div>
-                    {currentVariantVersion !== undefined &&
-                      currentVariantVersion !== version.version &&
-                      hasVariant && (
-                        <Button
-                          size="sm"
-                          disabled={
-                            restoreMutation.isPending || currentVariantVersion !== variant.version
-                          }
-                          onClick={async () => {
-                            if (
-                              !confirm(
-                                `Restore version ${version.version}? This will create a new version with the same contents (current version: ${currentVariantVersion}).`,
-                              )
-                            ) {
-                              return;
-                            }
-                            try {
-                              await restoreMutation.mutateAsync({
-                                configId: configInfo.config.id,
-                                environmentId: variant.environmentId!,
-                                versionToRestore: version.version,
-                                expectedCurrentVersion: currentVariantVersion,
-                                projectId,
-                              });
-                              toast.success('Version restored successfully');
-                              router.push(
-                                `/app/projects/${projectId}/configs/${encodeURIComponent(name)}`,
-                              );
-                            } catch (e) {
-                              toast.error((e as Error).message);
-                            }
-                          }}
-                        >
-                          {restoreMutation.isPending ? 'Restoring…' : 'Restore'}
-                        </Button>
-                      )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

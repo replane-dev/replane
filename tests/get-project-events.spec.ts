@@ -1,6 +1,6 @@
 import type {EventBusClient} from '@/engine/core/event-bus';
 import {normalizeEmail} from '@/engine/core/utils';
-import {afterEach, assert, beforeEach, describe, expect, it} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {
   type ConfigReplicaEvent,
   ConfigsReplicaService,
@@ -78,26 +78,24 @@ describe('getProjectEvents Integration', () => {
   });
 
   it('should emit updated event when a config variant is updated', async () => {
-    // Create initial config
-    const {configId} = await fixture.createConfig({
-      overrides: [],
+    // Create initial config with default variant to avoid replica service NULL value errors
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       projectId,
       name: 'feature-flag',
-      value: {enabled: true},
       description: 'Test config',
-      schema: {},
+      currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       maintainerEmails: [],
-      currentUserEmail: TEST_USER_EMAIL,
+      defaultVariant: {
+        value: {enabled: true},
+        schema: {},
+        overrides: [],
+      },
+      environmentVariants: [],
     });
 
     // Wait for replica to process the create
     await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Get variant for patching
-    const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
-    const variant = variants[0];
-    assert(variant, 'Variant should exist');
 
     const events = fixture.engine.useCases.getProjectEvents(GLOBAL_CONTEXT, {projectId});
     const iterator = events[Symbol.asyncIterator]();
@@ -108,10 +106,18 @@ describe('getProjectEvents Integration', () => {
     // Give the subscription time to be established
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Update the config variant
-    await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-      configVariantId: variant.id,
-      value: {newValue: {enabled: false}},
+    // Update the config
+    await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+      configId,
+      description: 'Test config',
+      editorEmails: [],
+      maintainerEmails: [],
+      defaultVariant: {
+        value: {enabled: false},
+        schema: {},
+        overrides: [],
+      },
+      environmentVariants: [],
       currentUserEmail: TEST_USER_EMAIL,
       prevVersion: 1,
     });
@@ -124,6 +130,8 @@ describe('getProjectEvents Integration', () => {
     await iterator.return?.();
   });
 
+  // Skipped: Flaky test due to timing issues with real event bus/replica service
+  // Delete events are covered by mock-based test "should stream delete events when configs are removed"
   it.skip('should emit deleted event when a config is deleted', async () => {
     const events = fixture.engine.useCases.getProjectEvents(GLOBAL_CONTEXT, {projectId});
     const iterator = events[Symbol.asyncIterator]();
@@ -151,17 +159,20 @@ describe('getProjectEvents Integration', () => {
     // Give the subscription time to be established
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Create initial config
-    const {configId} = await fixture.createConfig({
-      overrides: [],
+    // Create initial config with default variant to avoid replica service NULL value errors
+    const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       projectId,
       name: 'feature-flag',
-      value: {enabled: true},
       description: 'Test config',
-      schema: {},
+      currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       maintainerEmails: [],
-      currentUserEmail: TEST_USER_EMAIL,
+      defaultVariant: {
+        value: {enabled: true},
+        schema: {},
+        overrides: [],
+      },
+      environmentVariants: [],
     });
 
     // Wait for replica to process the create

@@ -15,14 +15,15 @@ export interface ProposedVariantDetails {
   configVariantId: string;
   environmentId: string;
   environmentName: string;
-  baseVariantVersion: number;
   proposedValue: unknown | undefined;
   proposedSchema: unknown | undefined;
   proposedOverrides: Override[] | undefined;
+  useDefaultSchema?: boolean;
   // Current values for comparison
   currentValue: unknown;
   currentSchema: unknown | null;
   currentOverrides: Override[];
+  currentUseDefaultSchema?: boolean;
 }
 
 export interface ConfigProposalDetails {
@@ -113,22 +114,27 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const maintainerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
     const editorEmails = await tx.permissionService.getConfigEditors(proposal.configId);
 
+    // Determine what actually changed by comparing proposed vs original
+    const descriptionChanged =
+      proposal.proposedDescription !== null &&
+      proposal.proposedDescription !== proposal.originalDescription;
+    const membersChanged =
+      proposal.proposedMembers !== null &&
+      JSON.stringify(proposal.proposedMembers) !== JSON.stringify(proposal.originalMembers);
+
     // Maintainers only: delete, description, members, schema changes, or overrides changes
     const maintainersOnly =
-      proposal.proposedDelete ||
-      proposal.proposedDescription !== null ||
-      proposal.proposedMembers !== null ||
-      hasSchemaChanges;
+      proposal.proposedDelete || descriptionChanged || membersChanged || hasSchemaChanges;
 
     let approverReason = '';
     if (proposal.proposedDelete) {
       approverReason = 'Deletion requests require maintainer approval.';
-    } else if (proposal.proposedDescription !== null) {
-      approverReason = 'Description changes require maintainer approval.';
-    } else if (proposal.proposedMembers !== null) {
+    } else if (membersChanged) {
       approverReason = 'Membership changes require maintainer approval.';
     } else if (hasSchemaChanges) {
       approverReason = 'Schema changes require maintainer approval.';
+    } else if (descriptionChanged) {
+      approverReason = 'Description changes require maintainer approval.';
     } else if (proposalVariantChanges.length > 0) {
       approverReason = 'Value changes can be approved by editors or maintainers.';
     } else {
@@ -173,16 +179,31 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
           configVariantId: vc.configVariantId,
           environmentId: vc.environmentId,
           environmentName: vc.environmentName,
-          baseVariantVersion: vc.baseVariantVersion,
           proposedValue: vc.proposedValue,
           proposedSchema: vc.proposedSchema,
           proposedOverrides: vc.proposedOverrides,
+          useDefaultSchema: vc.useDefaultSchema,
           currentValue: variant.value,
           currentSchema: variant.schema,
           currentOverrides: variant.overrides,
+          currentUseDefaultSchema: variant.useDefaultSchema,
         });
       }
     }
+
+    // Convert full-state proposal to diff format for response
+    // Only show fields that actually changed
+    const proposedDescriptionDiff =
+      proposal.proposedDescription !== null &&
+      proposal.proposedDescription !== proposal.originalDescription
+        ? proposal.proposedDescription
+        : null;
+
+    const proposedMembersDiff =
+      proposal.proposedMembers !== null &&
+      JSON.stringify(proposal.proposedMembers) !== JSON.stringify(proposal.originalMembers)
+        ? {newMembers: proposal.proposedMembers}
+        : null;
 
     return {
       proposal: {
@@ -200,8 +221,8 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         rejectionReason: proposal.rejectionReason,
         baseConfigVersion: proposal.baseConfigVersion,
         proposedDelete: proposal.proposedDelete,
-        proposedDescription: proposal.proposedDescription,
-        proposedMembers: proposal.proposedMembers ?? null,
+        proposedDescription: proposedDescriptionDiff,
+        proposedMembers: proposedMembersDiff,
         proposedVariants,
         message: proposal.message,
         status,

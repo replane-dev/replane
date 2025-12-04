@@ -9,7 +9,7 @@ import {
 } from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
-import {ConfigMember, EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
+import {EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
@@ -215,54 +215,38 @@ export const appRouter = createTRPCRouter({
       });
       return {};
     }),
-  patchConfig: baseProcedure
+  updateConfig: baseProcedure
     .input(
       z.object({
         configId: Uuid(),
-        description: z.object({newDescription: ConfigDescription()}).optional(),
-        prevVersion: z.number(),
-        members: z
+        description: ConfigDescription(),
+        editorEmails: EditorArray(),
+        maintainerEmails: MaintainerArray(),
+        defaultVariant: z
           .object({
-            newMembers: z.array(ConfigMember()),
+            value: ConfigValue(),
+            schema: ConfigSchema(),
+            overrides: ConfigOverrides(),
           })
           .optional(),
-        variants: z
-          .array(
-            z.object({
-              configVariantId: Uuid(),
-              prevVersion: z.number(),
-              value: z.object({newValue: z.any()}).optional(),
-              schema: z.object({newSchema: z.any()}).optional(),
-              overrides: z.object({newOverrides: ConfigOverrides()}).optional(),
-              useDefaultSchema: z.boolean().optional(),
-            }),
-          )
-          .optional(),
-        createVariants: z
-          .array(
-            z.object({
-              environmentId: Uuid(),
-              value: z.any(),
-              schema: z.any().nullable(),
-              overrides: ConfigOverrides(),
-              useDefaultSchema: z.boolean().optional(),
-            }),
-          )
-          .optional(),
-        deleteVariants: z
-          .array(
-            z.object({
-              environmentId: Uuid(),
-            }),
-          )
-          .optional(),
+        environmentVariants: z.array(
+          z.object({
+            environmentId: Uuid(),
+            value: ConfigValue(),
+            schema: ConfigSchema(),
+            overrides: ConfigOverrides(),
+            useDefaultSchema: z.boolean().optional(),
+          }),
+        ),
+        prevVersion: z.number(),
+        originalProposalId: Uuid().optional(),
       }),
     )
     .mutation(async opts => {
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      await opts.ctx.engine.useCases.patchConfig(GLOBAL_CONTEXT, {
+      await opts.ctx.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         ...opts.input,
         currentUserEmail: opts.ctx.currentUserEmail,
       });
@@ -605,11 +589,10 @@ export const appRouter = createTRPCRouter({
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),
-  restoreConfigVariantVersion: baseProcedure
+  restoreConfigVersion: baseProcedure
     .input(
       z.object({
         configId: Uuid(),
-        environmentId: Uuid(),
         versionToRestore: z.number(),
         expectedCurrentVersion: z.number(),
         projectId: Uuid(),
@@ -619,9 +602,8 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      const result = await opts.ctx.engine.useCases.restoreConfigVariantVersion(GLOBAL_CONTEXT, {
+      const result = await opts.ctx.engine.useCases.restoreConfigVersion(GLOBAL_CONTEXT, {
         configId: opts.input.configId,
-        environmentId: opts.input.environmentId,
         versionToRestore: opts.input.versionToRestore,
         expectedCurrentVersion: opts.input.expectedCurrentVersion,
         currentUserEmail: opts.ctx.currentUserEmail,
@@ -723,20 +705,25 @@ export const appRouter = createTRPCRouter({
         configId: Uuid(),
         baseVersion: z.number(),
         proposedDelete: z.boolean().optional(),
-        proposedDescription: z.object({newDescription: ConfigDescription()}).optional(),
-        proposedMembers: z
+        // Full proposed state (optional for deletion proposals)
+        description: ConfigDescription().optional(),
+        editorEmails: EditorArray().optional(),
+        maintainerEmails: MaintainerArray().optional(),
+        defaultVariant: z
           .object({
-            newMembers: z.array(ConfigMember()),
+            value: ConfigValue(),
+            schema: ConfigSchema(),
+            overrides: ConfigOverrides(),
           })
           .optional(),
-        proposedVariants: z
+        environmentVariants: z
           .array(
             z.object({
-              configVariantId: Uuid(),
-              baseVariantVersion: z.number(),
-              proposedValue: z.object({newValue: ConfigValue()}).optional(),
-              proposedSchema: z.object({newSchema: ConfigSchema()}).optional(),
-              proposedOverrides: z.object({newOverrides: ConfigOverrides()}).optional(),
+              environmentId: Uuid(),
+              value: ConfigValue(),
+              schema: ConfigSchema(),
+              overrides: ConfigOverrides(),
+              useDefaultSchema: z.boolean().optional(),
             }),
           )
           .optional(),
@@ -754,9 +741,11 @@ export const appRouter = createTRPCRouter({
           configId: opts.input.configId,
           baseVersion: opts.input.baseVersion,
           proposedDelete: opts.input.proposedDelete,
-          proposedDescription: opts.input.proposedDescription,
-          proposedMembers: opts.input.proposedMembers,
-          proposedVariants: opts.input.proposedVariants,
+          description: opts.input.description,
+          editorEmails: opts.input.editorEmails,
+          maintainerEmails: opts.input.maintainerEmails,
+          defaultVariant: opts.input.defaultVariant,
+          environmentVariants: opts.input.environmentVariants,
           message: opts.input.message,
           currentUserEmail: opts.ctx.currentUserEmail,
         },

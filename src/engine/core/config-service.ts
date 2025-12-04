@@ -6,7 +6,7 @@ import {BadRequestError} from './errors';
 import {diffMembers} from './member-diff';
 import type {Override} from './override-condition-schemas';
 import type {PermissionService} from './permission-service';
-import {createAuditLogId, type AuditLog, type AuditLogStore} from './stores/audit-log-store';
+import {createAuditLogId, type AuditLogStore} from './stores/audit-log-store';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
@@ -19,26 +19,23 @@ import {createUuidV7} from './uuid';
 import {validateOverrideReferences} from './validate-override-references';
 import type {ConfigMember} from './zod';
 
-export interface PatchConfigParams {
-  configId: ConfigId;
-  description?: {newDescription: string};
-  members?: {newMembers: ConfigMember[]};
-  patchAuthor: User;
+export interface UpdateConfigParams {
+  configId: string;
+  description: string;
+  editorEmails: string[];
+  maintainerEmails: string[];
+  defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
+  environmentVariants: Array<{
+    environmentId: string;
+    value: unknown;
+    schema: unknown | null;
+    overrides: Override[];
+    useDefaultSchema?: boolean;
+  }>;
+  currentUser: User;
   reviewer: User;
-  originalProposalId?: string;
   prevVersion: number;
-}
-
-export interface PatchConfigVariantParams {
-  configVariantId: string;
-  value?: {newValue: any};
-  schema?: {newSchema: any};
-  overrides?: {newOverrides: Override[]};
-  patchAuthor: User;
-  reviewer: User;
   originalProposalId?: string;
-  prevVersion: number;
-  useDefaultSchema?: boolean; // If true, inherit schema from default variant
 }
 
 export interface DeleteConfigParams {
@@ -72,14 +69,92 @@ export class ConfigService {
     }
   }
 
-  async patchConfig(ctx: Context, params: PatchConfigParams): Promise<void> {
+  /**
+   * Validates a config state without persisting it.
+   * Checks schema validation, override references, etc.
+   */
+  async validate(
+    ctx: Context,
+    config: {
+      projectId: string;
+      description: string;
+      defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
+      environmentVariants: Array<{
+        environmentId: string;
+        value: unknown;
+        schema: unknown | null;
+        overrides: Override[];
+        useDefaultSchema?: boolean;
+      }>;
+    },
+  ): Promise<void> {
+    // Validate default variant if provided
+    if (config.defaultVariant) {
+      // Validate default variant value against its schema
+      if (config.defaultVariant.schema !== null && config.defaultVariant.schema !== undefined) {
+        const result = validateAgainstJsonSchema(
+          config.defaultVariant.value,
+          config.defaultVariant.schema as any,
+        );
+        if (!result.ok) {
+          throw new BadRequestError(
+            `Default variant value does not match schema: ${result.errors.join('; ')}`,
+          );
+        }
+      }
+
+      // Validate default variant override references
+      validateOverrideReferences({
+        overrides: config.defaultVariant.overrides,
+        configProjectId: config.projectId,
+      });
+    }
+
+    // Validate environment variants
+    for (const envVariant of config.environmentVariants) {
+      // Determine which schema to use for validation
+      let schemaForValidation = envVariant.schema;
+
+      if (envVariant.useDefaultSchema) {
+        if (!config.defaultVariant) {
+          throw new BadRequestError(
+            'Cannot use default schema when no default variant is provided',
+          );
+        }
+        schemaForValidation = config.defaultVariant.schema;
+      }
+
+      // Validate environment variant value against schema
+      if (schemaForValidation !== null && schemaForValidation !== undefined) {
+        const result = validateAgainstJsonSchema(envVariant.value, schemaForValidation as any);
+        if (!result.ok) {
+          throw new BadRequestError(
+            `Environment variant value does not match schema: ${result.errors.join('; ')}`,
+          );
+        }
+      }
+
+      // Validate environment variant override references
+      validateOverrideReferences({
+        overrides: envVariant.overrides,
+        configProjectId: config.projectId,
+      });
+    }
+  }
+
+  /**
+   * Updates a config to a new full state.
+   * Compares with current state to determine what changed and what permissions are required.
+   * Creates/updates/deletes variants as needed.
+   */
+  async updateConfig(ctx: Context, params: UpdateConfigParams): Promise<void> {
     const existingConfig = await this.configs.getById(params.configId);
     if (!existingConfig) {
       throw new BadRequestError('Config does not exist');
     }
 
-    const {patchAuthor, reviewer} = params;
-    assert(patchAuthor.email, 'Patch author must have an email');
+    const {currentUser, reviewer} = params;
+    assert(currentUser.email, 'Current user must have an email');
     assert(reviewer.email, 'Reviewer must have an email');
 
     // Check version conflict
@@ -87,301 +162,423 @@ export class ConfigService {
       throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
     }
 
-    // Config-level patches (description, members) always require manage permission
-    if (params.members || params.description) {
+    // Fetch all current variants
+    const currentVariants = await this.configVariants.getByConfigId(params.configId);
+
+    // Separate default and environment variants
+    const currentDefaultVariant = currentVariants.find(v => v.environmentId === null);
+    const currentEnvVariants = currentVariants.filter(v => v.environmentId !== null);
+
+    // Determine what changed
+    const descriptionChanged = params.description !== existingConfig.description;
+
+    // Check if members changed
+    const currentMembers = await this.configUsers.getByConfigId(params.configId);
+    const currentEditors = currentMembers
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
+    const currentMaintainers = currentMembers
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.user_email_normalized);
+
+    const membersChanged =
+      JSON.stringify([...params.editorEmails].sort()) !==
+        JSON.stringify([...currentEditors].sort()) ||
+      JSON.stringify([...params.maintainerEmails].sort()) !==
+        JSON.stringify([...currentMaintainers].sort());
+
+    // Detect variant changes
+    const defaultVariantChanged =
+      (params.defaultVariant && !currentDefaultVariant) ||
+      (!params.defaultVariant && currentDefaultVariant) ||
+      (params.defaultVariant &&
+        currentDefaultVariant &&
+        (JSON.stringify(params.defaultVariant.value) !==
+          JSON.stringify(currentDefaultVariant.value) ||
+          JSON.stringify(params.defaultVariant.schema) !==
+            JSON.stringify(currentDefaultVariant.schema) ||
+          JSON.stringify(params.defaultVariant.overrides) !==
+            JSON.stringify(currentDefaultVariant.overrides)));
+
+    // Find environment variants to create, update, or delete
+    const variantsToCreate: typeof params.environmentVariants = [];
+    const variantsToUpdate: Array<{
+      variantId: string;
+      environmentId: string;
+      value: unknown;
+      schema: unknown | null;
+      overrides: Override[];
+      useDefaultSchema: boolean;
+    }> = [];
+    const variantsToDelete: string[] = [];
+
+    for (const envVariant of params.environmentVariants) {
+      const existing = currentEnvVariants.find(v => v.environmentId === envVariant.environmentId);
+      if (!existing) {
+        variantsToCreate.push(envVariant);
+      } else {
+        // Check if this variant changed
+        const valueChanged = JSON.stringify(envVariant.value) !== JSON.stringify(existing.value);
+        const schemaChanged = JSON.stringify(envVariant.schema) !== JSON.stringify(existing.schema);
+        const overridesChanged =
+          JSON.stringify(envVariant.overrides) !== JSON.stringify(existing.overrides);
+        const useDefaultSchemaChanged =
+          (envVariant.useDefaultSchema ?? false) !== existing.useDefaultSchema;
+
+        if (valueChanged || schemaChanged || overridesChanged || useDefaultSchemaChanged) {
+          variantsToUpdate.push({
+            variantId: existing.id,
+            environmentId: envVariant.environmentId,
+            value: envVariant.value,
+            schema: envVariant.useDefaultSchema ? null : envVariant.schema,
+            overrides: envVariant.overrides,
+            useDefaultSchema: envVariant.useDefaultSchema ?? false,
+          });
+        }
+      }
+    }
+
+    // Find variants to delete (exist currently but not in new state)
+    for (const existing of currentEnvVariants) {
+      const stillExists = params.environmentVariants.some(
+        v => v.environmentId === existing.environmentId,
+      );
+      if (!stillExists) {
+        variantsToDelete.push(existing.id);
+      }
+    }
+
+    // Check if schema/overrides changed (requires maintainer permission)
+    const schemaOrOverridesChanged =
+      defaultVariantChanged ||
+      variantsToCreate.some(v => v.schema !== null || v.overrides.length > 0) ||
+      variantsToUpdate.some(
+        v =>
+          v.schema !== null ||
+          v.overrides.length > 0 ||
+          currentEnvVariants.find(cv => cv.id === v.variantId)?.schema !== null ||
+          currentEnvVariants.find(cv => cv.id === v.variantId)?.overrides.length,
+      ) ||
+      variantsToDelete.some(
+        id =>
+          currentEnvVariants.find(v => v.id === id)?.schema !== null ||
+          currentEnvVariants.find(v => v.id === id)?.overrides.length,
+      );
+
+    // Validate permissions
+    if (schemaOrOverridesChanged || membersChanged) {
       await this.permissionService.ensureCanManageConfig(ctx, {
+        configId: existingConfig.id,
+        currentUserEmail: normalizeEmail(reviewer.email),
+      });
+    } else if (
+      descriptionChanged ||
+      defaultVariantChanged ||
+      variantsToCreate.length > 0 ||
+      variantsToUpdate.length > 0 ||
+      variantsToDelete.length > 0
+    ) {
+      await this.permissionService.ensureCanEditConfig(ctx, {
         configId: existingConfig.id,
         currentUserEmail: normalizeEmail(reviewer.email),
       });
     }
 
-    // Reject all pending CONFIG proposals (not variant proposals)
-    await this.rejectConfigProposalsInternal({
-      configId: existingConfig.id,
-      originalProposalId: params.originalProposalId,
-      existingConfig,
-      reviewer,
-      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
-    });
-
-    const nextDescription = params.description
-      ? params.description.newDescription
-      : existingConfig.description;
-    const nextVersion = existingConfig.version + 1;
-
-    const beforeConfig = existingConfig;
-
-    // Update description if changed
-    if (params.description) {
-      await this.configs.updateDescription({
-        id: existingConfig.id,
-        description: nextDescription,
-        version: nextVersion,
-        updatedAt: this.dateProvider.now(),
+    // Validate override references before making changes
+    if (params.defaultVariant && params.defaultVariant.overrides.length > 0) {
+      validateOverrideReferences({
+        overrides: params.defaultVariant.overrides,
+        configProjectId: existingConfig.projectId,
       });
     }
 
-    let membersDiff: {
-      added: Array<{email: string; role: string}>;
-      removed: Array<{email: string; role: string}>;
-    } | null = null;
-
-    if (params.members) {
-      // Validate no user appears with multiple roles
-      this.ensureUniqueMembers(params.members.newMembers);
-
-      const existingConfigUsers = await this.configUsers.getByConfigId(existingConfig.id);
-      const {added, removed} = diffMembers(
-        existingConfigUsers.map(u => ({email: u.user_email_normalized, role: u.role})),
-        params.members.newMembers,
-      );
-
-      // delete first to avoid unique constraint violations
-      for (const user of removed) {
-        await this.configUsers.delete(existingConfig.id, user.email);
+    for (const variant of [...variantsToCreate, ...variantsToUpdate]) {
+      if (variant.overrides.length > 0) {
+        validateOverrideReferences({
+          overrides: variant.overrides,
+          configProjectId: existingConfig.projectId,
+        });
       }
+    }
+
+    // Validate schema inheritance for environment variants
+    for (const variant of [...variantsToCreate, ...variantsToUpdate]) {
+      if (variant.useDefaultSchema) {
+        if (!params.defaultVariant) {
+          throw new BadRequestError(
+            'Cannot use default schema when no default variant is provided',
+          );
+        }
+
+        if (params.defaultVariant.schema) {
+          const effectiveSchema = params.defaultVariant.schema;
+          const validationResult = validateAgainstJsonSchema(variant.value, effectiveSchema as any);
+          if (!validationResult.ok) {
+            throw new BadRequestError(
+              `Environment variant value does not match schema: ${validationResult.errors.join('; ')}`,
+            );
+          }
+        }
+      } else {
+        // Validate against the variant's own schema if it has one
+        if (variant.schema) {
+          const validationResult = validateAgainstJsonSchema(variant.value, variant.schema as any);
+          if (!validationResult.ok) {
+            throw new BadRequestError(
+              `Environment variant value does not match schema: ${validationResult.errors.join('; ')}`,
+            );
+          }
+        }
+      }
+    }
+
+    const nextVersion = existingConfig.version + 1;
+    const now = this.dateProvider.now();
+
+    // Update config description if changed
+    if (descriptionChanged) {
+      await this.configs.updateDescription({
+        id: existingConfig.id,
+        description: params.description,
+        version: nextVersion,
+        updatedAt: now,
+      });
+    } else {
+      // Even if description didn't change, update version and updatedAt
+      await this.configs.updateDescription({
+        id: existingConfig.id,
+        description: existingConfig.description,
+        version: nextVersion,
+        updatedAt: now,
+      });
+    }
+
+    // Update members if changed
+    if (membersChanged) {
+      const newMembers: ConfigMember[] = [
+        ...params.editorEmails.map(email => ({email, role: 'editor' as const})),
+        ...params.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
+      ];
+
+      this.ensureUniqueMembers(newMembers);
+
+      // Map current members to MemberLike format
+      const currentMembersLike = currentMembers.map(m => ({
+        email: m.user_email_normalized,
+        role: m.role,
+      }));
+
+      const membersDiff = diffMembers(currentMembersLike, newMembers);
+
+      // Remove old members
+      for (const removed of membersDiff.removed) {
+        await this.configUsers.delete(params.configId, normalizeEmail(removed.email));
+      }
+
+      // Add new members
       await this.configUsers.create(
-        added.map(x => ({
-          configId: existingConfig.id,
-          email: x.email,
-          role: x.role,
-          createdAt: this.dateProvider.now(),
-          updatedAt: this.dateProvider.now(),
+        membersDiff.added.map(added => ({
+          configId: params.configId,
+          email: added.email,
+          role: added.role as 'editor' | 'maintainer',
+          createdAt: now,
+          updatedAt: now,
         })),
       );
-      membersDiff = {
-        added: added.map(a => ({email: a.email, role: a.role})),
-        removed: removed.map(r => ({email: r.email, role: r.role})),
-      };
-    }
 
-    const afterConfig = await this.configs.getById(existingConfig.id);
-    assert(afterConfig, 'Config must exist after update');
-
-    // Only create audit logs if something actually changed
-    if (params.description) {
-      const baseLog: AuditLog = {
-        id: createAuditLogId(),
-        createdAt: this.dateProvider.now(),
-        userId: patchAuthor.id,
-        projectId: afterConfig.projectId,
-        configId: afterConfig.id,
-        payload: {
-          type: 'config_updated',
-          before: {
-            id: beforeConfig.id,
-            projectId: beforeConfig.projectId,
-            name: beforeConfig.name,
-            description: beforeConfig.description,
-            creatorId: beforeConfig.creatorId,
-            createdAt: beforeConfig.createdAt,
-            version: beforeConfig.version,
-          },
-          after: {
-            id: afterConfig.id,
-            projectId: afterConfig.projectId,
-            name: afterConfig.name,
-            description: afterConfig.description,
-            creatorId: afterConfig.creatorId,
-            createdAt: afterConfig.createdAt,
-            version: afterConfig.version,
-          },
-        },
-      };
-      await this.auditLogs.create(baseLog);
-    }
-
-    if (membersDiff && membersDiff.added.length + membersDiff.removed.length > 0) {
+      // Create audit log for members change
       await this.auditLogs.create({
         id: createAuditLogId(),
-        projectId: afterConfig.projectId,
-        createdAt: this.dateProvider.now(),
-        userId: patchAuthor.id,
-        configId: afterConfig.id,
+        createdAt: now,
+        userId: currentUser.id,
+        configId: existingConfig.id,
+        projectId: existingConfig.projectId,
         payload: {
           type: 'config_members_changed',
           config: {
-            id: afterConfig.id,
-            projectId: afterConfig.projectId,
-            name: afterConfig.name,
-            description: afterConfig.description,
-            creatorId: afterConfig.creatorId,
-            createdAt: afterConfig.createdAt,
-            version: afterConfig.version,
+            id: existingConfig.id,
+            name: existingConfig.name,
+            projectId: existingConfig.projectId,
+            description: params.description,
+            creatorId: existingConfig.creatorId,
+            createdAt: existingConfig.createdAt,
+            version: nextVersion,
           },
           added: membersDiff.added,
           removed: membersDiff.removed,
         },
       });
     }
-  }
 
-  async patchConfigVariant(ctx: Context, params: PatchConfigVariantParams): Promise<void> {
-    const existingVariant = await this.configVariants.getById(params.configVariantId);
-    if (!existingVariant) {
-      throw new BadRequestError('Config variant does not exist');
+    // Create/update default variant
+    if (params.defaultVariant) {
+      if (!currentDefaultVariant) {
+        // Create new default variant
+        await this.configVariants.create({
+          id: createUuidV7(),
+          configId: params.configId,
+          environmentId: null,
+          value: params.defaultVariant.value,
+          schema: params.defaultVariant.schema,
+          overrides: params.defaultVariant.overrides,
+          createdAt: now,
+          updatedAt: now,
+          useDefaultSchema: false,
+        });
+      } else if (defaultVariantChanged) {
+        // Update existing default variant
+        await this.configVariants.update({
+          id: currentDefaultVariant.id,
+          configId: currentDefaultVariant.configId,
+          value: params.defaultVariant.value,
+          schema: params.defaultVariant.schema,
+          overrides: params.defaultVariant.overrides,
+          updatedAt: now,
+          useDefaultSchema: false,
+        });
+
+        // Create version history for default variant
+        await this.configVariantVersions.create({
+          id: createUuidV7(),
+          configVariantId: currentDefaultVariant.id,
+          version: nextVersion,
+          name: existingConfig.name,
+          description: params.description,
+          value: params.defaultVariant.value,
+          schema: params.defaultVariant.schema,
+          overrides: params.defaultVariant.overrides,
+          authorId: currentUser.id ?? null,
+          proposalId: params.originalProposalId ?? null,
+          createdAt: now,
+        });
+      }
+    } else if (currentDefaultVariant) {
+      // Delete default variant
+      await this.configVariants.delete({
+        configId: params.configId,
+        variantId: currentDefaultVariant.id,
+      });
     }
 
-    const config = await this.configs.getById(existingVariant.configId);
-    if (!config) {
-      throw new BadRequestError('Config does not exist');
+    // Create new environment variants
+    for (const variant of variantsToCreate) {
+      const variantId = createUuidV7();
+      await this.configVariants.create({
+        id: variantId,
+        configId: params.configId,
+        environmentId: variant.environmentId,
+        value: variant.value,
+        schema: variant.useDefaultSchema ? null : variant.schema,
+        overrides: variant.overrides,
+        createdAt: now,
+        updatedAt: now,
+        useDefaultSchema: variant.useDefaultSchema ?? false,
+      });
+
+      // Create version history for new variant
+      await this.configVariantVersions.create({
+        id: createUuidV7(),
+        configVariantId: variantId,
+        version: nextVersion,
+        name: existingConfig.name,
+        description: params.description,
+        value: variant.value,
+        schema: variant.useDefaultSchema ? null : variant.schema,
+        overrides: variant.overrides,
+        authorId: currentUser.id ?? null,
+        proposalId: params.originalProposalId ?? null,
+        createdAt: now,
+      });
     }
 
-    const {patchAuthor, reviewer} = params;
-    assert(patchAuthor.email, 'Patch author must have an email');
-    assert(reviewer.email, 'Reviewer must have an email');
+    // Update existing environment variants
+    for (const variant of variantsToUpdate) {
+      await this.configVariants.update({
+        id: variant.variantId,
+        configId: params.configId,
+        value: variant.value,
+        schema: variant.schema,
+        overrides: variant.overrides,
+        updatedAt: now,
+        useDefaultSchema: variant.useDefaultSchema,
+      });
 
-    // Check version conflict
-    if (existingVariant.version !== params.prevVersion) {
-      throw new BadRequestError(
-        `Config variant was edited by another user. Please, refresh the page.`,
-      );
+      // Create version history for updated variant
+      await this.configVariantVersions.create({
+        id: createUuidV7(),
+        configVariantId: variant.variantId,
+        version: nextVersion,
+        name: existingConfig.name,
+        description: params.description,
+        value: variant.value,
+        schema: variant.schema,
+        overrides: variant.overrides,
+        authorId: currentUser.id ?? null,
+        proposalId: params.originalProposalId ?? null,
+        createdAt: now,
+      });
     }
 
-    // Schema changes require maintainer permission, other changes require at least edit permission
-    if (params.schema) {
-      await this.permissionService.ensureCanManageConfig(ctx, {
-        configId: config.id,
-        currentUserEmail: normalizeEmail(reviewer.email),
+    // Delete environment variants
+    for (const variantId of variantsToDelete) {
+      await this.configVariants.delete({
+        configId: params.configId,
+        variantId,
+      });
+    }
+
+    // Create audit log for config update
+    if (descriptionChanged) {
+      await this.auditLogs.create({
+        id: createAuditLogId(),
+        createdAt: now,
+        userId: currentUser.id,
+        configId: existingConfig.id,
+        projectId: existingConfig.projectId,
+        payload: {
+          type: 'config_updated',
+          before: {
+            id: existingConfig.id,
+            name: existingConfig.name,
+            projectId: existingConfig.projectId,
+            description: existingConfig.description,
+            creatorId: existingConfig.creatorId,
+            createdAt: existingConfig.createdAt,
+            version: existingConfig.version,
+          },
+          after: {
+            id: existingConfig.id,
+            name: existingConfig.name,
+            projectId: existingConfig.projectId,
+            description: params.description,
+            creatorId: existingConfig.creatorId,
+            createdAt: existingConfig.createdAt,
+            version: nextVersion,
+          },
+        },
+      });
+    }
+
+    // Reject pending proposals
+    if (params.originalProposalId) {
+      // Reject all proposals EXCEPT the one with originalProposalId
+      await this.rejectConfigProposalsInternal({
+        configId: existingConfig.id,
+        originalProposalId: params.originalProposalId,
+        existingConfig,
+        reviewer,
+        rejectionReason: 'another_proposal_approved',
       });
     } else {
-      await this.permissionService.ensureCanEditConfig(ctx, {
-        configId: config.id,
-        currentUserEmail: normalizeEmail(reviewer.email),
+      // Reject all proposals
+      await this.rejectConfigProposalsInternal({
+        configId: existingConfig.id,
+        originalProposalId: undefined,
+        existingConfig,
+        reviewer,
+        rejectionReason: 'config_edited',
       });
     }
-
-    const nextValue = params.value ? params.value.newValue : existingVariant.value;
-    // When useDefaultSchema is true, we set schema to null (will inherit via COALESCE)
-    const nextSchema = params.useDefaultSchema
-      ? null
-      : params.schema
-        ? params.schema.newSchema
-        : existingVariant.schema;
-    const nextOverrides = params.overrides
-      ? params.overrides.newOverrides
-      : existingVariant.overrides;
-
-    // Determine which schema to use for validation
-    let schemaForValidation = nextSchema;
-
-    if (params.useDefaultSchema) {
-      // Fetch the default variant's schema for validation
-      const defaultVariant = await this.configVariants.getDefaultVariant(config.id);
-      if (!defaultVariant) {
-        throw new BadRequestError(
-          'Cannot use default schema when no default variant exists for this config',
-        );
-      }
-      schemaForValidation = defaultVariant.schema;
-    }
-
-    // Validate against the appropriate schema
-    if (schemaForValidation !== null) {
-      const result = validateAgainstJsonSchema(nextValue, schemaForValidation);
-      if (!result.ok) {
-        throw new BadRequestError(
-          `Config value does not match schema: ${result.errors.join('; ')}`,
-        );
-      }
-    }
-
-    // Validate override references use the same project ID
-    validateOverrideReferences({
-      overrides: nextOverrides,
-      configProjectId: config.projectId,
-    });
-
-    const nextVersion = existingVariant.version + 1;
-    const now = this.dateProvider.now();
-
-    // Update the variant
-    await this.configVariants.update({
-      id: existingVariant.id,
-      configId: existingVariant.configId,
-      value: nextValue,
-      schema: nextSchema,
-      overrides: nextOverrides,
-      version: nextVersion,
-      updatedAt: now,
-      useDefaultSchema: params.useDefaultSchema,
-    });
-
-    // Update the config's updated_at as well (variant change affects the config)
-    await this.configs.updateDescription({
-      id: config.id,
-      description: config.description,
-      version: config.version,
-      updatedAt: now,
-    });
-
-    // Create variant version history
-    await this.configVariantVersions.create({
-      id: createUuidV7(),
-      configVariantId: existingVariant.id,
-      version: nextVersion,
-      name: config.name,
-      description: config.description,
-      value: nextValue,
-      schema: nextSchema,
-      overrides: nextOverrides,
-      authorId: patchAuthor.id ?? null,
-      proposalId: params.originalProposalId ?? null,
-      createdAt: this.dateProvider.now(),
-    });
-
-    // Reject all pending CONFIG proposals (variant change invalidates config proposals)
-    await this.rejectConfigProposalsInternal({
-      configId: config.id,
-      originalProposalId: params.originalProposalId,
-      existingConfig: config,
-      reviewer,
-      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_edited',
-    });
-
-    // Get environment information for audit log
-    const environmentName = existingVariant.environmentId
-      ? ((
-          await this.projectEnvironments.getById({
-            environmentId: existingVariant.environmentId,
-            projectId: config.projectId,
-          })
-        )?.name ?? 'Unknown')
-      : 'Default';
-
-    // Create audit log for variant update
-    await this.auditLogs.create({
-      id: createAuditLogId(),
-      createdAt: this.dateProvider.now(),
-      userId: patchAuthor.id,
-      configId: config.id,
-      projectId: config.projectId,
-      payload: {
-        type: 'config_variant_updated',
-        before: {
-          id: existingVariant.id,
-          configId: existingVariant.configId,
-          configName: config.name,
-          environmentId: existingVariant.environmentId,
-          environmentName,
-          value: existingVariant.value,
-          schema: existingVariant.schema,
-          overrides: existingVariant.overrides,
-          version: existingVariant.version,
-        },
-        after: {
-          id: existingVariant.id,
-          configId: existingVariant.configId,
-          configName: config.name,
-          environmentId: existingVariant.environmentId,
-          environmentName,
-          value: nextValue,
-          schema: nextSchema,
-          overrides: nextOverrides,
-          version: nextVersion,
-        },
-      },
-    });
   }
 
   async deleteConfig(ctx: Context, params: DeleteConfigParams): Promise<void> {

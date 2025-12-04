@@ -60,9 +60,11 @@ export interface ProposedVariantChange {
   proposedValue?: unknown;
   proposedSchema?: unknown;
   proposedOverrides?: unknown[];
+  useDefaultSchema?: boolean;
   currentValue?: unknown;
   currentSchema?: unknown | null;
   currentOverrides?: unknown[];
+  currentUseDefaultSchema?: boolean;
 }
 
 export interface ConfigProposalDiffProps {
@@ -88,12 +90,33 @@ export function ConfigProposalDiff({
   proposedVariants = [],
 }: ConfigProposalDiffProps) {
   const diffs: Array<{title: string; before: unknown; after: unknown}> = [];
-  if (proposed.schema && current.schema !== undefined)
+
+  // Only show schema if it exists and actually changed
+  if (
+    proposed.schema &&
+    current.schema !== undefined &&
+    JSON.stringify(current.schema) !== JSON.stringify(proposed.schema.newSchema)
+  ) {
     diffs.push({title: 'JSON Schema', before: current.schema, after: proposed.schema.newSchema});
-  if (proposed.value && current.value !== undefined)
+  }
+
+  // Only show value if it exists and actually changed
+  if (
+    proposed.value &&
+    current.value !== undefined &&
+    JSON.stringify(current.value) !== JSON.stringify(proposed.value.newValue)
+  ) {
     diffs.push({title: 'JSON Value', before: current.value, after: proposed.value.newValue});
-  if (proposed.description !== undefined && proposed.description !== null)
+  }
+
+  // Only show description if it's not null and actually changed
+  if (
+    proposed.description !== undefined &&
+    proposed.description !== null &&
+    current.description !== proposed.description
+  ) {
     diffs.push({title: 'Description', before: current.description, after: proposed.description});
+  }
 
   // Members diff (owners/editors)
   type MemberChange =
@@ -239,21 +262,45 @@ export function ConfigProposalDiff({
       {/* Environment-specific changes cards */}
       {proposedVariants.map(variant => {
         const variantDiffs = [];
-        if (variant.proposedValue !== undefined && variant.currentValue !== undefined) {
+
+        // Check if useDefaultSchema changed
+        const useDefaultSchemaChanged =
+          variant.useDefaultSchema !== undefined &&
+          variant.currentUseDefaultSchema !== undefined &&
+          variant.useDefaultSchema !== variant.currentUseDefaultSchema;
+
+        // Only show value if it actually changed
+        if (
+          variant.proposedValue !== undefined &&
+          variant.currentValue !== undefined &&
+          JSON.stringify(variant.proposedValue) !== JSON.stringify(variant.currentValue)
+        ) {
           variantDiffs.push({
             title: 'Value',
             before: variant.currentValue,
             after: variant.proposedValue,
           });
         }
-        if (variant.proposedSchema !== undefined && variant.currentSchema !== undefined) {
+
+        // Only show schema if it actually changed
+        if (
+          variant.proposedSchema !== undefined &&
+          variant.currentSchema !== undefined &&
+          JSON.stringify(variant.proposedSchema) !== JSON.stringify(variant.currentSchema)
+        ) {
           variantDiffs.push({
             title: 'Schema',
             before: variant.currentSchema,
             after: variant.proposedSchema,
           });
         }
-        if (variant.proposedOverrides !== undefined && variant.currentOverrides !== undefined) {
+
+        // Only show overrides if they actually changed
+        if (
+          variant.proposedOverrides !== undefined &&
+          variant.currentOverrides !== undefined &&
+          JSON.stringify(variant.proposedOverrides) !== JSON.stringify(variant.currentOverrides)
+        ) {
           variantDiffs.push({
             title: 'Overrides',
             before: variant.currentOverrides,
@@ -261,7 +308,7 @@ export function ConfigProposalDiff({
           });
         }
 
-        if (variantDiffs.length === 0) return null;
+        if (variantDiffs.length === 0 && !useDefaultSchemaChanged) return null;
 
         return (
           <div
@@ -274,6 +321,45 @@ export function ConfigProposalDiff({
               </h3>
             </div>
             <div className="p-6 space-y-6">
+              {/* Show "Inherit base schema" change if it changed */}
+              {useDefaultSchemaChanged && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-foreground">Inherit base schema</div>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <div className="flex items-center gap-3">
+                      <ArrowRight className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-xs font-normal line-through opacity-60',
+                            variant.currentUseDefaultSchema
+                              ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900'
+                              : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900',
+                          )}
+                        >
+                          {variant.currentUseDefaultSchema ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-xs font-normal',
+                            variant.useDefaultSchema
+                              ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900'
+                              : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900',
+                          )}
+                        >
+                          {variant.useDefaultSchema ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {variantDiffs.map(d => (
                 <DiffRow
                   key={d.title}

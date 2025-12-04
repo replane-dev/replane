@@ -179,9 +179,7 @@ export function ConfigVariantFields({
             render={({field}) => (
               <FormItem
                 className={`rounded-lg border p-3 transition-colors ${
-                  field.value
-                    ? 'border-primary/30 bg-primary/5'
-                    : 'border-border/50 bg-transparent'
+                  field.value ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-transparent'
                 }`}
               >
                 <div className="flex items-center justify-between space-x-2">
@@ -222,7 +220,8 @@ export function ConfigVariantFields({
                         </p>
                       ) : (
                         <p>
-                          Enable schema validation on the base configuration first to use this option.
+                          Enable schema validation on the base configuration first to use this
+                          option.
                         </p>
                       )}
                     </TooltipContent>
@@ -261,8 +260,8 @@ export function ConfigVariantFields({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>
-                          Enforce that the configuration value matches a JSON Schema. This helps catch
-                          errors early and ensures data consistency.
+                          Enforce that the configuration value matches a JSON Schema. This helps
+                          catch errors early and ensures data consistency.
                         </p>
                       </TooltipContent>
                     </Tooltip>

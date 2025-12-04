@@ -11,22 +11,23 @@ import {
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
-export interface ProposedVariantChange {
-  configVariantId: string;
-  baseVariantVersion: number;
-  proposedValue?: {newValue: unknown};
-  proposedSchema?: {newSchema: unknown};
-  proposedOverrides?: {newOverrides: Override[]};
-}
-
 export interface CreateConfigProposalRequest {
   projectId: string;
   configId: string;
   baseVersion: number;
   proposedDelete?: boolean;
-  proposedDescription?: {newDescription: string};
-  proposedMembers?: {newMembers: Array<{email: string; role: 'maintainer' | 'editor'}>};
-  proposedVariants?: ProposedVariantChange[];
+  // Full proposed state (required unless proposedDelete is true)
+  description?: string;
+  editorEmails?: string[];
+  maintainerEmails?: string[];
+  defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
+  environmentVariants?: Array<{
+    environmentId: string;
+    value: unknown;
+    schema: unknown | null;
+    overrides: Override[];
+    useDefaultSchema?: boolean;
+  }>;
   message?: string;
   currentUserEmail: NormalizedEmail;
 }
@@ -60,53 +61,39 @@ export function createCreateConfigProposalUseCase(
       });
     }
 
-    const hasVariantChanges = req.proposedVariants && req.proposedVariants.length > 0;
-
-    // TODO: need to check that the variant itself has changes, and update tests
-    // At least one field must be proposed
-    if (
-      req.proposedDelete !== true &&
-      req.proposedDescription === undefined &&
-      req.proposedMembers === undefined &&
-      !hasVariantChanges
-    ) {
-      throw new BadRequestError('At least one field must be proposed');
-    }
-
-    // Deletion proposals must not include other fields
+    // Deletion proposals must not include other changes
     if (req.proposedDelete) {
-      if (req.proposedDescription || req.proposedMembers || hasVariantChanges) {
-        throw new BadRequestError('Deletion proposal cannot include other changes');
+      if (
+        req.description ||
+        req.editorEmails ||
+        req.maintainerEmails ||
+        req.defaultVariant ||
+        req.environmentVariants
+      ) {
+        throw new BadRequestError('Deletion proposals should not include proposed state');
       }
-    }
+    } else {
+      // Non-deletion proposals must provide full state
+      if (
+        req.description === undefined ||
+        req.description === null ||
+        req.editorEmails === undefined ||
+        req.editorEmails === null ||
+        req.maintainerEmails === undefined ||
+        req.maintainerEmails === null ||
+        req.environmentVariants === undefined ||
+        req.environmentVariants === null
+      ) {
+        throw new BadRequestError('Non-deletion proposals must provide full config state');
+      }
 
-    // Validate variant changes
-    if (hasVariantChanges) {
-      for (const variantChange of req.proposedVariants!) {
-        const variant = await tx.configVariants.getById(variantChange.configVariantId);
-        if (!variant) {
-          throw new BadRequestError(`Variant ${variantChange.configVariantId} not found`);
-        }
-        if (variant.configId !== req.configId) {
-          throw new BadRequestError(`Variant does not belong to this config`);
-        }
-        if (variant.version !== variantChange.baseVariantVersion) {
-          throw new BadRequestError(
-            `Variant was edited by another user. Please, refresh the page.`,
-            {code: 'CONFIG_VARIANT_VERSION_MISMATCH'},
-          );
-        }
-        // Ensure at least one change is proposed for this variant
-        if (
-          variantChange.proposedValue === undefined &&
-          variantChange.proposedSchema === undefined &&
-          variantChange.proposedOverrides === undefined
-        ) {
-          throw new BadRequestError(
-            `Variant ${variantChange.configVariantId} must have at least one proposed change`,
-          );
-        }
-      }
+      // Validate the proposed state
+      await tx.configService.validate(ctx, {
+        projectId: config.projectId,
+        description: req.description,
+        defaultVariant: req.defaultVariant,
+        environmentVariants: req.environmentVariants,
+      });
     }
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
@@ -115,61 +102,136 @@ export function createCreateConfigProposalUseCase(
     const configProposalId = createConfigProposalId();
     const currentMembers = await tx.configUsers.getByConfigId(config.id);
 
-    await tx.configProposals.create({
-      id: configProposalId,
-      configId: req.configId,
-      proposerId: currentUser.id,
-      createdAt: deps.dateProvider.now(),
-      rejectedAt: null,
-      approvedAt: null,
-      reviewerId: null,
-      rejectionReason: null,
-      rejectedInFavorOfProposalId: null,
-      baseConfigVersion: config.version,
-      originalMembers: currentMembers.map(m => ({
-        email: m.user_email_normalized,
-        role: m.role,
-      })),
-      originalDescription: config.description,
-      proposedDelete: req.proposedDelete === true,
-      proposedDescription: req.proposedDescription ? req.proposedDescription.newDescription : null,
-      proposedMembers: req.proposedMembers ? {newMembers: req.proposedMembers.newMembers} : null,
-      message: req.message ?? null,
-    });
-
-    // Create variant change entries
-    if (hasVariantChanges) {
-      await tx.configProposals.createVariants(
-        req.proposedVariants!.map(v => ({
-          id: createConfigProposalVariantId(),
-          proposalId: configProposalId,
-          configVariantId: v.configVariantId,
-          baseVariantVersion: v.baseVariantVersion,
-          proposedValue: v.proposedValue?.newValue,
-          proposedSchema: v.proposedSchema?.newSchema,
-          proposedOverrides: v.proposedOverrides?.newOverrides,
+    if (req.proposedDelete) {
+      // Deletion proposal
+      await tx.configProposals.create({
+        id: configProposalId,
+        configId: req.configId,
+        proposerId: currentUser.id,
+        createdAt: deps.dateProvider.now(),
+        rejectedAt: null,
+        approvedAt: null,
+        reviewerId: null,
+        rejectionReason: null,
+        rejectedInFavorOfProposalId: null,
+        baseConfigVersion: config.version,
+        originalMembers: currentMembers.map(m => ({
+          email: m.user_email_normalized,
+          role: m.role,
         })),
-      );
-    }
+        originalDescription: config.description,
+        proposedDelete: true,
+        proposedDescription: null,
+        proposedMembers: null,
+        message: req.message ?? null,
+      });
 
-    await tx.auditLogs.create({
-      id: createAuditLogId(),
-      createdAt: deps.dateProvider.now(),
-      projectId: config.projectId,
-      userId: currentUser.id,
-      configId: config.id,
-      payload: {
-        type: 'config_proposal_created',
-        proposalId: configProposalId,
+      await tx.auditLogs.create({
+        id: createAuditLogId(),
+        createdAt: deps.dateProvider.now(),
+        projectId: config.projectId,
+        userId: currentUser.id,
         configId: config.id,
-        proposedDelete: req.proposedDelete,
-        proposedDescription: req.proposedDescription?.newDescription,
-        proposedMembers: req.proposedMembers
-          ? {newMembers: req.proposedMembers.newMembers}
-          : undefined,
-        message: req.message,
-      },
-    });
+        payload: {
+          type: 'config_proposal_created',
+          proposalId: configProposalId,
+          configId: config.id,
+          proposedDelete: true,
+          proposedDescription: undefined,
+          proposedMembers: undefined,
+          message: req.message,
+        },
+      });
+    } else {
+      // Normal proposal with full proposed state
+      const proposedMembers = [
+        ...req.editorEmails!.map(email => ({email, role: 'editor' as const})),
+        ...req.maintainerEmails!.map(email => ({email, role: 'maintainer' as const})),
+      ];
+
+      await tx.configProposals.create({
+        id: configProposalId,
+        configId: req.configId,
+        proposerId: currentUser.id,
+        createdAt: deps.dateProvider.now(),
+        rejectedAt: null,
+        approvedAt: null,
+        reviewerId: null,
+        rejectionReason: null,
+        rejectedInFavorOfProposalId: null,
+        baseConfigVersion: config.version,
+        originalMembers: currentMembers.map(m => ({
+          email: m.user_email_normalized,
+          role: m.role,
+        })),
+        originalDescription: config.description,
+        proposedDelete: false,
+        proposedDescription: req.description!,
+        proposedMembers: proposedMembers,
+        message: req.message ?? null,
+      });
+
+      // Get all current variants to map them to config_variant_id
+      const currentVariants = await tx.configVariants.getByConfigId(req.configId);
+
+      // Create variant entries for the proposed state
+      const proposalVariants = [];
+
+      // Add default variant if provided
+      if (req.defaultVariant) {
+        const defaultVariant = currentVariants.find(v => v.environmentId === null);
+        if (defaultVariant) {
+          proposalVariants.push({
+            id: createConfigProposalVariantId(),
+            proposalId: configProposalId,
+            configVariantId: defaultVariant.id,
+            environmentId: null,
+            useDefaultSchema: false,
+            proposedValue: req.defaultVariant.value,
+            proposedSchema: req.defaultVariant.schema,
+            proposedOverrides: req.defaultVariant.overrides,
+          });
+        }
+      }
+
+      // Add environment variants
+      for (const envVariant of req.environmentVariants!) {
+        const currentVariant = currentVariants.find(
+          v => v.environmentId === envVariant.environmentId,
+        );
+        if (currentVariant) {
+          proposalVariants.push({
+            id: createConfigProposalVariantId(),
+            proposalId: configProposalId,
+            configVariantId: currentVariant.id,
+            environmentId: envVariant.environmentId,
+            useDefaultSchema: envVariant.useDefaultSchema ?? false,
+            proposedValue: envVariant.value,
+            proposedSchema: envVariant.schema,
+            proposedOverrides: envVariant.overrides,
+          });
+        }
+      }
+
+      await tx.configProposals.createVariants(proposalVariants);
+
+      await tx.auditLogs.create({
+        id: createAuditLogId(),
+        createdAt: deps.dateProvider.now(),
+        projectId: config.projectId,
+        userId: currentUser.id,
+        configId: config.id,
+        payload: {
+          type: 'config_proposal_created',
+          proposalId: configProposalId,
+          configId: config.id,
+          proposedDelete: false,
+          proposedDescription: req.description!,
+          proposedMembers: proposedMembers,
+          message: req.message,
+        },
+      });
+    }
 
     return {
       configProposalId,

@@ -102,59 +102,52 @@ export function createApproveConfigProposalUseCase(
         deleteAuthor: patchAuthor,
         reviewer: currentUser,
         prevVersion: proposal.baseConfigVersion,
+        originalProposalId: proposal.id,
       });
     } else {
-      // Apply config-level changes
-      const hasConfigChanges =
-        proposal.proposedDescription !== null || proposal.proposedMembers !== null;
-      if (hasConfigChanges) {
-        await tx.configService.patchConfig(ctx, {
-          configId: proposal.configId,
-          description:
-            proposal.proposedDescription !== null
-              ? {newDescription: proposal.proposedDescription}
-              : undefined,
-          members: proposal.proposedMembers
-            ? {newMembers: proposal.proposedMembers.newMembers}
-            : undefined,
-          patchAuthor: patchAuthor,
-          reviewer: currentUser,
-          prevVersion: proposal.baseConfigVersion,
-          originalProposalId: proposal.id,
-        });
-      }
+      // Fetch the full proposed state from the proposal
+      const proposalVariants = await tx.configProposals.getVariantsByProposalId(proposal.id);
 
-      // Apply variant-level changes
-      const variantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
-      for (const variantChange of variantChanges) {
-        // Verify variant version hasn't changed
-        const variant = await tx.configVariants.getById(variantChange.configVariantId);
-        assert(variant, `Variant ${variantChange.configVariantId} not found`);
-        assert(
-          variant.version === variantChange.baseVariantVersion,
-          `Variant version mismatch for ${variantChange.configVariantId}`,
-        );
+      // Separate default and environment variants
+      const defaultVariantProposal = proposalVariants.find(v => v.environmentId === null);
+      const environmentVariantProposals = proposalVariants.filter(v => v.environmentId !== null);
 
-        await tx.configService.patchConfigVariant(ctx, {
-          configVariantId: variantChange.configVariantId,
-          value:
-            variantChange.proposedValue !== undefined
-              ? {newValue: variantChange.proposedValue}
-              : undefined,
-          schema:
-            variantChange.proposedSchema !== undefined
-              ? {newSchema: variantChange.proposedSchema}
-              : undefined,
-          overrides:
-            variantChange.proposedOverrides !== undefined
-              ? {newOverrides: variantChange.proposedOverrides}
-              : undefined,
-          patchAuthor: patchAuthor,
-          reviewer: currentUser,
-          prevVersion: variantChange.baseVariantVersion,
-          originalProposalId: proposal.id,
-        });
-      }
+      const defaultVariant = defaultVariantProposal
+        ? {
+            value: defaultVariantProposal.proposedValue,
+            schema: defaultVariantProposal.proposedSchema,
+            overrides: defaultVariantProposal.proposedOverrides ?? [],
+          }
+        : undefined;
+
+      const environmentVariants = environmentVariantProposals.map(v => ({
+        environmentId: v.environmentId!,
+        value: v.proposedValue,
+        schema: v.proposedSchema,
+        overrides: v.proposedOverrides ?? [],
+        useDefaultSchema: v.useDefaultSchema,
+      }));
+
+      // Extract members from proposedMembers
+      const editorEmails =
+        proposal.proposedMembers?.filter(m => m.role === 'editor').map(m => m.email) ??
+        [];
+      const maintainerEmails =
+        proposal.proposedMembers?.filter(m => m.role === 'maintainer').map(m => m.email) ?? [];
+
+      // Apply the full proposed state using updateConfig
+      await tx.configService.updateConfig(ctx, {
+        configId: proposal.configId,
+        description: proposal.proposedDescription ?? config.description,
+        editorEmails,
+        maintainerEmails,
+        defaultVariant,
+        environmentVariants,
+        currentUser: patchAuthor,
+        reviewer: currentUser,
+        prevVersion: proposal.baseConfigVersion,
+        originalProposalId: proposal.id,
+      });
     }
 
     return {};

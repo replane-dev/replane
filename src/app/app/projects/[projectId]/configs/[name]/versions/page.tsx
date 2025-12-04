@@ -134,6 +134,7 @@ export default function ConfigVersionsPage() {
               name={name}
               configId={configInfo.config.id}
               environmentId={variant.environmentId!}
+              currentVersion={configInfo.config.version}
             />
           )}
         </div>

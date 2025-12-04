@@ -11,7 +11,6 @@ export interface ConfigVariant {
   value: unknown;
   schema: unknown | null;
   overrides: Override[];
-  version: number;
   createdAt: Date;
   updatedAt: Date;
   useDefaultSchema: boolean;
@@ -65,7 +64,6 @@ export class ConfigVariantStore {
         'cv.value',
         'cv.schema',
         'cv.overrides',
-        'cv.version',
         'cv.created_at',
         'cv.updated_at',
         'cv.use_default_schema',
@@ -125,7 +123,6 @@ export class ConfigVariantStore {
         value: serializeJson(variant.value),
         schema: serializeJson(variant.schema),
         overrides: serializeJson(variant.overrides),
-        version: variant.version,
         created_at: variant.createdAt,
         updated_at: variant.updatedAt,
         use_default_schema: variant.useDefaultSchema,
@@ -143,12 +140,10 @@ export class ConfigVariantStore {
     value?: unknown;
     schema?: unknown | null;
     overrides?: Override[];
-    version: number;
     updatedAt: Date;
     useDefaultSchema?: boolean;
   }): Promise<void> {
     const updateData: any = {
-      version: params.version,
       updated_at: params.updatedAt,
     };
 
@@ -204,7 +199,6 @@ export class ConfigVariantStore {
     value: string;
     schema: string | null;
     overrides: string;
-    version: number;
     created_at: Date;
     updated_at: Date;
     use_default_schema: boolean;
@@ -216,7 +210,6 @@ export class ConfigVariantStore {
       value: deserializeJson(row.value),
       schema: row.schema ? deserializeJson(row.schema) : null,
       overrides: deserializeJson(row.overrides) ?? [],
-      version: row.version,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       useDefaultSchema: row.use_default_schema,

@@ -251,9 +251,15 @@ describe('Override Reference Validation - Integration Tests', () => {
       const variant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
       assert(variant, 'Production variant should exist');
 
-      await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-        configVariantId: variant.id,
-        overrides: {newOverrides: overrides},
+      await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+        configId,
+        description: 'Config to patch',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: overrides},
+          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        ],
         currentUserEmail: CURRENT_USER_EMAIL,
         prevVersion: 1,
       });
@@ -309,18 +315,30 @@ describe('Override Reference Validation - Integration Tests', () => {
       ];
 
       await expect(
-        fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-          configVariantId: variant.id,
-          overrides: {newOverrides: overrides},
+        fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+          configId,
+          description: 'Config to patch',
+          editorEmails: [],
+          maintainerEmails: [CURRENT_USER_EMAIL],
+          environmentVariants: [
+            {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: overrides},
+            {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          ],
           currentUserEmail: CURRENT_USER_EMAIL,
           prevVersion: 1,
         }),
       ).rejects.toThrow(BadRequestError);
 
       await expect(
-        fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-          configVariantId: variant.id,
-          overrides: {newOverrides: overrides},
+        fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+          configId,
+          description: 'Config to patch',
+          editorEmails: [],
+          maintainerEmails: [CURRENT_USER_EMAIL],
+          environmentVariants: [
+            {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: overrides},
+            {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          ],
           currentUserEmail: CURRENT_USER_EMAIL,
           prevVersion: 1,
         }),

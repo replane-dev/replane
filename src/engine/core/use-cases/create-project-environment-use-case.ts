@@ -93,7 +93,6 @@ export function createCreateProjectEnvironmentUseCase(
         value: sourceVariant.value,
         schema: sourceVariant.schema,
         overrides: sourceVariant.overrides,
-        version: 1,
         createdAt: now,
         updatedAt: now,
         useDefaultSchema: sourceVariant.useDefaultSchema,

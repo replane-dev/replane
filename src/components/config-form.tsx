@@ -17,7 +17,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
 import {Separator} from '@/components/ui/separator';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
@@ -44,7 +43,6 @@ export interface ConfigVariantData {
   value: unknown;
   schema: unknown | null;
   overrides: Override[];
-  version?: number; // undefined for new configs
   useDefaultSchema?: boolean; // Whether to inherit schema from default variant
 }
 
@@ -347,7 +345,9 @@ export function ConfigForm(props: ConfigFormProps) {
       const variant = values.environmentVariants[i];
       if (!variant.enabled) continue; // Skip disabled environments
 
-      const originalVariant = environmentVariants.find(v => v.environmentId === variant.environmentId);
+      const originalVariant = environmentVariants.find(
+        v => v.environmentId === variant.environmentId,
+      );
 
       const payloadValue = JSON.parse(variant.value);
       let parsedSchema: any | null = null;
@@ -398,7 +398,6 @@ export function ConfigForm(props: ConfigFormProps) {
         value: payloadValue,
         schema: parsedSchema,
         overrides: variant.overrides as Override[],
-        version: originalVariant?.version,
         useDefaultSchema: variant.useDefaultSchema,
       });
     }
@@ -659,8 +658,8 @@ export function ConfigForm(props: ConfigFormProps) {
               </TooltipTrigger>
               <TooltipContent className="max-w-sm">
                 <p>
-                  Enable an environment to customize its configuration. Disabled environments
-                  will use the base configuration below.
+                  Enable an environment to customize its configuration. Disabled environments will
+                  use the base configuration below.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -784,9 +783,7 @@ export function ConfigForm(props: ConfigFormProps) {
             </div>
             <div>
               <h3 className="text-lg font-semibold">Base Configuration</h3>
-              <p className="text-sm text-muted-foreground">
-                The foundation for all environments
-              </p>
+              <p className="text-sm text-muted-foreground">The foundation for all environments</p>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>

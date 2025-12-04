@@ -91,14 +91,24 @@ describe('Get Config For API Use Case', () => {
     const productionVariant = variants.find(
       v => v.environmentId === fixture.productionEnvironmentId,
     );
+    const developmentVariant = variants.find(
+      v => v.environmentId === fixture.developmentEnvironmentId,
+    );
     assert(productionVariant, 'Production variant should exist');
+    assert(developmentVariant, 'Development variant should exist');
 
-    // Patch the config variant (value is now on variant)
-    await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-      configVariantId: productionVariant.id,
-      prevVersion: 1,
-      value: {newValue: {count: 2}},
+    // Update the config (value is now {count: 2} for production)
+    await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+      configId,
+      description: 'Test config',
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      environmentVariants: [
+        {environmentId: fixture.productionEnvironmentId, value: {count: 2}, schema: null, overrides: []},
+        {environmentId: fixture.developmentEnvironmentId, value: {count: 1}, schema: null, overrides: []},
+      ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      prevVersion: 1,
     });
 
     await sleep(50);

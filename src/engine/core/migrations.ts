@@ -1067,6 +1067,30 @@ export const migrations: Migration[] = [
       ALTER TABLE config_variants ADD COLUMN use_default_schema BOOLEAN NOT NULL DEFAULT FALSE;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Remove version column from config_variants
+      -- Versioning is now tracked at the config level, not variant level
+      -- This simplifies the data model and ensures all variants share the same version
+      ALTER TABLE config_variants DROP COLUMN version;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Update config_proposal_variants to support full-state proposals
+      -- Delete all existing proposals (old diff-based proposals are incompatible)
+      DELETE FROM config_proposals;
+
+      -- Remove base_variant_version (use config version instead)
+      ALTER TABLE config_proposal_variants DROP COLUMN base_variant_version;
+
+      -- Add environment_id to support default variants in proposals
+      ALTER TABLE config_proposal_variants ADD COLUMN environment_id UUID NULL;
+
+      -- Add use_default_schema to support schema inheritance in proposals
+      ALTER TABLE config_proposal_variants ADD COLUMN use_default_schema BOOLEAN NOT NULL DEFAULT FALSE;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

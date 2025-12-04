@@ -771,7 +771,7 @@ describe('Override Evaluation', () => {
       expect(regularResult.value).toEqual({maxItems: 10});
     });
 
-    it('should update overrides via patchConfigVariant', async () => {
+    it('should update overrides via updateConfig', async () => {
       const {configId} = await fixture.createConfig({
         name: 'feature_flag',
         value: false,
@@ -806,9 +806,15 @@ describe('Override Evaluation', () => {
         },
       ];
 
-      await fixture.engine.useCases.patchConfigVariant(GLOBAL_CONTEXT, {
-        configVariantId: productionVariant.id,
-        overrides: {newOverrides},
+      await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+        configId,
+        description: 'Feature flag',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL],
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: false, schema: null, overrides: newOverrides},
+          {environmentId: fixture.developmentEnvironmentId, value: false, schema: null, overrides: []},
+        ],
         currentUserEmail: CURRENT_USER_EMAIL,
         prevVersion: 1,
       });

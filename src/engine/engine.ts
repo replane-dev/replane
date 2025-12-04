@@ -71,13 +71,12 @@ import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-c
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
-import {createPatchConfigUseCase} from './core/use-cases/patch-config-use-case';
-import {createPatchConfigVariantUseCase} from './core/use-cases/patch-config-variant-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
 import {createRemoveWorkspaceMemberUseCase} from './core/use-cases/remove-workspace-member-use-case';
-import {createRestoreConfigVariantVersionUseCase} from './core/use-cases/restore-config-variant-version-use-case';
+import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
+import {createUpdateConfigUseCase} from './core/use-cases/update-config-use-case';
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
@@ -251,10 +250,7 @@ export async function createEngine(options: EngineOptions) {
     rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
-    patchConfig: createPatchConfigUseCase({dateProvider}),
-    patchConfigVariant: createPatchConfigVariantUseCase({
-      dateProvider,
-    }),
+    updateConfig: createUpdateConfigUseCase(),
     getConfig: createGetConfigUseCase({}),
     deleteConfig: createDeleteConfigUseCase({}),
     getConfigVariantVersionList: createGetConfigVariantVersionListUseCase(),
@@ -274,7 +270,7 @@ export async function createEngine(options: EngineOptions) {
     updateProjectEnvironment: createUpdateProjectEnvironmentUseCase({dateProvider}),
     updateProjectEnvironmentsOrder: createUpdateProjectEnvironmentsOrderUseCase({dateProvider}),
     deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
-    restoreConfigVariantVersion: createRestoreConfigVariantVersionUseCase({dateProvider}),
+    restoreConfigVersion: createRestoreConfigVersionUseCase(),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
     // Workspace use cases
     createWorkspace: createCreateWorkspaceUseCase(),

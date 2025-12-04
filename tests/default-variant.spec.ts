@@ -605,18 +605,22 @@ describe('Default Variant', () => {
       });
       const configId = beforeConfig!.config.id;
 
-      // Patch the production variant to use default schema
-      await fixture.trpc.patchConfig({
+      // Update the production variant to use default schema
+      await fixture.trpc.updateConfig({
         configId,
-        prevVersion: beforeConfig!.config.version,
-        variants: [
-          {
-            configVariantId: prodVariantId!,
-            prevVersion: 1,
-            value: {newValue: {count: 500}}, // Valid against default schema
-            useDefaultSchema: true,
-          },
+        description: 'Test patch schema inheritance',
+        editorEmails: [],
+        maintainerEmails: [],
+        defaultVariant: {
+          value: {count: 100},
+          schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+          overrides: [],
+        },
+        environmentVariants: [
+          {environmentId: fixture.productionEnvironmentId, value: {count: 500}, schema: null, overrides: [], useDefaultSchema: true},
+          {environmentId: fixture.developmentEnvironmentId, value: {count: 300}, schema: null, overrides: []},
         ],
+        prevVersion: beforeConfig!.config.version,
       });
 
       const {config: afterConfig} = await fixture.trpc.getConfig({
@@ -671,19 +675,23 @@ describe('Default Variant', () => {
       });
       const configId = config!.config.id;
 
-      // Try to patch with invalid value (count should be number but is string)
+      // Try to update with invalid value (count should be number but is string)
       await expect(
-        fixture.trpc.patchConfig({
+        fixture.trpc.updateConfig({
           configId,
-          prevVersion: config!.config.version,
-          variants: [
-            {
-              configVariantId: prodVariantId!,
-              prevVersion: 1,
-              value: {newValue: {count: 'not-a-number'}}, // Invalid
-              useDefaultSchema: true,
-            },
+          description: 'Test patch schema inheritance failure',
+          editorEmails: [],
+          maintainerEmails: [],
+          defaultVariant: {
+            value: {count: 100},
+            schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+            overrides: [],
+          },
+          environmentVariants: [
+            {environmentId: fixture.productionEnvironmentId, value: {count: 'not-a-number'}, schema: null, overrides: [], useDefaultSchema: true},
+            {environmentId: fixture.developmentEnvironmentId, value: {count: 300}, schema: null, overrides: []},
           ],
+          prevVersion: config!.config.version,
         }),
       ).rejects.toThrow(/does not match schema/);
     });
@@ -723,21 +731,20 @@ describe('Default Variant', () => {
       });
       const configId = config!.config.id;
 
-      // Try to patch with useDefaultSchema when no default exists
+      // Try to update with useDefaultSchema when no default exists
       await expect(
-        fixture.trpc.patchConfig({
+        fixture.trpc.updateConfig({
           configId,
-          prevVersion: config!.config.version,
-          variants: [
-            {
-              configVariantId: prodVariantId!,
-              prevVersion: 1,
-              value: {newValue: {key: 'updated'}},
-              useDefaultSchema: true,
-            },
+          description: 'Test patch without default',
+          editorEmails: [],
+          maintainerEmails: [],
+          environmentVariants: [
+            {environmentId: fixture.productionEnvironmentId, value: {key: 'updated'}, schema: null, overrides: [], useDefaultSchema: true},
+            {environmentId: fixture.developmentEnvironmentId, value: {key: 'dev'}, schema: null, overrides: []},
           ],
+          prevVersion: config!.config.version,
         }),
-      ).rejects.toThrow(/no default variant exists/);
+      ).rejects.toThrow(/no default variant/);
     });
   });
 });

@@ -35,7 +35,7 @@ export function ConfigProposal() {
     originalDescription: z.string(),
     proposedDelete: z.boolean(),
     proposedDescription: z.string().nullable(),
-    proposedMembers: z.object({newMembers: z.array(ConfigMember())}).nullable(),
+    proposedMembers: z.array(ConfigMember()).nullable(),
     message: z.string().nullable(),
   });
 }
@@ -68,11 +68,12 @@ export interface ConfigProposalVariant {
   id: string;
   proposalId: string;
   configVariantId: string;
-  baseVariantVersion: number;
+  environmentId: string | null;
   // undefined = no change proposed, null = explicitly set to null, value = set to value
   proposedValue: unknown | undefined;
   proposedSchema: unknown | undefined;
   proposedOverrides: Override[] | undefined;
+  useDefaultSchema: boolean;
 }
 
 export interface ConfigProposalVariantWithEnvironment extends ConfigProposalVariant {
@@ -375,7 +376,8 @@ export class ConfigProposalStore {
         id: variant.id,
         proposal_id: variant.proposalId,
         config_variant_id: variant.configVariantId,
-        base_variant_version: variant.baseVariantVersion,
+        environment_id: variant.environmentId,
+        use_default_schema: variant.useDefaultSchema,
         proposed_value:
           variant.proposedValue !== undefined ? serializeJson(variant.proposedValue) : null,
         proposed_schema:
@@ -396,7 +398,8 @@ export class ConfigProposalStore {
           id: variant.id,
           proposal_id: variant.proposalId,
           config_variant_id: variant.configVariantId,
-          base_variant_version: variant.baseVariantVersion,
+          environment_id: variant.environmentId,
+          use_default_schema: variant.useDefaultSchema,
           proposed_value:
             variant.proposedValue !== undefined ? serializeJson(variant.proposedValue) : null,
           proposed_schema:
@@ -416,16 +419,16 @@ export class ConfigProposalStore {
     const rows = await this.db
       .selectFrom('config_proposal_variants as cpv')
       .innerJoin('config_variants as cv', 'cv.id', 'cpv.config_variant_id')
-      .innerJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
+      .leftJoin('project_environments as pe', 'pe.id', 'cpv.environment_id')
       .select([
         'cpv.id',
         'cpv.proposal_id',
         'cpv.config_variant_id',
-        'cpv.base_variant_version',
+        'cpv.environment_id',
+        'cpv.use_default_schema',
         'cpv.proposed_value',
         'cpv.proposed_schema',
         'cpv.proposed_overrides',
-        'pe.id as environment_id',
         'pe.name as environment_name',
       ])
       .where('cpv.proposal_id', '=', proposalId)
@@ -435,7 +438,8 @@ export class ConfigProposalStore {
       id: row.id,
       proposalId: row.proposal_id,
       configVariantId: row.config_variant_id,
-      baseVariantVersion: row.base_variant_version,
+      environmentId: row.environment_id,
+      useDefaultSchema: row.use_default_schema,
       proposedValue: row.proposed_value !== null ? deserializeJson(row.proposed_value) : undefined,
       proposedSchema:
         row.proposed_schema !== null ? deserializeJson(row.proposed_schema) : undefined,
@@ -443,9 +447,8 @@ export class ConfigProposalStore {
         row.proposed_overrides !== null
           ? deserializeJson<Override[]>(row.proposed_overrides)!
           : undefined,
-      environmentId: row.environment_id,
-      environmentName: row.environment_name,
-    }));
+      environmentName: row.environment_name ?? '',
+    })) as ConfigProposalVariantWithEnvironment[];
   }
 
   async getVariantByProposalIdAndConfigVariantId(
@@ -465,7 +468,8 @@ export class ConfigProposalStore {
       id: row.id,
       proposalId: row.proposal_id,
       configVariantId: row.config_variant_id,
-      baseVariantVersion: row.base_variant_version,
+      environmentId: row.environment_id,
+      useDefaultSchema: row.use_default_schema,
       proposedValue: row.proposed_value !== null ? deserializeJson(row.proposed_value) : undefined,
       proposedSchema:
         row.proposed_schema !== null ? deserializeJson(row.proposed_schema) : undefined,
