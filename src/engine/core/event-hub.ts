@@ -1,10 +1,13 @@
 import {Kysely} from 'kysely';
+import {
+  REPLICA_CLEANUP_FREQUENCY,
+  REPLICA_LAST_USED_AT_CUTOFF_MS,
+  REPLICA_LAST_USED_AT_REPORT_FREQUENCY,
+} from './constants';
 import type {Context} from './context';
 import type {DateProvider} from './date-provider';
 import type {DB} from './db';
 import type {Logger} from './logger';
-
-const CLEANUP_FREQUENCY = 128;
 
 // error for consumer destroyed by the user
 export class ConsumerDestroyedError extends Error {
@@ -51,7 +54,7 @@ export class EventHub<T> {
 }
 
 export class EventHubPublisher<T> {
-  private static cleanupCounter = CLEANUP_FREQUENCY; // so that the first cleanup happens immediately
+  private static cleanupCounter = REPLICA_CLEANUP_FREQUENCY; // so that the first cleanup happens immediately
 
   constructor(
     private readonly db: Kysely<DB>,
@@ -61,7 +64,7 @@ export class EventHubPublisher<T> {
 
   async pushEvent(ctx: Context, event: T) {
     EventHubPublisher.cleanupCounter++;
-    if (EventHubPublisher.cleanupCounter >= CLEANUP_FREQUENCY) {
+    if (EventHubPublisher.cleanupCounter >= REPLICA_CLEANUP_FREQUENCY) {
       EventHubPublisher.cleanupCounter = 0;
 
       await this.cleanupOldConsumers(ctx);
@@ -82,7 +85,7 @@ export class EventHubPublisher<T> {
   }
 
   private async cleanupOldConsumers(ctx: Context) {
-    const cutoff = new Date(this.dateProvider.now().getTime() - 24 * 60 * 60 * 1000);
+    const cutoff = new Date(this.dateProvider.now().getTime() - REPLICA_LAST_USED_AT_CUTOFF_MS);
 
     const consumers = await this.db
       .deleteFrom('event_consumers')
@@ -103,6 +106,7 @@ export interface Event {
 
 export class EventHubConsumer<T> {
   private isDestroyed = false;
+  private reportCounter = REPLICA_LAST_USED_AT_REPORT_FREQUENCY; // so that the first report happens immediately
 
   constructor(
     private readonly db: Kysely<DB>,
@@ -133,6 +137,20 @@ export class EventHubConsumer<T> {
       .limit(count)
       .execute();
 
+    this.reportCounter++;
+    if (this.reportCounter >= REPLICA_LAST_USED_AT_REPORT_FREQUENCY) {
+      this.reportCounter = 0;
+
+      await this.reportLastUsedAt();
+    }
+
+    return events.map(event => ({
+      id: event.id,
+      data: JSON.parse(event.data) as T,
+    }));
+  }
+
+  private async reportLastUsedAt() {
     const consumers = await this.db
       .updateTable('event_consumers')
       .set({
@@ -145,11 +163,6 @@ export class EventHubConsumer<T> {
     if (consumers.length !== 1) {
       throw new ConsumerDestroyedError(`Consumer ${this.consumerId} is destroyed`);
     }
-
-    return events.map(event => ({
-      id: event.id,
-      data: JSON.parse(event.data) as T,
-    }));
   }
 
   async ackEvents(eventIds: string[]) {

@@ -1,10 +1,16 @@
 import type {Observable, Observer} from './observable';
 
+export type Unsub = () => void;
+
 export class Subject<T> implements Observable<T> {
   private observers: Set<Observer<T>> = new Set();
   private isCompleted: boolean = false;
 
-  subscribe(observer: Observer<T>): () => void {
+  get observersCount(): number {
+    return this.observers.size;
+  }
+
+  subscribe(observer: Observer<T>): Unsub {
     this.ensureNotCompleted();
 
     // Wrap the observer to create a unique reference

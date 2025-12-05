@@ -1,14 +1,18 @@
 import type {Kysely} from 'kysely';
-import {REPLICA_STEP_EVENTS_COUNT, REPLICA_STEP_INTERVAL_MS} from './constants';
+import {
+  REPLICA_CONFIGS_DUMP_BATCH_SIZE,
+  REPLICA_STEP_EVENTS_COUNT,
+  REPLICA_STEP_INTERVAL_MS,
+} from './constants';
 import {GLOBAL_CONTEXT, type Context} from './context';
 import type {DB} from './db';
 import {ConsumerDestroyedError, type EventHub, type EventHubConsumer} from './event-hub';
 import type {Logger} from './logger';
 import type {Override, RenderedOverride} from './override-condition-schemas';
 import {renderOverrides} from './override-evaluator';
+import type {ReplicaEventBus} from './replica-event-bus';
 import type {Service} from './service';
 import {ReplicaStore, type ConfigReplica, type ConfigVariantReplica} from './stores/replica-store';
-import type {Subject} from './subject';
 import {assertNever, chunkArray, groupBy, wait} from './utils';
 
 export type ReplicaEvent =
@@ -47,10 +51,11 @@ export class Replica {
   static async create(
     db: Kysely<DB>,
     replicaStore: ReplicaStore,
+
     hub: EventHub<ConfigChangeEvent>,
     logger: Logger,
     onFatalError: (error: unknown) => void,
-    replicaEvents: Subject<ReplicaEvent>,
+    replicaEvents: ReplicaEventBus,
   ): Promise<Replica> {
     const consumerId = replicaStore.getConsumerId();
 
@@ -70,8 +75,8 @@ export class Replica {
     replicaStore.insertConsumerId(consumer.consumerId);
 
     // dump configs to the replica store
-    for await (const config of dumpConfigs({db})) {
-      replicaStore.upsertConfigs(config);
+    for await (const configs of dumpConfigs({db})) {
+      replicaStore.upsertConfigs(configs);
     }
 
     return new Replica(db, replicaStore, logger, consumer, onFatalError, replicaEvents);
@@ -85,7 +90,7 @@ export class Replica {
     private readonly logger: Logger,
     private readonly hub: EventHubConsumer<ConfigChangeEvent>,
     private readonly onFatalError: (error: unknown) => void,
-    private readonly replicaEvents: Subject<ReplicaEvent>,
+    private readonly replicaEvents: ReplicaEventBus,
   ) {
     void this.loop().catch(this.onFatalError);
   }
@@ -189,11 +194,11 @@ export class Replica {
       const result = upsertResults[i];
 
       if (result === 'created') {
-        this.replicaEvents.next({type: 'config_created', config: configs[i]});
+        this.replicaEvents.next(configs[i].projectId, {type: 'config_created', config: configs[i]});
       } else if (result === 'updated') {
-        this.replicaEvents.next({type: 'config_updated', config: configs[i]});
+        this.replicaEvents.next(configs[i].projectId, {type: 'config_updated', config: configs[i]});
       } else if (result === 'ignored') {
-        continue;
+        // do nothing
       } else {
         assertNever(result, 'Unknown upsert result');
       }
@@ -206,9 +211,9 @@ export class Replica {
       if (config) continue; // already upserted
 
       const toBeDeleted = this.replicaStore.getConfigById(event.data.configId);
-      if (!toBeDeleted) continue;
+      if (!toBeDeleted) continue; // already deleted
 
-      this.replicaEvents.next({
+      this.replicaEvents.next(toBeDeleted.projectId, {
         type: 'config_deleted',
         config: {
           configId: toBeDeleted.id,
@@ -236,7 +241,7 @@ export class Replica {
 async function* dumpConfigs(params: {db: Kysely<DB>}): AsyncGenerator<ConfigReplica[]> {
   const configIds = await params.db.selectFrom('configs').select('id').execute();
 
-  for (const batch of chunkArray(configIds, 100)) {
+  for (const batch of chunkArray(configIds, REPLICA_CONFIGS_DUMP_BATCH_SIZE)) {
     yield await getReplicaConfigs({db: params.db, configIds: batch.map(c => c.id)});
   }
 }
@@ -301,7 +306,7 @@ export class ReplicaService implements Service {
     private readonly hub: EventHub<ConfigChangeEvent>,
     private readonly logger: Logger,
     private readonly onFatalError: (error: unknown) => void,
-    private readonly replicaEvents: Subject<ReplicaEvent>,
+    private readonly replicaEvents: ReplicaEventBus,
   ) {}
 
   async getConfig(params: {

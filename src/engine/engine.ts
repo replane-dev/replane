@@ -13,7 +13,8 @@ import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
-import {type ReplicaEvent, ReplicaService} from './core/replica';
+import {ReplicaService} from './core/replica';
+import {ReplicaEventBus} from './core/replica-event-bus';
 import type {Service} from './core/service';
 import {AuditLogStore} from './core/stores/audit-log-store';
 import {ConfigProposalStore} from './core/stores/config-proposal-store';
@@ -28,7 +29,6 @@ import {ReplicaStore} from './core/stores/replica-store';
 import {SdkKeyStore} from './core/stores/sdk-key-store';
 import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
 import {WorkspaceStore} from './core/stores/workspace-store';
-import {Subject} from './core/subject';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
 import {createAddWorkspaceMemberUseCase} from './core/use-cases/add-workspace-member-use-case';
@@ -191,18 +191,22 @@ export async function createEngine(options: EngineOptions) {
 
   const apiTokenService = new ApiTokenService(db, tokenHasher);
 
-  const replicaEventsSubject = new Subject<ReplicaEvent>();
+  const replicaEventsBus = new ReplicaEventBus();
 
+  // TODO: support WAL mode for SQLite
+  // TODO: pragma journal_mode = WAL;
+  // TODO: pragma synchronous = NORMAL; // NORMAL loses durability on power loss, FULL doesn't
+  // TODO: pragma cache_size = -131072; // 128MB=131072, 256MB=262144, 512MB=524288
   const replicaService = new ReplicaService(
     db,
-    ReplicaStore.create(new BetterSqlite3(':memory:')), // TODO: support WAL mode for SQLite
+    ReplicaStore.create(new BetterSqlite3(':memory:')),
     new EventHub(db, dateProvider),
     logger,
     error => {
       logger.error(GLOBAL_CONTEXT, {msg: 'Replica fatal error', error});
       options.onFatalError?.(error);
     },
-    replicaEventsSubject,
+    replicaEventsBus,
   );
 
   const services: Service[] = [apiTokenService, replicaService];
@@ -278,7 +282,7 @@ export async function createEngine(options: EngineOptions) {
       getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
       getHealth: createGetHealthUseCase(),
       getProjectEvents: createGetProjectEventsUseCase({
-        replicaEventsObservable: replicaEventsSubject,
+        replicaEventsBus: replicaEventsBus,
         replicaService: replicaService,
       }),
     },

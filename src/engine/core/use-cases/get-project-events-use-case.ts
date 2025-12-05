@@ -1,8 +1,8 @@
 import {Channel} from 'async-channel';
 import type {Context} from '../context';
-import type {Observable} from '../observable';
 import type {RenderedOverride} from '../override-condition-schemas';
 import type {ReplicaEvent, ReplicaService} from '../replica';
+import type {ReplicaEventBus} from '../replica-event-bus';
 import {assertNever} from '../utils';
 
 export interface GetProjectEventsRequest {
@@ -29,7 +29,7 @@ export type ProjectEvent =
   | {type: 'config_deleted'; configName: string; version: number};
 
 export interface GetProjectEventsUseCaseDeps {
-  replicaEventsObservable: Observable<ReplicaEvent>;
+  replicaEventsBus: ReplicaEventBus;
   replicaService: ReplicaService;
 }
 
@@ -42,7 +42,7 @@ export function createGetProjectEventsUseCase(
 
     const channel = new Channel<ReplicaEvent>();
 
-    const unsubscribe = deps.replicaEventsObservable.subscribe({
+    const unsubscribe = deps.replicaEventsBus.subscribe(request.projectId, {
       next: (event: ReplicaEvent) => {
         channel.push(event);
       },

@@ -12,7 +12,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should yield events for the specified project', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
@@ -82,7 +82,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should filter out events from other projects', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
@@ -144,7 +144,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should yield all event types', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
@@ -231,7 +231,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should unsubscribe when iterator is disposed', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
@@ -290,7 +290,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should handle multiple events in quick succession', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
@@ -368,7 +368,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should handle events queued before iteration starts', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
@@ -410,7 +410,7 @@ describe('GetProjectEventsUseCase', () => {
   it('should handle return() to cleanup resources', async () => {
     const subject = new Subject<ConfigReplicaEvent>();
     const useCase = createGetProjectEventsUseCase({
-      replicaEventsObservable: subject,
+      replicaEventsBus: subject,
     });
 
     const projectId = 'proj-1';
