@@ -1,5 +1,9 @@
 import {Lazy} from '@/engine/core/lazy';
-import {ensureDefined, joinUndefined} from './core/utils';
+import {ENGINE_STOP_TIMEOUT_MS} from './core/constants';
+import {GLOBAL_CONTEXT} from './core/context';
+import {createLogger} from './core/logger';
+import {stopAllPools} from './core/pg-pool-cache';
+import {ensureDefined, joinUndefined, wait} from './core/utils';
 import {createEngine, type Engine} from './engine';
 
 export const getDatabaseUrl = () =>
@@ -22,11 +26,30 @@ export const getDatabaseUrl = () =>
 
 // Shared singleton so TRPC and Hono reuse the same engine instance per process.
 export const engineLazy = new Lazy(async () => {
-  return await createEngine({
+  const logger = createLogger({level: 'info'});
+
+  const engine = await createEngine({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
+    onFatalError: async error => {
+      logger.error(GLOBAL_CONTEXT, {msg: 'Engine fatal error', error});
+      await Promise.race([
+        (async () => {
+          await engine.stop();
+          await stopAllPools();
+        })(),
+        wait(ENGINE_STOP_TIMEOUT_MS).then(() => {
+          logger.error(GLOBAL_CONTEXT, {msg: 'Engine stop timeout after fatal error'});
+          process.exit(1);
+        }),
+      ]);
+
+      process.exit(1);
+    },
   });
+
+  return engine;
 });
 
 export async function getEngineSingleton(): Promise<Engine> {

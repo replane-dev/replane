@@ -9,3 +9,5 @@ export const REPLICA_LAST_USED_AT_REPORT_FREQUENCY = Math.floor(
 ); // every Nth pull of events we report the last used at
 export const REPLICA_STEP_EVENTS_COUNT = 1000;
 export const REPLICA_CONFIGS_DUMP_BATCH_SIZE = 1000;
+
+export const ENGINE_STOP_TIMEOUT_MS = 10 * 1000;

@@ -4,7 +4,6 @@ import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evalu
 import {normalizeEmail} from '@/engine/core/utils';
 import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -24,7 +23,11 @@ type ConfigForEvaluation = {
 
 // Helper to evaluate config with rendering
 async function evaluate(config: ConfigForEvaluation, context: Record<string, unknown>) {
-  const rendered = await renderOverrides(config.overrides, () => Promise.resolve(undefined));
+  const rendered = await renderOverrides({
+    overrides: config.overrides,
+    configResolver: () => Promise.resolve(undefined),
+    environmentId: 'production',
+  });
   return evaluateConfigValue({value: config.value, overrides: rendered}, context);
 }
 
@@ -47,7 +50,7 @@ describe('Override Evaluation', () => {
                 value: lit('100'), // String in rule
               },
             ],
-            value: 1000,
+            value: lit(1000),
           },
         ],
       };
@@ -70,7 +73,7 @@ describe('Override Evaluation', () => {
                 value: lit(200), // Number in rule
               },
             ],
-            value: 'success',
+            value: lit('success'),
           },
         ],
       };
@@ -93,7 +96,7 @@ describe('Override Evaluation', () => {
                 value: lit('true'), // String in rule
               },
             ],
-            value: 'enabled',
+            value: lit('enabled'),
           },
         ],
       };
@@ -118,7 +121,7 @@ describe('Override Evaluation', () => {
                 value: lit('US'),
               },
             ],
-            value: 'us-value',
+            value: lit('us-value'),
           },
         ],
       };
@@ -142,7 +145,7 @@ describe('Override Evaluation', () => {
                 value: lit(['CN', 'RU', 'KP']),
               },
             ],
-            value: 'allowed',
+            value: lit('allowed'),
           },
         ],
       };
@@ -166,7 +169,7 @@ describe('Override Evaluation', () => {
                 value: lit(30),
               },
             ],
-            value: 5,
+            value: lit(5),
           },
         ],
       };
@@ -191,7 +194,7 @@ describe('Override Evaluation', () => {
                 value: lit(100),
               },
             ],
-            value: 'ok',
+            value: lit('ok'),
           },
         ],
       };
@@ -216,7 +219,7 @@ describe('Override Evaluation', () => {
                 value: lit(700),
               },
             ],
-            value: 'premium',
+            value: lit('premium'),
           },
         ],
       };
@@ -241,7 +244,7 @@ describe('Override Evaluation', () => {
                 value: lit(18),
               },
             ],
-            value: 'adult',
+            value: lit('adult'),
           },
         ],
       };
@@ -279,7 +282,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: 'vip-premium',
+            value: lit('vip-premium'),
           },
         ],
       };
@@ -318,7 +321,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: 'admin-access',
+            value: lit('admin-access'),
           },
         ],
       };
@@ -352,7 +355,7 @@ describe('Override Evaluation', () => {
                 },
               },
             ],
-            value: 'active',
+            value: lit('active'),
           },
         ],
       };
@@ -398,7 +401,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: 'special',
+            value: lit('special'),
           },
         ],
       };
@@ -441,7 +444,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: 'vip-premium',
+            value: lit('vip-premium'),
           },
         ],
       };
@@ -479,7 +482,7 @@ describe('Override Evaluation', () => {
                 value: lit('admin@example.com'),
               },
             ],
-            value: 'admin-override',
+            value: lit('admin-override'),
           },
           {
             name: 'Premium',
@@ -491,7 +494,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: 'premium-override',
+            value: lit('premium-override'),
           },
         ],
       };
@@ -549,7 +552,7 @@ describe('Override Evaluation', () => {
                 value: lit('US'),
               },
             ],
-            value: 'override',
+            value: lit('override'),
           },
         ],
       };
@@ -575,7 +578,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: 'premium-value',
+            value: lit('premium-value'),
           },
         ],
       };
@@ -605,7 +608,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: 'premium-value',
+            value: lit('premium-value'),
           },
         ],
       };
@@ -645,7 +648,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: 'special',
+            value: lit('special'),
           },
         ],
       };
@@ -680,7 +683,7 @@ describe('Override Evaluation', () => {
                 value: lit('100'), // String
               },
             ],
-            value: 'matched',
+            value: lit('matched'),
           },
         ],
       };
@@ -705,7 +708,7 @@ describe('Override Evaluation', () => {
               value: lit('vip@example.com'),
             },
           ],
-          value: {maxItems: 100},
+          value: lit({maxItems: 100}),
         },
         {
           name: 'Premium Tier',
@@ -717,13 +720,13 @@ describe('Override Evaluation', () => {
               value: lit('premium'),
             },
           ],
-          value: {maxItems: 50},
+          value: lit({maxItems: 50}),
         },
       ];
 
       await fixture.createConfig({
         name: 'max_items_config',
-        value: {maxItems: 10},
+        value: lit({maxItems: 10}),
         schema: null,
         overrides,
         description: 'Config with overrides',
@@ -802,7 +805,7 @@ describe('Override Evaluation', () => {
               value: lit(true),
             },
           ],
-          value: true,
+          value: lit(true),
         },
       ];
 
@@ -812,8 +815,18 @@ describe('Override Evaluation', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: false, schema: null, overrides: newOverrides},
-          {environmentId: fixture.developmentEnvironmentId, value: false, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: false,
+            schema: null,
+            overrides: newOverrides,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: false,
+            schema: null,
+            overrides: [],
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
         prevVersion: 1,
@@ -851,7 +864,7 @@ describe('Override Evaluation', () => {
               value: lit('18'), // String in rule
             },
           ],
-          value: {access: 'adult'},
+          value: lit({access: 'adult'}),
         },
       ];
 

@@ -40,7 +40,7 @@ describe('validateOverrideReferences', () => {
             value: {type: 'literal', value: 'premium'},
           },
         ],
-        value: {enabled: true},
+        value: {type: 'literal', value: true},
       },
     ];
 
@@ -68,7 +68,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {maxItems: 1000},
+        value: {type: 'literal', value: 1000},
       },
     ];
 
@@ -96,7 +96,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {maxItems: 1000},
+        value: {type: 'literal', value: 1000},
       },
     ];
 
@@ -145,7 +145,7 @@ describe('validateOverrideReferences', () => {
             ],
           },
         ],
-        value: {feature: true},
+        value: {type: 'literal', value: true},
       },
     ];
 
@@ -176,7 +176,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {allowed: true},
+        value: {type: 'literal', value: true},
       },
     ];
 
@@ -204,7 +204,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {x: 1},
+        value: {type: 'literal', value: 1},
       },
       {
         name: 'Second Override',
@@ -220,7 +220,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {x: 2},
+        value: {type: 'literal', value: 2},
       },
     ];
 
@@ -253,7 +253,7 @@ describe('validateOverrideReferences', () => {
             seed: 'experiment-1',
           },
         ],
-        value: {variant: 'b'},
+        value: {type: 'literal', value: 'b'},
       },
     ];
 
@@ -296,7 +296,7 @@ describe('validateOverrideReferences', () => {
             ],
           },
         ],
-        value: {access: true},
+        value: {type: 'literal', value: true},
       },
     ];
 

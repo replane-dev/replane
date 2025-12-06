@@ -204,7 +204,7 @@ export async function createEngine(options: EngineOptions) {
     logger,
     error => {
       logger.error(GLOBAL_CONTEXT, {msg: 'Replica fatal error', error});
-      options.onFatalError?.(error);
+      options.onFatalError(error);
     },
     replicaEventsBus,
   );

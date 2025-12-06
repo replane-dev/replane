@@ -48,3 +48,9 @@ export function getPgPool(databaseUrl: string) {
 
   return [poolCache.get(databaseUrl)!, free] as const;
 }
+
+export async function stopAllPools() {
+  await Promise.all(Array.from(poolCache.values()).map(pool => pool.end()));
+  poolCache.clear();
+  poolCounter.clear();
+}

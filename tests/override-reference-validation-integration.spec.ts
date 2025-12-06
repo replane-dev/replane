@@ -4,7 +4,6 @@ import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
 import {normalizeEmail} from '../src/engine/core/utils';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -75,7 +74,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {maxItems: 1000},
+          value: {type: 'literal', value: {maxItems: 1000}},
         },
       ];
 
@@ -119,7 +118,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {allowed: true},
+          value: {type: 'literal', value: {allowed: true}},
         },
       ];
 
@@ -178,7 +177,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               ],
             },
           ],
-          value: {feature: true},
+          value: {type: 'literal', value: {feature: true}},
         },
       ];
 
@@ -242,7 +241,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {enabled: true},
+          value: {type: 'literal', value: {enabled: true}},
         },
       ];
 
@@ -257,8 +256,18 @@ describe('Override Reference Validation - Integration Tests', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: overrides},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: {enabled: false},
+            schema: null,
+            overrides: overrides,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: {enabled: false},
+            schema: null,
+            overrides: [],
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
         prevVersion: 1,
@@ -310,7 +319,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {enabled: true},
+          value: {type: 'literal', value: {enabled: true}},
         },
       ];
 
@@ -321,8 +330,18 @@ describe('Override Reference Validation - Integration Tests', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           environmentVariants: [
-            {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: overrides},
-            {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: {enabled: false},
+              schema: null,
+              overrides: overrides,
+            },
+            {
+              environmentId: fixture.developmentEnvironmentId,
+              value: {enabled: false},
+              schema: null,
+              overrides: [],
+            },
           ],
           currentUserEmail: CURRENT_USER_EMAIL,
           prevVersion: 1,
@@ -336,8 +355,18 @@ describe('Override Reference Validation - Integration Tests', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           environmentVariants: [
-            {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: overrides},
-            {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: {enabled: false},
+              schema: null,
+              overrides: overrides,
+            },
+            {
+              environmentId: fixture.developmentEnvironmentId,
+              value: {enabled: false},
+              schema: null,
+              overrides: [],
+            },
           ],
           currentUserEmail: CURRENT_USER_EMAIL,
           prevVersion: 1,
@@ -366,7 +395,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {x: 1},
+          value: {type: 'literal', value: {x: 1}},
         },
         {
           name: 'Override 2',
@@ -382,7 +411,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {x: 2},
+          value: {type: 'literal', value: {x: 2}},
         },
       ];
 
@@ -432,7 +461,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               value: {type: 'literal', value: 'free'},
             },
           ],
-          value: {limit: 10},
+          value: {type: 'literal', value: {limit: 10}},
         },
         {
           name: 'Reference Condition',
@@ -448,7 +477,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {limit: 1000},
+          value: {type: 'literal', value: {limit: 1000}},
         },
       ];
 
