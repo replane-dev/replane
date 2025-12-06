@@ -2,6 +2,8 @@
 
 import BetterSqlite3 from 'better-sqlite3';
 import {Kysely, PostgresDialect} from 'kysely';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
 import {ConfigService} from './core/config-service';
@@ -87,6 +89,9 @@ export interface EngineOptions {
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
   onFatalError: (error: unknown) => void;
+  replicaStorage:
+    | {type: 'memory'}
+    | {type: 'file'; path: string; cacheSizeKb?: number; unsynced?: boolean}; // 128MB=131072, 256MB=262144, 512MB=524288
 }
 
 interface ToUseCaseOptions {
@@ -193,13 +198,11 @@ export async function createEngine(options: EngineOptions) {
 
   const replicaEventsBus = new ReplicaEventBus();
 
-  // TODO: support WAL mode for SQLite
-  // TODO: pragma journal_mode = WAL;
-  // TODO: pragma synchronous = NORMAL; // NORMAL loses durability on power loss, FULL doesn't
-  // TODO: pragma cache_size = -131072; // 128MB=131072, 256MB=262144, 512MB=524288
+  const sqlite = await openSqlite(options.replicaStorage);
+
   const replicaService = new ReplicaService(
     db,
-    ReplicaStore.create(new BetterSqlite3(':memory:')),
+    ReplicaStore.create(sqlite),
     new EventHub(db, dateProvider),
     logger,
     error => {
@@ -305,6 +308,55 @@ export async function createEngine(options: EngineOptions) {
       freePool();
     },
   };
+}
+
+async function tryUnlink(path: string) {
+  if (await fs.stat(path).catch(() => false)) {
+    await fs.unlink(path);
+  }
+}
+
+async function openSqlite(
+  options: EngineOptions['replicaStorage'],
+): Promise<BetterSqlite3.Database> {
+  if (options.type === 'memory') {
+    return new BetterSqlite3(':memory:');
+  }
+  try {
+    await fs.mkdir(path.dirname(options.path), {recursive: true});
+    const sqlite = new BetterSqlite3(options.path);
+    sqlite.pragma('journal_mode = WAL');
+    if (!options.unsynced) {
+      sqlite.pragma('synchronous = NORMAL'); // NORMAL loses durability on power loss, FULL doesn't
+    } else {
+      sqlite.pragma('synchronous = FULL');
+    }
+
+    if (options.cacheSizeKb) {
+      sqlite.pragma(`cache_size = -${options.cacheSizeKb}`);
+    }
+
+    return sqlite;
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && typeof error.code === 'string') {
+      if (error.code === 'SQLITE_CORRUPT') {
+        // we don't care about corrupted database, we'll recreate it
+
+        // unlink db file, wal and journal files
+        await tryUnlink(options.path);
+        await tryUnlink(options.path + '-wal');
+        await tryUnlink(options.path + '-shm');
+        await tryUnlink(options.path + '-journal');
+
+        return openSqlite(options);
+      }
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Unable to open SQLite database at ${options.path}: ${message}`, {
+      cause: error,
+    });
+  }
 }
 
 async function dropDb(

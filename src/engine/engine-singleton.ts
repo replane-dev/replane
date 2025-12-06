@@ -28,10 +28,31 @@ export const getDatabaseUrl = () =>
 export const engineLazy = new Lazy(async () => {
   const logger = createLogger({level: 'info'});
 
+  const replicaStorageCacheSizeKbString = process.env.REPLICA_STORAGE_CACHE_SIZE_KB;
+  const replicaStorageCacheSizeKb = replicaStorageCacheSizeKbString
+    ? parseInt(replicaStorageCacheSizeKbString)
+    : undefined;
+  if (replicaStorageCacheSizeKb && Number.isNaN(replicaStorageCacheSizeKb)) {
+    throw new Error('REPLICA_STORAGE_CACHE_SIZE_KB must be a number');
+  }
+
+  const fallbackReplicaStoragePath =
+    process.env.NODE_ENV === 'development' ? './replica-data/replica.db' : undefined;
+  const replicaStoragePath = ensureDefined(
+    process.env.REPLICA_STORAGE_PATH ?? fallbackReplicaStoragePath,
+    'REPLICA_STORAGE_PATH is not defined',
+  );
+
   const engine = await createEngine({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
+    replicaStorage: {
+      type: 'file',
+      path: replicaStoragePath,
+      cacheSizeKb: replicaStorageCacheSizeKb,
+      unsynced: process.env.REPLICA_STORAGE_UNSYNCED === 'true',
+    },
     onFatalError: async error => {
       logger.error(GLOBAL_CONTEXT, {msg: 'Engine fatal error', error});
       await Promise.race([

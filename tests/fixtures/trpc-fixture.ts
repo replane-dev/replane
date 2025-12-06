@@ -50,6 +50,9 @@ export class AppFixture {
       onFatalError: error => {
         this.options.onFatalError?.(error);
       },
+      replicaStorage: {
+        type: 'memory',
+      },
     });
 
     const connection = await engine.testing.pool.connect();

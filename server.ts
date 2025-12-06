@@ -13,6 +13,7 @@ if (!process.env.SECRET_KEY_BASE) {
 
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;
+process.env.REPLICA_STORAGE_PATH = '/data/replica/replica.db';
 
 const port = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
