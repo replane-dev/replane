@@ -57,13 +57,35 @@ export class Replica {
     onFatalError: (error: unknown) => void,
     replicaEvents: ReplicaEventBus,
   ): Promise<Replica> {
+    const replica = await Replica.createLagging(db, replicaStore, hub, logger, replicaEvents);
+
+    // now we need to catch up with the latest events
+    while (true) {
+      const {status} = await replica.step();
+      if (status === 'up-to-date') {
+        break;
+      }
+    }
+
+    void replica.loop().catch(onFatalError);
+
+    return replica;
+  }
+
+  private static async createLagging(
+    db: Kysely<DB>,
+    replicaStore: ReplicaStore,
+    hub: EventHub<ConfigChangeEvent>,
+    logger: Logger,
+    replicaEvents: ReplicaEventBus,
+  ): Promise<Replica> {
     const consumerId = replicaStore.getConsumerId();
 
     // restore existing consumer
     if (consumerId) {
       const consumer = await hub.tryRestoreConsumer(consumerId);
       if (consumer) {
-        return new Replica(db, replicaStore, logger, consumer, onFatalError, replicaEvents);
+        return new Replica(db, replicaStore, logger, consumer, replicaEvents);
       } else {
         // consumer is not alive, we need to clear the storage and start over
         replicaStore.clear();
@@ -79,7 +101,9 @@ export class Replica {
       replicaStore.upsertConfigs(configs);
     }
 
-    return new Replica(db, replicaStore, logger, consumer, onFatalError, replicaEvents);
+    const replica = new Replica(db, replicaStore, logger, consumer, replicaEvents);
+
+    return replica;
   }
 
   private isStopped = false;
@@ -89,10 +113,9 @@ export class Replica {
     private readonly replicaStore: ReplicaStore,
     private readonly logger: Logger,
     private readonly hub: EventHubConsumer<ConfigChangeEvent>,
-    private readonly onFatalError: (error: unknown) => void,
     private readonly replicaEvents: ReplicaEventBus,
   ) {
-    void this.loop().catch(this.onFatalError);
+    // Replica.create stats the loop
   }
 
   getConfigValue(params: {
@@ -161,7 +184,11 @@ export class Replica {
   private async loop() {
     while (!this.isStopped) {
       try {
-        await this.step();
+        const {status} = await this.step();
+
+        if (status === 'up-to-date') {
+          await wait(REPLICA_STEP_INTERVAL_MS);
+        }
       } catch (error) {
         this.logger.error(GLOBAL_CONTEXT, {msg: 'Replica step error', error});
 
@@ -170,17 +197,17 @@ export class Replica {
           throw error;
         }
       }
-
-      await wait(REPLICA_STEP_INTERVAL_MS);
     }
   }
 
-  private async step() {
+  private async step(): Promise<{status: 'lagging' | 'up-to-date'}> {
     const events = await this.hub.pullEvents(REPLICA_STEP_EVENTS_COUNT);
 
     await this.processEvents(events);
 
     await this.hub.ackEvents(events.map(e => e.id));
+
+    return {status: events.length === REPLICA_STEP_EVENTS_COUNT ? 'lagging' : 'up-to-date'};
   }
 
   private async processEvents(events: {id: string; data: ConfigChangeEvent}[]) {

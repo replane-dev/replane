@@ -166,6 +166,10 @@ export class EventHubConsumer<T> {
   }
 
   async ackEvents(eventIds: string[]) {
+    if (eventIds.length === 0) {
+      return;
+    }
+
     if (this.isDestroyed) {
       throw new ConsumerDestroyedError(`Consumer ${this.consumerId} is destroyed`);
     }

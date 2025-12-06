@@ -13,6 +13,9 @@ const handler = async (req: Request) => {
     req,
     router: appRouter,
     createContext: createTrpcContext,
+    onError: ({error, path, input, type, ctx}) => {
+      console.error(error);
+    },
   });
 };
 export {handler as GET, handler as POST};

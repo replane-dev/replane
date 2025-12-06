@@ -305,7 +305,12 @@ export async function runTransactional<T>(params: {
 export function toStableJson(value: unknown): string {
   return JSON.stringify(value, (key, value) => {
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      return Object.keys(value).sort();
+      const keys = Object.keys(value).sort();
+      const result: Record<string, unknown> = {};
+      for (const key of keys) {
+        result[key] = value[key];
+      }
+      return result;
     }
     return value;
   });

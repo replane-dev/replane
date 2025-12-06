@@ -4,7 +4,7 @@ import {NextRequest, NextResponse} from 'next/server';
 // Auth middleware instance for non-healthcheck routes
 const auth = withAuth({});
 
-export default async function middleware(req: NextRequest, event: any) {
+export default async function proxy(req: NextRequest, event: any) {
   const {pathname} = req.nextUrl;
 
   // Apply internal matcher logic: bypass auth for excluded paths

@@ -25,8 +25,7 @@ export class ReplicaStore {
   private db: Database;
 
   static create(db: Database) {
-    const store = new ReplicaStore(db);
-
+    console.log('Creating tables...');
     db.exec(/*sql*/ `
       CREATE TABLE IF NOT EXISTS configs (
         id TEXT PRIMARY KEY,
@@ -34,7 +33,8 @@ export class ReplicaStore {
         name TEXT NOT NULL,
         version INTEGER NOT NULL
       );
-
+      `);
+    db.exec(/*sql*/ `
       CREATE TABLE IF NOT EXISTS config_variants (
         id TEXT PRIMARY KEY,
         config_id TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
@@ -42,15 +42,22 @@ export class ReplicaStore {
         value TEXT NOT NULL,
         overrides TEXT NOT NULL
       );
-
+    `);
+    db.exec(/*sql*/ `
       CREATE UNIQUE INDEX IF NOT EXISTS idx_configs_project_id_name ON configs(project_id, name);
+    `);
+    db.exec(/*sql*/ `
       CREATE UNIQUE INDEX IF NOT EXISTS idx_config_variants_config_id_environment_id ON config_variants(config_id, environment_id);
-
+    `);
+    db.exec(/*sql*/ `
       CREATE TABLE IF NOT EXISTS kv (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
       );
     `);
+
+    console.log('Tables created');
+    const store = new ReplicaStore(db);
 
     return store;
   }
@@ -105,7 +112,9 @@ export class ReplicaStore {
 
   private getKvStmt: Statement<{key: string}, {value: string}>;
 
-  private clearStmt: Statement<{}, void>;
+  private clearConfigsStmt: Statement<{}, void>;
+  private clearConfigVariantsStmt: Statement<{}, void>;
+  private clearKvStmt: Statement<{}, void>;
 
   private constructor(db: Database) {
     this.db = db;
@@ -219,10 +228,16 @@ export class ReplicaStore {
       SELECT value FROM kv WHERE key = @key
     `);
 
-    this.clearStmt = db.prepare<{}, void>(/*sql*/ `
-      DELETE FROM configs;
-      DELETE FROM config_variants;
-      DELETE FROM kv;
+    this.clearConfigsStmt = db.prepare<{}, void>(/*sql*/ `
+      DELETE FROM configs
+    `);
+
+    this.clearConfigVariantsStmt = db.prepare<{}, void>(/*sql*/ `
+      DELETE FROM config_variants
+    `);
+
+    this.clearKvStmt = db.prepare<{}, void>(/*sql*/ `
+      DELETE FROM kv
     `);
   }
 
@@ -323,7 +338,9 @@ export class ReplicaStore {
   }
 
   private clearUnsafe() {
-    this.clearStmt.run({});
+    this.clearConfigsStmt.run({});
+    this.clearConfigVariantsStmt.run({});
+    this.clearKvStmt.run({});
   }
 
   upsertConfigs(configs: ConfigReplica[]) {

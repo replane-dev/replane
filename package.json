@@ -75,6 +75,7 @@
     "ajv-formats": "^3.0.1",
     "assert": "^2.1.0",
     "async-channel": "^0.2.0",
+    "better-sqlite3": "^12.5.0",
     "class-variance-authority": "^0.7.1",
     "client-only": "^0.0.1",
     "clsx": "^2.1.1",
