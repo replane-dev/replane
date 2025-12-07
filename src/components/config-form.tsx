@@ -716,16 +716,7 @@ export function ConfigForm(props: ConfigFormProps) {
                           <FormControl>
                             <Checkbox
                               checked={field.value}
-                              onCheckedChange={checked => {
-                                field.onChange(checked);
-                                // When enabling an environment variant, default to inheriting base schema
-                                if (checked) {
-                                  form.setValue(
-                                    `environmentVariants.${envIndex}.useDefaultSchema`,
-                                    true,
-                                  );
-                                }
-                              }}
+                              onCheckedChange={field.onChange}
                               disabled={!canEditValue}
                               className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
