@@ -56,10 +56,7 @@ export class ProjectUserStore {
       .deleteFrom('project_users')
       .where('user_email_normalized', '=', params.userEmail)
       .where('project_id', 'in', qb =>
-        qb
-          .selectFrom('projects')
-          .select('id')
-          .where('workspace_id', '=', params.workspaceId),
+        qb.selectFrom('projects').select('id').where('workspace_id', '=', params.workspaceId),
       )
       .execute();
   }
