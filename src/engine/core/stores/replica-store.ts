@@ -35,7 +35,6 @@ export class ReplicaStore {
   private db: Database;
 
   static create(db: Database) {
-    console.log('Creating tables...');
     db.exec(/*sql*/ `
       CREATE TABLE IF NOT EXISTS configs (
         id TEXT PRIMARY KEY,
@@ -66,7 +65,6 @@ export class ReplicaStore {
       );
     `);
 
-    console.log('Tables created');
     const store = new ReplicaStore(db);
 
     return store;
