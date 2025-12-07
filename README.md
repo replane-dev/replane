@@ -162,9 +162,9 @@ interface Configs {
 }
 
 const client = await createReplaneClient<Configs>({
-  // Each API key is tied to one project only
-  apiKey: process.env.REPLANE_API_KEY!,
-  baseUrl: 'https://api.my-replane-host.com',
+  // Each SDK key is tied to one project only
+  sdkKey: process.env.REPLANE_SDK_KEY!,
+  baseUrl: 'https://api.my-host.com',
 });
 
 // Get config value (receives realtime updates via SSE in background)
