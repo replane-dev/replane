@@ -855,7 +855,7 @@ describe('Override Evaluation', () => {
       expect(disabledResult.value).toBe(false);
     });
 
-    it.only('should work with type casting in production', async () => {
+    it('should work with type casting in production', async () => {
       const overrides: Override[] = [
         {
           name: 'Age Check',
