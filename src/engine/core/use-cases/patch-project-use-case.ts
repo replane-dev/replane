@@ -4,6 +4,7 @@ import {diffMembers} from '../member-diff';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectUserRole} from '../stores/project-user-store';
 import type {TransactionalUseCase} from '../use-case';
+import {normalizeEmail} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
 export interface PatchProjectRequest {
@@ -113,7 +114,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
       const {added, removed} = diffMembers(prev, next);
 
       for (const r of removed) {
-        await tx.projectUsers.delete(req.id, r.email);
+        await tx.projectUsers.delete({projectId: req.id, userEmail: normalizeEmail(r.email)});
       }
       await tx.projectUsers.create(
         added.map(a => ({

@@ -336,6 +336,246 @@ describe('Workspaces', () => {
           }),
         ).rejects.toThrow(BadRequestError);
       });
+
+      it('removes user from all projects within the workspace', async () => {
+        // Create a workspace
+        const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org With Projects',
+        });
+
+        // Add another user as workspace member
+        await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+          role: 'member',
+        });
+
+        // Create a project and add the member to it
+        const {projectId: projectId1} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          workspaceId,
+          name: `Project 1 ${workspaceId}`,
+          description: 'Test project 1',
+        });
+
+        // Add the member as a project admin
+        await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
+          projectId: projectId1,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          users: [
+            {email: CURRENT_USER_EMAIL, role: 'admin'},
+            {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
+          ],
+        });
+
+        // Verify user is in the project
+        const projectUsersBefore = await fixture.engine.testing.pool.query(
+          `SELECT * FROM project_users WHERE project_id = $1 AND user_email_normalized = $2`,
+          [projectId1, ANOTHER_USER_EMAIL],
+        );
+        expect(projectUsersBefore.rows.length).toBe(1);
+        expect(projectUsersBefore.rows[0].role).toBe('maintainer');
+
+        // Remove the member from the workspace
+        await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+        });
+
+        // Verify user is removed from the project
+        const projectUsersAfter = await fixture.engine.testing.pool.query(
+          `SELECT * FROM project_users WHERE project_id = $1 AND user_email_normalized = $2`,
+          [projectId1, ANOTHER_USER_EMAIL],
+        );
+        expect(projectUsersAfter.rows.length).toBe(0);
+      });
+
+      it('removes user from multiple projects within the workspace', async () => {
+        // Create a workspace
+        const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          name: 'Test Org Multi Projects',
+        });
+
+        // Add another user as workspace member
+        await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+          role: 'member',
+        });
+
+        // Create multiple projects
+        const {projectId: projectId1} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          workspaceId,
+          name: `Multi Project 1 ${workspaceId}`,
+          description: 'Test project 1',
+        });
+
+        const {projectId: projectId2} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          workspaceId,
+          name: `Multi Project 2 ${workspaceId}`,
+          description: 'Test project 2',
+        });
+
+        const {projectId: projectId3} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          workspaceId,
+          name: `Multi Project 3 ${workspaceId}`,
+          description: 'Test project 3',
+        });
+
+        // Add the member to all three projects with different roles
+        await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
+          projectId: projectId1,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          users: [
+            {email: CURRENT_USER_EMAIL, role: 'admin'},
+            {email: ANOTHER_USER_EMAIL, role: 'admin'},
+          ],
+        });
+
+        await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
+          projectId: projectId2,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          users: [
+            {email: CURRENT_USER_EMAIL, role: 'admin'},
+            {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
+          ],
+        });
+
+        await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
+          projectId: projectId3,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          users: [
+            {email: CURRENT_USER_EMAIL, role: 'admin'},
+            {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
+          ],
+        });
+
+        // Verify user is in all projects
+        const allProjectUsersBefore = await fixture.engine.testing.pool.query(
+          `SELECT * FROM project_users WHERE user_email_normalized = $1 AND project_id IN ($2, $3, $4)`,
+          [ANOTHER_USER_EMAIL, projectId1, projectId2, projectId3],
+        );
+        expect(allProjectUsersBefore.rows.length).toBe(3);
+
+        // Remove the member from the workspace
+        await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+        });
+
+        // Verify user is removed from all projects
+        const allProjectUsersAfter = await fixture.engine.testing.pool.query(
+          `SELECT * FROM project_users WHERE user_email_normalized = $1 AND project_id IN ($2, $3, $4)`,
+          [ANOTHER_USER_EMAIL, projectId1, projectId2, projectId3],
+        );
+        expect(allProjectUsersAfter.rows.length).toBe(0);
+
+        // Verify workspace members list no longer includes the removed user
+        const members = await fixture.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
+          workspaceId,
+          currentUserEmail: CURRENT_USER_EMAIL,
+        });
+        expect(members.find(m => m.email === ANOTHER_USER_EMAIL)).toBeUndefined();
+      });
+
+      it('does not affect user projects in other workspaces', async () => {
+        // Create two workspaces
+        const {workspaceId: workspace1Id} = await fixture.engine.useCases.createWorkspace(
+          GLOBAL_CONTEXT,
+          {
+            currentUserEmail: CURRENT_USER_EMAIL,
+            name: 'Workspace 1',
+          },
+        );
+
+        const {workspaceId: workspace2Id} = await fixture.engine.useCases.createWorkspace(
+          GLOBAL_CONTEXT,
+          {
+            currentUserEmail: CURRENT_USER_EMAIL,
+            name: 'Workspace 2',
+          },
+        );
+
+        // Add another user as member to both workspaces
+        await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId: workspace1Id,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+          role: 'member',
+        });
+
+        await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId: workspace2Id,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+          role: 'member',
+        });
+
+        // Create a project in each workspace
+        const {projectId: project1Id} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          workspaceId: workspace1Id,
+          name: `Ws1 Project ${workspace1Id}`,
+          description: 'Project in workspace 1',
+        });
+
+        const {projectId: project2Id} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          currentUserEmail: CURRENT_USER_EMAIL,
+          workspaceId: workspace2Id,
+          name: `Ws2 Project ${workspace2Id}`,
+          description: 'Project in workspace 2',
+        });
+
+        // Add the member to both projects
+        await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
+          projectId: project1Id,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          users: [
+            {email: CURRENT_USER_EMAIL, role: 'admin'},
+            {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
+          ],
+        });
+
+        await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
+          projectId: project2Id,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          users: [
+            {email: CURRENT_USER_EMAIL, role: 'admin'},
+            {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
+          ],
+        });
+
+        // Remove the member from workspace 1 only
+        await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
+          workspaceId: workspace1Id,
+          currentUserEmail: CURRENT_USER_EMAIL,
+          memberEmail: ANOTHER_USER_EMAIL,
+        });
+
+        // Verify user is removed from project in workspace 1
+        const project1UsersAfter = await fixture.engine.testing.pool.query(
+          `SELECT * FROM project_users WHERE project_id = $1 AND user_email_normalized = $2`,
+          [project1Id, ANOTHER_USER_EMAIL],
+        );
+        expect(project1UsersAfter.rows.length).toBe(0);
+
+        // Verify user still exists in project in workspace 2
+        const project2UsersAfter = await fixture.engine.testing.pool.query(
+          `SELECT * FROM project_users WHERE project_id = $1 AND user_email_normalized = $2`,
+          [project2Id, ANOTHER_USER_EMAIL],
+        );
+        expect(project2UsersAfter.rows.length).toBe(1);
+        expect(project2UsersAfter.rows[0].role).toBe('maintainer');
+      });
     });
 
     describe('updateWorkspaceMemberRole', () => {

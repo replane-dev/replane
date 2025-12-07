@@ -3,7 +3,7 @@
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {SiGithub, SiGitlab, SiGoogle, SiOkta} from '@icons-pack/react-simple-icons';
-import {AlertCircle, ExternalLink, Copy, Check} from 'lucide-react';
+import {AlertCircle, Check, Copy, ExternalLink} from 'lucide-react';
 import {signIn} from 'next-auth/react';
 import {useState} from 'react';
 
@@ -72,7 +72,11 @@ function CopyButton({text}: {text: string}) {
       className="ml-2 p-1 rounded hover:bg-muted-foreground/20 transition-colors"
       title="Copy to clipboard"
     >
-      {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 opacity-50" />}
+      {copied ? (
+        <Check className="w-3 h-3 text-green-500" />
+      ) : (
+        <Copy className="w-3 h-3 opacity-50" />
+      )}
     </button>
   );
 }
@@ -122,14 +126,21 @@ function NoProvidersConfigured() {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
 
                 {isExpanded && (
                   <div className="border-t bg-muted/30 p-3 space-y-3">
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Required environment variables:</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Required environment variables:
+                      </p>
                       <div className="space-y-1">
                         {provider.envVars.map(envVar => (
                           <div
@@ -193,9 +204,7 @@ export function SignInForm({providers, callbackUrl, error}: SignInFormProps) {
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Get started</CardTitle>
         <CardDescription>
-          {providers.length > 0
-            ? 'Choose your sign in method'
-            : 'Setup required'}
+          {providers.length > 0 ? 'Choose your sign in method' : 'Setup required'}
         </CardDescription>
       </CardHeader>
       <CardContent>

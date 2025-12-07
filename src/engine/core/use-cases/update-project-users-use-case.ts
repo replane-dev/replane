@@ -2,6 +2,7 @@ import assert from 'assert';
 import {BadRequestError} from '../errors';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
+import {normalizeEmail} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectUsersRequest {
@@ -49,7 +50,7 @@ export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
 
     // Apply changes (remove first to handle role changes cleanly)
     for (const r of removed) {
-      await tx.projectUsers.delete(req.projectId, r.email);
+      await tx.projectUsers.delete({projectId: req.projectId, userEmail: normalizeEmail(r.email)});
     }
 
     await tx.projectUsers.create(

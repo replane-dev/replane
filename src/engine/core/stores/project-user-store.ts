@@ -51,11 +51,24 @@ export class ProjectUserStore {
       .execute();
   }
 
-  async delete(projectId: string, userEmail: string) {
+  async deleteUserFromWorkspaceProjects(params: {workspaceId: string; userEmail: NormalizedEmail}) {
     await this.db
       .deleteFrom('project_users')
-      .where('project_id', '=', projectId)
-      .where('user_email_normalized', '=', normalizeEmail(userEmail))
+      .where('user_email_normalized', '=', params.userEmail)
+      .where('project_id', 'in', qb =>
+        qb
+          .selectFrom('projects')
+          .select('id')
+          .where('workspace_id', '=', params.workspaceId),
+      )
+      .execute();
+  }
+
+  async delete(params: {projectId: string; userEmail: NormalizedEmail}) {
+    await this.db
+      .deleteFrom('project_users')
+      .where('project_id', '=', params.projectId)
+      .where('user_email_normalized', '=', params.userEmail)
       .execute();
   }
 }

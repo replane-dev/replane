@@ -2,6 +2,7 @@ import assert from 'assert';
 import {BadRequestError, ForbiddenError, NotFoundError} from '../errors';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
+import {normalizeEmail} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
 export interface RemoveWorkspaceMemberRequest {
@@ -69,6 +70,10 @@ export function createRemoveWorkspaceMemberUseCase(): TransactionalUseCase<
     assert(user, 'Current user not found');
 
     await tx.workspaceMembers.delete(req.workspaceId, req.memberEmail);
+    await tx.projectUsers.deleteUserFromWorkspaceProjects({
+      workspaceId: req.workspaceId,
+      userEmail: normalizeEmail(req.memberEmail),
+    });
 
     await tx.auditLogs.create({
       id: createAuditLogId(),
