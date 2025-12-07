@@ -36,7 +36,8 @@ export interface WorkspaceInfo {
   autoAddNewUsers: boolean;
   createdAt: Date;
   updatedAt: Date;
-  myRole?: 'admin' | 'member';
+  myRole: 'admin' | 'member';
+  isPersonal: boolean;
 }
 
 export class WorkspaceStore {
@@ -46,7 +47,7 @@ export class WorkspaceStore {
     const workspacesQuery = this.db
       .selectFrom('workspaces')
       .orderBy('workspaces.name')
-      .leftJoin('workspace_members', jb =>
+      .innerJoin('workspace_members', jb =>
         jb.on(eb =>
           eb.and([
             eb('workspace_members.workspace_id', '=', eb.ref('workspaces.id')),
@@ -61,6 +62,7 @@ export class WorkspaceStore {
         'workspaces.created_at',
         'workspaces.updated_at',
         'workspace_members.role as myRole',
+        'workspaces.personal_workspace_user_id',
       ]);
 
     const rows = await workspacesQuery.execute();
@@ -71,7 +73,8 @@ export class WorkspaceStore {
       autoAddNewUsers: w.auto_add_new_users,
       createdAt: w.created_at,
       updatedAt: w.updated_at,
-      myRole: w.myRole ?? undefined,
+      myRole: w.myRole,
+      isPersonal: w.personal_workspace_user_id !== null,
     }));
   }
 

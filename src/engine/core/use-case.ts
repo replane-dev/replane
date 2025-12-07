@@ -7,12 +7,12 @@ import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariantStore} from './stores/config-variant-store';
 import type {ConfigVariantVersionStore} from './stores/config-variant-version-store';
-import type {WorkspaceMemberStore} from './stores/workspace-member-store';
-import type {WorkspaceStore} from './stores/workspace-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
 import type {SdkKeyStore} from './stores/sdk-key-store';
+import type {WorkspaceMemberStore} from './stores/workspace-member-store';
+import type {WorkspaceStore} from './stores/workspace-store';
 import type {UserStore} from './user-store';
 import type {NormalizedEmail} from './zod';
 

@@ -3,9 +3,9 @@ import {ForbiddenError} from './errors';
 import type {Logger} from './logger';
 import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
-import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
+import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import {unique} from './utils';
 import type {NormalizedEmail} from './zod';
 

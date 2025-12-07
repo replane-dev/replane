@@ -18,6 +18,7 @@ export interface WorkspaceSummary {
   id: string;
   name: string;
   myRole: 'admin' | 'member' | undefined;
+  isPersonal: boolean;
 }
 
 interface ProjectContextValue {
@@ -50,7 +51,13 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
     [projectsData.projects],
   );
   const workspaces: WorkspaceSummary[] = React.useMemo(
-    () => workspacesData.map(w => ({id: w.id, name: w.name, myRole: w.myRole})),
+    () =>
+      workspacesData.map(w => ({
+        id: w.id,
+        name: w.name,
+        myRole: w.myRole,
+        isPersonal: w.isPersonal,
+      })),
     [workspacesData],
   );
 

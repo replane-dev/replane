@@ -657,8 +657,7 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
       <div className="space-y-2">
         <div className="text-sm text-muted-foreground">
           Member <strong>{payload.member.email}</strong> was added to workspace{' '}
-          <strong>{payload.workspace.name}</strong> with role{' '}
-          <strong>{payload.member.role}</strong>
+          <strong>{payload.workspace.name}</strong> with role <strong>{payload.member.role}</strong>
         </div>
       </div>
     );

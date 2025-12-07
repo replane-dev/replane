@@ -3,7 +3,7 @@
 import {ChevronDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
-import {useWorkspace, useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useProjectId, useWorkspace} from '@/app/app/projects/[projectId]/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,

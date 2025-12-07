@@ -58,9 +58,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
             maxLength={100}
           />
           {isPersonal && (
-            <p className="text-xs text-muted-foreground mt-1.5">
-              This is your personal workspace
-            </p>
+            <p className="text-xs text-muted-foreground mt-1.5">This is your personal workspace</p>
           )}
         </div>
         <Button type="submit" disabled={saving || !canEdit || name.trim() === ''}>

@@ -3,7 +3,7 @@
 import {ChevronsUpDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
-import {useWorkspace, useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useProjectId, useWorkspace} from '@/app/app/projects/[projectId]/utils';
 import {ReplaneIcon} from '@/components/replane-icon';
 import {
   DropdownMenu,
@@ -50,7 +50,9 @@ export function OrgSwitcher() {
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{workspace.name}</span>
-                <span className="truncate text-xs text-muted-foreground">Self-hosted</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {workspace.isPersonal ? 'Personal' : 'Workspace'}
+                </span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
