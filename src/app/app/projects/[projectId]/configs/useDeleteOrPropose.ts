@@ -75,6 +75,6 @@ export function useDeleteOrProposeConfig() {
       });
       await params.onAfterDelete?.();
     },
-    [createConfigProposal, deleteConfig, requireProposals],
+    [createConfigProposal, deleteConfig, requireProposals, project.id],
   );
 }

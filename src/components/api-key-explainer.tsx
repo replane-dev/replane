@@ -12,6 +12,7 @@ export function ApiKeyExplainer() {
   useEffect(() => {
     // Check localStorage after component mounts (client-side only)
     const dismissed = localStorage.getItem(STORAGE_KEY) === 'true';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDismissed(dismissed);
   }, []);
 
@@ -29,9 +30,7 @@ export function ApiKeyExplainer() {
       <div className="flex items-start gap-3">
         <Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-foreground mb-2">
-            Project-scoped SDK keys
-          </div>
+          <div className="text-sm font-semibold text-foreground mb-2">Project-scoped SDK keys</div>
           <div className="space-y-2 text-sm text-foreground/80 dark:text-foreground/70">
             <p>
               Each SDK key is tied to a specific project and can only access configs from that
@@ -57,4 +56,3 @@ export function ApiKeyExplainer() {
     </div>
   );
 }
-

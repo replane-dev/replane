@@ -101,6 +101,8 @@ export default function ConfigByNamePage() {
     [router, searchParams],
   );
 
+  const configVariants = config?.variants;
+
   const onValuesChange = useCallback(
     (values: {value: string; overrides: Override[]}) => {
       // Update live values for override testing
@@ -109,11 +111,11 @@ export default function ConfigByNamePage() {
         setLiveValue(JSON.parse(values.value));
       } catch {
         // Use default variant value if parsing fails
-        const defaultVar = config?.variants.find(v => v.environmentId === null);
+        const defaultVar = configVariants?.find(v => v.environmentId === null);
         setLiveValue(defaultVar?.value ?? null);
       }
     },
-    [config?.variants],
+    [configVariants],
   );
 
   async function executeUpdateConfig(data: {
