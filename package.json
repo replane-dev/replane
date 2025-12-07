@@ -11,7 +11,7 @@
     "start": "NODE_ENV=production tsx server.ts",
     "start-self-hosted": "pnpm run migrate:migrate && pnpm start",
     "check": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint",
     "test": "dotenv -- vitest run",
     "test:watch": "dotenv -- vitest",
     "release": "bumpp",
