@@ -122,84 +122,118 @@ export function ConfigVariantFields({
     }
   };
 
+  // Handler for adding the first override
+  const handleAddFirstOverride = () => {
+    const overridesFieldName = getFieldName('overrides') as any;
+    const currentOverrides = getValues(overridesFieldName) || [];
+
+    // Add a default empty override
+    setValue(overridesFieldName, [
+      ...currentOverrides,
+      {
+        conditions: [],
+        value: overrideBuilderDefaultValue,
+      },
+    ]);
+  };
+
+  const hasOverrides = (watchedVariant?.overrides?.length ?? 0) > 0;
+
   return (
     <>
-      <FormField
-        control={control}
-        name={getFieldName('overrides')}
-        render={({field}) => (
-          <FormItem>
-            <div className="flex items-center gap-1.5">
-              <FormLabel>Conditional Overrides</FormLabel>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-sm">
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      Return different values based on runtime context like user attributes, feature
-                      flags, or request properties.
-                    </p>
-                    <div className="space-y-1.5 text-xs">
-                      <p className="font-medium">Common use cases:</p>
-                      <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
-                        <li>Premium users get higher rate limits</li>
-                        <li>Beta features for specific users</li>
-                        <li>Regional pricing by country</li>
-                        <li>A/B testing variations</li>
-                        <li>Staff access to internal features</li>
-                      </ul>
+      {/* Show Conditional Overrides section only when there are overrides */}
+      {hasOverrides && (
+        <FormField
+          control={control}
+          name={getFieldName('overrides')}
+          render={({field}) => (
+            <FormItem>
+              <div className="flex items-center gap-1.5">
+                <FormLabel>Conditional Overrides</FormLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        Return different values based on runtime context like user attributes,
+                        feature flags, or request properties.
+                      </p>
+                      <div className="space-y-1.5 text-xs">
+                        <p className="font-medium">Common use cases:</p>
+                        <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
+                          <li>Premium users get higher rate limits</li>
+                          <li>Beta features for specific users</li>
+                          <li>Regional pricing by country</li>
+                          <li>A/B testing variations</li>
+                          <li>Staff access to internal features</li>
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <FormControl>
-              <OverrideBuilder
-                overrides={field.value as Override[]}
-                onChange={field.onChange}
-                readOnly={!canEditOverrides}
-                schema={liveSchema}
-                projectId={projectId}
-                defaultValue={overrideBuilderDefaultValue}
-              />
-            </FormControl>
-            {!canEditOverrides && (
-              <FormDescription>You do not have permission to edit overrides.</FormDescription>
-            )}
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <FormControl>
+                <OverrideBuilder
+                  overrides={field.value as Override[]}
+                  onChange={field.onChange}
+                  readOnly={!canEditOverrides}
+                  schema={liveSchema}
+                  projectId={projectId}
+                  defaultValue={overrideBuilderDefaultValue}
+                />
+              </FormControl>
+              {!canEditOverrides && (
+                <FormDescription>You do not have permission to edit overrides.</FormDescription>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
 
       <FormField
         control={control}
         name={getFieldName('value')}
         render={({field}) => (
           <FormItem>
-            <div className="flex items-center gap-1.5">
-              <FormLabel>
-                {(watchedVariant?.overrides?.length ?? 0) > 0
-                  ? 'Base Value'
-                  : isEnvironmentVariant
-                    ? 'Value'
-                    : 'Configuration Value'}
-              </FormLabel>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>
-                    {isEnvironmentVariant
-                      ? `The configuration value for the ${environmentName} environment. This overrides the base configuration.`
-                      : (watchedVariant?.overrides?.length ?? 0) > 0
-                        ? 'The default value returned when no override conditions match.'
-                        : 'The configuration value as valid JSON. This will be used by all environments unless overridden.'}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <FormLabel>
+                  {hasOverrides
+                    ? 'Base Value'
+                    : isEnvironmentVariant
+                      ? 'Value'
+                      : 'Configuration Value'}
+                </FormLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>
+                      {isEnvironmentVariant
+                        ? `The configuration value for the ${environmentName} environment. This overrides the base configuration.`
+                        : hasOverrides
+                          ? 'The default value returned when no override conditions match.'
+                          : 'The configuration value as valid JSON. This will be used by all environments unless overridden.'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              {/* Show "Add Override" button when there are no overrides */}
+              {!hasOverrides && canEditOverrides && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={handleAddFirstOverride}
+                  className="h-7 text-xs"
+                >
+                  + Add Conditional Override
+                </Button>
+              )}
             </div>
             <FormControl>
               <JsonEditor
@@ -241,22 +275,22 @@ export function ConfigVariantFields({
                         id={`${editorIdPrefix ?? 'config'}-use-default-schema-${environmentId}`}
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={!canEditSchema || !defaultSchemaAvailable}
+                        disabled={!canEditSchema}
                       />
                     </FormControl>
                     <div>
                       <Label
                         htmlFor={`${editorIdPrefix ?? 'config'}-use-default-schema-${environmentId}`}
-                        className={`text-sm font-medium ${defaultSchemaAvailable ? 'cursor-pointer' : 'text-muted-foreground'}`}
+                        className="text-sm font-medium cursor-pointer"
                       >
                         Inherit base schema
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         {field.value
-                          ? 'Using the same schema as base configuration'
-                          : defaultSchemaAvailable
-                            ? 'Use custom schema for this environment'
-                            : 'No base schema defined'}
+                          ? defaultSchemaAvailable
+                            ? 'Using the same schema as base configuration'
+                            : 'No schema enforcement (base has no schema)'
+                          : 'Use custom schema for this environment'}
                       </p>
                     </div>
                   </div>
@@ -265,17 +299,16 @@ export function ConfigVariantFields({
                       <CircleHelp className="h-3.5 w-3.5 text-muted-foreground shrink-0 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      {defaultSchemaAvailable ? (
-                        <p>
-                          When enabled, this environment uses the same JSON Schema as the base
-                          configuration. Disable to define a custom schema for this environment.
-                        </p>
-                      ) : (
-                        <p>
-                          Enable schema validation on the base configuration first to use this
-                          option.
-                        </p>
-                      )}
+                      <p>
+                        When enabled, this environment inherits schema enforcement from the base
+                        configuration.
+                        {defaultSchemaAvailable
+                          ? ' The base schema will be applied to this environment.'
+                          : ' Since the base has no schema, this means no schema enforcement.'}
+                      </p>
+                      <p className="mt-2">
+                        Disable to define a custom schema for this environment.
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>

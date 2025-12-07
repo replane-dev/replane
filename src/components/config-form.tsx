@@ -288,7 +288,7 @@ export function ConfigForm(props: ConfigFormProps) {
           environmentId: env.id,
           enabled: !!existingVariant,
           value: existingVariant ? JSON.stringify(existingVariant.value, null, 2) : '{}',
-          useDefaultSchema: existingVariant?.useDefaultSchema ?? false,
+          useDefaultSchema: existingVariant?.useDefaultSchema ?? true,
           schemaEnabled: existingVariant?.schema !== null && existingVariant?.schema !== undefined,
           schema: existingVariant?.schema ? JSON.stringify(existingVariant.schema, null, 2) : '',
           overrides: existingVariant?.overrides ?? [],
@@ -716,7 +716,16 @@ export function ConfigForm(props: ConfigFormProps) {
                           <FormControl>
                             <Checkbox
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onCheckedChange={checked => {
+                                field.onChange(checked);
+                                // When enabling an environment variant, default to inheriting base schema
+                                if (checked) {
+                                  form.setValue(
+                                    `environmentVariants.${envIndex}.useDefaultSchema`,
+                                    true,
+                                  );
+                                }
+                              }}
                               disabled={!canEditValue}
                               className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
