@@ -3,7 +3,7 @@ import type {ConfigProposalRejectionReason} from '../db';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-evaluator';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
 export interface GetConfigProposalRequest {
   proposalId: string;
@@ -13,17 +13,17 @@ export interface GetConfigProposalRequest {
 
 export interface ProposedVariantDetails {
   configVariantId: string;
-  environmentId: string;
+  environmentId: string | null;
   environmentName: string;
-  proposedValue: unknown | undefined;
-  proposedSchema: unknown | undefined;
-  proposedOverrides: Override[] | undefined;
-  useDefaultSchema?: boolean;
+  proposedValue: ConfigValue;
+  proposedSchema: ConfigSchema | null;
+  proposedOverrides: Override[];
+  useDefaultSchema: boolean;
   // Current values for comparison
-  currentValue: unknown;
-  currentSchema: unknown | null;
+  currentValue: ConfigValue;
+  currentSchema: ConfigSchema | null;
   currentOverrides: Override[];
-  currentUseDefaultSchema?: boolean;
+  currentUseDefaultSchema: boolean;
 }
 
 export interface ConfigProposalDetails {
@@ -41,8 +41,8 @@ export interface ConfigProposalDetails {
   rejectionReason: ConfigProposalRejectionReason | null;
   baseConfigVersion: number;
   proposedDelete: boolean;
-  proposedDescription: string | null;
-  proposedMembers: {newMembers: Array<{email: string; role: string}>} | null;
+  proposedDescription: string;
+  proposedMembers: Array<{email: string; role: 'maintainer' | 'editor'}>;
   proposedVariants: ProposedVariantDetails[];
   message: string | null;
   status: 'pending' | 'approved' | 'rejected';
@@ -68,7 +68,7 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
   GetConfigProposalRequest,
   GetConfigProposalResponse
 > {
-  return async (ctx, tx, req) => {
+  return async (ctx, tx, req): Promise<GetConfigProposalResponse> => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
       currentUserEmail: req.currentUserEmail,
@@ -191,20 +191,6 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
       }
     }
 
-    // Convert full-state proposal to diff format for response
-    // Only show fields that actually changed
-    const proposedDescriptionDiff =
-      proposal.proposedDescription !== null &&
-      proposal.proposedDescription !== proposal.originalDescription
-        ? proposal.proposedDescription
-        : null;
-
-    const proposedMembersDiff =
-      proposal.proposedMembers !== null &&
-      JSON.stringify(proposal.proposedMembers) !== JSON.stringify(proposal.originalMembers)
-        ? {newMembers: proposal.proposedMembers}
-        : null;
-
     return {
       proposal: {
         id: proposal.id,
@@ -221,8 +207,8 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         rejectionReason: proposal.rejectionReason,
         baseConfigVersion: proposal.baseConfigVersion,
         proposedDelete: proposal.proposedDelete,
-        proposedDescription: proposedDescriptionDiff,
-        proposedMembers: proposedMembersDiff,
+        proposedDescription: proposal.proposedDescription,
+        proposedMembers: proposal.proposedMembers,
         proposedVariants,
         message: proposal.message,
         status,

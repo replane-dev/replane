@@ -24,6 +24,7 @@ import {
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {formatJsonPath, getValueByPath, parseJsonPath} from '@/engine/core/json-path';
 import type {Condition} from '@/engine/core/override-condition-schemas';
+import {asConfigValue} from '@/engine/core/zod';
 import {useDebounce} from '@/hooks/use-debounce';
 import {useTRPC} from '@/trpc/client';
 import {useQueryClient} from '@tanstack/react-query';
@@ -215,7 +216,7 @@ export function ConditionEditor({
       const newCondition: Condition = {
         operator: 'equals',
         property: '',
-        value: {type: 'literal', value: ''},
+        value: {type: 'literal', value: asConfigValue('')},
       };
       onChange({
         ...condition,
@@ -295,7 +296,7 @@ export function ConditionEditor({
 
   return (
     <div className="space-y-2">
-      <div className={`p-3 rounded-lg border-1 ${isComposite ? 'bg-muted/30' : 'bg-background'}`}>
+      <div className={`p-3 rounded-lg border ${isComposite ? 'bg-muted/30' : 'bg-background'}`}>
         {/* Property-based conditions */}
         {!isComposite && (
           <div className="space-y-2">
@@ -356,7 +357,7 @@ export function ConditionEditor({
                         condition: {
                           operator: 'equals',
                           property: '',
-                          value: {type: 'literal', value: ''},
+                          value: {type: 'literal', value: asConfigValue('')},
                         },
                       } as Condition);
                     } else if (newOperator === 'segmentation') {
@@ -393,7 +394,7 @@ export function ConditionEditor({
 
               {/* Value column - show for all operators except segmentation */}
               {condition.operator !== 'segmentation' && 'value' in condition && (
-                <div className="flex-[2]">
+                <div className="flex-2">
                   <div className="flex items-center gap-1 mb-1">
                     <Label className="text-xs font-medium">
                       {condition.operator === 'in' || condition.operator === 'not_in'
@@ -444,7 +445,7 @@ export function ConditionEditor({
                         onChange={e => {
                           onChange({
                             ...condition,
-                            value: {type: 'literal', value: e.target.value},
+                            value: {type: 'literal', value: asConfigValue(e.target.value)},
                           });
                         }}
                         disabled={readOnly}
@@ -637,7 +638,7 @@ export function ConditionEditor({
                           condition.operator === 'in' || condition.operator === 'not_in' ? [] : '';
                         onChange({
                           ...condition,
-                          value: {type: 'literal', value: defaultValue},
+                          value: {type: 'literal', value: asConfigValue(defaultValue)},
                         });
                       }}
                       className="h-9 w-9 p-0 hover:bg-accent"
@@ -770,7 +771,7 @@ export function ConditionEditor({
                                   newValues[idx] = e.target.value;
                                   onChange({
                                     ...condition,
-                                    value: {type: 'literal', value: newValues},
+                                    value: {type: 'literal', value: asConfigValue(newValues)},
                                   });
                                 }}
                                 disabled={readOnly}
@@ -789,7 +790,9 @@ export function ConditionEditor({
                                           ...condition,
                                           value: {
                                             type: 'literal',
-                                            value: newValues.length > 0 ? newValues : [],
+                                            value: asConfigValue(
+                                              newValues.length > 0 ? newValues : [],
+                                            ),
                                           },
                                         });
                                       }}
@@ -819,7 +822,10 @@ export function ConditionEditor({
                               ? condition.value.value
                               : [];
                             const newValues = [...values, ''];
-                            onChange({...condition, value: {type: 'literal', value: newValues}});
+                            onChange({
+                              ...condition,
+                              value: {type: 'literal', value: asConfigValue(newValues)},
+                            });
                           }
                         }}
                         className="w-full h-8 text-xs mt-2"
@@ -905,7 +911,7 @@ export function ConditionEditor({
                       onChange({
                         operator: newOperator,
                         property: '',
-                        value: {type: 'literal', value: ''},
+                        value: {type: 'literal', value: asConfigValue('')},
                       } as Condition);
                     }
                   }}

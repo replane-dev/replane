@@ -2,6 +2,7 @@ import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
+import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
 import {createCallerFactory, type TrpcContext} from '@/trpc/init';
@@ -139,6 +140,10 @@ export class AppFixture {
     ];
   }
 
+  async syncReplica() {
+    await this.engine.testing.replicaService.sync();
+  }
+
   /**
    * Helper to create a config using old API format (for backward compatibility in tests)
    * Automatically creates environment-specific variants for all environments
@@ -146,7 +151,7 @@ export class AppFixture {
   async createConfig(params: {
     name: string;
     value: unknown;
-    schema: unknown;
+    schema: unknown | null;
     overrides: any[];
     description: string;
     currentUserEmail: string;
@@ -169,9 +174,10 @@ export class AppFixture {
       projectId: params.projectId,
       environmentVariants: environments.map(env => ({
         environmentId: env.id,
-        value: params.value,
-        schema: params.schema,
+        value: asConfigValue(params.value),
+        schema: params.schema !== null ? asConfigSchema(params.schema) : null,
         overrides: params.overrides,
+        useDefaultSchema: false,
       })),
     });
   }

@@ -60,9 +60,9 @@ export interface ConfigProposals {
   message: string | null;
   original_description: string;
   original_members: string;
-  proposed_delete: Generated<boolean>;
-  proposed_description: string | null;
-  proposed_members: string | null;
+  proposed_delete: boolean;
+  proposed_description: string;
+  proposed_members: string;
   proposer_id: number | null;
   rejected_at: Timestamp | null;
   rejected_in_favor_of_proposal_id: string | null;
@@ -75,10 +75,10 @@ export interface ConfigProposalVariants {
   environment_id: string | null;
   id: string;
   proposal_id: string;
-  proposed_overrides: string | null;
+  proposed_overrides: string;
   proposed_schema: string | null;
-  proposed_value: string | null;
-  use_default_schema: Generated<boolean>;
+  proposed_value: string;
+  use_default_schema: boolean;
 }
 
 export interface Configs {
@@ -119,7 +119,7 @@ export interface ConfigVariantVersions {
   description: string;
   id: string;
   name: string;
-  overrides: string | null;
+  overrides: string;
   proposal_id: string | null;
   schema: string | null;
   value: string;

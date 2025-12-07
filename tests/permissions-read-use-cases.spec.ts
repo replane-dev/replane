@@ -1,9 +1,9 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
+import {asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OUTSIDER_USER_EMAIL = normalizeEmail('outsider@example.com');
@@ -164,10 +164,25 @@ describe('Read Use Cases - Permission Checks', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           environmentVariants: [
-            {environmentId: fixture.productionEnvironmentId, value: {test: true}, schema: null, overrides: []},
-            {environmentId: fixture.developmentEnvironmentId, value: {test: true}, schema: null, overrides: []},
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: asConfigValue({test: true}),
+              schema: null,
+              overrides: [],
+              useDefaultSchema: false,
+            },
+            {
+              environmentId: fixture.developmentEnvironmentId,
+              value: asConfigValue({test: true}),
+              schema: null,
+              overrides: [],
+              useDefaultSchema: false,
+            },
           ],
           currentUserEmail: CURRENT_USER_EMAIL,
+          proposedDelete: false,
+          defaultVariant: null,
+          message: null,
         },
       );
 

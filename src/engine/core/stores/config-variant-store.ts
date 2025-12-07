@@ -2,13 +2,14 @@ import type {Kysely} from 'kysely';
 import type {DB} from '../db';
 import type {Override} from '../override-evaluator';
 import {deserializeJson, serializeJson} from '../store-utils';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export interface ConfigVariant {
   id: string;
   configId: string;
   environmentId: string | null;
-  value: unknown;
-  schema: unknown | null;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
   overrides: Override[];
   createdAt: Date;
   updatedAt: Date;

@@ -35,6 +35,7 @@ import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Textarea} from '@/components/ui/textarea';
 import type {Override} from '@/engine/core/override-evaluator';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
@@ -117,17 +118,17 @@ export default function ConfigByNamePage() {
 
   async function executeUpdateConfig(data: {
     defaultVariant?: {
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
     };
     environmentVariants: Array<{
       configVariantId?: string;
       environmentId: string;
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
-      useDefaultSchema?: boolean;
+      useDefaultSchema: boolean;
     }>;
     description: string;
     maintainerEmails: string[];
@@ -163,18 +164,17 @@ export default function ConfigByNamePage() {
     action: 'save' | 'propose';
     name: string;
     defaultVariant?: {
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
     };
     environmentVariants: Array<{
       configVariantId?: string;
       environmentId: string;
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
-      version?: number;
-      useDefaultSchema?: boolean;
+      useDefaultSchema: boolean;
     }>;
     description: string;
     maintainerEmails: string[];
@@ -413,8 +413,8 @@ export default function ConfigByNamePage() {
             proposing={createConfigProposal.isPending}
             onDelete={async () => {
               await deleteOrPropose({
-                configId: config.config.id,
-                configName: name,
+                config: config,
+                message: null,
                 myRole: config.myRole as any,
                 prevVersion: config.config.version,
                 onAfterDelete: () => router.push(`/app/projects/${project.id}/configs`),
@@ -543,12 +543,13 @@ export default function ConfigByNamePage() {
                       projectId: project.id,
                       configId: pendingProposalData.configId,
                       baseVersion: config.config.version,
+                      proposedDelete: false,
                       description: pendingProposalData.description,
                       editorEmails: pendingProposalData.editorEmails,
                       maintainerEmails: pendingProposalData.maintainerEmails,
                       defaultVariant: pendingProposalData.defaultVariant,
                       environmentVariants: pendingProposalData.environmentVariants,
-                      message: proposalMessage.trim() || undefined,
+                      message: proposalMessage.trim() || null,
                     });
 
                     setShowProposalDialog(false);

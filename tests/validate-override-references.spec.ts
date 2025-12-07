@@ -1,3 +1,4 @@
+import {asConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
@@ -37,10 +38,10 @@ describe('validateOverrideReferences', () => {
           {
             operator: 'equals',
             property: 'plan',
-            value: {type: 'literal', value: 'premium'},
+            value: {type: 'literal', value: asConfigValue('premium')},
           },
         ],
-        value: {type: 'literal', value: true},
+        value: asConfigValue(true),
       },
     ];
 
@@ -68,7 +69,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {type: 'literal', value: 1000},
+        value: asConfigValue(1000),
       },
     ];
 
@@ -96,7 +97,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {type: 'literal', value: 1000},
+        value: asConfigValue(1000),
       },
     ];
 
@@ -130,7 +131,7 @@ describe('validateOverrideReferences', () => {
               {
                 operator: 'equals',
                 property: 'tier',
-                value: {type: 'literal', value: 'premium'},
+                value: {type: 'literal', value: asConfigValue('premium')},
               },
               {
                 operator: 'in',
@@ -145,7 +146,7 @@ describe('validateOverrideReferences', () => {
             ],
           },
         ],
-        value: {type: 'literal', value: true},
+        value: asConfigValue(true),
       },
     ];
 
@@ -176,7 +177,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {type: 'literal', value: true},
+        value: asConfigValue(true),
       },
     ];
 
@@ -204,7 +205,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {type: 'literal', value: 1},
+        value: asConfigValue(1),
       },
       {
         name: 'Second Override',
@@ -220,7 +221,7 @@ describe('validateOverrideReferences', () => {
             },
           },
         ],
-        value: {type: 'literal', value: 2},
+        value: asConfigValue(2),
       },
     ];
 
@@ -253,7 +254,7 @@ describe('validateOverrideReferences', () => {
             seed: 'experiment-1',
           },
         ],
-        value: {type: 'literal', value: 'b'},
+        value: asConfigValue('b'),
       },
     ];
 
@@ -296,7 +297,7 @@ describe('validateOverrideReferences', () => {
             ],
           },
         ],
-        value: {type: 'literal', value: true},
+        value: asConfigValue(true),
       },
     ];
 

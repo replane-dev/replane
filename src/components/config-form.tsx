@@ -23,6 +23,7 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
 import {ConfigOverrides} from '@/engine/core/stores/config-store';
 import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {CircleHelp} from 'lucide-react';
@@ -74,18 +75,17 @@ export interface ConfigFormProps {
     action: 'save' | 'propose';
     name: string;
     defaultVariant?: {
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
     };
     environmentVariants: Array<{
       configVariantId?: string;
       environmentId: string;
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
-      version?: number;
-      useDefaultSchema?: boolean;
+      useDefaultSchema: boolean;
     }>;
     description: string;
     maintainerEmails: string[];
@@ -156,7 +156,7 @@ export function ConfigForm(props: ConfigFormProps) {
           return false;
         }
       }, 'Must be valid JSON'),
-    useDefaultSchema: z.boolean().default(false), // Inherit schema from default variant
+    useDefaultSchema: z.boolean(), // Inherit schema from default variant
     schemaEnabled: z.boolean().default(false),
     schema: z
       .string()
@@ -340,7 +340,14 @@ export function ConfigForm(props: ConfigFormProps) {
     };
 
     // Process environment variants (only enabled ones)
-    const processedEnvVariants = [];
+    const processedEnvVariants: Array<{
+      configVariantId?: string;
+      environmentId: string;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
+      overrides: Override[];
+      useDefaultSchema: boolean;
+    }> = [];
     for (let i = 0; i < values.environmentVariants.length; i++) {
       const variant = values.environmentVariants[i];
       if (!variant.enabled) continue; // Skip disabled environments

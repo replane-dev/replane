@@ -1,17 +1,17 @@
 import type {Override} from '@/engine/core/override-evaluator';
 import type {CreateConfigRequest} from '@/engine/core/use-cases/create-config-use-case';
-import type {NormalizedEmail} from '@/engine/core/zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '@/engine/core/zod';
 
 /**
  * Helper to convert old-style createConfig calls to new API format
- * 
+ *
  * Old API: { value, schema, overrides, ... }
  * New API: { environmentVariants: [{environmentId, value, schema, overrides}], defaultVariant?: {...}, ... }
  */
 export interface LegacyCreateConfigParams {
   name: string;
-  value: unknown;
-  schema: unknown;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
   overrides: Override[];
   description: string;
   currentUserEmail: NormalizedEmail;
@@ -39,7 +39,7 @@ export function convertLegacyCreateConfigParams(
       value: params.value,
       schema: params.schema,
       overrides: params.overrides,
+      useDefaultSchema: false,
     })),
   };
 }
-

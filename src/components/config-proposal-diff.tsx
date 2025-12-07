@@ -1,6 +1,8 @@
 'use client';
 
 import {Badge} from '@/components/ui/badge';
+import type {Override} from '@/engine/core/override-evaluator';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {cn} from '@/lib/utils';
 import {DiffEditor} from '@monaco-editor/react';
 import {ArrowRight, Minus, Plus} from 'lucide-react';
@@ -54,34 +56,29 @@ function DiffRow(props: {
 
 export interface ProposedVariantChange {
   configVariantId: string;
-  environmentId: string;
+  environmentId: string | null;
   environmentName: string;
-  baseVariantVersion?: number;
-  proposedValue?: unknown;
-  proposedSchema?: unknown;
-  proposedOverrides?: unknown[];
-  useDefaultSchema?: boolean;
-  currentValue?: unknown;
-  currentSchema?: unknown | null;
-  currentOverrides?: unknown[];
-  currentUseDefaultSchema?: boolean;
+  proposedValue: ConfigValue;
+  proposedSchema: ConfigSchema | null;
+  proposedOverrides: Override[];
+  useDefaultSchema: boolean;
+  currentValue: ConfigValue;
+  currentSchema: ConfigSchema | null;
+  currentOverrides: Override[];
+  currentUseDefaultSchema: boolean;
 }
 
 export interface ConfigProposalDiffProps {
   current: {
-    value?: unknown;
     description: string;
-    schema?: unknown | null;
-    maintainers?: string[];
-    editors?: string[];
+    maintainers: string[];
+    editors: string[];
   };
   proposed: {
-    value?: {newValue?: unknown} | null;
-    description?: string | null;
-    schema?: {newSchema?: unknown} | null;
-    members?: {newMembers?: Array<{email: string; role: 'owner' | 'editor'}>} | null;
+    description: string;
+    members: Array<{email: string; role: 'maintainer' | 'editor'}>;
   };
-  proposedVariants?: ProposedVariantChange[];
+  proposedVariants: ProposedVariantChange[];
 }
 
 export function ConfigProposalDiff({
@@ -91,64 +88,43 @@ export function ConfigProposalDiff({
 }: ConfigProposalDiffProps) {
   const diffs: Array<{title: string; before: unknown; after: unknown}> = [];
 
-  // Only show schema if it exists and actually changed
-  if (
-    proposed.schema &&
-    current.schema !== undefined &&
-    JSON.stringify(current.schema) !== JSON.stringify(proposed.schema.newSchema)
-  ) {
-    diffs.push({title: 'JSON Schema', before: current.schema, after: proposed.schema.newSchema});
-  }
-
-  // Only show value if it exists and actually changed
-  if (
-    proposed.value &&
-    current.value !== undefined &&
-    JSON.stringify(current.value) !== JSON.stringify(proposed.value.newValue)
-  ) {
-    diffs.push({title: 'JSON Value', before: current.value, after: proposed.value.newValue});
-  }
-
   // Only show description if it's not null and actually changed
-  if (
-    proposed.description !== undefined &&
-    proposed.description !== null &&
-    current.description !== proposed.description
-  ) {
+  if (current.description !== proposed.description) {
     diffs.push({title: 'Description', before: current.description, after: proposed.description});
   }
 
-  // Members diff (owners/editors)
+  // Members diff (maintainers/editors)
   type MemberChange =
-    | {type: 'add'; email: string; role: 'owner' | 'editor'}
-    | {type: 'remove'; email: string; role: 'owner' | 'editor'}
+    | {type: 'add'; email: string; role: 'maintainer' | 'editor'}
+    | {type: 'remove'; email: string; role: 'maintainer' | 'editor'}
     | {
         type: 'change';
         email: string;
-        fromRole: 'owner' | 'editor';
-        toRole: 'owner' | 'editor';
+        fromRole: 'maintainer' | 'editor';
+        toRole: 'maintainer' | 'editor';
       };
 
   const memberChanges: MemberChange[] = [];
-  if (proposed.members && proposed.members.newMembers) {
-    const currentMap = new Map<string, 'owner' | 'editor'>();
-    (current.maintainers ?? []).forEach(e => currentMap.set(e, 'owner'));
-    (current.editors ?? []).forEach(e => currentMap.set(e, 'editor'));
+  const currentMemberMap = new Map<string, 'maintainer' | 'editor'>();
+  (current.maintainers ?? []).forEach(e => currentMemberMap.set(e, 'maintainer'));
+  (current.editors ?? []).forEach(e => currentMemberMap.set(e, 'editor'));
 
-    const proposedMap = new Map<string, 'owner' | 'editor'>();
-    for (const m of proposed.members.newMembers) proposedMap.set(m.email, m.role);
+  const proposedMemberMap = new Map<string, 'maintainer' | 'editor'>();
+  for (const m of proposed.members) proposedMemberMap.set(m.email, m.role);
 
-    const allEmails = new Set<string>([...currentMap.keys(), ...proposedMap.keys()]);
-    for (const email of allEmails) {
-      const before = currentMap.get(email);
-      const after = proposedMap.get(email);
-      if (before && !after) {
-        memberChanges.push({type: 'remove', email, role: before});
-      } else if (!before && after) {
-        memberChanges.push({type: 'add', email, role: after});
-      } else if (before && after && before !== after) {
-        memberChanges.push({type: 'change', email, fromRole: before, toRole: after});
-      }
+  const allMemberEmails = new Set<string>([
+    ...currentMemberMap.keys(),
+    ...proposedMemberMap.keys(),
+  ]);
+  for (const memberEmail of allMemberEmails) {
+    const before = currentMemberMap.get(memberEmail);
+    const after = proposedMemberMap.get(memberEmail);
+    if (before && !after) {
+      memberChanges.push({type: 'remove', email: memberEmail, role: before});
+    } else if (!before && after) {
+      memberChanges.push({type: 'add', email: memberEmail, role: after});
+    } else if (before && after && before !== after) {
+      memberChanges.push({type: 'change', email: memberEmail, fromRole: before, toRole: after});
     }
   }
 

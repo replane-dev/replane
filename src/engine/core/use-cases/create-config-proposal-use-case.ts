@@ -7,28 +7,29 @@ import {
   createConfigProposalId,
   createConfigProposalVariantId,
   type ConfigProposalId,
+  type ConfigProposalVariant,
 } from '../stores/config-proposal-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
 export interface CreateConfigProposalRequest {
   projectId: string;
   configId: string;
   baseVersion: number;
-  proposedDelete?: boolean;
+  proposedDelete: boolean;
   // Full proposed state (required unless proposedDelete is true)
-  description?: string;
-  editorEmails?: string[];
-  maintainerEmails?: string[];
-  defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
-  environmentVariants?: Array<{
+  description: string;
+  editorEmails: string[];
+  maintainerEmails: string[];
+  defaultVariant: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]} | null;
+  environmentVariants: Array<{
     environmentId: string;
-    value: unknown;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema?: boolean;
+    useDefaultSchema: boolean;
   }>;
-  message?: string;
+  message: string | null;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -61,40 +62,13 @@ export function createCreateConfigProposalUseCase(
       });
     }
 
-    // Deletion proposals must not include other changes
-    if (req.proposedDelete) {
-      if (
-        req.description ||
-        req.editorEmails ||
-        req.maintainerEmails ||
-        req.defaultVariant ||
-        req.environmentVariants
-      ) {
-        throw new BadRequestError('Deletion proposals should not include proposed state');
-      }
-    } else {
-      // Non-deletion proposals must provide full state
-      if (
-        req.description === undefined ||
-        req.description === null ||
-        req.editorEmails === undefined ||
-        req.editorEmails === null ||
-        req.maintainerEmails === undefined ||
-        req.maintainerEmails === null ||
-        req.environmentVariants === undefined ||
-        req.environmentVariants === null
-      ) {
-        throw new BadRequestError('Non-deletion proposals must provide full config state');
-      }
-
-      // Validate the proposed state
-      await tx.configService.validate(ctx, {
-        projectId: config.projectId,
-        description: req.description,
-        defaultVariant: req.defaultVariant,
-        environmentVariants: req.environmentVariants,
-      });
-    }
+    // Validate the proposed state
+    await tx.configService.validate(ctx, {
+      projectId: config.projectId,
+      description: req.description,
+      defaultVariant: req.defaultVariant,
+      environmentVariants: req.environmentVariants,
+    });
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
@@ -121,8 +95,11 @@ export function createCreateConfigProposalUseCase(
         })),
         originalDescription: config.description,
         proposedDelete: true,
-        proposedDescription: null,
-        proposedMembers: null,
+        proposedDescription: config.description,
+        proposedMembers: currentMembers.map(m => ({
+          email: m.user_email_normalized,
+          role: m.role,
+        })),
         message: req.message ?? null,
       });
 
@@ -175,7 +152,7 @@ export function createCreateConfigProposalUseCase(
       const currentVariants = await tx.configVariants.getByConfigId(req.configId);
 
       // Create variant entries for the proposed state
-      const proposalVariants = [];
+      const proposalVariants: ConfigProposalVariant[] = [];
 
       // Add default variant if provided
       if (req.defaultVariant) {
@@ -188,7 +165,7 @@ export function createCreateConfigProposalUseCase(
             environmentId: null,
             useDefaultSchema: false,
             proposedValue: req.defaultVariant.value,
-            proposedSchema: req.defaultVariant.schema,
+            proposedSchema: req.defaultVariant.schema ?? null,
             proposedOverrides: req.defaultVariant.overrides,
           });
         }
@@ -207,7 +184,7 @@ export function createCreateConfigProposalUseCase(
             environmentId: envVariant.environmentId,
             useDefaultSchema: envVariant.useDefaultSchema ?? false,
             proposedValue: envVariant.value,
-            proposedSchema: envVariant.schema,
+            proposedSchema: envVariant.schema ?? null,
             proposedOverrides: envVariant.overrides,
           });
         }

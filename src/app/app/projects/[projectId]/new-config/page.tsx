@@ -12,6 +12,7 @@ import {
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import type {Override} from '@/engine/core/override-evaluator';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
@@ -45,15 +46,16 @@ export default function NewConfigPage() {
   async function handleSubmit(data: {
     name: string;
     defaultVariant?: {
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
     };
     environmentVariants: Array<{
       environmentId: string;
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
+      useDefaultSchema: boolean;
     }>;
     description: string;
     maintainerEmails: string[];

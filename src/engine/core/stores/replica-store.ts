@@ -1,6 +1,7 @@
 import assert from 'assert';
 import {type Database, type Statement} from 'better-sqlite3';
 import type {Override} from '../override-condition-schemas';
+import type {ConfigValue} from '../zod';
 
 export interface ConfigReplica {
   id: string;
@@ -15,7 +16,16 @@ export interface ConfigVariantReplica {
   id: string;
   configId: string;
   environmentId: string | null;
-  value: unknown;
+  value: ConfigValue;
+  overrides: Override[];
+}
+
+export interface EnvironmentalConfigReplica {
+  projectId: string;
+  name: string;
+  version: number;
+  environmentId: string;
+  value: ConfigValue;
   overrides: Override[];
 }
 
@@ -252,7 +262,7 @@ export class ReplicaStore {
         name: config.name,
         version: config.version,
         environmentId: params.environmentId,
-        value: JSON.parse(config.value) as unknown,
+        value: JSON.parse(config.value) as ConfigValue,
         overrides: JSON.parse(config.overrides) as Override[],
         projectId: config.projectId,
       };
@@ -273,7 +283,11 @@ export class ReplicaStore {
     };
   }
 
-  getEnvironmentalConfig(params: {projectId: string; configName: string; environmentId: string}) {
+  getEnvironmentalConfig(params: {
+    projectId: string;
+    configName: string;
+    environmentId: string;
+  }): EnvironmentalConfigReplica | undefined {
     const config = this.getEnvironmentalConfigStmt.get({
       projectId: params.projectId,
       configName: params.configName,
@@ -290,7 +304,7 @@ export class ReplicaStore {
       name: config.name,
       version: config.version,
       environmentId: params.environmentId,
-      value: JSON.parse(config.value) as unknown,
+      value: JSON.parse(config.value) as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
       projectId: config.projectId,
     };
@@ -300,7 +314,7 @@ export class ReplicaStore {
     configName: string;
     projectId: string;
     environmentId: string;
-  }): unknown | undefined {
+  }): ConfigValue | undefined {
     const config = this.getConfigValueStmt.get(params);
 
     if (!config) {
@@ -308,7 +322,7 @@ export class ReplicaStore {
     }
 
     assert(config.value !== null, 'Value must not be null');
-    return JSON.parse(config.value) as unknown;
+    return JSON.parse(config.value) as ConfigValue;
   }
 
   deleteConfig(id: string) {

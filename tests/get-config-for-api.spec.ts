@@ -1,9 +1,9 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
+import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {v4 as uuidv4} from 'uuid';
 import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -41,7 +41,7 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    await sleep(50); // Wait for replica sync
+    await fixture.engine.testing.replicaService.sync(); // Wait for replica sync
 
     const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
@@ -84,7 +84,7 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    await sleep(50);
+    await fixture.engine.testing.replicaService.sync();
 
     // Get the production variant
     const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
@@ -104,14 +104,31 @@ describe('Get Config For API Use Case', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {count: 2}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {count: 1}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({count: 2}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: true,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({count: 1}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: true,
+        },
       ],
+      defaultVariant: {
+        value: asConfigValue({count: 1}),
+        schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
+        overrides: [],
+      },
       currentUserEmail: CURRENT_USER_EMAIL,
       prevVersion: 1,
     });
 
-    await sleep(50);
+    await fixture.engine.testing.replicaService.sync();
 
     const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
@@ -138,7 +155,7 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    await sleep(50);
+    await fixture.engine.testing.replicaService.sync();
 
     const result = await fixture.engine.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,

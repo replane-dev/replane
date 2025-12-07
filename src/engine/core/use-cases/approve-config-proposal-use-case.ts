@@ -115,23 +115,22 @@ export function createApproveConfigProposalUseCase(
       const defaultVariant = defaultVariantProposal
         ? {
             value: defaultVariantProposal.proposedValue,
-            schema: defaultVariantProposal.proposedSchema,
-            overrides: defaultVariantProposal.proposedOverrides ?? [],
+            schema: defaultVariantProposal.proposedSchema ?? null,
+            overrides: defaultVariantProposal.proposedOverrides,
           }
         : undefined;
 
       const environmentVariants = environmentVariantProposals.map(v => ({
         environmentId: v.environmentId!,
         value: v.proposedValue,
-        schema: v.proposedSchema,
-        overrides: v.proposedOverrides ?? [],
+        schema: v.proposedSchema ?? null,
+        overrides: v.proposedOverrides,
         useDefaultSchema: v.useDefaultSchema,
       }));
 
       // Extract members from proposedMembers
       const editorEmails =
-        proposal.proposedMembers?.filter(m => m.role === 'editor').map(m => m.email) ??
-        [];
+        proposal.proposedMembers?.filter(m => m.role === 'editor').map(m => m.email) ?? [];
       const maintainerEmails =
         proposal.proposedMembers?.filter(m => m.role === 'maintainer').map(m => m.email) ?? [];
 

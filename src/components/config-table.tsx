@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
-import {useTRPC} from '@/trpc/client';
+import {getQueryClient, useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
 import {toast} from 'sonner';
@@ -181,11 +181,24 @@ export function ConfigTable() {
                   className="text-red-600 focus:text-red-700"
                   onClick={async e => {
                     e.stopPropagation();
+                    // fetch config details
+                    const queryClient = getQueryClient();
+                    const configDetails = await queryClient.fetchQuery(
+                      trpc.getConfig.queryOptions({
+                        name: config.name,
+                        projectId: projectId,
+                      }),
+                    );
+                    if (!configDetails.config) {
+                      alert('Config not found');
+                      return;
+                    }
                     await deleteOrPropose({
-                      configId: config.id,
-                      configName: config.name,
-                      myRole: config.myRole,
+                      config: configDetails.config,
+                      message: null,
+                      myRole: config.myRole as any,
                       prevVersion: config.version,
+                      onAfterDelete: () => router.push(`/app/projects/${projectId}/configs`),
                       onAfterPropose: proposalId =>
                         router.push(
                           `/app/projects/${projectId}/configs/${encodeURIComponent(config.name)}/proposals/${proposalId}`,

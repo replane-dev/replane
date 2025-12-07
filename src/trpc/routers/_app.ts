@@ -1,15 +1,16 @@
 import {getAuthOptions} from '@/app/auth-options';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {
-  ConfigDescription,
-  ConfigName,
-  ConfigOverrides,
-  ConfigSchema,
-  ConfigValue,
-} from '@/engine/core/stores/config-store';
+import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
-import {EditorArray, Email, MaintainerArray, Uuid} from '@/engine/core/zod';
+import {
+  ConfigSchema,
+  ConfigValue,
+  EditorArray,
+  Email,
+  MaintainerArray,
+  Uuid,
+} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
@@ -188,21 +189,19 @@ export const appRouter = createTRPCRouter({
         defaultVariant: z
           .object({
             value: ConfigValue(),
-            schema: ConfigSchema(),
+            schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
           })
           .optional(),
-        environmentVariants: z
-          .array(
-            z.object({
-              environmentId: Uuid(),
-              value: ConfigValue(),
-              schema: ConfigSchema(),
-              overrides: ConfigOverrides(),
-              useDefaultSchema: z.boolean().optional(),
-            }),
-          )
-          .optional(),
+        environmentVariants: z.array(
+          z.object({
+            environmentId: Uuid(),
+            value: ConfigValue(),
+            schema: ConfigSchema().nullable(),
+            overrides: ConfigOverrides(),
+            useDefaultSchema: z.boolean(),
+          }),
+        ),
       }),
     )
     .mutation(async opts => {
@@ -225,7 +224,7 @@ export const appRouter = createTRPCRouter({
         defaultVariant: z
           .object({
             value: ConfigValue(),
-            schema: ConfigSchema(),
+            schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
           })
           .optional(),
@@ -233,9 +232,9 @@ export const appRouter = createTRPCRouter({
           z.object({
             environmentId: Uuid(),
             value: ConfigValue(),
-            schema: ConfigSchema(),
+            schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
-            useDefaultSchema: z.boolean().optional(),
+            useDefaultSchema: z.boolean(),
           }),
         ),
         prevVersion: z.number(),
@@ -704,30 +703,27 @@ export const appRouter = createTRPCRouter({
         projectId: Uuid(),
         configId: Uuid(),
         baseVersion: z.number(),
-        proposedDelete: z.boolean().optional(),
-        // Full proposed state (optional for deletion proposals)
-        description: ConfigDescription().optional(),
-        editorEmails: EditorArray().optional(),
-        maintainerEmails: MaintainerArray().optional(),
+        proposedDelete: z.boolean(),
+        description: ConfigDescription(),
+        editorEmails: EditorArray(),
+        maintainerEmails: MaintainerArray(),
         defaultVariant: z
           .object({
             value: ConfigValue(),
-            schema: ConfigSchema(),
+            schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
           })
-          .optional(),
-        environmentVariants: z
-          .array(
-            z.object({
-              environmentId: Uuid(),
-              value: ConfigValue(),
-              schema: ConfigSchema(),
-              overrides: ConfigOverrides(),
-              useDefaultSchema: z.boolean().optional(),
-            }),
-          )
-          .optional(),
-        message: z.string().max(5000).optional(),
+          .nullable(),
+        environmentVariants: z.array(
+          z.object({
+            environmentId: Uuid(),
+            value: ConfigValue(),
+            schema: ConfigSchema().nullable(),
+            overrides: ConfigOverrides(),
+            useDefaultSchema: z.boolean(),
+          }),
+        ),
+        message: z.string().max(5000).nullable(),
       }),
     )
     .mutation(async opts => {

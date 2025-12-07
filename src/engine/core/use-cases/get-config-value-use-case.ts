@@ -1,3 +1,4 @@
+import {evaluateConfigValue} from '../override-evaluator';
 import type {ReplicaService} from '../replica';
 import type {UseCase} from '../use-case';
 
@@ -22,11 +23,21 @@ export function createGetConfigValueUseCase(
   return async (_ctx, req) => {
     // permissions must be checked by the caller
 
-    const configValue = deps.configsReplica.getConfigValue({
+    const configValue = await deps.configsReplica.getConfig({
       projectId: req.projectId,
       configName: req.name,
       environmentId: req.environmentId,
     });
-    return {value: configValue};
+
+    if (!configValue) {
+      return {value: undefined};
+    }
+
+    return {
+      value: evaluateConfigValue(
+        {value: configValue.value, overrides: configValue.overrides},
+        req.context ?? {},
+      ).finalValue,
+    };
   };
 }

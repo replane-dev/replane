@@ -2,6 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
+import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
@@ -56,9 +57,24 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: 'test', schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: 'test', schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue('test'),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue('test'),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
@@ -75,7 +91,7 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'deletion_proposal_config',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'To be deleted',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -89,6 +105,20 @@ describe('createConfigProposal', () => {
       baseVersion: 1,
       configId,
       proposedDelete: true,
+      description: 'To be deleted',
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      defaultVariant: null,
+      message: null,
+      environmentVariants: [
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+      ],
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
@@ -98,15 +128,15 @@ describe('createConfigProposal', () => {
     });
     expect(proposal).toBeDefined();
     expect(proposal?.proposedDelete).toBe(true);
-    expect(proposal?.proposedDescription).toBeNull();
-    expect(proposal?.proposedMembers).toBeNull();
+    expect(proposal?.proposedDescription).toBe('To be deleted');
+    expect(proposal?.proposedMembers).toEqual([{email: CURRENT_USER_EMAIL, role: 'maintainer'}]);
   });
 
   it('should create a proposal with member changes', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'members_proposal_config',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'Members test',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -120,14 +150,29 @@ describe('createConfigProposal', () => {
       projectId: fixture.projectId,
       baseVersion: 1,
       configId,
+      proposedDelete: false,
       description: 'Members test',
       editorEmails: [],
       maintainerEmails: [newMemberEmail],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {x: 1}, schema: {type: 'object', properties: {x: {type: 'number'}}}, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {x: 1}, schema: {type: 'object', properties: {x: {type: 'number'}}}, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
     });
 
     expect(configProposalId).toBeDefined();
@@ -143,8 +188,8 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'combined_proposal_config',
-      value: {x: 1},
-      schema: {type: 'object', properties: {x: {type: 'number'}}},
+      value: asConfigValue({x: 1}),
+      schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
       description: 'Original',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
@@ -161,10 +206,25 @@ describe('createConfigProposal', () => {
       editorEmails: [newMemberEmail],
       maintainerEmails: [],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {x: 1}, schema: {type: 'object', properties: {x: {type: 'number'}}}, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {x: 1}, schema: {type: 'object', properties: {x: {type: 'number'}}}, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     const proposal = await fixture.engine.testing.configProposals.getById({
@@ -179,8 +239,8 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'audit_members_config',
-      value: {x: 1},
-      schema: {type: 'object'},
+      value: asConfigValue({x: 1}),
+      schema: asConfigSchema({type: 'object'}),
       description: 'Audit members test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
@@ -197,10 +257,25 @@ describe('createConfigProposal', () => {
       editorEmails: [memberEmail],
       maintainerEmails: [],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {x: 1}, schema: {type: 'object'}, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {x: 1}, schema: {type: 'object'}, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object'}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object'}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     const messages = await fixture.engine.testing.auditLogs.list({
@@ -231,38 +306,18 @@ describe('createConfigProposal', () => {
         maintainerEmails: [],
         environmentVariants: [],
         currentUserEmail: CURRENT_USER_EMAIL,
+        defaultVariant: null,
+        message: null,
+        proposedDelete: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
-  });
-
-  it('should throw BadRequestError when required fields are missing', async () => {
-    const {configId} = await fixture.createConfig({
-      overrides: [],
-      name: 'empty_proposal_config',
-      value: 'test',
-      schema: null,
-      description: 'Test',
-      currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [],
-      maintainerEmails: [CURRENT_USER_EMAIL],
-      projectId: fixture.projectId,
-    });
-
-    await expect(
-      fixture.engine.useCases.createConfigProposal(GLOBAL_CONTEXT, {
-        projectId: fixture.projectId,
-        baseVersion: 1,
-        configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
-      }),
-    ).rejects.toThrow('Non-deletion proposals must provide full config state');
   });
 
   it('should allow proposal creation without edit permissions', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'permission_test_config',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -280,10 +335,25 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: 'test', schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: 'test', schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue('test'),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue('test'),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     expect(configProposalId).toBeDefined();
@@ -298,8 +368,8 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'audit_proposal_config',
-      value: {x: 1},
-      schema: {type: 'object'},
+      value: asConfigValue({x: 1}),
+      schema: asConfigSchema({type: 'object'}),
       description: 'Audit test',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
@@ -315,10 +385,25 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {x: 1}, schema: {type: 'object'}, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {x: 1}, schema: {type: 'object'}, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object'}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object'}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     const messages = await fixture.engine.testing.auditLogs.list({
@@ -342,7 +427,7 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version_tracking_config',
-      value: 1,
+      value: asConfigValue(1),
       schema: null,
       description: 'Version 1',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -358,8 +443,20 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: 1, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: 1, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       prevVersion: 1,
@@ -374,10 +471,25 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: 1, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: 1, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     const proposal = await fixture.engine.testing.configProposals.getById({
@@ -391,7 +503,7 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version_check_config',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -407,8 +519,20 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: 1, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: 1, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       prevVersion: 1,
@@ -424,10 +548,25 @@ describe('createConfigProposal', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: 1, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: 1, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue(1),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue(1),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
+        defaultVariant: null,
+        message: null,
+        proposedDelete: false,
       }),
     ).rejects.toThrow('Config was edited by another user');
   });
@@ -436,7 +575,7 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'delete_proposal_test',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       description: 'To be deleted',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -450,7 +589,13 @@ describe('createConfigProposal', () => {
       baseVersion: 1,
       configId,
       proposedDelete: true,
+      description: 'To be deleted',
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      environmentVariants: [],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
     });
 
     expect(configProposalId).toBeDefined();
@@ -463,15 +608,15 @@ describe('createConfigProposal', () => {
 
   it('should create a proposal with variant value changes', async () => {
     const {configId, configVariantIds} = await fixture.createConfig({
-        overrides: [],
-        name: 'variant_proposal_config',
-        value: {enabled: true},
-        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
-        description: 'Variant test',
-        currentUserEmail: CURRENT_USER_EMAIL,
-        editorEmails: [],
-        maintainerEmails: [CURRENT_USER_EMAIL],
-        projectId: fixture.projectId,
+      overrides: [],
+      name: 'variant_proposal_config',
+      value: asConfigValue({enabled: true}),
+      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      description: 'Variant test',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     // Get the production variant
@@ -488,31 +633,48 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: {type: 'object', properties: {enabled: {type: 'boolean'}}}, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: true}, schema: {type: 'object', properties: {enabled: {type: 'boolean'}}}, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: true}),
+          schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     expect(configProposalId).toBeDefined();
     const variantChanges =
       await fixture.engine.testing.configProposals.getVariantsByProposalId(configProposalId);
     expect(variantChanges).toHaveLength(2);
-    const prodVariantChange = variantChanges.find(vc => vc.environmentId === fixture.productionEnvironmentId);
+    const prodVariantChange = variantChanges.find(
+      vc => vc.environmentId === fixture.productionEnvironmentId,
+    );
     expect(prodVariantChange?.proposedValue).toEqual({enabled: false});
   });
 
   it('should create a proposal with both config and variant changes', async () => {
     const {configId, configVariantIds} = await fixture.createConfig({
-        overrides: [],
-        name: 'combined_config_variant_proposal',
-        value: {count: 10},
-        schema: {type: 'object', properties: {count: {type: 'number'}}},
-        description: 'Original description',
-        currentUserEmail: CURRENT_USER_EMAIL,
-        editorEmails: [],
-        maintainerEmails: [CURRENT_USER_EMAIL],
-        projectId: fixture.projectId,
+      overrides: [],
+      name: 'combined_config_variant_proposal',
+      value: asConfigValue({count: 10}),
+      schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
+      description: 'Original description',
+      currentUserEmail: CURRENT_USER_EMAIL,
+      editorEmails: [],
+      maintainerEmails: [CURRENT_USER_EMAIL],
+      projectId: fixture.projectId,
     });
 
     // Get the production variant
@@ -528,10 +690,25 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {count: 20}, schema: {type: 'object', properties: {count: {type: 'number'}}}, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {count: 10}, schema: {type: 'object', properties: {count: {type: 'number'}}}, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({count: 20}),
+          schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({count: 10}),
+          schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      proposedDelete: false,
     });
 
     const proposal = await fixture.engine.testing.configProposals.getById({
@@ -543,7 +720,9 @@ describe('createConfigProposal', () => {
     const variantChanges =
       await fixture.engine.testing.configProposals.getVariantsByProposalId(configProposalId);
     expect(variantChanges).toHaveLength(2);
-    const prodVariantChange = variantChanges.find(vc => vc.environmentId === fixture.productionEnvironmentId);
-    expect(prodVariantChange?.proposedValue).toEqual({count: 20});
+    const prodVariantChange = variantChanges.find(
+      vc => vc.environmentId === fixture.productionEnvironmentId,
+    );
+    expect(prodVariantChange?.proposedValue).toEqual(asConfigValue({count: 20}));
   });
 });

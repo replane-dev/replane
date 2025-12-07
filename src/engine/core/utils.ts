@@ -12,7 +12,7 @@ import {ConflictError} from './errors';
 import type {Logger} from './logger';
 import type {NormalizedEmail} from './zod';
 
-export type Brand<T, B> = T & {__brand: () => B | undefined};
+export type Brand<T, B> = T & {__brandType: B};
 
 export function joinUndefined(...parts: (string | undefined)[]): undefined | string {
   if (parts.some(p => p === undefined)) {

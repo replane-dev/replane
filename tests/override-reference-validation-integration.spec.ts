@@ -1,3 +1,4 @@
+import {asConfigValue} from '@/engine/core/zod';
 import {assert, describe, expect, it} from 'vitest';
 import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {BadRequestError} from '../src/engine/core/errors';
@@ -74,13 +75,13 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {maxItems: 1000}},
+          value: asConfigValue({maxItems: 1000}),
         },
       ];
 
       await fixture.createConfig({
         name: 'user-limits',
-        value: {maxItems: 10},
+        value: asConfigValue({maxItems: 10}),
         description: 'User limits with VIP override',
         schema: null,
         overrides,
@@ -118,14 +119,14 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {allowed: true}},
+          value: asConfigValue({allowed: true}),
         },
       ];
 
       await expect(
         fixture.createConfig({
           name: 'test-config-invalid',
-          value: {enabled: false},
+          value: asConfigValue({enabled: false}),
           description: 'Config with invalid reference',
           schema: null,
           overrides,
@@ -139,7 +140,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       await expect(
         fixture.createConfig({
           name: 'test-config-invalid',
-          value: {enabled: false},
+          value: asConfigValue({enabled: false}),
           description: 'Config with invalid reference',
           schema: null,
           overrides,
@@ -162,7 +163,7 @@ describe('Override Reference Validation - Integration Tests', () => {
                 {
                   operator: 'equals',
                   property: 'tier',
-                  value: {type: 'literal', value: 'premium'},
+                  value: {type: 'literal', value: asConfigValue('premium')},
                 },
                 {
                   operator: 'in',
@@ -177,14 +178,14 @@ describe('Override Reference Validation - Integration Tests', () => {
               ],
             },
           ],
-          value: {type: 'literal', value: {feature: true}},
+          value: asConfigValue({feature: true}),
         },
       ];
 
       await expect(
         fixture.createConfig({
           name: 'test-config-nested-invalid',
-          value: {feature: false},
+          value: asConfigValue({feature: false}),
           description: 'Config with nested invalid reference',
           schema: null,
           overrides,
@@ -202,7 +203,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       // Create a config to patch
       const configResult = await fixture.createConfig({
         name: 'patchable-config',
-        value: {enabled: false},
+        value: asConfigValue({enabled: false}),
         description: 'Config to patch',
         schema: null,
         overrides: [],
@@ -241,7 +242,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {enabled: true}},
+          value: asConfigValue({enabled: true}),
         },
       ];
 
@@ -258,15 +259,17 @@ describe('Override Reference Validation - Integration Tests', () => {
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {enabled: false},
+            value: asConfigValue({enabled: false}),
             schema: null,
             overrides: overrides,
+            useDefaultSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {enabled: false},
+            value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
+            useDefaultSchema: false,
           },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
@@ -288,7 +291,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       // Create a config to patch
       const configResult = await fixture.createConfig({
         name: 'patchable-config-2',
-        value: {enabled: false},
+        value: asConfigValue({enabled: false}),
         description: 'Config to patch',
         schema: null,
         overrides: [],
@@ -319,7 +322,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {enabled: true}},
+          value: asConfigValue({enabled: true}),
         },
       ];
 
@@ -332,15 +335,17 @@ describe('Override Reference Validation - Integration Tests', () => {
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {enabled: false},
+              value: asConfigValue({enabled: false}),
               schema: null,
               overrides: overrides,
+              useDefaultSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {enabled: false},
+              value: asConfigValue({enabled: false}),
               schema: null,
               overrides: [],
+              useDefaultSchema: false,
             },
           ],
           currentUserEmail: CURRENT_USER_EMAIL,
@@ -357,15 +362,17 @@ describe('Override Reference Validation - Integration Tests', () => {
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {enabled: false},
+              value: asConfigValue({enabled: false}),
               schema: null,
               overrides: overrides,
+              useDefaultSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {enabled: false},
+              value: asConfigValue({enabled: false}),
               schema: null,
               overrides: [],
+              useDefaultSchema: false,
             },
           ],
           currentUserEmail: CURRENT_USER_EMAIL,
@@ -395,7 +402,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {x: 1}},
+          value: asConfigValue({x: 1}),
         },
         {
           name: 'Override 2',
@@ -411,14 +418,14 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {x: 2}},
+          value: asConfigValue({x: 2}),
         },
       ];
 
       try {
         await fixture.createConfig({
           name: 'multi-ref-config',
-          value: {x: 0},
+          value: asConfigValue({x: 0}),
           description: 'Multiple invalid references',
           schema: null,
           overrides,
@@ -458,10 +465,10 @@ describe('Override Reference Validation - Integration Tests', () => {
             {
               operator: 'equals',
               property: 'tier',
-              value: {type: 'literal', value: 'free'},
+              value: {type: 'literal', value: asConfigValue('free')},
             },
           ],
-          value: {type: 'literal', value: {limit: 10}},
+          value: asConfigValue({limit: 10}),
         },
         {
           name: 'Reference Condition',
@@ -477,13 +484,13 @@ describe('Override Reference Validation - Integration Tests', () => {
               },
             },
           ],
-          value: {type: 'literal', value: {limit: 1000}},
+          value: asConfigValue({limit: 1000}),
         },
       ];
 
       await fixture.createConfig({
         name: 'rate-limits',
-        value: {limit: 100},
+        value: asConfigValue({limit: 100}),
         description: 'Rate limits',
         schema: null,
         overrides,

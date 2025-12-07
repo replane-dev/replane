@@ -8,6 +8,7 @@ import type {
   Value,
 } from './override-condition-schemas';
 import {assertNever} from './utils';
+import type {ConfigValue} from './zod';
 
 export type {Override, RenderedCondition, RenderedOverride};
 
@@ -42,7 +43,7 @@ export type ConfigValueResolver = (params: {
   projectId: string;
   configName: string;
   environmentId: string;
-}) => Promise<unknown | undefined> | unknown | undefined;
+}) => Promise<ConfigValue | undefined>;
 
 async function renderValue(params: {
   value: Value;
@@ -134,19 +135,21 @@ export async function renderOverrides(params: {
   environmentId: string;
 }): Promise<RenderedOverride[]> {
   return Promise.all(
-    params.overrides.map(async override => ({
-      name: override.name,
-      value: override.value,
-      conditions: await Promise.all(
-        override.conditions.map(c =>
-          renderConditionInternal({
-            condition: c,
-            configResolver: params.configResolver,
-            environmentId: params.environmentId,
-          }),
+    params.overrides.map(
+      async (override): Promise<RenderedOverride> => ({
+        name: override.name,
+        value: override.value,
+        conditions: await Promise.all(
+          override.conditions.map(c =>
+            renderConditionInternal({
+              condition: c,
+              configResolver: params.configResolver,
+              environmentId: params.environmentId,
+            }),
+          ),
         ),
-      ),
-    })),
+      }),
+    ),
   );
 }
 
@@ -220,14 +223,17 @@ function castArrayToContextType(conditionValue: unknown, contextValue: unknown):
  * This is the main evaluation function that returns both the result and detailed breakdown.
  */
 export function evaluateConfigValue(
-  config: {value: unknown; overrides: RenderedOverride[] | null},
+  config: {
+    value: ConfigValue;
+    overrides: RenderedOverride[];
+  },
   context: EvaluationContext,
 ): EvaluationResult {
   const overrideEvaluations: OverrideEvaluation[] = [];
   let matchedOverride: RenderedOverride | null = null;
   let finalValue = config.value;
 
-  for (const override of config.overrides ?? []) {
+  for (const override of config.overrides) {
     const conditionEvaluations: ConditionEvaluation[] = [];
     let result: ConditionEvaluationResult = 'matched';
 

@@ -3,20 +3,20 @@ import type {Context} from '../context';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
 export interface UpdateConfigRequest {
   configId: string;
   description: string;
   editorEmails: string[];
   maintainerEmails: string[];
-  defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
+  defaultVariant?: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
   environmentVariants: Array<{
     environmentId: string;
-    value: unknown;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema?: boolean;
+    useDefaultSchema: boolean;
   }>;
   currentUserEmail: NormalizedEmail;
   prevVersion: number;
@@ -71,4 +71,3 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
     return {};
   };
 }
-

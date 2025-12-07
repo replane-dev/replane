@@ -37,8 +37,7 @@ export interface ConfigDeletedAuditLogPayload extends BaseAuditLogPayload<'confi
   config: AuditLogPayloadConfig;
 }
 
-export interface ConfigVersionRestoredAuditLogPayload
-  extends BaseAuditLogPayload<'config_version_restored'> {
+export interface ConfigVersionRestoredAuditLogPayload extends BaseAuditLogPayload<'config_version_restored'> {
   before: AuditLogPayloadConfig;
   restoredFromVersion: number;
   after: AuditLogPayloadConfig;
@@ -56,14 +55,12 @@ export interface AuditLogPayloadConfigVariant {
   version: number;
 }
 
-export interface ConfigVariantUpdatedAuditLogPayload
-  extends BaseAuditLogPayload<'config_variant_updated'> {
+export interface ConfigVariantUpdatedAuditLogPayload extends BaseAuditLogPayload<'config_variant_updated'> {
   before: AuditLogPayloadConfigVariant;
   after: AuditLogPayloadConfigVariant;
 }
 
-export interface ConfigVariantVersionRestoredAuditLogPayload
-  extends BaseAuditLogPayload<'config_variant_version_restored'> {
+export interface ConfigVariantVersionRestoredAuditLogPayload extends BaseAuditLogPayload<'config_variant_version_restored'> {
   environmentId: string;
   restoredFromVersion: number;
   before: {
@@ -106,8 +103,7 @@ export interface ApiKeyDeletedAuditLogPayload extends BaseAuditLogPayload<'api_k
   };
 }
 
-export interface ConfigMembersChangedAuditLogPayload
-  extends BaseAuditLogPayload<'config_members_changed'> {
+export interface ConfigMembersChangedAuditLogPayload extends BaseAuditLogPayload<'config_members_changed'> {
   config: AuditLogPayloadConfig;
   added: Array<{email: string; role: string}>;
   removed: Array<{email: string; role: string}>;
@@ -143,8 +139,7 @@ export interface ProjectUpdatedAuditLogPayload extends BaseAuditLogPayload<'proj
   };
 }
 
-export interface ProjectMembersChangedAuditLogPayload
-  extends BaseAuditLogPayload<'project_members_changed'> {
+export interface ProjectMembersChangedAuditLogPayload extends BaseAuditLogPayload<'project_members_changed'> {
   added: Array<{email: string; role: string}>;
   removed: Array<{email: string; role: string}>;
 }
@@ -159,8 +154,7 @@ export interface ProjectDeletedAuditLogPayload extends BaseAuditLogPayload<'proj
   };
 }
 
-export interface EnvironmentCreatedAuditLogPayload
-  extends BaseAuditLogPayload<'environment_created'> {
+export interface EnvironmentCreatedAuditLogPayload extends BaseAuditLogPayload<'environment_created'> {
   environment: {
     id: string;
     name: string;
@@ -169,8 +163,7 @@ export interface EnvironmentCreatedAuditLogPayload
   };
 }
 
-export interface EnvironmentDeletedAuditLogPayload
-  extends BaseAuditLogPayload<'environment_deleted'> {
+export interface EnvironmentDeletedAuditLogPayload extends BaseAuditLogPayload<'environment_deleted'> {
   environment: {
     id: string;
     name: string;
@@ -178,8 +171,7 @@ export interface EnvironmentDeletedAuditLogPayload
   };
 }
 
-export interface ConfigProposalCreatedAuditLogPayload
-  extends BaseAuditLogPayload<'config_proposal_created'> {
+export interface ConfigProposalCreatedAuditLogPayload extends BaseAuditLogPayload<'config_proposal_created'> {
   proposalId: string;
   configId: string;
   proposedDelete?: boolean;
@@ -188,11 +180,10 @@ export interface ConfigProposalCreatedAuditLogPayload
   proposedSchema?: {newSchema: unknown};
   proposedOverrides?: {newOverrides: unknown};
   proposedMembers?: Array<{email: string; role: string}>;
-  message?: string;
+  message: string | null;
 }
 
-export interface ConfigProposalRejectedAuditLogPayload
-  extends BaseAuditLogPayload<'config_proposal_rejected'> {
+export interface ConfigProposalRejectedAuditLogPayload extends BaseAuditLogPayload<'config_proposal_rejected'> {
   proposalId: string;
   configId: string;
   rejectedInFavorOfProposalId?: string;
@@ -204,8 +195,7 @@ export interface ConfigProposalRejectedAuditLogPayload
   proposedMembers?: Array<{email: string; role: string}>;
 }
 
-export interface ConfigProposalApprovedAuditLogPayload
-  extends BaseAuditLogPayload<'config_proposal_approved'> {
+export interface ConfigProposalApprovedAuditLogPayload extends BaseAuditLogPayload<'config_proposal_approved'> {
   proposalId: string;
   configId: string;
   proposedDelete?: boolean;
@@ -216,8 +206,7 @@ export interface ConfigProposalApprovedAuditLogPayload
   proposedMembers?: Array<{email: string; role: string}>;
 }
 
-export interface ConfigVariantProposalCreatedAuditLogPayload
-  extends BaseAuditLogPayload<'config_variant_proposal_created'> {
+export interface ConfigVariantProposalCreatedAuditLogPayload extends BaseAuditLogPayload<'config_variant_proposal_created'> {
   proposalId: string;
   configVariantId: string;
   configId: string;
@@ -227,8 +216,7 @@ export interface ConfigVariantProposalCreatedAuditLogPayload
   message?: string;
 }
 
-export interface ConfigVariantProposalRejectedAuditLogPayload
-  extends BaseAuditLogPayload<'config_variant_proposal_rejected'> {
+export interface ConfigVariantProposalRejectedAuditLogPayload extends BaseAuditLogPayload<'config_variant_proposal_rejected'> {
   proposalId: string;
   configVariantId: string;
   configId: string;
@@ -238,8 +226,7 @@ export interface ConfigVariantProposalRejectedAuditLogPayload
   proposedOverrides?: {newOverrides: unknown};
 }
 
-export interface ConfigVariantProposalApprovedAuditLogPayload
-  extends BaseAuditLogPayload<'config_variant_proposal_approved'> {
+export interface ConfigVariantProposalApprovedAuditLogPayload extends BaseAuditLogPayload<'config_variant_proposal_approved'> {
   proposalId: string;
   configVariantId: string;
   configId: string;
@@ -248,16 +235,14 @@ export interface ConfigVariantProposalApprovedAuditLogPayload
   proposedOverrides?: {newOverrides: unknown};
 }
 
-export interface WorkspaceCreatedAuditLogPayload
-  extends BaseAuditLogPayload<'workspace_created'> {
+export interface WorkspaceCreatedAuditLogPayload extends BaseAuditLogPayload<'workspace_created'> {
   workspace: {
     id: string;
     name: string;
   };
 }
 
-export interface WorkspaceUpdatedAuditLogPayload
-  extends BaseAuditLogPayload<'workspace_updated'> {
+export interface WorkspaceUpdatedAuditLogPayload extends BaseAuditLogPayload<'workspace_updated'> {
   workspace: {
     id: string;
     name: string;
@@ -270,28 +255,14 @@ export interface WorkspaceUpdatedAuditLogPayload
   };
 }
 
-export interface WorkspaceDeletedAuditLogPayload
-  extends BaseAuditLogPayload<'workspace_deleted'> {
+export interface WorkspaceDeletedAuditLogPayload extends BaseAuditLogPayload<'workspace_deleted'> {
   workspace: {
     id: string;
     name: string;
   };
 }
 
-export interface WorkspaceMemberAddedAuditLogPayload
-  extends BaseAuditLogPayload<'workspace_member_added'> {
-  workspace: {
-    id: string;
-    name: string;
-  };
-  member: {
-    email: string;
-    role: string;
-  };
-}
-
-export interface WorkspaceMemberRemovedAuditLogPayload
-  extends BaseAuditLogPayload<'workspace_member_removed'> {
+export interface WorkspaceMemberAddedAuditLogPayload extends BaseAuditLogPayload<'workspace_member_added'> {
   workspace: {
     id: string;
     name: string;
@@ -302,8 +273,18 @@ export interface WorkspaceMemberRemovedAuditLogPayload
   };
 }
 
-export interface WorkspaceMemberRoleChangedAuditLogPayload
-  extends BaseAuditLogPayload<'workspace_member_role_changed'> {
+export interface WorkspaceMemberRemovedAuditLogPayload extends BaseAuditLogPayload<'workspace_member_removed'> {
+  workspace: {
+    id: string;
+    name: string;
+  };
+  member: {
+    email: string;
+    role: string;
+  };
+}
+
+export interface WorkspaceMemberRoleChangedAuditLogPayload extends BaseAuditLogPayload<'workspace_member_role_changed'> {
   workspace: {
     id: string;
     name: string;
@@ -456,7 +437,7 @@ function toAuditLog(log: Selectable<AuditLogs>): AuditLog {
     configId: log.config_id,
     createdAt: log.created_at,
     id: log.id,
-    payload: deserializeJson(log.payload) as AuditLogPayload,
+    payload: deserializeJson<AuditLogPayload>(log.payload),
     userId: log.user_id,
     projectId: log.project_id,
   };

@@ -7,6 +7,7 @@ import {getEngineSingleton} from '@/engine/engine-singleton';
 import {initTRPC} from '@trpc/server';
 import {getServerSession} from 'next-auth';
 import {cache} from 'react';
+import superjson from 'superjson';
 
 export interface TrpcContext {
   currentUserEmail: NormalizedEmail | undefined;
@@ -33,7 +34,7 @@ const t = initTRPC.context<TrpcContext>().create({
   /**
    * @see https://trpc.io/docs/server/data-transformers
    */
-  // transformer: superjson,
+  transformer: superjson,
   errorFormatter: ({shape, error}) => {
     // Pass through BadRequestError codes to the frontend
     if (error.cause instanceof BadRequestError && error.cause.code) {

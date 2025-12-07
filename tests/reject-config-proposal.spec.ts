@@ -3,9 +3,9 @@ import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {ConfigProposalRejectedAuditLogPayload} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
+import {asConfigValue} from '@/engine/core/zod';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -77,10 +77,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
@@ -142,10 +157,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [THIRD_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
@@ -183,7 +213,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_delete',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -198,6 +228,27 @@ describe('rejectConfigProposal', () => {
       configId,
       proposedDelete: true,
       currentUserEmail: OTHER_USER_EMAIL,
+      defaultVariant: null,
+      message: null,
+      description: 'Original description',
+      editorEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [OTHER_USER_EMAIL],
+      environmentVariants: [
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+      ],
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
@@ -227,7 +278,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_multiple',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -244,10 +295,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [THIRD_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
@@ -299,10 +365,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
@@ -350,10 +431,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: THIRD_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     // THIRD_USER can reject their own proposal (no permission check)
@@ -396,10 +492,25 @@ describe('rejectConfigProposal', () => {
         editorEmails: [CURRENT_USER_EMAIL],
         maintainerEmails: [OTHER_USER_EMAIL, THIRD_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -413,10 +524,25 @@ describe('rejectConfigProposal', () => {
         editorEmails: [CURRENT_USER_EMAIL],
         maintainerEmails: [OTHER_USER_EMAIL, THIRD_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: THIRD_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -463,7 +589,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_already_rejected',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -480,10 +606,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     // Reject proposal
@@ -507,7 +648,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_already_approved',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -524,10 +665,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     // Approve proposal (OTHER_USER is maintainer, can approve description changes)
@@ -551,7 +707,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_reviewer_id',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -568,10 +724,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     // Reject proposal
@@ -594,7 +765,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_no_changes',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -617,10 +788,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     // Reject proposal
@@ -645,7 +831,7 @@ describe('rejectConfigProposal', () => {
         projectId: fixture.projectId,
         overrides: [],
         name: 'non_project_member_config',
-        value: {enabled: false},
+        value: asConfigValue({enabled: false}),
         schema: null,
         description: 'Original description',
         currentUserEmail: NON_PROJECT_MEMBER_EMAIL,
@@ -659,7 +845,7 @@ describe('rejectConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_correct_user',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -677,10 +863,25 @@ describe('rejectConfigProposal', () => {
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: [OTHER_USER_EMAIL],
       environmentVariants: [
-        {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-        {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+        {
+          environmentId: fixture.productionEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
+        {
+          environmentId: fixture.developmentEnvironmentId,
+          value: asConfigValue({enabled: false}),
+          schema: null,
+          overrides: [],
+          useDefaultSchema: false,
+        },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
+      proposedDelete: false,
+      defaultVariant: null,
+      message: null,
     });
 
     // Reject by CURRENT_USER

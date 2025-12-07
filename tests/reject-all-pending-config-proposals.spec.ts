@@ -3,9 +3,9 @@ import {BadRequestError} from '@/engine/core/errors';
 import type {ConfigProposalRejectedAuditLogPayload} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
+import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -72,10 +72,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -89,10 +104,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: THIRD_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -106,10 +136,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -185,10 +230,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -202,10 +262,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -253,8 +328,8 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_types',
-      value: {enabled: false},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      value: asConfigValue({enabled: false}),
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
@@ -272,10 +347,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: {type: 'object', properties: {enabled: {type: 'boolean'}}}, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: {type: 'object', properties: {enabled: {type: 'boolean'}}}, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+            useDefaultSchema: false,
+            overrides: [],
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+            useDefaultSchema: false,
+            overrides: [],
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       });
 
     const {configProposalId: membersProposalId} =
@@ -287,10 +377,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [THIRD_USER_EMAIL],
         maintainerEmails: [CURRENT_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: {type: 'object', properties: {enabled: {type: 'boolean'}}}, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: {type: 'object', properties: {enabled: {type: 'boolean'}}}, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+            useDefaultSchema: false,
+            overrides: [],
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+            useDefaultSchema: false,
+            overrides: [],
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       });
 
     const {configProposalId: deleteProposalId} = await fixture.engine.useCases.createConfigProposal(
@@ -301,6 +406,20 @@ describe('rejectAllPendingConfigProposals', () => {
         configId,
         proposedDelete: true,
         currentUserEmail: OTHER_USER_EMAIL,
+        description: 'Original description',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        environmentVariants: [
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+            useDefaultSchema: false,
+            overrides: [],
+          },
+        ],
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -382,6 +501,27 @@ describe('rejectAllPendingConfigProposals', () => {
         configId,
         proposedDelete: true,
         currentUserEmail: OTHER_USER_EMAIL,
+        description: 'Original description',
+        editorEmails: [],
+        maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+        environmentVariants: [
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+        ],
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -395,10 +535,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            useDefaultSchema: false,
+            overrides: [],
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -506,10 +661,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -523,10 +693,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -585,10 +770,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -602,10 +802,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -643,7 +858,7 @@ describe('rejectAllPendingConfigProposals', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_all_trpc',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -662,10 +877,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -679,10 +909,25 @@ describe('rejectAllPendingConfigProposals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {enabled: false}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({enabled: false}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: OTHER_USER_EMAIL,
+        proposedDelete: false,
+        defaultVariant: null,
+        message: null,
       },
     );
 

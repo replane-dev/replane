@@ -3,6 +3,7 @@ import type {DB} from '../db';
 import type {Override} from '../override-evaluator';
 import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export function createConfigVariantVersionId() {
   return createUuidV7();
@@ -14,8 +15,8 @@ export interface ConfigVariantVersion {
   version: number;
   name: string;
   description: string;
-  value: unknown;
-  schema: unknown | null;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
   overrides: Override[]; // NOT NULL - use [] for empty
   authorId: number | null;
   proposalId: string | null;
@@ -190,7 +191,7 @@ export class ConfigVariantVersionStore {
     description: string;
     value: string;
     schema: string | null;
-    overrides: string | null;
+    overrides: string;
     author_id: number | null;
     proposal_id: string | null;
     created_at: Date;
@@ -202,8 +203,8 @@ export class ConfigVariantVersionStore {
       name: row.name,
       description: row.description,
       value: deserializeJson(row.value),
-      schema: row.schema ? deserializeJson(row.schema) : null,
-      overrides: row.overrides ? (deserializeJson(row.overrides) ?? []) : [],
+      schema: row.schema !== null ? deserializeJson(row.schema) : null,
+      overrides: deserializeJson(row.overrides),
       authorId: row.author_id,
       proposalId: row.proposal_id,
       createdAt: row.created_at,

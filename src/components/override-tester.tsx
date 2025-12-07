@@ -15,6 +15,7 @@ import {Label} from '@/components/ui/label';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {EvaluationResult, Override} from '@/engine/core/override-evaluator';
 import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
+import type {ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {CheckCircle2, ChevronRight, HelpCircle, PlayCircle, XCircle} from 'lucide-react';
@@ -25,7 +26,7 @@ import {JsonEditor} from './json-editor';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from './ui/select';
 
 interface OverrideTesterProps {
-  baseValue: any;
+  baseValue: ConfigValue;
   overrides: Override[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -95,7 +96,7 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
     projectId: string;
     configName: string;
     environmentId: string;
-  }) => {
+  }): Promise<ConfigValue | undefined> => {
     const config = await queryClient.fetchQuery(
       trpc.getConfig.queryOptions({projectId: params.projectId, name: params.configName}),
     );
@@ -140,8 +141,7 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
       });
 
       // Evaluate with debug information
-      const config = {value: baseValue, overrides: renderedOverrides};
-      const result = evaluateConfigValue(config, context);
+      const result = evaluateConfigValue({value: baseValue, overrides: renderedOverrides}, context);
 
       setTestResult(result);
     } catch (error) {

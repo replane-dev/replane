@@ -7,9 +7,8 @@ import {OverrideSchema} from '../override-condition-schemas';
 import type {Override} from '../override-evaluator';
 import type {ConfigChangeEvent} from '../replica';
 import {deserializeJson} from '../store-utils';
-import {isValidJsonSchema} from '../utils';
 import {createUuidV7} from '../uuid';
-import {ConfigInfo, Uuid, type NormalizedEmail} from '../zod';
+import {ConfigInfo, ConfigValue, Uuid, type NormalizedEmail} from '../zod';
 
 export type ConfigId = string;
 
@@ -27,27 +26,6 @@ export function ConfigName() {
         'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
       )
   );
-}
-
-export function ConfigValue() {
-  return z.unknown().refine(val => {
-    return JSON.stringify(val).length < 1048576; // 1MB
-  });
-}
-
-export function ConfigSchema() {
-  return z
-    .unknown()
-    .refine(val => JSON.stringify(val).length < 131072, {
-      message: 'Schema JSON must be smaller than 128KB',
-    })
-    .refine(val => val === null || typeof val === 'boolean' || typeof val === 'object', {
-      message: 'Schema must be an object or a boolean',
-    })
-    .refine(val => isValidJsonSchema(val), {
-      message: 'Invalid JSON Schema',
-    })
-    .nullable();
 }
 
 export function ConfigDescription() {
@@ -78,7 +56,7 @@ export interface ConfigReplicaDump {
   name: string;
   projectId: string;
   environmentId: string;
-  value: unknown;
+  value: ConfigValue;
   overrides: Override[];
   version: number;
 }
@@ -91,7 +69,7 @@ export class ConfigStore {
 
   async getDefaultVariant(configId: string): Promise<{
     id: string;
-    value: unknown;
+    value: ConfigValue;
     schema: unknown | null;
     overrides: Override[];
     version: number;
@@ -122,7 +100,7 @@ export class ConfigStore {
       name: string;
       projectId: string;
       environmentId: string | null;
-      value: unknown;
+      value: ConfigValue;
       overrides: Override[];
       version: number;
     }>

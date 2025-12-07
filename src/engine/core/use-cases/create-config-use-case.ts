@@ -9,7 +9,7 @@ import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import {createUuidV7} from '../uuid';
 import {validateOverrideReferences} from '../validate-override-references';
-import type {NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
 export interface CreateConfigRequest {
   name: string;
@@ -20,16 +20,16 @@ export interface CreateConfigRequest {
   projectId: string;
   // New flexible variant structure
   defaultVariant?: {
-    value: unknown;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: Override[];
   };
   environmentVariants?: Array<{
     environmentId: string;
-    value: any;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema?: boolean; // If true, inherit schema from default variant
+    useDefaultSchema: boolean;
   }>;
 }
 

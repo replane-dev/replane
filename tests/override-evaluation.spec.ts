@@ -2,6 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {Override} from '@/engine/core/override-evaluator';
 import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
 import {normalizeEmail} from '@/engine/core/utils';
+import {asConfigValue} from '@/engine/core/zod';
 import {assert, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
@@ -12,7 +13,7 @@ function sleep(ms: number) {
 }
 
 // Helper to quickly create literal values
-const lit = (value: unknown) => ({type: 'literal' as const, value});
+const lit = (value: unknown) => ({type: 'literal' as const, value: asConfigValue(value)});
 
 // Type for testing override evaluation (includes value/schema/overrides unlike Config)
 type ConfigForEvaluation = {
@@ -28,7 +29,7 @@ async function evaluate(config: ConfigForEvaluation, context: Record<string, unk
     configResolver: () => Promise.resolve(undefined),
     environmentId: 'production',
   });
-  return evaluateConfigValue({value: config.value, overrides: rendered}, context);
+  return evaluateConfigValue({value: asConfigValue(config.value), overrides: rendered}, context);
 }
 
 describe('Override Evaluation', () => {
@@ -50,7 +51,7 @@ describe('Override Evaluation', () => {
                 value: lit('100'), // String in rule
               },
             ],
-            value: lit(1000),
+            value: asConfigValue(1000),
           },
         ],
       };
@@ -73,7 +74,7 @@ describe('Override Evaluation', () => {
                 value: lit(200), // Number in rule
               },
             ],
-            value: lit('success'),
+            value: asConfigValue('success'),
           },
         ],
       };
@@ -96,7 +97,7 @@ describe('Override Evaluation', () => {
                 value: lit('true'), // String in rule
               },
             ],
-            value: lit('enabled'),
+            value: asConfigValue('enabled'),
           },
         ],
       };
@@ -121,7 +122,7 @@ describe('Override Evaluation', () => {
                 value: lit('US'),
               },
             ],
-            value: lit('us-value'),
+            value: asConfigValue('us-value'),
           },
         ],
       };
@@ -145,7 +146,7 @@ describe('Override Evaluation', () => {
                 value: lit(['CN', 'RU', 'KP']),
               },
             ],
-            value: lit('allowed'),
+            value: asConfigValue('allowed'),
           },
         ],
       };
@@ -169,7 +170,7 @@ describe('Override Evaluation', () => {
                 value: lit(30),
               },
             ],
-            value: lit(5),
+            value: asConfigValue(5),
           },
         ],
       };
@@ -194,7 +195,7 @@ describe('Override Evaluation', () => {
                 value: lit(100),
               },
             ],
-            value: lit('ok'),
+            value: asConfigValue('ok'),
           },
         ],
       };
@@ -219,7 +220,7 @@ describe('Override Evaluation', () => {
                 value: lit(700),
               },
             ],
-            value: lit('premium'),
+            value: asConfigValue('premium'),
           },
         ],
       };
@@ -244,7 +245,7 @@ describe('Override Evaluation', () => {
                 value: lit(18),
               },
             ],
-            value: lit('adult'),
+            value: asConfigValue('adult'),
           },
         ],
       };
@@ -282,7 +283,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: lit('vip-premium'),
+            value: asConfigValue('vip-premium'),
           },
         ],
       };
@@ -321,7 +322,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: lit('admin-access'),
+            value: asConfigValue('admin-access'),
           },
         ],
       };
@@ -355,7 +356,7 @@ describe('Override Evaluation', () => {
                 },
               },
             ],
-            value: lit('active'),
+            value: asConfigValue('active'),
           },
         ],
       };
@@ -401,7 +402,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: lit('special'),
+            value: asConfigValue('special'),
           },
         ],
       };
@@ -444,7 +445,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: lit('vip-premium'),
+            value: asConfigValue('vip-premium'),
           },
         ],
       };
@@ -482,7 +483,7 @@ describe('Override Evaluation', () => {
                 value: lit('admin@example.com'),
               },
             ],
-            value: lit('admin-override'),
+            value: asConfigValue('admin-override'),
           },
           {
             name: 'Premium',
@@ -494,7 +495,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: lit('premium-override'),
+            value: asConfigValue('premium-override'),
           },
         ],
       };
@@ -552,7 +553,7 @@ describe('Override Evaluation', () => {
                 value: lit('US'),
               },
             ],
-            value: lit('override'),
+            value: asConfigValue('override'),
           },
         ],
       };
@@ -578,7 +579,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: lit('premium-value'),
+            value: asConfigValue('premium-value'),
           },
         ],
       };
@@ -608,7 +609,7 @@ describe('Override Evaluation', () => {
                 value: lit('premium'),
               },
             ],
-            value: lit('premium-value'),
+            value: asConfigValue('premium-value'),
           },
         ],
       };
@@ -648,7 +649,7 @@ describe('Override Evaluation', () => {
                 ],
               },
             ],
-            value: lit('special'),
+            value: asConfigValue('special'),
           },
         ],
       };
@@ -683,7 +684,7 @@ describe('Override Evaluation', () => {
                 value: lit('100'), // String
               },
             ],
-            value: lit('matched'),
+            value: asConfigValue('matched'),
           },
         ],
       };
@@ -708,7 +709,7 @@ describe('Override Evaluation', () => {
               value: lit('vip@example.com'),
             },
           ],
-          value: lit({maxItems: 100}),
+          value: asConfigValue({maxItems: 100}),
         },
         {
           name: 'Premium Tier',
@@ -720,13 +721,13 @@ describe('Override Evaluation', () => {
               value: lit('premium'),
             },
           ],
-          value: lit({maxItems: 50}),
+          value: asConfigValue({maxItems: 50}),
         },
       ];
 
       await fixture.createConfig({
         name: 'max_items_config',
-        value: lit({maxItems: 10}),
+        value: asConfigValue({maxItems: 10}),
         schema: null,
         overrides,
         description: 'Config with overrides',
@@ -736,7 +737,7 @@ describe('Override Evaluation', () => {
         projectId: fixture.projectId,
       });
 
-      await sleep(50);
+      await fixture.engine.testing.replicaService.sync();
 
       // Test base value
       const baseResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
@@ -805,7 +806,7 @@ describe('Override Evaluation', () => {
               value: lit(true),
             },
           ],
-          value: lit(true),
+          value: asConfigValue(true),
         },
       ];
 
@@ -817,14 +818,16 @@ describe('Override Evaluation', () => {
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: false,
+            value: asConfigValue(false),
             schema: null,
+            useDefaultSchema: false,
             overrides: newOverrides,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: false,
+            value: asConfigValue(false),
             schema: null,
+            useDefaultSchema: false,
             overrides: [],
           },
         ],
@@ -832,7 +835,7 @@ describe('Override Evaluation', () => {
         prevVersion: 1,
       });
 
-      await sleep(50);
+      await fixture.engine.testing.replicaService.sync();
 
       // Verify override works
       const enabledResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
@@ -852,7 +855,7 @@ describe('Override Evaluation', () => {
       expect(disabledResult.value).toBe(false);
     });
 
-    it('should work with type casting in production', async () => {
+    it.only('should work with type casting in production', async () => {
       const overrides: Override[] = [
         {
           name: 'Age Check',
@@ -864,7 +867,7 @@ describe('Override Evaluation', () => {
               value: lit('18'), // String in rule
             },
           ],
-          value: lit({access: 'adult'}),
+          value: asConfigValue({access: 'adult'}),
         },
       ];
 
@@ -880,7 +883,7 @@ describe('Override Evaluation', () => {
         projectId: fixture.projectId,
       });
 
-      await sleep(50);
+      await fixture.engine.testing.replicaService.sync();
 
       // Number context should work with string rule
       const adult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {

@@ -17,20 +17,20 @@ import type {User} from './user-store';
 import {normalizeEmail, validateAgainstJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {validateOverrideReferences} from './validate-override-references';
-import type {ConfigMember} from './zod';
+import type {ConfigMember, ConfigSchema, ConfigValue} from './zod';
 
 export interface UpdateConfigParams {
   configId: string;
   description: string;
   editorEmails: string[];
   maintainerEmails: string[];
-  defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
+  defaultVariant?: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
   environmentVariants: Array<{
     environmentId: string;
-    value: unknown;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema?: boolean;
+    useDefaultSchema: boolean;
   }>;
   currentUser: User;
   reviewer: User;
@@ -78,7 +78,7 @@ export class ConfigService {
     config: {
       projectId: string;
       description: string;
-      defaultVariant?: {value: unknown; schema: unknown | null; overrides: Override[]};
+      defaultVariant: {value: unknown; schema: unknown | null; overrides: Override[]} | null;
       environmentVariants: Array<{
         environmentId: string;
         value: unknown;
@@ -205,8 +205,8 @@ export class ConfigService {
     const variantsToUpdate: Array<{
       variantId: string;
       environmentId: string;
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
       useDefaultSchema: boolean;
     }> = [];

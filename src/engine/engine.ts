@@ -292,6 +292,7 @@ export async function createEngine(options: EngineOptions) {
     verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
     testing: {
       pool,
+      replicaService,
       dbSchema: options.dbSchema,
       auditLogs: new AuditLogStore(db),
       projects: new ProjectStore(db),

@@ -1,6 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
+import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
 
@@ -21,8 +22,8 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {feature: 'enabled'},
-            schema: {type: 'object', properties: {feature: {type: 'string'}}},
+            value: asConfigValue({feature: 'enabled'}),
+            schema: asConfigSchema({type: 'object', properties: {feature: {type: 'string'}}}),
             overrides: [],
           },
           environmentVariants: [],
@@ -60,16 +61,17 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {limit: 100},
-            schema: {type: 'object', properties: {limit: {type: 'number'}}},
+            value: asConfigValue({limit: 100}),
+            schema: asConfigSchema({type: 'object', properties: {limit: {type: 'number'}}}),
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {limit: 1000}, // Production has higher limit
-              schema: {type: 'object', properties: {limit: {type: 'number'}}},
+              value: asConfigValue({limit: 1000}), // Production has higher limit
+              schema: asConfigSchema({type: 'object', properties: {limit: {type: 'number'}}}),
               overrides: [],
+              useDefaultSchema: true,
             },
           ],
         },
@@ -117,15 +119,17 @@ describe('Default Variant', () => {
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {env: 'production'},
+              value: asConfigValue({env: 'production'}),
               schema: null,
               overrides: [],
+              useDefaultSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {env: 'development'},
+              value: asConfigValue({env: 'development'}),
               schema: null,
               overrides: [],
+              useDefaultSchema: false,
             },
           ],
         },
@@ -174,9 +178,10 @@ describe('Default Variant', () => {
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {test: true},
+              value: asConfigValue({test: true}),
               schema: null,
               overrides: [],
+              useDefaultSchema: true,
             },
           ],
         }),
@@ -193,9 +198,10 @@ describe('Default Variant', () => {
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {test: true},
+              value: asConfigValue({test: true}),
               schema: null,
               overrides: [],
+              useDefaultSchema: true,
             },
           ],
         }),
@@ -226,8 +232,8 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {count: 'not-a-number'}, // Should be a number
-            schema: {type: 'object', properties: {count: {type: 'number'}}},
+            value: asConfigValue({count: 'not-a-number'}), // Should be a number
+            schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
             overrides: [],
           },
         }),
@@ -244,16 +250,44 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {valid: true},
+            value: asConfigValue({valid: true}),
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: 'not-an-object', // Should be an object per schema
-              schema: {type: 'object'},
+              value: asConfigValue('not-an-object'), // Should be an object per schema
+              schema: asConfigSchema({type: 'object'}),
               overrides: [],
+              useDefaultSchema: false,
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('should validate environment variant value against base schema', async () => {
+      await expect(
+        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+          name: 'invalid-env-schema',
+          description: 'Should fail schema validation',
+          currentUserEmail: CURRENT_USER_EMAIL,
+          editorEmails: [],
+          maintainerEmails: [],
+          projectId: fixture.projectId,
+          defaultVariant: {
+            value: asConfigValue({valid: true}),
+            schema: asConfigSchema({type: 'object'}),
+            overrides: [],
+          },
+          environmentVariants: [
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: asConfigValue('not-an-object'), // Should be an object per schema
+              schema: asConfigSchema({type: 'string'}),
+              overrides: [],
+              useDefaultSchema: true,
             },
           ],
         }),
@@ -270,16 +304,17 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {test: true},
+            value: asConfigValue({test: true}),
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: 'non-existent-env-id',
-              value: {test: false},
+              value: asConfigValue({test: false}),
               schema: null,
               overrides: [],
+              useDefaultSchema: true,
             },
           ],
         }),
@@ -300,7 +335,7 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {defaultValue: 'from-default'},
+            value: asConfigValue({defaultValue: 'from-default'}),
             schema: null,
             overrides: [],
           },
@@ -324,16 +359,17 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {source: 'default'},
+          value: asConfigValue({source: 'default'}),
           schema: null,
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {source: 'production-specific'},
+            value: asConfigValue({source: 'production-specific'}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
         ],
       });
@@ -362,14 +398,18 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {count: 100},
-          schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+          value: asConfigValue({count: 100}),
+          schema: asConfigSchema({
+            type: 'object',
+            properties: {count: {type: 'number'}},
+            required: ['count'],
+          }),
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {count: 500}, // This should validate against default schema
+            value: asConfigValue({count: 500}), // This should validate against default schema
             schema: null, // No specific schema
             overrides: [],
             useDefaultSchema: true, // Inherit from default
@@ -402,14 +442,18 @@ describe('Default Variant', () => {
           maintainerEmails: [],
           projectId: fixture.projectId,
           defaultVariant: {
-            value: {count: 100},
-            schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+            value: asConfigValue({count: 100}),
+            schema: asConfigSchema({
+              type: 'object',
+              properties: {count: {type: 'number'}},
+              required: ['count'],
+            }),
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {count: 'not-a-number'}, // Should fail validation
+              value: asConfigValue({count: 'not-a-number'}), // Should fail validation
               schema: null,
               overrides: [],
               useDefaultSchema: true,
@@ -432,16 +476,17 @@ describe('Default Variant', () => {
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {count: 100},
+              value: asConfigValue({count: 100}),
               schema: null,
               overrides: [],
               useDefaultSchema: true, // This should fail
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {count: 200},
+              value: asConfigValue({count: 200}),
               schema: null,
               overrides: [],
+              useDefaultSchema: true,
             },
           ],
         }),
@@ -458,14 +503,14 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {anything: 'goes'},
+          value: asConfigValue({anything: 'goes'}),
           schema: null, // No schema
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {completely: 'different'}, // Should pass because no schema
+            value: asConfigValue({completely: 'different'}), // Should pass because no schema
             schema: null,
             overrides: [],
             useDefaultSchema: true,
@@ -492,8 +537,8 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {key: 'default-value'},
-          schema: {type: 'object'},
+          value: asConfigValue({key: 'default-value'}),
+          schema: asConfigSchema({type: 'object'}),
           overrides: [],
         },
         environmentVariants: [],
@@ -519,22 +564,24 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {base: 'default'},
+          value: asConfigValue({base: 'default'}),
           schema: null,
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {base: 'production'},
+            value: asConfigValue({base: 'production'}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {base: 'development'},
+            value: asConfigValue({base: 'development'}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
         ],
       });
@@ -574,22 +621,28 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {count: 100},
-          schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+          value: asConfigValue({count: 100}),
+          schema: asConfigSchema({
+            type: 'object',
+            properties: {count: {type: 'number'}},
+            required: ['count'],
+          }),
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {count: 200},
-            schema: {type: 'object', properties: {count: {type: 'number'}}}, // Own schema
+            value: asConfigValue({count: 200}),
+            schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}), // Own schema
             overrides: [],
+            useDefaultSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {count: 300},
+            value: asConfigValue({count: 300}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
         ],
       });
@@ -612,13 +665,29 @@ describe('Default Variant', () => {
         editorEmails: [],
         maintainerEmails: [],
         defaultVariant: {
-          value: {count: 100},
-          schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+          value: asConfigValue({count: 100}),
+          schema: asConfigSchema({
+            type: 'object',
+            properties: {count: {type: 'number'}},
+            required: ['count'],
+          }),
           overrides: [],
         },
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {count: 500}, schema: null, overrides: [], useDefaultSchema: true},
-          {environmentId: fixture.developmentEnvironmentId, value: {count: 300}, schema: null, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({count: 500}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({count: 300}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
         ],
         prevVersion: beforeConfig!.config.version,
       });
@@ -645,22 +714,28 @@ describe('Default Variant', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: {count: 100},
-          schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+          value: asConfigValue({count: 100}),
+          schema: asConfigSchema({
+            type: 'object',
+            properties: {count: {type: 'number'}},
+            required: ['count'],
+          }),
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {count: 200},
+            value: asConfigValue({count: 200}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {count: 300},
+            value: asConfigValue({count: 300}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
         ],
       });
@@ -683,13 +758,29 @@ describe('Default Variant', () => {
           editorEmails: [],
           maintainerEmails: [],
           defaultVariant: {
-            value: {count: 100},
-            schema: {type: 'object', properties: {count: {type: 'number'}}, required: ['count']},
+            value: asConfigValue({count: 100}),
+            schema: asConfigSchema({
+              type: 'object',
+              properties: {count: {type: 'number'}},
+              required: ['count'],
+            }),
             overrides: [],
           },
           environmentVariants: [
-            {environmentId: fixture.productionEnvironmentId, value: {count: 'not-a-number'}, schema: null, overrides: [], useDefaultSchema: true},
-            {environmentId: fixture.developmentEnvironmentId, value: {count: 300}, schema: null, overrides: []},
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: asConfigValue({count: 'not-a-number'}),
+              schema: null,
+              overrides: [],
+              useDefaultSchema: true,
+            },
+            {
+              environmentId: fixture.developmentEnvironmentId,
+              value: asConfigValue({count: 300}),
+              schema: null,
+              overrides: [],
+              useDefaultSchema: true,
+            },
           ],
           prevVersion: config!.config.version,
         }),
@@ -708,17 +799,24 @@ describe('Default Variant', () => {
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {key: 'prod'},
+            value: asConfigValue({key: 'prod'}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {key: 'dev'},
+            value: asConfigValue({key: 'dev'}),
             schema: null,
             overrides: [],
+            useDefaultSchema: true,
           },
         ],
+        defaultVariant: {
+          value: asConfigValue({key: 'default'}),
+          schema: asConfigSchema({type: 'object', properties: {key: {type: 'string'}}}),
+          overrides: [],
+        },
       });
 
       const prodVariantId = configVariantIds.find(
@@ -739,8 +837,20 @@ describe('Default Variant', () => {
           editorEmails: [],
           maintainerEmails: [],
           environmentVariants: [
-            {environmentId: fixture.productionEnvironmentId, value: {key: 'updated'}, schema: null, overrides: [], useDefaultSchema: true},
-            {environmentId: fixture.developmentEnvironmentId, value: {key: 'dev'}, schema: null, overrides: []},
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: asConfigValue({key: 'updated'}),
+              schema: null,
+              overrides: [],
+              useDefaultSchema: true,
+            },
+            {
+              environmentId: fixture.developmentEnvironmentId,
+              value: asConfigValue({key: 'dev'}),
+              schema: null,
+              overrides: [],
+              useDefaultSchema: true,
+            },
           ],
           prevVersion: config!.config.version,
         }),

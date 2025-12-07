@@ -1,10 +1,11 @@
 import {z} from 'zod';
 import {JsonPathSchema} from './json-path';
 import {ConfigName} from './stores/config-store';
+import {ConfigValue} from './zod';
 
 const LiteralValueSchema = z.object({
   type: z.literal('literal'),
-  value: z.unknown(),
+  value: ConfigValue(),
 });
 
 const ReferenceValueSchema = z.object({
@@ -277,7 +278,7 @@ export const RenderedConditionSchema: z.ZodType<RenderedCondition> = z.lazy(() =
 export const OverrideSchema = z.object({
   name: z.string(),
   conditions: z.array(ConditionSchema),
-  value: ValueSchema,
+  value: ConfigValue(),
 });
 
 export type Override = z.infer<typeof OverrideSchema>;
@@ -285,7 +286,7 @@ export type Override = z.infer<typeof OverrideSchema>;
 export const RenderedOverrideSchema = z.object({
   name: z.string(),
   conditions: z.array(RenderedConditionSchema),
-  value: z.unknown(),
+  value: ConfigValue(),
 });
 
 export type RenderedOverride = z.infer<typeof RenderedOverrideSchema>;

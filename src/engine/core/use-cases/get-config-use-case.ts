@@ -67,7 +67,7 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
 
     // Get all variants for this config (including default variant with environmentId=null)
     const allVariants = await tx.configVariants.getByConfigId(config.id);
-    
+
     // Include all variants - the UI will handle separating default from environment-specific
     const variants: ConfigVariantWithEnvironmentName[] = allVariants;
 

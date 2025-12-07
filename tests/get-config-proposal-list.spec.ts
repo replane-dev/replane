@@ -1,9 +1,9 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
+import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -73,14 +73,29 @@ describe('getConfigProposalList', () => {
         projectId: fixture.projectId,
         baseVersion: 1,
         configId: configAId,
+        proposedDelete: false,
         description: 'A1',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({a: 1}),
+            schema: asConfigSchema({type: 'object', properties: {a: {type: 'number'}}}),
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({a: 1}),
+            schema: asConfigSchema({type: 'object', properties: {a: {type: 'number'}}}),
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -92,14 +107,29 @@ describe('getConfigProposalList', () => {
         projectId: fixture.projectId,
         baseVersion: 1,
         configId: configAId,
+        proposedDelete: false,
         description: 'A2',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {a: 1}, schema: {type: 'object', properties: {a: {type: 'number'}}}, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({a: 1}),
+            schema: asConfigSchema({type: 'object', properties: {a: {type: 'number'}}}),
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({a: 1}),
+            schema: asConfigSchema({type: 'object', properties: {a: {type: 'number'}}}),
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
+        defaultVariant: null,
+        message: null,
       },
     );
 
@@ -108,8 +138,8 @@ describe('getConfigProposalList', () => {
     const {configId: configBId} = await fixture.createConfig({
       overrides: [],
       name: 'config_b',
-      value: {b: 1},
-      schema: {type: 'object', properties: {b: {type: 'number'}}},
+      value: asConfigValue({b: 1}),
+      schema: asConfigSchema({type: 'object', properties: {b: {type: 'number'}}}),
       description: 'B',
       currentUserEmail: CURRENT_USER_EMAIL,
       editorEmails: [],
@@ -126,12 +156,27 @@ describe('getConfigProposalList', () => {
         configId: configBId,
         description: 'B1',
         editorEmails: [],
+        proposedDelete: false,
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
         environmentVariants: [
-          {environmentId: fixture.productionEnvironmentId, value: {b: 1}, schema: {type: 'object', properties: {b: {type: 'number'}}}, overrides: []},
-          {environmentId: fixture.developmentEnvironmentId, value: {b: 1}, schema: {type: 'object', properties: {b: {type: 'number'}}}, overrides: []},
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({b: 1}),
+            schema: asConfigSchema({type: 'object', properties: {b: {type: 'number'}}}),
+            overrides: [],
+            useDefaultSchema: false,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({b: 1}),
+            schema: asConfigSchema({type: 'object', properties: {b: {type: 'number'}}}),
+            overrides: [],
+            useDefaultSchema: false,
+          },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
+        defaultVariant: null,
+        message: null,
       },
     );
 

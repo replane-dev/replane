@@ -9,6 +9,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
+import {asConfigValue} from '@/engine/core/zod';
 import {ChevronDown, ChevronRight, CircleHelp, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
 import React, {useCallback, useState} from 'react';
 import {ConditionEditor} from './condition-editor';
@@ -75,7 +76,7 @@ const OverrideCardComponent = ({
         {
           operator: 'equals',
           property: '',
-          value: {type: 'literal', value: ''},
+          value: {type: 'literal', value: asConfigValue('')},
         },
       ],
     });
@@ -109,7 +110,7 @@ const OverrideCardComponent = ({
       onValueChange={v => setViewMode(v as 'form' | 'json')}
       className="w-full"
     >
-      <div className="rounded-lg border-1 bg-card shadow-sm">
+      <div className="rounded-lg border bg-card shadow-sm">
         {/* Header */}
         <div
           className="flex items-center gap-2 p-3 border-b bg-muted/30 cursor-pointer hover:bg-muted/50"

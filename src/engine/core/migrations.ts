@@ -1109,6 +1109,63 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_events_consumer_id ON events(consumer_id, created_at);
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- make overrides column in config_variants and config_proposal_variants not null
+      -- and update existing records to use [] for empty overrides
+      UPDATE config_variants SET overrides = '[]' WHERE overrides IS NULL;
+      ALTER TABLE config_variants ALTER COLUMN overrides SET NOT NULL;
+
+      UPDATE config_proposal_variants SET proposed_overrides = '[]' WHERE proposed_overrides IS NULL;
+      ALTER TABLE config_proposal_variants ALTER COLUMN proposed_overrides SET NOT NULL;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- make proposed_value not null (drop proposals with variants with nulls)
+      DELETE FROM config_proposals WHERE id IN (
+        SELECT proposal_id FROM config_proposal_variants WHERE proposed_value IS NULL
+      );
+
+      ALTER TABLE config_proposal_variants ALTER COLUMN proposed_value SET NOT NULL;
+    `,
+  },
+  {
+    // drop default from use_default_schema column in config_proposal_variants
+    sql: /*sql*/ `
+      ALTER TABLE config_proposal_variants ALTER COLUMN use_default_schema DROP DEFAULT;
+    `,
+  },
+  {
+    // make config_variant_versions value and overrides not null
+    sql: /*sql*/ `
+      DELETE FROM config_variant_versions WHERE value IS NULL;
+      UPDATE config_variant_versions SET overrides = '[]' WHERE overrides IS NULL;
+
+      ALTER TABLE config_variant_versions ALTER COLUMN value SET NOT NULL;
+      ALTER TABLE config_variant_versions ALTER COLUMN overrides SET NOT NULL;
+    `,
+  },
+  {
+    // make proposed_members not null
+    sql: /*sql*/ `
+      DELETE FROM config_proposals WHERE proposed_members IS NULL;
+      ALTER TABLE config_proposals ALTER COLUMN proposed_members SET NOT NULL;
+    `,
+  },
+  {
+    // make proposed delete non default
+    sql: /*sql*/ `
+      ALTER TABLE config_proposals ALTER COLUMN proposed_delete DROP DEFAULT;
+    `,
+  },
+  {
+    // make proposed description not null
+    sql: /*sql*/ `
+      DELETE FROM config_proposals WHERE proposed_description IS NULL;
+      ALTER TABLE config_proposals ALTER COLUMN proposed_description SET NOT NULL;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

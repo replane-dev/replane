@@ -3,7 +3,7 @@ import type {Context} from '../context';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
 export interface RestoreConfigVersionRequest {
   configId: string;
@@ -53,8 +53,8 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     // Fetch all version snapshots at the specified config version
     const versionSnapshots: Array<{
       configVariantId: string;
-      value: unknown;
-      schema: unknown | null;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
       overrides: Override[];
     }> = [];
 
@@ -92,10 +92,12 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
 
     // Reconstruct full config state from version snapshots
     const defaultVariantSnapshot = versionSnapshots.find(
-      snapshot => currentVariants.find(v => v.id === snapshot.configVariantId)?.environmentId === null,
+      snapshot =>
+        currentVariants.find(v => v.id === snapshot.configVariantId)?.environmentId === null,
     );
     const environmentVariantSnapshots = versionSnapshots.filter(
-      snapshot => currentVariants.find(v => v.id === snapshot.configVariantId)?.environmentId !== null,
+      snapshot =>
+        currentVariants.find(v => v.id === snapshot.configVariantId)?.environmentId !== null,
     );
 
     const defaultVariant = defaultVariantSnapshot
@@ -142,4 +144,3 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     return {newVersion: config.version + 1};
   };
 }
-

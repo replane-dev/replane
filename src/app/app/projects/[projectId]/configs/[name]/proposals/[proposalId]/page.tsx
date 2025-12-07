@@ -484,14 +484,7 @@ export default function ReviewConfigProposalPage() {
               }}
               proposed={{
                 description: proposal.proposedDescription,
-                members: proposal.proposedMembers
-                  ? {
-                      newMembers: proposal.proposedMembers.newMembers.map(m => ({
-                        email: m.email,
-                        role: m.role as 'owner' | 'editor',
-                      })),
-                    }
-                  : null,
+                members: proposal.proposedMembers,
               }}
               proposedVariants={proposal.proposedVariants}
             />
@@ -503,7 +496,7 @@ export default function ReviewConfigProposalPage() {
 
         {/* Sticky button panel */}
         {proposal.status === 'pending' && (
-          <div className="sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-3 px-4">
+          <div className="sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-3 px-4">
             <div className="max-w-4xl flex gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>

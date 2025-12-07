@@ -1,5 +1,41 @@
 import z from 'zod';
-import type {Brand} from './utils';
+import {isValidJsonSchema, type Brand} from './utils';
+
+export type ConfigValue = Brand<unknown, 'ConfigValue'>;
+
+export function ConfigValue() {
+  return z
+    .unknown()
+    .refine(val => {
+      return JSON.stringify(val).length < 1048576; // 1MB
+    })
+    .transform(val => val as ConfigValue);
+}
+
+export function asConfigValue(val: unknown): ConfigValue {
+  return val as ConfigValue;
+}
+
+export function ConfigSchema() {
+  return z
+    .unknown()
+    .refine(val => {
+      return JSON.stringify(val).length < 131072; // 128KB
+    })
+    .refine(val => val === null || typeof val === 'boolean' || typeof val === 'object', {
+      message: 'Schema must be an object or a boolean',
+    })
+    .refine(val => isValidJsonSchema(val), {
+      message: 'Invalid JSON Schema',
+    })
+    .transform(val => val as ConfigSchema);
+}
+
+export function asConfigSchema(val: unknown): ConfigSchema {
+  return val as ConfigSchema;
+}
+
+export type ConfigSchema = Brand<unknown, 'ConfigSchema'>;
 
 export type NormalizedEmail = Brand<string, 'NormalizedEmail'>;
 

@@ -2,6 +2,7 @@
 
 import {Button} from '@/components/ui/button';
 import type {Override} from '@/engine/core/override-evaluator';
+import {asConfigValue} from '@/engine/core/zod';
 import {Plus} from 'lucide-react';
 import {useCallback} from 'react';
 import {OverrideCard} from './override-card';
@@ -30,7 +31,7 @@ export function OverrideBuilder({
         {
           operator: 'equals',
           property: '',
-          value: {type: 'literal', value: ''},
+          value: {type: 'literal', value: asConfigValue('')},
         },
       ],
       value: defaultValue !== undefined ? defaultValue : null,

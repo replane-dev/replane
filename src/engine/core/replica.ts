@@ -12,8 +12,14 @@ import type {Override, RenderedOverride} from './override-condition-schemas';
 import {renderOverrides} from './override-evaluator';
 import type {ReplicaEventBus} from './replica-event-bus';
 import type {Service} from './service';
-import {ReplicaStore, type ConfigReplica, type ConfigVariantReplica} from './stores/replica-store';
+import {
+  ReplicaStore,
+  type ConfigReplica,
+  type ConfigVariantReplica,
+  type EnvironmentalConfigReplica,
+} from './stores/replica-store';
 import {assertNever, chunkArray, groupBy, wait} from './utils';
+import type {ConfigValue} from './zod';
 
 export type ReplicaEvent =
   | {
@@ -43,7 +49,7 @@ export interface RenderedConfig {
   name: string;
   version: number;
   environmentId: string;
-  value: unknown;
+  value: ConfigValue;
   overrides: RenderedOverride[];
 }
 
@@ -60,12 +66,7 @@ export class Replica {
     const replica = await Replica.createLagging(db, replicaStore, hub, logger, replicaEvents);
 
     // now we need to catch up with the latest events
-    while (true) {
-      const {status} = await replica.step();
-      if (status === 'up-to-date') {
-        break;
-      }
-    }
+    await replica.sync();
 
     void replica.loop().catch(onFatalError);
 
@@ -118,12 +119,48 @@ export class Replica {
     // Replica.create stats the loop
   }
 
-  getConfigValue(params: {
+  async sync() {
+    while (true) {
+      const {status} = await this.step();
+      if (status === 'up-to-date') {
+        break;
+      }
+    }
+  }
+
+  private getConfigValueWithoutOverrides(params: {
     projectId: string;
     configName: string;
     environmentId: string;
-  }): unknown | undefined {
+  }): ConfigValue | undefined {
     return this.replicaStore.getConfigValue(params);
+  }
+
+  public async getConfig(params: {
+    projectId: string;
+    configName: string;
+    environmentId: string;
+  }): Promise<RenderedConfig | undefined> {
+    const config = this.replicaStore.getEnvironmentalConfig(params);
+    if (!config) {
+      return undefined;
+    }
+    return await this.renderConfig(config);
+  }
+
+  private async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {
+    return {
+      name: config.name,
+      version: config.version,
+      environmentId: config.environmentId,
+      value: config.value,
+      overrides: await renderOverrides({
+        overrides: config.overrides,
+        configResolver: async params => this.getConfigValueWithoutOverrides(params),
+        environmentId: config.environmentId,
+      }),
+      projectId: config.projectId,
+    };
   }
 
   async getProjectConfigs(params: {
@@ -141,7 +178,7 @@ export class Replica {
         environmentId: params.environmentId,
         overrides: await renderOverrides({
           overrides: config.overrides,
-          configResolver: params => this.getConfigValue(params),
+          configResolver: async params => this.getConfigValueWithoutOverrides(params),
           environmentId: params.environmentId,
         }),
         value: config.value,
@@ -150,35 +187,6 @@ export class Replica {
     }
 
     return result;
-  }
-
-  async getConfig(params: {
-    projectId: string;
-    configName: string;
-    environmentId: string;
-  }): Promise<RenderedConfig | undefined> {
-    const config = this.replicaStore.getEnvironmentalConfig({
-      projectId: params.projectId,
-      configName: params.configName,
-      environmentId: params.environmentId,
-    });
-
-    if (!config) {
-      return undefined;
-    }
-
-    return {
-      name: config.name,
-      version: config.version,
-      environmentId: params.environmentId,
-      value: config.value,
-      overrides: await renderOverrides({
-        overrides: config.overrides,
-        configResolver: params => this.getConfigValue(params),
-        environmentId: params.environmentId,
-      }),
-      projectId: config.projectId,
-    };
   }
 
   private async loop() {
@@ -309,7 +317,7 @@ async function getReplicaConfigs(params: {
       id: variant.variant_id,
       configId: variant.config_id,
       environmentId: variant.environment_id,
-      value: variant.value,
+      value: JSON.parse(variant.value) as ConfigValue,
       overrides: JSON.parse(variant.overrides) as Override[],
     }));
     return {
@@ -337,6 +345,13 @@ export class ReplicaService implements Service {
     private readonly replicaEvents: ReplicaEventBus,
   ) {}
 
+  async sync() {
+    if (!this.replica) {
+      throw new Error('Replica not started');
+    }
+    await this.replica.sync();
+  }
+
   async getConfig(params: {
     projectId: string;
     configName: string;
@@ -358,17 +373,6 @@ export class ReplicaService implements Service {
     }
 
     return await this.replica.getProjectConfigs(params);
-  }
-
-  async getConfigValue(params: {
-    projectId: string;
-    configName: string;
-    environmentId: string;
-  }): Promise<unknown | undefined> {
-    if (!this.replica) {
-      throw new Error('Replica not started');
-    }
-    return this.replica.getConfigValue(params);
   }
 
   async start(ctx: Context) {
