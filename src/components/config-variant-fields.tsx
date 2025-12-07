@@ -2,6 +2,7 @@
 
 import {JsonEditor} from '@/components/json-editor';
 import {OverrideBuilder} from '@/components/override-builder';
+import {Button} from '@/components/ui/button';
 import {
   FormControl,
   FormDescription,
@@ -14,8 +15,10 @@ import {Label} from '@/components/ui/label';
 import {Switch} from '@/components/ui/switch';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
-import {CircleHelp} from 'lucide-react';
-import type {Control, UseFormSetValue} from 'react-hook-form';
+import {createSchemaFromValue} from '@/lib/json-schema-utils';
+import {CircleHelp, Sparkles} from 'lucide-react';
+import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
+import {toast} from 'sonner';
 
 // Default empty JSON schema to use when enforcement is enabled
 const DEFAULT_EMPTY_SCHEMA = JSON.stringify(
@@ -31,6 +34,7 @@ const DEFAULT_EMPTY_SCHEMA = JSON.stringify(
 interface ConfigVariantFieldsProps {
   control: Control<any>;
   setValue: UseFormSetValue<any>;
+  getValues: UseFormGetValues<any>;
   variantIndex: number;
   fieldPrefix: string; // e.g., 'defaultVariant' or 'environmentVariants'
   environmentId: string;
@@ -54,6 +58,7 @@ interface ConfigVariantFieldsProps {
 export function ConfigVariantFields({
   control,
   setValue,
+  getValues,
   variantIndex,
   fieldPrefix,
   environmentId,
@@ -91,6 +96,29 @@ export function ConfigVariantFields({
     if (checked && !watchedVariant?.schema?.trim()) {
       const schemaFieldName = getFieldName('schema') as any;
       setValue(schemaFieldName, DEFAULT_EMPTY_SCHEMA);
+    }
+  };
+
+  // Handler for inferring schema from value
+  const handleInferSchema = () => {
+    const valueFieldName = getFieldName('value') as any;
+    const schemaFieldName = getFieldName('schema') as any;
+    const currentValue = getValues(valueFieldName);
+
+    try {
+      const parsedValue = JSON.parse(currentValue);
+      const inferredSchema = createSchemaFromValue(parsedValue);
+      setValue(schemaFieldName, JSON.stringify(inferredSchema, null, 2));
+
+      toast.success('Schema inferred from value', {
+        description: 'The schema has been inferred from the value and set in the schema field.',
+      });
+    } catch (error) {
+      toast.error('Cannot infer schema from invalid JSON', {
+        description: error instanceof Error ? error.message : String(error),
+      });
+      // If value is not valid JSON, do nothing or show error
+      console.error('Cannot infer schema from invalid JSON', error);
     }
   };
 
@@ -318,7 +346,21 @@ export function ConfigVariantFields({
             name={getFieldName('schema')}
             render={({field}) => (
               <FormItem className="space-y-2">
-                <FormLabel className="text-sm font-medium">Schema Definition</FormLabel>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-sm font-medium">Schema Definition</FormLabel>
+                  {canEditSchema && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleInferSchema}
+                      className="h-7 text-xs"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1.5" />
+                      Infer from Value
+                    </Button>
+                  )}
+                </div>
                 <FormControl>
                   <JsonEditor
                     id={`${editorIdPrefix ?? 'config'}-schema-${environmentId}`}

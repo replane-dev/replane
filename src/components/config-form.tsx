@@ -744,6 +744,7 @@ export function ConfigForm(props: ConfigFormProps) {
                       <ConfigVariantFields
                         control={form.control}
                         setValue={form.setValue}
+                        getValues={form.getValues}
                         variantIndex={envIndex}
                         fieldPrefix="environmentVariants"
                         environmentId={env.id}
@@ -809,6 +810,7 @@ export function ConfigForm(props: ConfigFormProps) {
           <ConfigVariantFields
             control={form.control}
             setValue={form.setValue}
+            getValues={form.getValues}
             variantIndex={-1}
             fieldPrefix="defaultVariant"
             environmentId="default"
