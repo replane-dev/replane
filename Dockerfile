@@ -1,6 +1,6 @@
 FROM node:22-slim
 
-# VOLUME /data
+VOLUME /data
 
 ENV REPLICA_STORAGE_PATH=/data/replica/replica.db
 ENV PGDATA=/data/postgresql
@@ -8,7 +8,7 @@ ENV PGDATA=/data/postgresql
 ENV PORT=8080
 ENV NODE_OPTIONS="--enable-source-maps"
 
-# # Install PostgreSQL
+# # Install PostgreSQL to allow running Replane without an external database
 RUN apt-get update \
   && apt-get install -y --no-install-recommends postgresql \
   && rm -rf /var/lib/postgresql /var/lib/apt/lists/*
