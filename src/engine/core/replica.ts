@@ -183,12 +183,9 @@ export class Replica {
 
   private async loop() {
     while (!this.isStopped) {
+      let status: 'lagging' | 'up-to-date' | 'unknown' = 'unknown';
       try {
-        const {status} = await this.step();
-
-        if (status === 'up-to-date') {
-          await wait(REPLICA_STEP_INTERVAL_MS);
-        }
+        status = await this.step().then(s => s.status);
       } catch (error) {
         this.logger.error(GLOBAL_CONTEXT, {msg: 'Replica step error', error});
 
@@ -196,6 +193,10 @@ export class Replica {
           this.isStopped = true;
           throw error;
         }
+      }
+
+      if (status !== 'lagging') {
+        await wait(REPLICA_STEP_INTERVAL_MS);
       }
     }
   }
