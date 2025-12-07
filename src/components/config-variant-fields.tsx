@@ -15,10 +15,22 @@ import {Switch} from '@/components/ui/switch';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
 import {CircleHelp} from 'lucide-react';
-import type {Control} from 'react-hook-form';
+import type {Control, UseFormSetValue} from 'react-hook-form';
+
+// Default empty JSON schema to use when enforcement is enabled
+const DEFAULT_EMPTY_SCHEMA = JSON.stringify(
+  {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: {},
+  },
+  null,
+  2,
+);
 
 interface ConfigVariantFieldsProps {
   control: Control<any>;
+  setValue: UseFormSetValue<any>;
   variantIndex: number;
   fieldPrefix: string; // e.g., 'defaultVariant' or 'environmentVariants'
   environmentId: string;
@@ -41,6 +53,7 @@ interface ConfigVariantFieldsProps {
 
 export function ConfigVariantFields({
   control,
+  setValue,
   variantIndex,
   fieldPrefix,
   environmentId,
@@ -69,6 +82,17 @@ export function ConfigVariantFields({
 
   // Determine which schema to use for the JSON editor
   const effectiveSchema = watchedVariant?.useDefaultSchema ? defaultSchema : liveSchema;
+
+  // Handler for schema enabled toggle
+  const handleSchemaEnabledChange = (checked: boolean, fieldOnChange: (value: boolean) => void) => {
+    fieldOnChange(checked);
+
+    // If enabling schema and current schema is empty, set default empty schema
+    if (checked && !watchedVariant?.schema?.trim()) {
+      const schemaFieldName = getFieldName('schema') as any;
+      setValue(schemaFieldName, DEFAULT_EMPTY_SCHEMA);
+    }
+  };
 
   return (
     <>
@@ -270,7 +294,9 @@ export function ConfigVariantFields({
                     <Switch
                       id={`${editorIdPrefix ?? 'config'}-use-schema-${environmentId}`}
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={checked =>
+                        handleSchemaEnabledChange(checked, field.onChange)
+                      }
                       disabled={!canEditSchema}
                     />
                   </FormControl>

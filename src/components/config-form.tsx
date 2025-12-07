@@ -743,6 +743,7 @@ export function ConfigForm(props: ConfigFormProps) {
                     <div className="px-4 pb-4 pt-2 border-t border-border/50 space-y-6">
                       <ConfigVariantFields
                         control={form.control}
+                        setValue={form.setValue}
                         variantIndex={envIndex}
                         fieldPrefix="environmentVariants"
                         environmentId={env.id}
@@ -807,6 +808,7 @@ export function ConfigForm(props: ConfigFormProps) {
 
           <ConfigVariantFields
             control={form.control}
+            setValue={form.setValue}
             variantIndex={-1}
             fieldPrefix="defaultVariant"
             environmentId="default"
