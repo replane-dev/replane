@@ -100,7 +100,11 @@ export default function ConfigPage() {
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0"
+          onOpenAutoFocus={e => e.preventDefault()}
+        >
           <SheetTitle className="sr-only">
             {sheetMode === 'new' ? 'New Config' : (selectedConfigName ?? 'Config Details')}
           </SheetTitle>
