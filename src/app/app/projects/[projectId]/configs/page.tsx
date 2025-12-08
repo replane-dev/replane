@@ -11,7 +11,7 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
-import {Sheet, SheetContent} from '@/components/ui/sheet';
+import {Sheet, SheetContent, SheetTitle} from '@/components/ui/sheet';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {Fragment, Suspense, useCallback} from 'react';
@@ -104,6 +104,9 @@ export default function ConfigPage() {
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
         <SheetContent side="right" className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0">
+          <SheetTitle className="sr-only">
+            {sheetMode === 'new' ? 'New Config' : (selectedConfigName ?? 'Config Details')}
+          </SheetTitle>
           <Suspense fallback={<DelayedFullWidthSpinner />}>
             <div className="h-full overflow-y-auto px-6 pt-6">
               {sheetMode === 'new' ? (
