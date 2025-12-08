@@ -175,7 +175,7 @@ importers:
         specifier: ^0.52.2
         version: 0.52.2
       next:
-        specifier: 16.0.7
+        specifier: ^16.0.7
         version: 16.0.7(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       next-auth:
         specifier: ^4.24.13
