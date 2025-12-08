@@ -110,8 +110,8 @@ app.prepare().then(() => {
 
     const healthPath = process.env.HEALTHCHECK_PATH;
     if (healthPath) {
-      const normalized = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
-      if (parsedUrl.pathname === normalized) {
+      const normalizedHealthPath = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
+      if (parsedUrl.pathname === normalizedHealthPath) {
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json');
         res.end(JSON.stringify({}));

@@ -10,7 +10,7 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
-import {Sheet, SheetContent, SheetHeader, SheetTitle} from '@/components/ui/sheet';
+import {Sheet, SheetContent} from '@/components/ui/sheet';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useRouter} from 'next/navigation';
 import {Fragment, Suspense, useState} from 'react';
@@ -70,13 +70,8 @@ export default function ConfigPage() {
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
         <SheetContent side="right" className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0">
-          <SheetHeader className="p-6 pb-4">
-            <SheetTitle>
-              {sheetMode === 'new' ? 'New Config' : selectedConfigName || 'Config Details'}
-            </SheetTitle>
-          </SheetHeader>
           <Suspense fallback={<div className="p-6">Loading...</div>}>
-            <div className="h-full overflow-y-auto px-6">
+            <div className="h-full overflow-y-auto px-6 pt-6">
               {sheetMode === 'new' ? (
                 <NewConfigView
                   projectId={projectId}
