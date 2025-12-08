@@ -57,7 +57,6 @@ export default function ConfigPage() {
       }
 
       const query = params.toString();
-      console.log('updateUrl', query);
       router.replace(query ? `?${query}` : '?list=true', {scroll: false});
     },
     [router, searchParams],
