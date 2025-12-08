@@ -1,6 +1,6 @@
 import {AuthSession} from '@/components/auth-session';
-import {DelayedFullscreenSpinner} from '@/components/delayed-fullscreen-spinner';
 import {ErrorFallback} from '@/components/error-fallback';
+import {DelayedFullscreenSpinner} from '@/components/spinner';
 import {ThemeProvider} from '@/components/theme-provider';
 import {Toaster} from '@/components/ui/sonner';
 import {TRPCReactProvider} from '@/trpc/client';

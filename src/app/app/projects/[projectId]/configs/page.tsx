@@ -3,6 +3,7 @@
 import {ConfigDetailView} from '@/components/config-detail-view';
 import {ConfigListView} from '@/components/config-list-view';
 import {NewConfigView} from '@/components/new-config-view';
+import {DelayedFullWidthSpinner} from '@/components/spinner';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -70,7 +71,7 @@ export default function ConfigPage() {
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
         <SheetContent side="right" className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0">
-          <Suspense fallback={<div className="p-6">Loading...</div>}>
+          <Suspense fallback={<DelayedFullWidthSpinner />}>
             <div className="h-full overflow-y-auto px-6 pt-6">
               {sheetMode === 'new' ? (
                 <NewConfigView
