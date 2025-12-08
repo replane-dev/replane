@@ -703,7 +703,7 @@ export function ConfigForm(props: ConfigFormProps) {
                   key={env.id}
                   className={`rounded-lg border transition-all ${
                     isCustomized
-                      ? 'border-primary/30 bg-primary/5'
+                      ? 'border-primary/30 '
                       : 'border-border/50 bg-muted/30 hover:border-border'
                   }`}
                 >
