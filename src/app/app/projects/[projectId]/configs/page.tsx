@@ -43,24 +43,22 @@ export default function ConfigPage() {
   const sheetMode = urlState.mode;
   const selectedConfigName = urlState.configName;
 
-  const updateUrl = useCallback(
-    (mode: 'new' | 'detail' | 'closed', configName?: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('new');
-      params.delete('config');
-      params.delete('list');
+  const updateUrl = useCallback((mode: 'new' | 'detail' | 'closed', configName?: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('new');
+    params.delete('config');
+    params.delete('list');
 
-      if (mode === 'new') {
-        params.set('new', '');
-      } else if (mode === 'detail' && configName) {
-        params.set('config', configName);
-      }
+    if (mode === 'new') {
+      params.set('new', '');
+    } else if (mode === 'detail' && configName) {
+      params.set('config', configName);
+    }
 
-      const query = params.toString();
-      router.replace(query ? `?${query}` : '?list=true', {scroll: false});
-    },
-    [router, searchParams],
-  );
+    const query = params.toString();
+    const newUrl = query ? `?${query}` : '?list=true';
+    window.history.replaceState(null, '', newUrl);
+  }, []);
 
   const handleConfigClick = useCallback(
     (configName: string) => {

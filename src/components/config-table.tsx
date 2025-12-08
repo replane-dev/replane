@@ -62,7 +62,7 @@ export interface ConfigTableProps {
   onNewConfigClick?: () => void;
 }
 
-export function ConfigTable({onConfigClick, onNewConfigClick}: ConfigTableProps) {
+function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -342,3 +342,5 @@ export function ConfigTable({onConfigClick, onNewConfigClick}: ConfigTableProps)
     </div>
   );
 }
+
+export const ConfigTable = React.memo(ConfigTableImpl);
