@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {ScrollArea} from '@/components/ui/scroll-area';
@@ -28,16 +29,7 @@ import {asConfigValue} from '@/engine/core/zod';
 import {useDebounce} from '@/hooks/use-debounce';
 import {useTRPC} from '@/trpc/client';
 import {useQueryClient} from '@tanstack/react-query';
-import {
-  ChevronDown,
-  ChevronRight,
-  CircleHelp,
-  Eye,
-  Link2,
-  Link2Off,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import {ChevronDown, ChevronRight, Eye, Link2, Link2Off, Plus, Trash2} from 'lucide-react';
 import Link from 'next/link';
 import {useEffect, useState} from 'react';
 
@@ -305,18 +297,13 @@ export function ConditionEditor({
               <div className="flex-1">
                 <div className="flex items-center gap-1 mb-1">
                   <Label className="text-xs font-medium">Property</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">
-                        {condition.operator === 'segmentation'
-                          ? 'The context property to hash for bucketing. Use userId or sessionId to ensure each user gets consistent bucket assignment (same user always in same bucket).'
-                          : 'The context property to evaluate. Examples: userEmail, tier, country, userId'}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Help>
+                    <p className="text-xs">
+                      {condition.operator === 'segmentation'
+                        ? 'The context property to hash for bucketing. Use userId or sessionId to ensure each user gets consistent bucket assignment (same user always in same bucket).'
+                        : 'The context property to evaluate. Examples: userEmail, tier, country, userId'}
+                    </p>
+                  </Help>
                 </div>
                 <Input
                   className="h-9 text-xs w-full"
@@ -333,16 +320,11 @@ export function ConditionEditor({
               <div className="flex-1">
                 <div className="flex items-center gap-1 mb-1">
                   <Label className="text-xs font-medium">Operator</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">
-                        {operatorDescriptions[condition.operator] || 'Select an operator'}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Help>
+                    <p className="text-xs">
+                      {operatorDescriptions[condition.operator] || 'Select an operator'}
+                    </p>
+                  </Help>
                 </div>
                 <Select
                   value={condition.operator}
@@ -401,18 +383,13 @@ export function ConditionEditor({
                         ? 'Values'
                         : 'Value'}
                     </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-xs">
-                          {condition.operator === 'in' || condition.operator === 'not_in'
-                            ? 'List of values or reference to an array in another config'
-                            : 'The value to compare against. Can be a literal value or a reference to another config'}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <Help>
+                      <p className="text-xs">
+                        {condition.operator === 'in' || condition.operator === 'not_in'
+                          ? 'List of values or reference to an array in another config'
+                          : 'The value to compare against. Can be a literal value or a reference to another config'}
+                      </p>
+                    </Help>
                   </div>
                   {condition.value.type === 'literal' ? (
                     condition.operator === 'in' || condition.operator === 'not_in' ? (
@@ -539,16 +516,11 @@ export function ConditionEditor({
                   <div className="flex-1">
                     <div className="flex items-center gap-1 mb-1">
                       <Label className="text-xs font-medium">From %</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">
-                            Starting bucket (0-100). Users are hashed into buckets 0-100.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <Help>
+                        <p className="text-xs">
+                          Starting bucket (0-100). Users are hashed into buckets 0-100.
+                        </p>
+                      </Help>
                     </div>
                     <Input
                       type="number"
@@ -570,17 +542,11 @@ export function ConditionEditor({
                   <div className="flex-1">
                     <div className="flex items-center gap-1 mb-1">
                       <Label className="text-xs font-medium">To %</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">
-                            Ending bucket (0-100). Inclusive range: users in buckets [from, to)
-                            match.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <Help>
+                        <p className="text-xs">
+                          Ending bucket (0-100). Inclusive range: users in buckets [from, to) match.
+                        </p>
+                      </Help>
                     </div>
                     <Input
                       type="number"
@@ -677,17 +643,12 @@ export function ConditionEditor({
               <div className="space-y-2">
                 <div className="flex items-center gap-1">
                   <Label className="text-xs font-medium">Seed</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">
-                        Seed string for consistent hashing. Same seed ensures users always get the
-                        same bucket. Change seed to reshuffle users into different buckets.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Help>
+                    <p className="text-xs">
+                      Seed string for consistent hashing. Same seed ensures users always get the
+                      same bucket. Change seed to reshuffle users into different buckets.
+                    </p>
+                  </Help>
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -867,16 +828,11 @@ export function ConditionEditor({
               <div className="flex-1">
                 <div className="flex items-center gap-1 mb-1">
                   <Label className="text-xs font-medium">Operator</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelp className="h-3 w-3 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">
-                        {operatorDescriptions[condition.operator] || 'Select an operator'}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Help>
+                    <p className="text-xs">
+                      {operatorDescriptions[condition.operator] || 'Select an operator'}
+                    </p>
+                  </Help>
                 </div>
                 <Select
                   value={condition.operator}

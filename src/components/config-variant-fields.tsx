@@ -11,13 +11,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {Help} from '@/components/ui/help';
 import {Label} from '@/components/ui/label';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
-import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
 import {asConfigValue} from '@/engine/core/zod';
 import {createSchemaFromValue} from '@/lib/json-schema-utils';
-import {CircleHelp, Sparkles} from 'lucide-react';
+import {Sparkles} from 'lucide-react';
 import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
 import {toast} from 'sonner';
 
@@ -159,29 +159,24 @@ export function ConfigVariantFields({
             <FormItem>
               <div className="flex items-center gap-1.5">
                 <FormLabel>Conditional Overrides</FormLabel>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    <div className="space-y-2">
-                      <p className="text-sm">
-                        Return different values based on runtime context like user attributes,
-                        feature flags, or request properties.
-                      </p>
-                      <div className="space-y-1.5 text-xs">
-                        <p className="font-medium">Common use cases:</p>
-                        <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
-                          <li>Premium users get higher rate limits</li>
-                          <li>Beta features for specific users</li>
-                          <li>Regional pricing by country</li>
-                          <li>A/B testing variations</li>
-                          <li>Staff access to internal features</li>
-                        </ul>
-                      </div>
+                <Help className="max-w-sm">
+                  <div className="space-y-2">
+                    <p className="text-sm">
+                      Return different values based on runtime context like user attributes, feature
+                      flags, or request properties.
+                    </p>
+                    <div className="space-y-1.5 text-xs">
+                      <p className="font-medium">Common use cases:</p>
+                      <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
+                        <li>Premium users get higher rate limits</li>
+                        <li>Beta features for specific users</li>
+                        <li>Regional pricing by country</li>
+                        <li>A/B testing variations</li>
+                        <li>Staff access to internal features</li>
+                      </ul>
                     </div>
-                  </TooltipContent>
-                </Tooltip>
+                  </div>
+                </Help>
               </div>
               <FormControl>
                 <OverrideBuilder
@@ -216,20 +211,15 @@ export function ConfigVariantFields({
                       ? 'Value'
                       : 'Configuration Value'}
                 </FormLabel>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>
-                      {isEnvironmentVariant
-                        ? `The configuration value for the ${environmentName} environment. This overrides the base configuration.`
-                        : hasOverrides
-                          ? 'The default value returned when no override conditions match.'
-                          : 'The configuration value as valid JSON. This will be used by all environments unless overridden.'}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                <Help>
+                  <p>
+                    {isEnvironmentVariant
+                      ? `The configuration value for the ${environmentName} environment. This overrides the base configuration.`
+                      : hasOverrides
+                        ? 'The default value returned when no override conditions match.'
+                        : 'The configuration value as valid JSON. This will be used by all environments unless overridden.'}
+                  </p>
+                </Help>
               </div>
               {/* Show "Add Override" button when there are no overrides */}
               {!hasOverrides && canEditOverrides && (
@@ -271,37 +261,32 @@ export function ConfigVariantFields({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Label className="text-sm font-medium">Schema Validation</Label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+              <Help>
+                <p>
+                  Control how this configuration value is validated using{' '}
+                  <a
+                    href="https://json-schema.org/"
+                    target="_blank"
+                    className="underline hover:no-underline"
+                  >
+                    JSON Schema
+                  </a>
+                  .
+                </p>
+                <div className="mt-2 space-y-1">
+                  {isEnvironmentVariant && hasDefaultVariant && (
+                    <p>
+                      <strong>Base:</strong> Use base configuration&apos;s schema
+                    </p>
+                  )}
                   <p>
-                    Control how this configuration value is validated using{' '}
-                    <a
-                      href="https://json-schema.org/"
-                      target="_blank"
-                      className="underline hover:no-underline"
-                    >
-                      JSON Schema
-                    </a>
-                    .
+                    <strong>None:</strong> No validation
                   </p>
-                  <div className="mt-2 space-y-1">
-                    {isEnvironmentVariant && hasDefaultVariant && (
-                      <p>
-                        <strong>Base:</strong> Use base variant&apos;s schema
-                      </p>
-                    )}
-                    <p>
-                      <strong>None:</strong> No validation
-                    </p>
-                    <p>
-                      <strong>Custom:</strong> Define custom schema
-                    </p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
+                  <p>
+                    <strong>Custom:</strong> Define custom schema
+                  </p>
+                </div>
+              </Help>
             </div>
 
             <div className="flex items-center gap-2">

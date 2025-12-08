@@ -3,6 +3,7 @@
 import {JsonEditor} from '@/components/json-editor';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
+import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -10,7 +11,7 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
 import {asConfigValue} from '@/engine/core/zod';
-import {ChevronDown, ChevronRight, CircleHelp, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
+import {ChevronDown, ChevronRight, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
 import React, {useCallback, useState} from 'react';
 import {ConditionEditor} from './condition-editor';
 
@@ -188,16 +189,11 @@ const OverrideCardComponent = ({
                   <Label htmlFor={`override-value-${index}`} className="text-sm font-semibold">
                     Override Value
                   </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="text-xs">
-                        The value to return when all conditions below match. Must be valid JSON.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Help>
+                    <p className="text-xs">
+                      The value to return when all conditions below match. Must be valid JSON.
+                    </p>
+                  </Help>
                 </div>
                 <JsonEditor
                   id={`override-value-${index}`}
@@ -221,17 +217,12 @@ const OverrideCardComponent = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Label className="text-sm font-semibold">Conditions</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-xs">
-                          All conditions must be true for this override to apply. Define conditions
-                          based on context properties.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <Help>
+                      <p className="text-xs">
+                        All conditions must be true for this override to apply. Define conditions
+                        based on context properties.
+                      </p>
+                    </Help>
                   </div>
                   <Badge variant="secondary" className="text-xs">
                     {override.conditions.length}{' '}

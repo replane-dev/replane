@@ -16,6 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
 import {Separator} from '@/components/ui/separator';
 import {Textarea} from '@/components/ui/textarea';
@@ -26,7 +27,6 @@ import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils'
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
-import {CircleHelp} from 'lucide-react';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
 import {z} from 'zod';
@@ -560,17 +560,12 @@ export function ConfigForm(props: ConfigFormProps) {
               <FormItem>
                 <div className="flex items-center gap-1.5">
                   <FormLabel>Name</FormLabel>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>
-                        A unique identifier for this config. Use 1-100 letters, numbers,
-                        underscores, or hyphens.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Help>
+                    <p>
+                      A unique identifier for this config. Use 1-100 letters, numbers, underscores,
+                      or hyphens.
+                    </p>
+                  </Help>
                 </div>
                 <FormControl>
                   <Input
@@ -603,16 +598,11 @@ export function ConfigForm(props: ConfigFormProps) {
             <FormItem>
               <div className="flex items-center gap-1.5">
                 <FormLabel>Description</FormLabel>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CircleHelp className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>
-                      Optional human-readable description explaining what this config is used for.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                <Help>
+                  <p>
+                    Optional human-readable description explaining what this config is used for.
+                  </p>
+                </Help>
               </div>
               <FormControl>
                 <Textarea
@@ -659,17 +649,14 @@ export function ConfigForm(props: ConfigFormProps) {
                 Customize values for specific environments
               </p>
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <CircleHelp className="h-4 w-4 text-muted-foreground cursor-help ml-auto" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-sm">
+            <div className="ml-auto">
+              <Help className="max-w-sm">
                 <p>
                   Enable an environment to customize its configuration. Disabled environments will
                   use the base configuration below.
                 </p>
-              </TooltipContent>
-            </Tooltip>
+              </Help>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -792,17 +779,14 @@ export function ConfigForm(props: ConfigFormProps) {
               <h3 className="text-lg font-semibold">Base Configuration</h3>
               <p className="text-sm text-muted-foreground">The foundation for all environments</p>
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <CircleHelp className="h-4 w-4 text-muted-foreground cursor-help ml-auto" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-sm">
+            <div className="ml-auto">
+              <Help className="max-w-sm">
                 <p>
                   Define the base value, schema, and overrides here. Environments without custom
                   settings above will use these values.
                 </p>
-              </TooltipContent>
-            </Tooltip>
+              </Help>
+            </div>
           </div>
 
           <ConfigVariantFields
@@ -853,17 +837,14 @@ export function ConfigForm(props: ConfigFormProps) {
                   Manage who can edit and approve changes
                 </p>
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CircleHelp className="h-4 w-4 text-muted-foreground cursor-help ml-auto" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
+              <div className="ml-auto">
+                <Help>
                   <p>
                     Config-level members who can approve proposals. Project admins and maintainers
                     automatically have approval rights.
                   </p>
-                </TooltipContent>
-              </Tooltip>
+                </Help>
+              </div>
             </div>
 
             <FormField
