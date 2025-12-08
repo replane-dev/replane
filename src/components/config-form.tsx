@@ -711,7 +711,7 @@ export function ConfigForm(props: ConfigFormProps) {
                     control={form.control}
                     name={`environmentVariants.${envIndex}.enabled`}
                     render={({field}) => (
-                      <FormItem className="flex items-center justify-between p-4 space-y-0">
+                      <FormItem className="flex items-center justify-between px-4 py-2 space-y-0">
                         <div className="flex items-center gap-3">
                           <FormControl>
                             <Checkbox
@@ -721,14 +721,12 @@ export function ConfigForm(props: ConfigFormProps) {
                               className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                           </FormControl>
-                          <div>
-                            <FormLabel className="font-semibold cursor-pointer text-base">
-                              {env.name}
-                            </FormLabel>
-                            <p className="text-xs text-muted-foreground">
-                              {isCustomized ? 'Custom configuration' : 'Using base configuration'}
-                            </p>
-                          </div>
+                          <FormLabel className="font-semibold cursor-pointer text-base flex items-center gap-2">
+                            {env.name}
+                            <span className="text-xs text-muted-foreground font-normal">
+                              · {isCustomized ? 'Custom' : 'Using base configuration'}
+                            </span>
+                          </FormLabel>
                         </div>
                         {isCustomized && (
                           <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
