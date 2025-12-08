@@ -6,12 +6,12 @@ export function makeQueryClient() {
   const qc = new QueryClient({
     defaultOptions: {
       queries: {
-        // Always consider data immediately stale and drop it once unused
-        staleTime: 0,
-        gcTime: 0, // remove from cache as soon as last observer unsubscribes
-        refetchOnMount: 'always',
-        refetchOnWindowFocus: 'always',
-        refetchOnReconnect: 'always',
+        // // Always consider data immediately stale and drop it once unused
+        // staleTime: 0,
+        // gcTime: 0, // remove from cache as soon as last observer unsubscribes
+        // refetchOnMount: 'always',
+        // refetchOnWindowFocus: 'always',
+        // refetchOnReconnect: 'always',
         retry: false,
       },
       dehydrate: {
