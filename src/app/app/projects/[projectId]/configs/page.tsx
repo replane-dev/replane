@@ -11,7 +11,7 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
-import {Sheet, SheetContent, SheetTitle} from '@/components/ui/sheet';
+import {Sheet, SheetContent, SheetDescription, SheetTitle} from '@/components/ui/sheet';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {Fragment, Suspense, useCallback} from 'react';
@@ -104,6 +104,11 @@ export default function ConfigPage() {
           <SheetTitle className="sr-only">
             {sheetMode === 'new' ? 'New Config' : (selectedConfigName ?? 'Config Details')}
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            {sheetMode === 'new'
+              ? 'Create a new configuration'
+              : `View and edit configuration: ${selectedConfigName}`}
+          </SheetDescription>
           <Suspense fallback={<DelayedFullWidthSpinner />}>
             <div className="h-full overflow-y-auto px-6 pt-6">
               {sheetMode === 'new' ? (

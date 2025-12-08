@@ -1,5 +1,6 @@
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
+import type {ProjectUserStore} from './stores/project-user-store';
 import type {NormalizedEmail} from './zod';
 
 export interface ProjectDetails {
@@ -32,10 +33,16 @@ export interface ProjectListItem {
   isExample: boolean;
 }
 
+export interface ProjectUser {
+  email: string;
+  role: 'admin' | 'maintainer';
+}
+
 export class ProjectQueryService {
   constructor(
     private projects: ProjectStore,
     private projectEnvironments: ProjectEnvironmentStore,
+    private projectUsers: ProjectUserStore,
   ) {}
 
   async getProject(opts: {
@@ -81,6 +88,14 @@ export class ProjectQueryService {
       allowSelfApprovals: p.allowSelfApprovals,
       myRole: p.myRole,
       isExample: p.isExample,
+    }));
+  }
+
+  async getProjectUsers(opts: {projectId: string}): Promise<ProjectUser[]> {
+    const users = await this.projectUsers.getByProjectId(opts.projectId);
+    return users.map(u => ({
+      email: u.user_email_normalized,
+      role: u.role,
     }));
   }
 }

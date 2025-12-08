@@ -20,12 +20,11 @@ export function NewConfigView({projectId, onSuccess, onCancel}: NewConfigViewPro
   const createConfig = useMutation(trpc.createConfig.mutationOptions());
   const {data: session, status} = useSession();
 
-  // Fetch project environments
-  const {data: environmentsData} = useSuspenseQuery(
-    trpc.getProjectEnvironments.queryOptions({projectId}),
-  );
+  // Fetch project environments and users
+  const {data: pageData} = useSuspenseQuery(trpc.getNewConfigPageData.queryOptions({projectId}));
 
-  const environments = environmentsData.environments;
+  const environments = pageData.environments;
+  const projectUsers = pageData.projectUsers;
 
   // While session is loading, avoid asserting (email would be undefined briefly)
   if (status === 'loading') {
@@ -110,6 +109,7 @@ export function NewConfigView({projectId, onSuccess, onCancel}: NewConfigViewPro
       saving={createConfig.isPending}
       onCancel={handleCancel}
       onSubmit={handleSubmit}
+      projectUsers={projectUsers}
     />
   );
 }

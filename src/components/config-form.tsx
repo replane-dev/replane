@@ -93,6 +93,7 @@ export interface ConfigFormProps {
   }) => Promise<void> | void;
   onValuesChange?: (values: {value: string; overrides: Override[]}) => void;
   onTestOverrides?: () => void;
+  projectUsers: Array<{email: string; role: 'admin' | 'maintainer'}>;
 }
 
 export function ConfigForm(props: ConfigFormProps) {
@@ -119,6 +120,7 @@ export function ConfigForm(props: ConfigFormProps) {
     onSubmit,
     onValuesChange,
     onTestOverrides,
+    projectUsers,
   } = props;
 
   const defaultName = currentName ?? '';
@@ -858,6 +860,7 @@ export function ConfigForm(props: ConfigFormProps) {
                       onChange={field.onChange}
                       disabled={!canEditMembers}
                       errors={form.formState.errors.members as any}
+                      projectUsers={projectUsers}
                     />
                   </FormControl>
                   {mode === 'edit' && !canEditMembers && (

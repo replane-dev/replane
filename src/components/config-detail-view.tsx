@@ -334,6 +334,7 @@ export function ConfigDetailView({
         onTestOverrides={() => {
           setShowOverrideTester(true);
         }}
+        projectUsers={pageData.projectUsers}
       />
 
       {showOverrideTester && (

@@ -62,6 +62,7 @@ import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use
 import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-config-variant-version-list-use-case';
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
+import {createGetNewConfigPageDataUseCase} from './core/use-cases/get-new-config-page-data-use-case';
 import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
@@ -161,7 +162,11 @@ function toUseCase<TReq, TRes>(
           configProposals,
           projectUsers,
         );
-        const projectQueryService = new ProjectQueryService(projects, projectEnvironments);
+        const projectQueryService = new ProjectQueryService(
+          projects,
+          projectEnvironments,
+          projectUsers,
+        );
         const workspaceQueryService = new WorkspaceQueryService(workspaces);
 
         const tx: UseCaseTransaction = {
@@ -276,6 +281,7 @@ export async function createEngine(options: EngineOptions) {
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
     // Combined use cases for page data
     getConfigPageData: createGetConfigPageDataUseCase(),
+    getNewConfigPageData: createGetNewConfigPageDataUseCase(),
     getAppLayoutData: createGetAppLayoutDataUseCase(),
     // Workspace use cases
     createWorkspace: createCreateWorkspaceUseCase(),

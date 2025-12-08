@@ -1,5 +1,5 @@
 import type {ConfigDetails} from '../config-query-service';
-import type {ProjectDetails, ProjectEnvironment} from '../project-query-service';
+import type {ProjectDetails, ProjectEnvironment, ProjectUser} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -13,6 +13,7 @@ export interface GetConfigPageDataResponse {
   config: ConfigDetails | undefined;
   project: ProjectDetails | null;
   environments: ProjectEnvironment[];
+  projectUsers: ProjectUser[];
 }
 
 export function createGetConfigPageDataUseCase(): TransactionalUseCase<
@@ -25,7 +26,7 @@ export function createGetConfigPageDataUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    const [config, project, environments] = await Promise.all([
+    const [config, project, environments, projectUsers] = await Promise.all([
       tx.configQueryService.getConfigDetails({
         name: req.configName,
         projectId: req.projectId,
@@ -38,8 +39,11 @@ export function createGetConfigPageDataUseCase(): TransactionalUseCase<
       tx.projectQueryService.getEnvironments({
         projectId: req.projectId,
       }),
+      tx.projectQueryService.getProjectUsers({
+        projectId: req.projectId,
+      }),
     ]);
 
-    return {config, project, environments};
+    return {config, project, environments, projectUsers};
   };
 }

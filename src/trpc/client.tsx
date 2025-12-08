@@ -30,6 +30,19 @@ function getUrl() {
   })();
   return `${base}/api/internal/trpc`;
 }
+
+async function getHeaders() {
+  // On the server, forward cookies from the incoming request
+  if (typeof window === 'undefined') {
+    const {cookies} = await import('next/headers');
+    const cookieStore = await cookies();
+    return {
+      cookie: cookieStore.toString(),
+    };
+  }
+  return {};
+}
+
 export function TRPCReactProvider(
   props: Readonly<{
     children: React.ReactNode;
@@ -46,6 +59,7 @@ export function TRPCReactProvider(
         httpBatchLink({
           transformer: superjson,
           url: getUrl(),
+          headers: getHeaders,
         }),
       ],
     }),

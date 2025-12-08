@@ -20,7 +20,9 @@ export function FullWidthSpinner() {
   );
 }
 
-export function DelayedFullWidthSpinner({delay = 500}: {delay?: number}) {
+const DEFAULT_DELAY = 1000;
+
+export function DelayedFullWidthSpinner({delay = DEFAULT_DELAY}: {delay?: number}) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function DelayedFullWidthSpinner({delay = 500}: {delay?: number}) {
   return <FullWidthSpinner />;
 }
 
-export function DelayedFullscreenSpinner({delay = 500}: {delay?: number}) {
+export function DelayedFullscreenSpinner({delay = DEFAULT_DELAY}: {delay?: number}) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {

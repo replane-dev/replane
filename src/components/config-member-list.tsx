@@ -1,6 +1,6 @@
 'use client';
 
-import {useProject, useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useProject} from '@/app/app/projects/[projectId]/utils';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
@@ -12,8 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {useTRPC} from '@/trpc/client';
-import {useSuspenseQuery} from '@tanstack/react-query';
 import {ChevronDown, Info, Plus, Trash2, Users} from 'lucide-react';
 
 export type ConfigMember = {
@@ -21,11 +19,17 @@ export type ConfigMember = {
   role: 'maintainer' | 'editor';
 };
 
+export type ProjectUser = {
+  email: string;
+  role: 'admin' | 'maintainer';
+};
+
 export interface ConfigMemberListProps {
   members: ConfigMember[];
   onChange: (members: ConfigMember[]) => void;
   disabled?: boolean;
   errors?: Array<{email?: {message?: string}; role?: {message?: string}} | undefined>;
+  projectUsers: ProjectUser[];
 }
 
 export function ConfigMemberList({
@@ -33,17 +37,13 @@ export function ConfigMemberList({
   onChange,
   disabled = false,
   errors = [],
+  projectUsers,
 }: ConfigMemberListProps) {
   const {requireProposals} = useProject();
-  const projectId = useProjectId();
-  const trpc = useTRPC();
-  const projectUsersQuery = trpc.getProjectUsers.queryOptions({projectId});
-  const {data: projectUsersData} = useSuspenseQuery({...projectUsersQuery});
 
   // Filter to only admins and members (project members who can approve)
-  const projectMaintainers = (projectUsersData.users ?? []).filter(
-    (u: {email: string; role: 'admin' | 'maintainer'}) =>
-      u.role === 'admin' || u.role === 'maintainer',
+  const projectMaintainers = projectUsers.filter(
+    u => u.role === 'admin' || u.role === 'maintainer',
   );
 
   const handleEmailChange = (idx: number, email: string) => {
@@ -98,19 +98,17 @@ export function ConfigMemberList({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="rounded-md border bg-card/50 p-4 mt-3 space-y-2">
-              {projectMaintainers.map(
-                (maintainer: {email: string; role: 'admin' | 'maintainer'}, idx: number) => (
-                  <div
-                    key={maintainer.email || idx}
-                    className="flex items-center justify-between gap-3 py-2 px-2 rounded-md hover:bg-accent/50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-foreground">{maintainer.email}</span>
-                    <Badge variant="secondary" className="text-xs capitalize">
-                      {maintainer.role}
-                    </Badge>
-                  </div>
-                ),
-              )}
+              {projectMaintainers.map((maintainer, idx) => (
+                <div
+                  key={maintainer.email || idx}
+                  className="flex items-center justify-between gap-3 py-2 px-2 rounded-md hover:bg-accent/50 transition-colors"
+                >
+                  <span className="text-sm font-medium text-foreground">{maintainer.email}</span>
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {maintainer.role}
+                  </Badge>
+                </div>
+              ))}
             </div>
           </CollapsibleContent>
         </Collapsible>

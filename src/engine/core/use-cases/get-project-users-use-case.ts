@@ -1,5 +1,8 @@
+import type {ProjectUser} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
+
+export type {ProjectUser};
 
 export interface GetProjectUsersRequest {
   projectId: string;
@@ -7,7 +10,7 @@ export interface GetProjectUsersRequest {
 }
 
 export interface GetProjectUsersResponse {
-  users: Array<{email: string; role: 'admin' | 'maintainer'}>;
+  users: ProjectUser[];
 }
 
 export function createGetProjectUsersUseCase(): TransactionalUseCase<
@@ -20,12 +23,10 @@ export function createGetProjectUsersUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    const users = await tx.projectUsers.getByProjectId(req.projectId);
-    return {
-      users: users.map(u => ({
-        email: u.user_email_normalized,
-        role: u.role as 'admin' | 'maintainer',
-      })),
-    };
+    const users = await tx.projectQueryService.getProjectUsers({
+      projectId: req.projectId,
+    });
+
+    return {users};
   };
 }
