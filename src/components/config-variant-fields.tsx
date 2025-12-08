@@ -15,6 +15,7 @@ import {Label} from '@/components/ui/label';
 import {Switch} from '@/components/ui/switch';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
+import {asConfigValue} from '@/engine/core/zod';
 import {createSchemaFromValue} from '@/lib/json-schema-utils';
 import {CircleHelp, Sparkles} from 'lucide-react';
 import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
@@ -26,6 +27,7 @@ const DEFAULT_EMPTY_SCHEMA = JSON.stringify(
     $schema: 'http://json-schema.org/draft-07/schema#',
     type: 'object',
     properties: {},
+    required: [],
   },
   null,
   2,
@@ -131,7 +133,14 @@ export function ConfigVariantFields({
     setValue(overridesFieldName, [
       ...currentOverrides,
       {
-        conditions: [],
+        name: 'Override 1',
+        conditions: [
+          {
+            operator: 'equals',
+            property: '',
+            value: {type: 'literal', value: asConfigValue('')},
+          },
+        ],
         value: overrideBuilderDefaultValue,
       },
     ]);
