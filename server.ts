@@ -14,7 +14,7 @@ if (!process.env.SECRET_KEY_BASE) {
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;
 
-const port = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({dev});
 const handle = app.getRequestHandler();
@@ -94,6 +94,15 @@ async function sendResponse(res: ServerResponse, honoRes: Response) {
   res.end();
 }
 
+const API_PATH_REGEX = /^\/api\/v\d+\/.*$/;
+const HEALTHCHECK_PATH = (() => {
+  const path = process.env.HEALTHCHECK_PATH;
+  if (!path) {
+    return undefined;
+  }
+  return path.startsWith('/') ? path : `/${path}`;
+})();
+
 app.prepare().then(() => {
   createServer(async (req, res) => {
     const startedAt = Date.now();
@@ -101,30 +110,46 @@ app.prepare().then(() => {
     res.on('finish', () => logRequestEnd(req, res, startedAt));
     const parsedUrl = parse(req.url!, true);
 
-    if (parsedUrl.pathname?.startsWith('/api/v1')) {
+    if (parsedUrl.pathname && API_PATH_REGEX.test(parsedUrl.pathname)) {
       const honoReq = toRequest(req);
       const honoRes = await honoApi.fetch(honoReq);
       await sendResponse(res, honoRes);
       return;
     }
 
-    const healthPath = process.env.HEALTHCHECK_PATH;
-    if (healthPath) {
-      const normalizedHealthPath = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
-      if (parsedUrl.pathname === normalizedHealthPath) {
-        res.statusCode = 200;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({}));
-        return;
-      }
+    if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
+      const nextHealth = await Promise.all([
+        healthcheckAwareSelfFetch('/health')
+          .then(res => ({healthy: !res || res.status === 200}))
+          .catch(() => ({healthy: false})),
+        healthcheckAwareSelfFetch('/api/internal/health')
+          .then(res => ({healthy: !res || res.status === 200}))
+          .catch(() => ({healthy: false})),
+      ]).then(([nextHealth, internalHealth]) => {
+        return {
+          healthy: nextHealth.healthy && internalHealth.healthy,
+        };
+      });
+
+      res.statusCode = nextHealth.healthy ? 200 : 500;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({}));
+      return;
     }
 
     handle(req, res, parsedUrl);
-  }).listen(port);
+  }).listen(PORT);
 
   console.log(
-    `> Server listening at http://localhost:${port} as ${
+    `> Server listening at http://localhost:${PORT} as ${
       dev ? 'development' : process.env.NODE_ENV
     }`,
   );
 });
+
+function healthcheckAwareSelfFetch(path: string): Promise<Response | undefined> {
+  if (HEALTHCHECK_PATH && path === HEALTHCHECK_PATH) {
+    return Promise.resolve(undefined);
+  }
+  return fetch(`http://localhost:${PORT}${path}`);
+}

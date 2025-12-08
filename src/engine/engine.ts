@@ -65,6 +65,7 @@ import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createGetSdkConfigUseCase} from './core/use-cases/get-sdk-config-use-case';
 import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-case';
+import {createGetStatusUseCase} from './core/use-cases/get-status-use-case';
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
@@ -284,6 +285,7 @@ export async function createEngine(options: EngineOptions) {
       getSdkConfig: createGetSdkConfigUseCase({replicaService: replicaService}),
       getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
       getHealth: createGetHealthUseCase(),
+      getStatus: createGetStatusUseCase({db}),
       getProjectEvents: createGetProjectEventsUseCase({
         replicaEventsBus: replicaEventsBus,
         replicaService: replicaService,

@@ -13,6 +13,8 @@ export default async function proxy(req: NextRequest, event: any) {
     pathname.startsWith('/_next/static') ||
     pathname.startsWith('/_next/image') ||
     pathname.startsWith('/auth') ||
+    pathname.startsWith('/health') ||
+    pathname.startsWith('/status') ||
     pathname === '/favicon.ico' ||
     pathname === '/terms' ||
     pathname === '/privacy'
