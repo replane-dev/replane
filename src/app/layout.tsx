@@ -1,4 +1,5 @@
 import {AuthSession} from '@/components/auth-session';
+import {BrowserOnly} from '@/components/browser-only';
 import {ErrorFallback} from '@/components/error-fallback';
 import {DelayedFullscreenSpinner} from '@/components/spinner';
 import {ThemeProvider} from '@/components/theme-provider';
@@ -51,7 +52,7 @@ export default function RootLayout({
               <HydrateClient>
                 <ErrorBoundary FallbackComponent={ErrorFallback}>
                   <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>
-                    {children}
+                    <BrowserOnly>{children}</BrowserOnly>
                   </Suspense>
                 </ErrorBoundary>
               </HydrateClient>
