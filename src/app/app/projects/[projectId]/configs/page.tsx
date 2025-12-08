@@ -13,37 +13,70 @@ import {
 import {Separator} from '@/components/ui/separator';
 import {Sheet, SheetContent} from '@/components/ui/sheet';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import {useRouter} from 'next/navigation';
-import {Fragment, Suspense, useState} from 'react';
+import {useRouter, useSearchParams} from 'next/navigation';
+import {Fragment, Suspense, useCallback} from 'react';
 import {useProjectId} from '../utils';
-import {useDeleteOrProposeConfig} from './useDeleteOrPropose';
+
+function getSheetStateFromUrl(searchParams: URLSearchParams): {
+  open: boolean;
+  mode: 'new' | 'detail';
+  configName: string | null;
+} {
+  if (searchParams.has('new')) {
+    return {open: true, mode: 'new', configName: null};
+  }
+  const configName = searchParams.get('config');
+  if (configName) {
+    return {open: true, mode: 'detail', configName};
+  }
+  return {open: false, mode: 'new', configName: null};
+}
 
 export default function ConfigPage() {
   const projectId = useProjectId();
   const router = useRouter();
-  const deleteOrPropose = useDeleteOrProposeConfig();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<'new' | 'detail'>('new');
-  const [selectedConfigName, setSelectedConfigName] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
-  const handleConfigClick = (configName: string) => {
-    setSelectedConfigName(configName);
-    setSheetMode('detail');
-    setSheetOpen(true);
-  };
+  // Derive state from URL
+  const urlState = getSheetStateFromUrl(searchParams);
+  const sheetOpen = urlState.open;
+  const sheetMode = urlState.mode;
+  const selectedConfigName = urlState.configName;
 
-  const handleNewConfigClick = () => {
-    setSheetMode('new');
-    setSheetOpen(true);
-  };
+  const updateUrl = useCallback(
+    (mode: 'new' | 'detail' | 'closed', configName?: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('new');
+      params.delete('config');
+      params.delete('list');
 
-  const handleSheetClose = () => {
-    setSheetOpen(false);
-    // Wait for animation to complete before clearing state
-    setTimeout(() => {
-      setSelectedConfigName(null);
-    }, 300);
-  };
+      if (mode === 'new') {
+        params.set('new', '');
+      } else if (mode === 'detail' && configName) {
+        params.set('config', configName);
+      }
+
+      const query = params.toString();
+      console.log('updateUrl', query);
+      router.replace(query ? `?${query}` : '?list=true', {scroll: false});
+    },
+    [router, searchParams],
+  );
+
+  const handleConfigClick = useCallback(
+    (configName: string) => {
+      updateUrl('detail', configName);
+    },
+    [updateUrl],
+  );
+
+  const handleNewConfigClick = useCallback(() => {
+    updateUrl('new');
+  }, [updateUrl]);
+
+  const handleSheetClose = useCallback(() => {
+    updateUrl('closed');
+  }, [updateUrl]);
 
   const handleConfigDeleted = () => {
     handleSheetClose();
