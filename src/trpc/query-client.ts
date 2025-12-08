@@ -6,8 +6,14 @@ export function makeQueryClient() {
   const qc = new QueryClient({
     defaultOptions: {
       queries: {
-        // // Always consider data immediately stale and drop it once unused
-        // staleTime: 0,
+        // I'm not sure that it's safe to use cache because it might
+        // result in an unpredictable app where you know that there
+        // should be a new value for the config, but UI shows you the
+        // previous value. I added an invalidation logic below that
+        // should handle all such cases, but I'm not sure yet. That is
+        // why I left the original query client settings commented out.
+
+        // staleTime: 0, // immediately consider data stale
         // gcTime: 0, // remove from cache as soon as last observer unsubscribes
         // refetchOnMount: 'always',
         // refetchOnWindowFocus: 'always',
