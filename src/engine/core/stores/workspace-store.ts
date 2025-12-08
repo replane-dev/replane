@@ -43,7 +43,9 @@ export interface WorkspaceInfo {
 export class WorkspaceStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getAll(params: {currentUserEmail: NormalizedEmail}): Promise<WorkspaceInfo[]> {
+  async getAllTheUserMemberOf(params: {
+    currentUserEmail: NormalizedEmail;
+  }): Promise<WorkspaceInfo[]> {
     const workspacesQuery = this.db
       .selectFrom('workspaces')
       .orderBy('workspaces.name')

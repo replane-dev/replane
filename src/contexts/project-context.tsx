@@ -33,13 +33,11 @@ const ProjectContext = React.createContext<ProjectContextValue | undefined>(unde
 export function ProjectProvider({children}: {children: React.ReactNode}) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const projectsQuery = trpc.getProjectList.queryOptions();
-  const workspacesQuery = trpc.getWorkspaceList.queryOptions();
-  const {data: projectsData} = useSuspenseQuery({...projectsQuery});
-  const {data: workspacesData} = useSuspenseQuery({...workspacesQuery});
+  const appLayoutQuery = trpc.getAppLayoutData.queryOptions();
+  const {data: appLayoutData} = useSuspenseQuery(appLayoutQuery);
   const projects: ProjectSummary[] = React.useMemo(
     () =>
-      projectsData.projects.map(p => ({
+      appLayoutData.projects.map(p => ({
         id: p.id,
         name: p.name,
         workspaceId: p.workspaceId,
@@ -48,27 +46,27 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
         myRole: p.myRole,
         isExample: p.isExample,
       })),
-    [projectsData.projects],
+    [appLayoutData.projects],
   );
   const workspaces: WorkspaceSummary[] = React.useMemo(
     () =>
-      workspacesData.map(w => ({
+      appLayoutData.workspaces.map(w => ({
         id: w.id,
         name: w.name,
         myRole: w.myRole,
         isPersonal: w.isPersonal,
       })),
-    [workspacesData],
+    [appLayoutData.workspaces],
   );
 
   // Assert non-empty list (backend guarantees at least one project)
   if (projects.length === 0) throw new Error('Expected at least one project');
 
   const refresh = React.useCallback(async () => {
-    // Invalidate and refetch the project list immediately
-    await queryClient.invalidateQueries({queryKey: projectsQuery.queryKey});
-    await queryClient.refetchQueries({queryKey: projectsQuery.queryKey});
-  }, [queryClient, projectsQuery.queryKey]);
+    // Invalidate and refetch the app layout data immediately
+    await queryClient.invalidateQueries({queryKey: appLayoutQuery.queryKey});
+    await queryClient.refetchQueries({queryKey: appLayoutQuery.queryKey});
+  }, [queryClient, appLayoutQuery.queryKey]);
 
   const value = React.useMemo<ProjectContextValue>(
     () => ({projects, workspaces, refresh}),

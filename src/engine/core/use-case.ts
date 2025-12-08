@@ -1,6 +1,8 @@
+import type {ConfigQueryService} from './config-query-service';
 import type {ConfigService} from './config-service';
 import type {Context} from './context';
 import type {PermissionService} from './permission-service';
+import type {ProjectQueryService} from './project-query-service';
 import type {AuditLogStore} from './stores/audit-log-store';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {ConfigStore} from './stores/config-store';
@@ -14,6 +16,7 @@ import type {SdkKeyStore} from './stores/sdk-key-store';
 import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {WorkspaceStore} from './stores/workspace-store';
 import type {UserStore} from './user-store';
+import type {WorkspaceQueryService} from './workspace-query-service';
 import type {NormalizedEmail} from './zod';
 
 export interface ProjectRequest {
@@ -52,6 +55,10 @@ export interface UseCaseTransaction {
   // Workspace stores
   workspaces: WorkspaceStore;
   workspaceMembers: WorkspaceMemberStore;
+  // Query services
+  configQueryService: ConfigQueryService;
+  projectQueryService: ProjectQueryService;
+  workspaceQueryService: WorkspaceQueryService;
   // Needed for permission checks
   db: any;
 }

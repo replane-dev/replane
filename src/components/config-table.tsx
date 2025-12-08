@@ -218,7 +218,7 @@ export function ConfigTable({onConfigClick, onNewConfigClick}: ConfigTableProps)
         },
       },
     ],
-    [deleteOrPropose],
+    [deleteOrPropose, projectId, router, trpc.getConfig],
   );
 
   const table = useReactTable({

@@ -1,7 +1,7 @@
 'use client';
 
 import {ConfigDetailView} from '@/components/config-detail-view';
-import {ConfigListView} from '@/components/config-list-view';
+import {ConfigTable} from '@/components/config-table';
 import {NewConfigView} from '@/components/new-config-view';
 import {DelayedFullWidthSpinner} from '@/components/spinner';
 import {
@@ -98,7 +98,7 @@ export default function ConfigPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <ConfigListView onConfigClick={handleConfigClick} onNewConfigClick={handleNewConfigClick} />
+        <ConfigTable onConfigClick={handleConfigClick} onNewConfigClick={handleNewConfigClick} />
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>

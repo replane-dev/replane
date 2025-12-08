@@ -50,10 +50,8 @@ export function ConfigDetailView({
 }: ConfigDetailViewProps) {
   const router = useRouter();
   const trpc = useTRPC();
-  const {data} = useSuspenseQuery(trpc.getConfig.queryOptions({name: configName, projectId}));
-  const {data: projectData} = useSuspenseQuery(trpc.getProject.queryOptions({id: projectId}));
-  const {data: environmentsData} = useSuspenseQuery(
-    trpc.getProjectEnvironments.queryOptions({projectId}),
+  const {data: pageData} = useSuspenseQuery(
+    trpc.getConfigPageData.queryOptions({configName, projectId}),
   );
   const updateConfig = useMutation(trpc.updateConfig.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
@@ -62,7 +60,7 @@ export function ConfigDetailView({
   );
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
-  const requireProposals = projectData.project?.requireProposals ?? false;
+  const requireProposals = pageData.project?.requireProposals ?? false;
   const [proposalMessage, setProposalMessage] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
   const [pendingProposalData, setPendingProposalData] = useState<any>(null);
@@ -72,7 +70,7 @@ export function ConfigDetailView({
   const [liveOverrides, setLiveOverrides] = useState<any>(null);
   const [showOverrideTester, setShowOverrideTester] = useState(false);
 
-  const config = data.config;
+  const config = pageData.config;
 
   const configVariants = config?.variants;
 
@@ -293,7 +291,7 @@ export function ConfigDetailView({
         role={requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
         currentName={configName}
         currentPendingProposalsCount={config.pendingConfigProposals.length}
-        environments={environmentsData.environments.map(env => ({
+        environments={pageData.environments.map(env => ({
           id: env.id,
           name: env.name,
         }))}

@@ -1,5 +1,8 @@
+import type {ProjectEnvironment} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
+
+export type {ProjectEnvironment};
 
 export interface GetProjectEnvironmentsRequest {
   projectId: string;
@@ -7,10 +10,7 @@ export interface GetProjectEnvironmentsRequest {
 }
 
 export interface GetProjectEnvironmentsResponse {
-  environments: Array<{
-    id: string;
-    name: string;
-  }>;
+  environments: ProjectEnvironment[];
 }
 
 export function createGetProjectEnvironmentsUseCase(): TransactionalUseCase<
@@ -23,13 +23,10 @@ export function createGetProjectEnvironmentsUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
+    const environments = await tx.projectQueryService.getEnvironments({
+      projectId: req.projectId,
+    });
 
-    return {
-      environments: environments.map(env => ({
-        id: env.id,
-        name: env.name,
-      })),
-    };
+    return {environments};
   };
 }

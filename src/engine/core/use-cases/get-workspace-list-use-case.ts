@@ -1,23 +1,22 @@
-import type {WorkspaceInfo} from '../stores/workspace-store';
 import type {TransactionalUseCase} from '../use-case';
+import type {WorkspaceListItem} from '../workspace-query-service';
 import type {NormalizedEmail} from '../zod';
+
+export type {WorkspaceListItem};
 
 export interface GetWorkspaceListRequest {
   currentUserEmail: NormalizedEmail;
 }
 
-export type GetWorkspaceListResponse = WorkspaceInfo[];
+export type GetWorkspaceListResponse = WorkspaceListItem[];
 
 export function createGetWorkspaceListUseCase(): TransactionalUseCase<
   GetWorkspaceListRequest,
   GetWorkspaceListResponse
 > {
-  return async (ctx, tx, req) => {
-    const workspaces = await tx.workspaces.getAll({
+  return async (_ctx, tx, req) => {
+    return await tx.workspaceQueryService.getWorkspaceList({
       currentUserEmail: req.currentUserEmail,
     });
-
-    // Only return workspaces where user is a member
-    return workspaces.filter(org => org.myRole !== undefined);
   };
 }

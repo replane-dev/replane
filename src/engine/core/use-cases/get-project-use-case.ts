@@ -1,5 +1,8 @@
+import type {ProjectDetails} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
+
+export type {ProjectDetails};
 
 export interface GetProjectRequest {
   id: string;
@@ -7,17 +10,7 @@ export interface GetProjectRequest {
 }
 
 export interface GetProjectResponse {
-  project: {
-    id: string;
-    name: string;
-    description: string;
-    workspaceId: string;
-    requireProposals: boolean;
-    allowSelfApprovals: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    myRole: 'admin' | 'maintainer' | null;
-  } | null;
+  project: ProjectDetails | null;
 }
 
 export function createGetProjectUseCase(): TransactionalUseCase<
@@ -30,23 +23,11 @@ export function createGetProjectUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    const project = await tx.projects.getById({
+    const project = await tx.projectQueryService.getProject({
       id: req.id,
       currentUserEmail: req.currentUserEmail,
     });
-    if (!project) return {project: null};
-    return {
-      project: {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        workspaceId: project.workspaceId,
-        requireProposals: project.requireProposals,
-        allowSelfApprovals: project.allowSelfApprovals,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-        myRole: project.myRole ?? null,
-      },
-    };
+
+    return {project};
   };
 }

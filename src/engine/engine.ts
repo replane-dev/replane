@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {Pool} from 'pg';
 import {ApiTokenService} from './core/api-token-service';
+import {ConfigQueryService} from './core/config-query-service';
 import {ConfigService} from './core/config-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
@@ -15,6 +16,7 @@ import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
+import {ProjectQueryService} from './core/project-query-service';
 import {ReplicaService} from './core/replica';
 import {ReplicaEventBus} from './core/replica-event-bus';
 import type {Service} from './core/service';
@@ -48,9 +50,11 @@ import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-ca
 import {createDeleteWorkspaceUseCase} from './core/use-cases/delete-workspace-use-case';
 import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
 import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
+import {createGetAppLayoutDataUseCase} from './core/use-cases/get-app-layout-data-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
 import {createGetConfigListUseCase} from './core/use-cases/get-config-list-use-case';
+import {createGetConfigPageDataUseCase} from './core/use-cases/get-config-page-data-use-case';
 import {createGetConfigProposalListUseCase} from './core/use-cases/get-config-proposal-list-use-case';
 import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
@@ -82,6 +86,7 @@ import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-wo
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
+import {WorkspaceQueryService} from './core/workspace-query-service';
 
 export interface EngineOptions {
   logLevel: LogLevel;
@@ -148,6 +153,17 @@ function toUseCase<TReq, TRes>(
           configVariantVersions,
         );
 
+        // Query services
+        const configQueryService = new ConfigQueryService(
+          configs,
+          configUsers,
+          configVariants,
+          configProposals,
+          projectUsers,
+        );
+        const projectQueryService = new ProjectQueryService(projects, projectEnvironments);
+        const workspaceQueryService = new WorkspaceQueryService(workspaces);
+
         const tx: UseCaseTransaction = {
           scheduleOptimisticEffect,
           configs,
@@ -165,6 +181,9 @@ function toUseCase<TReq, TRes>(
           configVariantVersions,
           workspaces,
           workspaceMembers,
+          configQueryService,
+          projectQueryService,
+          workspaceQueryService,
           db: dbTx,
         };
         const result = await useCase(ctx, tx, req);
@@ -255,6 +274,9 @@ export async function createEngine(options: EngineOptions) {
     deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
     restoreConfigVersion: createRestoreConfigVersionUseCase(),
     createApiKey: createCreateApiKeyUseCase({tokenHasher}),
+    // Combined use cases for page data
+    getConfigPageData: createGetConfigPageDataUseCase(),
+    getAppLayoutData: createGetAppLayoutDataUseCase(),
     // Workspace use cases
     createWorkspace: createCreateWorkspaceUseCase(),
     getWorkspace: createGetWorkspaceUseCase(),
