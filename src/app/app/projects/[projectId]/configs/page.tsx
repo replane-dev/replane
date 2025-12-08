@@ -1,6 +1,8 @@
 'use client';
 
-import {ConfigTable} from '@/components/config-table';
+import {ConfigDetailView} from '@/components/config-detail-view';
+import {ConfigListView} from '@/components/config-list-view';
+import {NewConfigView} from '@/components/new-config-view';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,10 +10,45 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
 import {Separator} from '@/components/ui/separator';
+import {Sheet, SheetContent, SheetHeader, SheetTitle} from '@/components/ui/sheet';
 import {SidebarTrigger} from '@/components/ui/sidebar';
-import {Fragment} from 'react';
+import {useRouter} from 'next/navigation';
+import {Fragment, Suspense, useState} from 'react';
+import {useProjectId} from '../utils';
+import {useDeleteOrProposeConfig} from './useDeleteOrPropose';
 
 export default function ConfigPage() {
+  const projectId = useProjectId();
+  const router = useRouter();
+  const deleteOrPropose = useDeleteOrProposeConfig();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<'new' | 'detail'>('new');
+  const [selectedConfigName, setSelectedConfigName] = useState<string | null>(null);
+
+  const handleConfigClick = (configName: string) => {
+    setSelectedConfigName(configName);
+    setSheetMode('detail');
+    setSheetOpen(true);
+  };
+
+  const handleNewConfigClick = () => {
+    setSheetMode('new');
+    setSheetOpen(true);
+  };
+
+  const handleSheetClose = () => {
+    setSheetOpen(false);
+    // Wait for animation to complete before clearing state
+    setTimeout(() => {
+      setSelectedConfigName(null);
+    }, 300);
+  };
+
+  const handleConfigDeleted = () => {
+    handleSheetClose();
+    router.refresh();
+  };
+
   return (
     <Fragment>
       <header className="flex h-16 shrink-0 items-center gap-2">
@@ -28,8 +65,44 @@ export default function ConfigPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <ConfigTable />
+        <ConfigListView onConfigClick={handleConfigClick} onNewConfigClick={handleNewConfigClick} />
       </div>
+
+      <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0">
+          <SheetHeader className="p-6 pb-4">
+            <SheetTitle>
+              {sheetMode === 'new' ? 'New Config' : selectedConfigName || 'Config Details'}
+            </SheetTitle>
+          </SheetHeader>
+          <Suspense fallback={<div className="p-6">Loading...</div>}>
+            <div className="h-full overflow-y-auto px-6">
+              {sheetMode === 'new' ? (
+                <NewConfigView
+                  projectId={projectId}
+                  onSuccess={handleSheetClose}
+                  onCancel={handleSheetClose}
+                />
+              ) : selectedConfigName ? (
+                <ConfigDetailView
+                  projectId={projectId}
+                  configName={selectedConfigName}
+                  onDelete={async () => {
+                    // We need to fetch the config data to use deleteOrPropose
+                    handleConfigDeleted();
+                  }}
+                  onProposalCreated={proposalId => {
+                    handleSheetClose();
+                    router.push(
+                      `/app/projects/${projectId}/configs/${encodeURIComponent(selectedConfigName)}/proposals/${proposalId}`,
+                    );
+                  }}
+                />
+              ) : null}
+            </div>
+          </Suspense>
+        </SheetContent>
+      </Sheet>
     </Fragment>
   );
 }

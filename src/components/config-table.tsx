@@ -31,7 +31,6 @@ import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {getQueryClient, useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import Link from 'next/link';
 import {toast} from 'sonner';
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
@@ -58,7 +57,12 @@ function humanizeId(id: string): string {
 
 // columns moved inside component; no hooks inside cells
 
-export function ConfigTable() {
+export interface ConfigTableProps {
+  onConfigClick?: (configName: string) => void;
+  onNewConfigClick?: () => void;
+}
+
+export function ConfigTable({onConfigClick, onNewConfigClick}: ConfigTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -239,10 +243,22 @@ export function ConfigTable() {
   const handleRowClick = React.useCallback(
     (e: React.MouseEvent, configName: string) => {
       if (!shouldNavigateOnRowClick(e)) return;
-      router.push(`/app/projects/${projectId}/configs/${encodeURIComponent(configName)}`);
+      if (onConfigClick) {
+        onConfigClick(configName);
+      } else {
+        router.push(`/app/projects/${projectId}/configs/${encodeURIComponent(configName)}`);
+      }
     },
-    [router],
+    [router, projectId, onConfigClick],
   );
+
+  const handleNewConfigClick = () => {
+    if (onNewConfigClick) {
+      onNewConfigClick();
+    } else {
+      router.push(`/app/projects/${projectId}/new-config`);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -278,9 +294,7 @@ export function ConfigTable() {
               })}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button asChild>
-          <Link href={`/app/projects/${projectId}/new-config`}>New Config</Link>
-        </Button>
+        <Button onClick={handleNewConfigClick}>New Config</Button>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
