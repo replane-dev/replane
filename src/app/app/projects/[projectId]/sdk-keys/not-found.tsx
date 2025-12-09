@@ -34,20 +34,20 @@ export default function SdkKeyNotFound() {
             <Button asChild variant="default" className="w-full">
               <Link href={`/app/projects/${projectId}/sdk-keys/new`}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create New SDK Key
+                Create new SDK key
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
               <Link href={`/app/projects/${projectId}/sdk-keys`}>
                 <Key className="mr-2 h-4 w-4" />
-                View All SDK Keys
+                View all SDK keys
               </Link>
             </Button>
           </div>
         </div>
 
         <Button variant="ghost" onClick={() => router.back()} className="w-full">
-          Go Back
+          Go back
         </Button>
 
         <div className="pt-4 text-xs text-muted-foreground">
@@ -67,4 +67,3 @@ export default function SdkKeyNotFound() {
     </div>
   );
 }
-

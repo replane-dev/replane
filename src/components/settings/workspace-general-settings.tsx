@@ -91,7 +91,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
                 }
               }}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Workspace
+              <Trash2 className="mr-2 h-4 w-4" /> Delete workspace
             </Button>
           </div>
         </div>

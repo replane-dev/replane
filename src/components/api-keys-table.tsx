@@ -95,7 +95,7 @@ export function ApiKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: ApiKe
     () => [
       {
         accessorKey: 'name',
-        header: 'SDK Key Name',
+        header: 'SDK key name',
         cell: ({row}) => <div>{row.getValue('name') || '—'}</div>,
       },
       {
@@ -277,10 +277,10 @@ export function ApiKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: ApiKe
           </DropdownMenuContent>
         </DropdownMenu>
         {onNewSdkKeyClick ? (
-          <Button onClick={onNewSdkKeyClick}>New SDK Key</Button>
+          <Button onClick={onNewSdkKeyClick}>New SDK key</Button>
         ) : (
           <Button asChild>
-            <Link href={`/app/projects/${projectId}/sdk-keys/new`}>New SDK Key</Link>
+            <Link href={`/app/projects/${projectId}/sdk-keys/new`}>New SDK key</Link>
           </Button>
         )}
       </div>

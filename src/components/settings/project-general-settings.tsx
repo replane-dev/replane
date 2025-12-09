@@ -143,7 +143,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
                 }
               }}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Project
+              <Trash2 className="mr-2 h-4 w-4" /> Delete project
             </Button>
           </div>
         </div>

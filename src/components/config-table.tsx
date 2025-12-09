@@ -91,7 +91,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
     () => [
       {
         accessorKey: 'name',
-        header: 'Config Name',
+        header: 'Config name',
         cell: ({row}) => <div>{row.getValue('name')}</div>,
       },
       {
@@ -294,7 +294,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
               })}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button onClick={handleNewConfigClick}>New Config</Button>
+        <Button onClick={handleNewConfigClick}>New config</Button>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>

@@ -34,20 +34,20 @@ export default function ConfigNotFound() {
             <Button asChild variant="default" className="w-full">
               <Link href={`/app/projects/${projectId}/new-config`}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create New Config
+                Create new config
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
               <Link href={`/app/projects/${projectId}/configs`}>
                 <FileCog className="mr-2 h-4 w-4" />
-                View All Configs
+                View all configs
               </Link>
             </Button>
           </div>
         </div>
 
         <Button variant="ghost" onClick={() => router.back()} className="w-full">
-          Go Back
+          Go back
         </Button>
 
         <div className="pt-4 text-xs text-muted-foreground">
