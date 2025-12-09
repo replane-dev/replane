@@ -6,9 +6,10 @@ import {useTheme} from 'next-themes';
 interface CodeSnippetProps {
   code: string;
   language: 'typescript' | 'javascript' | 'shell' | 'json' | 'python';
+  tabSize?: number;
 }
 
-export function CodeSnippet({code, language}: CodeSnippetProps) {
+export function CodeSnippet({code, language, tabSize}: CodeSnippetProps) {
   const {resolvedTheme} = useTheme();
   const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
 
@@ -40,9 +41,9 @@ export function CodeSnippet({code, language}: CodeSnippetProps) {
           wordWrap: 'on',
           fontSize: 12,
           padding: {top: 8, bottom: 8},
+          tabSize: tabSize,
         }}
       />
     </div>
   );
 }
-

@@ -28,6 +28,7 @@ const DEFAULT_EMPTY_SCHEMA = JSON.stringify(
     type: 'object',
     properties: {},
     required: [],
+    additionalProperties: false,
   },
   null,
   2,

@@ -184,7 +184,11 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
           </p>
         </div>
         <div className="p-6">
-          <SdkIntegrationGuide sdkKey={null} />
+          <SdkIntegrationGuide
+            sdkKey={null}
+            projectId={projectId}
+            environmentId={apiKey.environmentId}
+          />
         </div>
       </div>
     </div>

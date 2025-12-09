@@ -356,6 +356,24 @@ export const appRouter = createTRPCRouter({
         currentUserEmail: opts.ctx.currentUserEmail,
       });
     }),
+  getProjectConfigTypes: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+        environmentId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+
+      return await opts.ctx.engine.useCases.getProjectConfigTypes(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
+        environmentId: opts.input.environmentId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+    }),
   getConfigVariantVersionList: baseProcedure
     .input(
       z.object({

@@ -1,16 +1,54 @@
 'use client';
 
+import {useProject} from '@/app/app/projects/[projectId]/utils';
 import {CodeSnippet} from '@/components/code-snippet';
 import {Button} from '@/components/ui/button';
+import {Label} from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {useTRPC} from '@/trpc/client';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {useState} from 'react';
 import {toast} from 'sonner';
 
 interface SdkIntegrationGuideProps {
   sdkKey?: string | null;
+  projectId: string;
+  environmentId?: string;
 }
 
-export function SdkIntegrationGuide({sdkKey}: SdkIntegrationGuideProps) {
+export function SdkIntegrationGuide({
+  sdkKey,
+  projectId,
+  environmentId: initialEnvironmentId,
+}: SdkIntegrationGuideProps) {
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const trpc = useTRPC();
+
+  // Fetch environments if environmentId not provided
+  const {data: environmentsData} = useSuspenseQuery(
+    trpc.getProjectEnvironments.queryOptions({projectId}),
+  );
+
+  const defaultEnvironment = environmentsData.environments[0];
+  if (!defaultEnvironment) {
+    throw new Error('No default environment found: project must have at least one environment');
+  }
+
+  const [environmentId, setEnvironmentId] = useState(initialEnvironmentId ?? defaultEnvironment.id);
+
+  // Fetch generated types for the project and environment
+  const {data} = useSuspenseQuery(
+    trpc.getProjectConfigTypes.queryOptions({
+      projectId,
+      environmentId,
+    }),
+  );
 
   const handleCopy = async (code: string, snippetId: string) => {
     try {
@@ -24,82 +62,67 @@ export function SdkIntegrationGuide({sdkKey}: SdkIntegrationGuideProps) {
     }
   };
 
+  const project = useProject();
+
   const sdkKeyValue = sdkKey || 'your-sdk-key-here';
-  const isPlaceholder = !sdkKey;
   const baseUrl =
-    typeof window !== 'undefined' ? window.location.origin : 'https://your-replane-instance.com';
+    typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
 
-  const installSnippet = `npm install replane-sdk
-# or
-pnpm add replane-sdk
-# or
-yarn add replane-sdk`;
+  const installSnippet = `npm install replane-sdk`;
 
-  const basicUsageSnippet = `import { createReplaneClient } from 'replane-sdk';
+  const defineTypesSnippet = `${data.types}`;
 
-interface Configs {
-  'new-onboarding': boolean;
-}
+  const usageSnippet = `import { createReplaneClient } from 'replane-sdk';
+import { type Configs } from './types.js';
 
 const replane = await createReplaneClient<Configs>({
-  // Each SDK key is tied to one project and environment
-  sdkKey: '${sdkKeyValue}',
-  baseUrl: '${baseUrl}',
+    // Each SDK key is tied to one project and environment
+    sdkKey: '${sdkKeyValue}',
+    baseUrl: '${baseUrl}',
 });
 
-// Get a config value (receives realtime updates via SSE)
-const featureFlag = replane.getConfig('new-onboarding');
+// Get a config value (no await needed, because the client fetches configs during initialization)
+const value1 = replane.getConfig('${data.exampleConfigName}');
 
-if (featureFlag) {
-  console.log('New onboarding enabled!');
-}`;
+console.log('The value #1:', value1);
 
-  const typedExampleSnippet = `interface PasswordRequirements {
-  minLength: number;
-  requireSymbol: boolean;
-}
+// Replane client receives realtime updates via SSE in the background
+// so the value can be different from the first one
+const value2 = replane.getConfig('${data.exampleConfigName}');
 
-interface Configs {
-  'password-requirements': PasswordRequirements;
-}
-
-const replane = await createReplaneClient<Configs>({
-  sdkKey: '${sdkKeyValue}',
-  baseUrl: '${baseUrl}',
-});
-
-const passwordReqs = replane.getConfig('password-requirements');
-
-// Use the value directly (always up-to-date via realtime updates)
-const { minLength } = passwordReqs;`;
-
-  const realtimeSnippet = `interface Configs {
-  'billing-enabled': boolean;
-}
-
-const replane = await createReplaneClient<Configs>({
-  sdkKey: '${sdkKeyValue}',
-  baseUrl: '${baseUrl}',
-});
-
-// Get config with context for override evaluation
-const enabled = replane.getConfig('billing-enabled', {
-  context: {
-    userId: 'user-123',
-    plan: 'premium',
-    region: 'us-east',
-  },
-});
-
-if (enabled) {
-  console.log('Billing enabled for this user!');
-}
+console.log('The value #2:', value2);
 
 // Clean up when done
 replane.close();`;
 
+  const showEnvironmentSelector = !initialEnvironmentId;
+
   return (
     <div className="space-y-6">
+      {/* Environment selector */}
+      {showEnvironmentSelector && (
+        <div className="space-y-2">
+          <Label htmlFor="sdk-environment-select" className="text-sm font-medium">
+            Environment
+          </Label>
+          <Select value={environmentId} onValueChange={setEnvironmentId}>
+            <SelectTrigger id="sdk-environment-select">
+              <SelectValue placeholder="Select environment" />
+            </SelectTrigger>
+            <SelectContent>
+              {environmentsData.environments.map(env => (
+                <SelectItem key={env.id} value={env.id}>
+                  {env.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Types are generated based on the schemas for the selected environment.
+          </p>
+        </div>
+      )}
+
       {/* Installation */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -116,64 +139,48 @@ replane.close();`;
         <CodeSnippet code={installSnippet} language="shell" />
       </div>
 
-      {/* Basic Usage */}
+      {/* Define types */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-foreground">2. Initialize the client</h4>
+          <Label className="text-sm font-medium">2. Define types</Label>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleCopy(basicUsageSnippet, 'basic')}
+            onClick={() => handleCopy(defineTypesSnippet, 'generated')}
+            className="h-7 text-xs"
+          >
+            Copy
+          </Button>
+        </div>
+        <CodeSnippet code={defineTypesSnippet} language="typescript" />
+        <p className="text-xs text-muted-foreground">
+          This is the generated code for the selected environment. It includes the types for the
+          configs and the client. You can use this code to integrate the Replane SDK into your
+          application. You can also generate the code for different environments by selecting a
+          different environment in the selector above.
+        </p>
+      </div>
+
+      {/* Basic Usage */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground">3. Use the client</h4>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCopy(usageSnippet, 'basic')}
             className="h-7 text-xs"
           >
             {copiedSnippet === 'basic' ? 'Copied!' : 'Copy'}
           </Button>
         </div>
-        <CodeSnippet code={basicUsageSnippet} language="typescript" />
-        {isPlaceholder && (
+        <CodeSnippet tabSize={4} code={usageSnippet} language="typescript" />
+        {!sdkKey && (
           <p className="text-xs text-muted-foreground italic">
             Replace <code className="px-1 py-0.5 bg-muted rounded">your-sdk-key-here</code> with
             your actual SDK key.
           </p>
         )}
-      </div>
-
-      {/* Typed Example */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-foreground">3. Use TypeScript types</h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCopy(typedExampleSnippet, 'typed')}
-            className="h-7 text-xs"
-          >
-            {copiedSnippet === 'typed' ? 'Copied!' : 'Copy'}
-          </Button>
-        </div>
-        <CodeSnippet code={typedExampleSnippet} language="typescript" />
-      </div>
-
-      {/* Context-based Overrides */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-foreground">
-            4. Context-based overrides (optional)
-          </h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCopy(realtimeSnippet, 'realtime')}
-            className="h-7 text-xs"
-          >
-            {copiedSnippet === 'realtime' ? 'Copied!' : 'Copy'}
-          </Button>
-        </div>
-        <CodeSnippet code={realtimeSnippet} language="typescript" />
-        <p className="text-xs text-muted-foreground">
-          The client automatically receives realtime updates via SSE in the background. Use context
-          to evaluate overrides for feature flags, A/B testing, and gradual rollouts.
-        </p>
       </div>
     </div>
   );

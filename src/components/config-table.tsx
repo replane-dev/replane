@@ -13,12 +13,13 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, Code, MoreHorizontal} from 'lucide-react';
+import {ArrowUpDown, ChevronDown, Code, FileCode, MoreHorizontal} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
 import {useDeleteOrProposeConfig} from '@/app/app/projects/[projectId]/configs/useDeleteOrPropose';
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {GenerateTypesDialog} from '@/components/generate-types-dialog';
 import {SdkIntegrationGuide} from '@/components/sdk-integration-guide';
 import {Button} from '@/components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '@/components/ui/dialog';
@@ -33,6 +34,7 @@ import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {getQueryClient, useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
+import {Suspense} from 'react';
 import {toast} from 'sonner';
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
@@ -71,6 +73,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [showIntegrationGuide, setShowIntegrationGuide] = React.useState(false);
+  const [showGenerateTypes, setShowGenerateTypes] = React.useState(false);
   const projectId = useProjectId();
 
   const trpc = useTRPC();
@@ -272,9 +275,13 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
           onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
           className="max-w-md"
         />
+        <Button variant="outline" className="ml-auto" onClick={() => setShowGenerateTypes(true)}>
+          <FileCode className="h-4 w-4 mr-2" />
+          Generate types
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline">
               Columns <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
@@ -346,7 +353,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
       {/* Integration tips */}
       <div className="mt-8 text-center">
         <p className="text-sm font-semibold text-muted-foreground mb-2">
-          Ready to integrate configs into your app?
+          Ready to integrate project configs into your app?
         </p>
         <button
           onClick={() => setShowIntegrationGuide(true)}
@@ -359,14 +366,19 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
 
       {/* Integration Guide Dialog */}
       <Dialog open={showIntegrationGuide} onOpenChange={setShowIntegrationGuide}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="lg:max-w-4xl md:max-w-2xl w-full max-h-[85vh] overflow-y-auto">
           <DialogTitle>SDK Integration Guide</DialogTitle>
           <DialogDescription>
             Follow these steps to integrate Replane SDK into your application
           </DialogDescription>
-          <SdkIntegrationGuide />
+          <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+            <SdkIntegrationGuide projectId={projectId} />
+          </Suspense>
         </DialogContent>
       </Dialog>
+
+      {/* Generate Types Dialog */}
+      <GenerateTypesDialog open={showGenerateTypes} onOpenChange={setShowGenerateTypes} />
     </div>
   );
 }

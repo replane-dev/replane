@@ -196,7 +196,11 @@ export function NewSdkKeyView({projectId, onSuccess, onCancel}: NewSdkKeyViewPro
             </p>
           </div>
           <div className="p-6">
-            <SdkIntegrationGuide sdkKey={createdToken} />
+            <SdkIntegrationGuide
+              sdkKey={createdToken}
+              projectId={projectId}
+              environmentId={environmentId}
+            />
           </div>
         </div>
       )}

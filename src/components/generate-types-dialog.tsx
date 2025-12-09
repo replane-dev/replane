@@ -1,0 +1,118 @@
+'use client';
+
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {CodeSnippet} from '@/components/code-snippet';
+import {Button} from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {Label} from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {useTRPC} from '@/trpc/client';
+import {useSuspenseQuery} from '@tanstack/react-query';
+import {Suspense, useState} from 'react';
+import {toast} from 'sonner';
+
+interface GenerateTypesDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function GenerateTypesDialog({open, onOpenChange}: GenerateTypesDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="md:max-w-2xl lg:max-w-4xl w-full max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Generate TypeScript Types</DialogTitle>
+          <DialogDescription>
+            Generate TypeScript types for your configs. Select an environment to see the types based
+            on schemas for that environment.
+          </DialogDescription>
+        </DialogHeader>
+        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+          <GenerateTypesContent />
+        </Suspense>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function GenerateTypesContent() {
+  const projectId = useProjectId();
+  const trpc = useTRPC();
+
+  // Fetch environments
+  const {data: environmentsData} = useSuspenseQuery(
+    trpc.getProjectEnvironments.queryOptions({projectId}),
+  );
+
+  const defaultEnvironment = environmentsData.environments[0];
+  if (!defaultEnvironment) {
+    throw new Error('No default environment found: project must have at least one environment');
+  }
+
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(defaultEnvironment.id);
+
+  // Fetch generated types for selected environment
+  const {data} = useSuspenseQuery(
+    trpc.getProjectConfigTypes.queryOptions({
+      projectId,
+      environmentId: selectedEnvironmentId,
+    }),
+  );
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(data.types);
+      toast.success('Copied to clipboard');
+    } catch (e) {
+      console.error(e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      toast.error(`Failed to copy code: ${errorMessage}`);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Environment selector */}
+      <div className="space-y-2">
+        <Label htmlFor="environment-select" className="text-sm font-medium">
+          Environment
+        </Label>
+        <Select value={selectedEnvironmentId} onValueChange={setSelectedEnvironmentId}>
+          <SelectTrigger id="environment-select">
+            <SelectValue placeholder="Select environment" />
+          </SelectTrigger>
+          <SelectContent>
+            {environmentsData.environments.map(env => (
+              <SelectItem key={env.id} value={env.id}>
+                {env.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Generated code */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Generated Types</Label>
+          <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
+            Copy
+          </Button>
+        </div>
+        <CodeSnippet code={data.types} language="typescript" />
+      </div>
+    </div>
+  );
+}

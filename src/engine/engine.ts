@@ -64,6 +64,7 @@ import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createGetNewConfigPageDataUseCase} from './core/use-cases/get-new-config-page-data-use-case';
 import {createGetNewSdkKeyPageDataUseCase} from './core/use-cases/get-new-sdk-key-page-data-use-case';
+import {createGetProjectConfigTypesUseCase} from './core/use-cases/get-project-config-types-use-case';
 import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
@@ -286,6 +287,7 @@ export async function createEngine(options: EngineOptions) {
     getNewConfigPageData: createGetNewConfigPageDataUseCase(),
     getSdkKeyPageData: createGetSdkKeyPageDataUseCase(),
     getNewSdkKeyPageData: createGetNewSdkKeyPageDataUseCase(),
+    getProjectConfigTypes: createGetProjectConfigTypesUseCase(),
     getAppLayoutData: createGetAppLayoutDataUseCase(),
     // Workspace use cases
     createWorkspace: createCreateWorkspaceUseCase(),

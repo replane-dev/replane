@@ -1,3 +1,4 @@
+import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {Context} from '../context';
@@ -237,6 +238,60 @@ export class ConfigStore {
     await this.db.deleteFrom('configs').where('id', '=', id).execute();
 
     await this.hub.pushEvent(ctx, {configId: id});
+  }
+
+  async getConfigSchemas(params: {
+    projectId: string;
+    environmentId: string;
+  }): Promise<Array<{name: string; schema: unknown | null}>> {
+    const rows = await this.db
+      .selectFrom('configs as c')
+      .leftJoin('config_variants as cv', jb =>
+        jb.on(eb =>
+          eb.and([
+            eb('cv.config_id', '=', eb.ref('c.id')),
+            eb('cv.environment_id', '=', params.environmentId),
+          ]),
+        ),
+      )
+      .leftJoin('config_variants as cv_default', jb =>
+        jb.on(eb =>
+          eb.and([
+            eb('cv_default.config_id', '=', eb.ref('c.id')),
+            eb('cv_default.environment_id', 'is', null),
+          ]),
+        ),
+      )
+      .select([
+        'c.name',
+        'cv.use_default_schema as use_default_schema',
+        'cv.schema as environment_schema',
+        'cv_default.schema as default_schema',
+      ])
+      .where('c.project_id', '=', params.projectId)
+      .orderBy('c.name')
+      .execute();
+
+    console.log(rows);
+
+    return rows.map(row => {
+      if (row.use_default_schema !== false) {
+        assert(row.default_schema, 'Default schema is required when use_default_schema is true');
+        return {
+          name: row.name,
+          schema: JSON.parse(row.default_schema),
+        };
+      }
+
+      assert(
+        row.environment_schema,
+        'Environment schema is required when use_default_schema is false',
+      );
+      return {
+        name: row.name,
+        schema: JSON.parse(row.environment_schema),
+      };
+    });
   }
 }
 
