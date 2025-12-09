@@ -13,13 +13,15 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
+import {ArrowUpDown, ChevronDown, Code, MoreHorizontal} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
 import {useDeleteOrProposeConfig} from '@/app/app/projects/[projectId]/configs/useDeleteOrPropose';
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {SdkIntegrationGuide} from '@/components/sdk-integration-guide';
 import {Button} from '@/components/ui/button';
+import {Dialog, DialogContent, DialogDescription, DialogTitle} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -68,6 +70,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [showIntegrationGuide, setShowIntegrationGuide] = React.useState(false);
   const projectId = useProjectId();
 
   const trpc = useTRPC();
@@ -339,6 +342,31 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Integration tips */}
+      <div className="mt-8 text-center">
+        <p className="text-sm font-semibold text-muted-foreground mb-2">
+          Ready to integrate configs into your app?
+        </p>
+        <button
+          onClick={() => setShowIntegrationGuide(true)}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Code className="h-3.5 w-3.5" />
+          View integration guide for this project
+        </button>
+      </div>
+
+      {/* Integration Guide Dialog */}
+      <Dialog open={showIntegrationGuide} onOpenChange={setShowIntegrationGuide}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogTitle>SDK Integration Guide</DialogTitle>
+          <DialogDescription>
+            Follow these steps to integrate Replane SDK into your application
+          </DialogDescription>
+          <SdkIntegrationGuide />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

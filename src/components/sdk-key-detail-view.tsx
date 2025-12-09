@@ -1,7 +1,7 @@
 'use client';
 
 import {ApiKeyExplainer} from '@/components/api-key-explainer';
-import {ApiKeySdkGuide} from '@/components/api-key-sdk-guide';
+import {SdkIntegrationGuide} from '@/components/sdk-integration-guide';
 import {Button} from '@/components/ui/button';
 import {isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
@@ -176,7 +176,17 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
       </div>
 
       {/* SDK Integration Guide */}
-      <ApiKeySdkGuide apiKey={null} />
+      <div className="rounded-lg border bg-card/50 overflow-hidden">
+        <div className="border-b bg-muted/30 px-6 py-4">
+          <h3 className="text-base font-semibold text-foreground">JavaScript SDK Integration</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Use these code examples to integrate Replane into your application.
+          </p>
+        </div>
+        <div className="p-6">
+          <SdkIntegrationGuide sdkKey={null} />
+        </div>
+      </div>
     </div>
   );
 }
