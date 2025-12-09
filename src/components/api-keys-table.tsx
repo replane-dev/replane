@@ -64,7 +64,13 @@ function humanizeId(id: string): string {
 
 // columns moved inside component to use router without violating hook rules
 
-export function ApiKeysTable({projectId}: {projectId: string}) {
+export interface ApiKeysTableProps {
+  projectId: string;
+  onSdkKeyClick?: (id: string) => void;
+  onNewSdkKeyClick?: () => void;
+}
+
+export function ApiKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: ApiKeysTableProps) {
   const router = useRouter();
   const qc = useQueryClient();
   const trpc = useTRPC();
@@ -163,7 +169,11 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/projects/${projectId}/sdk-keys/${apiKey.id}`);
+                    if (onSdkKeyClick) {
+                      onSdkKeyClick(apiKey.id);
+                    } else {
+                      router.push(`/app/projects/${projectId}/sdk-keys/${apiKey.id}`);
+                    }
                   }}
                 >
                   View details
@@ -223,9 +233,13 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
       if (isInteractive(e.target)) return;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
-      router.push(`/app/projects/${projectId}/sdk-keys/${id}`);
+      if (onSdkKeyClick) {
+        onSdkKeyClick(id);
+      } else {
+        router.push(`/app/projects/${projectId}/sdk-keys/${id}`);
+      }
     },
-    [router, projectId],
+    [router, projectId, onSdkKeyClick],
   );
 
   return (
@@ -262,9 +276,13 @@ export function ApiKeysTable({projectId}: {projectId: string}) {
               })}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button asChild>
-          <Link href={`/app/projects/${projectId}/sdk-keys/new`}>New SDK Key</Link>
-        </Button>
+        {onNewSdkKeyClick ? (
+          <Button onClick={onNewSdkKeyClick}>New SDK Key</Button>
+        ) : (
+          <Button asChild>
+            <Link href={`/app/projects/${projectId}/sdk-keys/new`}>New SDK Key</Link>
+          </Button>
+        )}
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
