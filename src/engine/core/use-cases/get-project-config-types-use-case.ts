@@ -78,6 +78,8 @@ export function createGetProjectConfigTypesUseCase(): TransactionalUseCase<
         // No schema defined - use unknown type
         configsSchema.properties[config.name] = true;
       }
+
+      configsSchema.required.push(config.name);
     }
 
     // Use quicktype to generate TypeScript types

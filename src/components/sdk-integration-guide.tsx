@@ -64,7 +64,7 @@ export function SdkIntegrationGuide({
 
   const project = useProject();
 
-  const sdkKeyValue = sdkKey || 'your-sdk-key-here';
+  const sdkKeyValue = sdkKey || 'your-project-sdk-key-here';
   const baseUrl =
     typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
 
@@ -73,26 +73,29 @@ export function SdkIntegrationGuide({
   const defineTypesSnippet = `${data.types}`;
 
   const usageSnippet = `import { createReplaneClient } from 'replane-sdk';
-import { type Configs } from './types.js';
+import { type Configs } from './types';
 
+// Create client (fetches project's configs during initialization)
 const replane = await createReplaneClient<Configs>({
-    // Each SDK key is tied to one project and environment
     sdkKey: '${sdkKeyValue}',
     baseUrl: '${baseUrl}',
 });
 
-// Get a config value (no await needed, because the client fetches configs during initialization)
-const value1 = replane.getConfig('${data.exampleConfigName}');
+// Get config value with full type safety
+const config = replane.getConfig('${data.exampleConfigName}');
 
-console.log('The value #1:', value1);
+// Use context for overrides (see https://replane.dev/docs/guides/override-rules)
+const userConfig = replane.getConfig('${data.exampleConfigName}', {
+    context: {
+        userId: 'user-123',
+        country: 'US',
+    },
+});
 
-// Replane client receives realtime updates via SSE in the background
-// so the value can be different from the first one
-const value2 = replane.getConfig('${data.exampleConfigName}');
+// Configs are automatically updated in realtime via SSE
+// No need to refetch or reload - just call getConfig() again
 
-console.log('The value #2:', value2);
-
-// Clean up when done
+// Clean up when your application shuts down
 replane.close();`;
 
   const showEnvironmentSelector = !initialEnvironmentId;
@@ -177,8 +180,8 @@ replane.close();`;
         <CodeSnippet tabSize={4} code={usageSnippet} language="typescript" />
         {!sdkKey && (
           <p className="text-xs text-muted-foreground italic">
-            Replace <code className="px-1 py-0.5 bg-muted rounded">your-sdk-key-here</code> with
-            your actual SDK key.
+            Replace <code className="px-1 py-0.5 bg-muted rounded">your-project-sdk-key-here</code>{' '}
+            with your actual SDK key.
           </p>
         )}
       </div>
