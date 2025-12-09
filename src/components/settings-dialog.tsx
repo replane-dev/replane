@@ -48,6 +48,13 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSection>(initialSection);
 
+  // Update active section when initialSection changes and dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setActiveSection(initialSection);
+    }
+  }, [open, initialSection]);
+
   const navSections = [
     {
       label: 'Account',

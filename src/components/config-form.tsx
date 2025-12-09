@@ -5,6 +5,7 @@ import {ConfigMemberList} from '@/components/config-member-list';
 import {ConfigMetadataHeader} from '@/components/config-metadata-header';
 import {ConfigVariantFields} from '@/components/config-variant-fields';
 import {SchemaDiffWarning} from '@/components/schema-diff-warning';
+import {useSettings} from '@/components/settings-context';
 import {Button} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {
@@ -126,6 +127,7 @@ export function ConfigForm(props: ConfigFormProps) {
   const defaultName = currentName ?? '';
 
   const projectId = useProjectId();
+  const {showSettings} = useSettings();
 
   // Normalize role
   const role: 'viewer' | 'maintainer' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
@@ -645,13 +647,22 @@ export function ConfigForm(props: ConfigFormProps) {
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-lg font-semibold">Environment Overrides</h3>
               <p className="text-sm text-muted-foreground">
                 Customize values for specific environments
               </p>
             </div>
-            <div className="ml-auto">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => showSettings('project-environments')}
+                className="text-xs"
+              >
+                Manage environments
+              </Button>
               <Help className="max-w-sm">
                 <p>
                   Enable an environment to customize its configuration. Disabled environments will
@@ -833,13 +844,22 @@ export function ConfigForm(props: ConfigFormProps) {
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="text-lg font-semibold">Access Control</h3>
                 <p className="text-sm text-muted-foreground">
                   Manage who can edit and approve changes
                 </p>
               </div>
-              <div className="ml-auto">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => showSettings('project-members')}
+                  className="text-xs"
+                >
+                  Manage project members
+                </Button>
                 <Help>
                   <p>
                     Config-level members who can approve proposals. Project admins and maintainers
@@ -897,8 +917,8 @@ export function ConfigForm(props: ConfigFormProps) {
                         ? 'Creating…'
                         : 'Saving…'
                       : mode === 'new'
-                        ? 'Create Config'
-                        : 'Save Changes'}
+                        ? 'Create config'
+                        : 'Save changes'}
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -922,7 +942,7 @@ export function ConfigForm(props: ConfigFormProps) {
                       submitActionRef.current = 'propose';
                     }}
                   >
-                    {proposing ? 'Proposing…' : 'Create Proposal'}
+                    {proposing ? 'Proposing…' : 'Create proposal'}
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -942,7 +962,7 @@ export function ConfigForm(props: ConfigFormProps) {
             watchedDefaultVariant?.overrides &&
             (watchedDefaultVariant.overrides as any[])?.length > 0 && (
               <Button type="button" variant="outline" onClick={() => onTestOverrides()}>
-                Test Overrides
+                Test overrides
               </Button>
             )}
           {mode !== 'proposal' && onDelete && role === 'maintainer' && (

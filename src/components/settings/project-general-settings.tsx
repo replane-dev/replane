@@ -58,7 +58,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h3 className="text-lg font-semibold">General</h3>
+        <h3 className="text-lg font-semibold">Project settings</h3>
         <p className="text-sm text-muted-foreground">Manage project details and governance</p>
       </div>
 
@@ -148,6 +148,17 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
           </div>
         </div>
       )}
+
+      <div className="pt-6 border-t">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs text-muted-foreground">Project ID</span>
+            <code className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              {projectId}
+            </code>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

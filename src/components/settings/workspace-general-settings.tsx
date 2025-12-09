@@ -43,7 +43,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h3 className="text-lg font-semibold">General</h3>
+        <h3 className="text-lg font-semibold">Workspace settings</h3>
         <p className="text-sm text-muted-foreground">Manage workspace details</p>
       </div>
 
@@ -96,6 +96,17 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
           </div>
         </div>
       )}
+
+      <div className="pt-6 border-t">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs text-muted-foreground">Workspace ID</span>
+            <code className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              {workspaceId}
+            </code>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

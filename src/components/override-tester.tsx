@@ -159,7 +159,7 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PlayCircle className="h-5 w-5 text-primary" />
-            Test Override Conditions
+            Test override conditions
           </DialogTitle>
           <DialogDescription>
             Input context values to see which override matches and what value would be returned

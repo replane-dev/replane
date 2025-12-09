@@ -230,7 +230,7 @@ export function ConfigVariantFields({
                   onClick={handleAddFirstOverride}
                   className="h-7 text-xs"
                 >
-                  + Add Conditional Override
+                  + Add conditional override
                 </Button>
               )}
             </div>

@@ -249,7 +249,7 @@ const OverrideCardComponent = ({
                       className="w-full h-9"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Condition
+                      Add condition
                     </Button>
                   )}
                 </div>

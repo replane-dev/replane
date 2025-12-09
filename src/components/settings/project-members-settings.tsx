@@ -68,7 +68,7 @@ export function ProjectMembersSettings({projectId}: {projectId: string}) {
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Members</h3>
+          <h3 className="text-lg font-semibold">Project members</h3>
           <p className="text-sm text-muted-foreground">Manage who can access this project</p>
         </div>
         {canManageMembers && (

@@ -1,6 +1,7 @@
 'use client';
 
 import {AppSidebar} from '@/components/app-sidebar';
+import {SettingsProvider} from '@/components/settings-context';
 import {SidebarInset, SidebarProvider} from '@/components/ui/sidebar';
 import {ProjectProvider} from '@/contexts/project-context';
 import Link from 'next/link';
@@ -15,10 +16,12 @@ export default function AppLayout({
   return (
     <SidebarProvider>
       <ProjectProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <AppLayoutInner>{children}</AppLayoutInner>
-        </SidebarInset>
+        <SettingsProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <AppLayoutInner>{children}</AppLayoutInner>
+          </SidebarInset>
+        </SettingsProvider>
       </ProjectProvider>
     </SidebarProvider>
   );

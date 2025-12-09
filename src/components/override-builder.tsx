@@ -81,7 +81,7 @@ export function OverrideBuilder({
           className="w-full h-10 border-dashed border-1"
         >
           <Plus className="h-4 w-4 mr-2" />
-          {overrides.length === 0 ? 'Add Value Override Rule' : 'Add Another Value Override'}
+          {overrides.length === 0 ? 'Add value override rule' : 'Add another value override'}
         </Button>
       )}
     </div>

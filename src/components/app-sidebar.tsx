@@ -3,13 +3,12 @@
 import {BookOpen, FileCog, History, Key, LifeBuoy, Settings} from 'lucide-react';
 import * as React from 'react';
 
-import {useProject, useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {useProjectId} from '@/app/app/projects/[projectId]/utils';
 import {NavMain} from '@/components/nav-main';
 import {NavSecondary} from '@/components/nav-secondary';
 import {NavUser} from '@/components/nav-user';
-import {OrgSwitcher} from '@/components/workspace-switcher';
 import {ProjectSwitcher} from '@/components/project-switcher';
-import {SettingsDialog} from '@/components/settings-dialog';
+import {useSettings} from '@/components/settings-context';
 import {
   Sidebar,
   SidebarContent,
@@ -17,11 +16,11 @@ import {
   SidebarGroup,
   SidebarHeader,
 } from '@/components/ui/sidebar';
+import {OrgSwitcher} from '@/components/workspace-switcher';
 
 export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
   const projectId = useProjectId();
-  const project = useProject();
-  const [showSettings, setShowSettings] = React.useState(false);
+  const {showSettings} = useSettings();
 
   const data = {
     navSecondary: [
@@ -57,36 +56,28 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
       {
         name: 'Settings',
         icon: Settings,
-        onClick: () => setShowSettings(true),
+        onClick: () => showSettings(),
       },
     ],
   };
 
   return (
-    <>
-      <Sidebar variant="inset" {...props}>
-        <SidebarHeader className="space-y-2">
-          <OrgSwitcher />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup className="-mb-5 -mt-2">
-            <ProjectSwitcher />
-          </SidebarGroup>
-          <div className="ml-2">
-            <NavMain items={data.navMain} />
-          </div>
-          <NavSecondary items={data.navSecondary} className="mt-auto" />
-        </SidebarContent>
-        <SidebarFooter>
-          <NavUser />
-        </SidebarFooter>
-      </Sidebar>
-      <SettingsDialog
-        open={showSettings}
-        onOpenChange={setShowSettings}
-        projectId={projectId}
-        workspaceId={project.workspaceId}
-      />
-    </>
+    <Sidebar variant="inset" {...props}>
+      <SidebarHeader className="space-y-2">
+        <OrgSwitcher />
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup className="-mb-5 -mt-2">
+          <ProjectSwitcher />
+        </SidebarGroup>
+        <div className="ml-2">
+          <NavMain items={data.navMain} />
+        </div>
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser />
+      </SidebarFooter>
+    </Sidebar>
   );
 }

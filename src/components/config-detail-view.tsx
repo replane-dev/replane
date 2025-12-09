@@ -480,7 +480,7 @@ export function ConfigDetailView({
                 }
               }}
             >
-              {createConfigProposal.isPending ? 'Creating…' : 'Create Proposal'}
+              {createConfigProposal.isPending ? 'Creating…' : 'Create proposal'}
             </Button>
           </DialogFooter>
         </DialogContent>
