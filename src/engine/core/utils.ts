@@ -5,6 +5,7 @@ import Ajv2019 from 'ajv/dist/2019';
 import Ajv2020 from 'ajv/dist/2020';
 import draft06MetaSchema from 'ajv/dist/refs/json-schema-draft-06.json';
 import assert from 'assert';
+import {Channel} from 'async-channel';
 import type {Kysely} from 'kysely';
 import type {Context} from './context';
 import type {DB} from './db';
@@ -328,4 +329,22 @@ export function groupBy<T, K>(items: T[], toKey: (item: T) => K): Array<[K, T[]]
   }
 
   return Array.from(groups.entries()).map(([key, value]) => [JSON.parse(key) as K, value]);
+}
+
+export function toEagerAsyncIterable<T>(asyncIterable: AsyncIterable<T>): AsyncIterable<T> {
+  const channel = new Channel<T>();
+
+  (async () => {
+    try {
+      for await (const item of asyncIterable) {
+        await channel.push(item);
+      }
+    } catch (error) {
+      await channel.throw(error);
+    } finally {
+      channel.close();
+    }
+  })();
+
+  return channel;
 }

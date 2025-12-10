@@ -8,6 +8,7 @@ import {cors} from 'hono/cors';
 import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
 import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
+import {toEagerAsyncIterable} from './engine/core/utils';
 
 async function getEngine() {
   return getEngineSingleton();
@@ -266,11 +267,21 @@ const ConfigDeletedEventResponse = z
   })
   .openapi('ConfigDeletedEventResponse');
 
+const ConfigListEventResponse = z
+  .object({
+    type: z.literal('config_list'),
+    configs: z.array(ConfigResponse),
+  })
+  .openapi('ConfigListEventResponse');
+
+type ConfigListEventResponse = z.infer<typeof ConfigListEventResponse>;
+
 const ProjectEventResponse = z
   .discriminatedUnion('type', [
     ConfigCreatedEventResponse,
     ConfigUpdatedEventResponse,
     ConfigDeletedEventResponse,
+    ConfigListEventResponse,
   ])
   .openapi('ProjectEventResponse', {
     description: 'Server-sent events stream for project updates',
@@ -278,11 +289,27 @@ const ProjectEventResponse = z
 
 type ProjectEventResponse = z.infer<typeof ProjectEventResponse>;
 
+const ProjectEventsQuery = z
+  .object({
+    includeInitialConfigs: z
+      .enum(['true', 'false'])
+      .optional()
+      .openapi({description: 'Whether to include the initial config list as the first event'}),
+  })
+  .openapi('ProjectEventsQuery', {
+    description: 'Query parameters for the getProjectEvents endpoint',
+  });
+
+type ProjectEventsQuery = z.infer<typeof ProjectEventsQuery>;
+
 honoApi.openapi(
   {
     method: 'get',
     path: '/events',
     operationId: 'getProjectEvents',
+    request: {
+      query: ProjectEventsQuery,
+    },
     responses: {
       200: {
         description: 'Server-sent events stream for project updates',
@@ -294,10 +321,12 @@ honoApi.openapi(
       },
     },
   },
+
   async c => {
     const projectId = c.get('projectId');
     const context = c.get('context');
     const engine = await getEngine();
+    const includeInitialConfigs = c.req.valid('query').includeInitialConfigs === 'true';
 
     const headers = {
       'Content-Type': 'text/event-stream',
@@ -309,12 +338,6 @@ honoApi.openapi(
     const abortController = new AbortController();
     const onAbort = () => abortController.abort();
     c.req.raw.signal.addEventListener('abort', onAbort);
-
-    const events = engine.useCases.getProjectEvents(context, {
-      projectId,
-      environmentId: c.get('environmentId'),
-      abortSignal: abortController.signal,
-    });
 
     const encoder = new TextEncoder();
 
@@ -331,6 +354,28 @@ honoApi.openapi(
         try {
           controller.enqueue(encoder.encode(`: connected\n\n`));
 
+          // eager async iterable to subscribe to events immediately
+          // required for client not to miss any updates to configs
+          const events = toEagerAsyncIterable(
+            engine.useCases.getProjectEvents(context, {
+              projectId,
+              environmentId: c.get('environmentId'),
+              abortSignal: abortController.signal,
+            }),
+          );
+
+          if (includeInitialConfigs) {
+            const {configs} = await engine.useCases.getSdkConfigs(context, {
+              projectId,
+              environmentId: c.get('environmentId'),
+            });
+            const data = JSON.stringify({
+              type: 'config_list',
+              configs,
+            } satisfies ConfigListEventResponse);
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+
           for await (const event of events) {
             const data = JSON.stringify(event satisfies ProjectEventResponse);
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
@@ -345,7 +390,9 @@ honoApi.openapi(
           if (!errored) {
             try {
               controller.close();
-            } catch {}
+            } catch {
+              // ignore
+            }
           }
         }
       },
