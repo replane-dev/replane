@@ -112,7 +112,7 @@ export class PermissionService {
     });
   }
 
-  async canManageProjectApiKeys(
+  async canManageProjectSdkKeys(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
@@ -324,11 +324,11 @@ export class PermissionService {
     }
   }
 
-  async ensureCanManageApiKeys(
+  async ensureCanManageSdkKeys(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<void> {
-    const canManage = await this.canManageProjectApiKeys(ctx, params);
+    const canManage = await this.canManageProjectSdkKeys(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage SDK keys for this project');
     }

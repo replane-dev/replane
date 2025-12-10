@@ -1187,6 +1187,11 @@ export const migrations: Migration[] = [
       UPDATE event_consumers SET topic = 'configs' WHERE topic = 'config';
     `,
   },
+  {
+    sql: /*sql*/ `
+      ALTER TABLE sdk_keys RENAME COLUMN token_hash TO key_hash;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

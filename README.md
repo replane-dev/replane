@@ -18,7 +18,7 @@ Replane is a small web app for managing JSON configs with:
 - Audit log for who changed what and when
 - Optional JSON Schema validation
 - Roles (owner/editor/viewer)
-- API keys (create/revoke) for programmatic access
+- SDK keys (create/revoke) for programmatic access
 
 If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focused, auditable UI.
 
@@ -59,7 +59,7 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
-      BASE_URL: http://localhost:3000
+      BASE_URL: http://localhost:8080
       SECRET_KEY_BASE: change-me-to-a-long-random-string
       # Pick one or more providers (GitHub example below)
       GITHUB_CLIENT_ID: your-github-client-id
@@ -73,13 +73,13 @@ services:
       # OKTA_CLIENT_SECRET: your-okta-client-secret
       # OKTA_ISSUER: https://your-domain.okta.com
     ports:
-      - '3000:3000'
+      - '8080:8080'
 
 volumes:
   replane-db:
 ```
 
-Open your browser at http://localhost:3000.
+Open your browser at http://localhost:8080.
 
 Notes
 
@@ -91,7 +91,7 @@ Notes
 ### Required
 
 - `DATABASE_URL` – Postgres connection string
-- `BASE_URL` – e.g. http://localhost:3000 or your external URL
+- `BASE_URL` – e.g. http://localhost:8080 or your external URL
 - `SECRET_KEY_BASE` – long random string (used to sign sessions)
 
 ### Authentication Providers
@@ -199,8 +199,8 @@ client.close();
 
 Notes
 
-- Create an API key in the Replane UI. It's shown once; store it securely.
-- Each API key is tied to a specific project. If you need configs from multiple projects, create separate API keys and initialize separate clients for each project.
+- Create an SDK key in the Replane UI. It's shown once; store it securely.
+- Each SDK key is tied to a specific project. If you need configs from multiple projects, create separate SDK keys and initialize separate clients for each project.
 - The client receives realtime updates via SSE in the background and maintains an up-to-date cache.
 - Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn't expose `fetch`.
 

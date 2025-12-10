@@ -1,12 +1,12 @@
-import {buildRawApiToken} from '../api-token-utils';
 import {BadRequestError} from '../errors';
+import type {HashingService} from '../hashing-service';
+import {buildRawSdkKey} from '../sdk-key-utils';
 import {createAuditLogId} from '../stores/audit-log-store';
-import type {TokenHashingService} from '../token-hashing-service';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
 import type {NormalizedEmail} from '../zod';
 
-export interface CreateApiKeyRequest {
+export interface CreateSdkKeyRequest {
   currentUserEmail: NormalizedEmail;
   name: string;
   description: string;
@@ -14,8 +14,8 @@ export interface CreateApiKeyRequest {
   environmentId: string;
 }
 
-export interface CreateApiKeyResponse {
-  apiKey: {
+export interface CreateSdkKeyResponse {
+  sdkKey: {
     id: string;
     name: string;
     description: string;
@@ -24,11 +24,11 @@ export interface CreateApiKeyResponse {
   };
 }
 
-export function createCreateApiKeyUseCase(deps: {
-  tokenHasher: TokenHashingService;
-}): TransactionalUseCase<CreateApiKeyRequest, CreateApiKeyResponse> {
+export function createCreateSdkKeyUseCase(deps: {
+  hasher: HashingService;
+}): TransactionalUseCase<CreateSdkKeyRequest, CreateSdkKeyResponse> {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureCanManageApiKeys(ctx, {
+    await tx.permissionService.ensureCanManageSdkKeys(ctx, {
       projectId: req.projectId,
       currentUserEmail: req.currentUserEmail,
     });
@@ -47,15 +47,15 @@ export function createCreateApiKeyUseCase(deps: {
 
     const sdkKeyId = createUuidV7();
     // Embed apiTokenId into token for future extraction
-    const rawToken = buildRawApiToken(sdkKeyId);
-    const tokenHash = await deps.tokenHasher.hash(rawToken);
+    const sdkKey = buildRawSdkKey(sdkKeyId);
+    const sdkKeyHash = await deps.hasher.hash(sdkKey);
     const now = new Date();
 
-    await tx.sdkKeys.create({
+    await tx.sdkKeys.create(ctx, {
       id: sdkKeyId,
       creatorId: user.id,
       createdAt: now,
-      tokenHash,
+      keyHash: sdkKeyHash,
       projectId: req.projectId,
       environmentId: req.environmentId,
       name: req.name,
@@ -69,8 +69,8 @@ export function createCreateApiKeyUseCase(deps: {
       projectId: req.projectId,
       configId: null,
       payload: {
-        type: 'api_key_created',
-        apiKey: {
+        type: 'sdk_key_created',
+        sdkKey: {
           id: sdkKeyId,
           name: req.name,
           description: req.description,
@@ -80,12 +80,12 @@ export function createCreateApiKeyUseCase(deps: {
     });
 
     return {
-      apiKey: {
+      sdkKey: {
         id: sdkKeyId,
         name: req.name,
         description: req.description,
         createdAt: now,
-        token: rawToken,
+        token: sdkKey,
       },
     };
   };

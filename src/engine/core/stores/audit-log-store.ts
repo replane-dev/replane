@@ -85,8 +85,8 @@ export interface ConfigVariantVersionRestoredAuditLogPayload extends BaseAuditLo
   };
 }
 
-export interface ApiKeyCreatedAuditLogPayload extends BaseAuditLogPayload<'api_key_created'> {
-  apiKey: {
+export interface SdkKeyCreatedAuditLogPayload extends BaseAuditLogPayload<'sdk_key_created'> {
+  sdkKey: {
     id: string;
     name: string;
     description: string;
@@ -94,8 +94,8 @@ export interface ApiKeyCreatedAuditLogPayload extends BaseAuditLogPayload<'api_k
   };
 }
 
-export interface ApiKeyDeletedAuditLogPayload extends BaseAuditLogPayload<'api_key_deleted'> {
-  apiKey: {
+export interface SdkKeyDeletedAuditLogPayload extends BaseAuditLogPayload<'sdk_key_deleted'> {
+  sdkKey: {
     id: string;
     name: string;
     description: string;
@@ -307,8 +307,8 @@ export type AuditLogPayload =
   | ConfigVersionRestoredAuditLogPayload
   | ConfigVariantUpdatedAuditLogPayload
   | ConfigVariantVersionRestoredAuditLogPayload
-  | ApiKeyCreatedAuditLogPayload
-  | ApiKeyDeletedAuditLogPayload
+  | SdkKeyCreatedAuditLogPayload
+  | SdkKeyDeletedAuditLogPayload
   | ConfigMembersChangedAuditLogPayload
   | ProjectCreatedAuditLogPayload
   | ProjectUpdatedAuditLogPayload

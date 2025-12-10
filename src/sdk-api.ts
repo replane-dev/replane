@@ -22,7 +22,7 @@ interface HonoEnv {
   };
 }
 
-export const honoApi = new OpenAPIHono<HonoEnv>();
+export const sdkApi = new OpenAPIHono<HonoEnv>();
 
 const ConfigValueResponse = z
   .object({
@@ -52,7 +52,7 @@ const ConfigsResponse = z
 type ConfigsResponse = z.infer<typeof ConfigsResponse>;
 
 // Global error handler
-honoApi.onError((err, c) => {
+sdkApi.onError((err, c) => {
   if (err instanceof HTTPException) {
     return err.getResponse();
   }
@@ -69,7 +69,7 @@ honoApi.onError((err, c) => {
   return c.json({msg: 'Internal server error'}, 500);
 });
 
-honoApi.use(
+sdkApi.use(
   '*',
   cors({
     origin: '*',
@@ -77,7 +77,7 @@ honoApi.use(
   }),
 );
 
-honoApi.use('*', async (c, next) => {
+sdkApi.use('*', async (c, next) => {
   c.set('context', {traceId: createUuidV4()});
 
   const path = new URL(c.req.url).pathname;
@@ -89,11 +89,12 @@ honoApi.use('*', async (c, next) => {
     ? authHeader.slice(7).trim()
     : undefined;
   const token = bearer;
-  if (!token) return c.json({msg: 'Missing API key'}, 401);
+  if (!token) return c.json({msg: 'Missing SDK key'}, 401);
   try {
     const engine = await getEngine();
-    const verified = await engine.verifyApiKey(token);
-    if (!verified) return c.json({msg: 'Invalid API key'}, 401);
+    const ctx = c.get('context');
+    const verified = await engine.sdkUseCases.verifySdkKey(ctx, {key: token});
+    if (!verified) return c.json({msg: 'Invalid SDK key'}, 401);
     c.set('projectId', verified.projectId);
     c.set('environmentId', verified.environmentId);
     await next();
@@ -103,7 +104,7 @@ honoApi.use('*', async (c, next) => {
   }
 });
 
-honoApi.openapi(
+sdkApi.openapi(
   {
     method: 'get',
     path: '/configs/{name}/value',
@@ -154,7 +155,7 @@ honoApi.openapi(
       }
     }
 
-    const result = await engine.useCases.getConfigValue(c.get('context'), {
+    const result = await engine.sdkUseCases.getConfigValue(c.get('context'), {
       name,
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
@@ -169,7 +170,7 @@ honoApi.openapi(
   },
 );
 
-honoApi.openapi(
+sdkApi.openapi(
   {
     method: 'get',
     path: '/configs',
@@ -187,7 +188,7 @@ honoApi.openapi(
   },
   async c => {
     const engine = await getEngine();
-    const {configs} = await engine.useCases.getSdkConfigs(c.get('context'), {
+    const {configs} = await engine.sdkUseCases.getSdkConfigs(c.get('context'), {
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
     });
@@ -195,7 +196,7 @@ honoApi.openapi(
   },
 );
 
-honoApi.openapi(
+sdkApi.openapi(
   {
     method: 'get',
     path: '/configs/{name}',
@@ -225,7 +226,7 @@ honoApi.openapi(
 
     const engine = await getEngine();
 
-    const result = await engine.useCases.getSdkConfig(c.get('context'), {
+    const result = await engine.sdkUseCases.getSdkConfig(c.get('context'), {
       name,
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
@@ -276,7 +277,7 @@ const ConfigListEventResponse = z
 
 type ConfigListEventResponse = z.infer<typeof ConfigListEventResponse>;
 
-const ProjectEventResponse = z
+const ReplicationStreamResponse = z
   .discriminatedUnion('type', [
     ConfigCreatedEventResponse,
     ConfigUpdatedEventResponse,
@@ -287,83 +288,70 @@ const ProjectEventResponse = z
     description: 'Server-sent events stream for project updates',
   });
 
-type ProjectEventResponse = z.infer<typeof ProjectEventResponse>;
+type ReplicationStreamResponse = z.infer<typeof ReplicationStreamResponse>;
 
-const ProjectEventsQuery = z
-  .object({
-    includeInitialConfigs: z
-      .enum(['true', 'false'])
-      .optional()
-      .openapi({description: 'Whether to include the initial config list as the first event'}),
-  })
-  .openapi('ProjectEventsQuery', {
-    description: 'Query parameters for the getProjectEvents endpoint',
-  });
-
-type ProjectEventsQuery = z.infer<typeof ProjectEventsQuery>;
-
-honoApi.openapi(
-  {
-    method: 'get',
-    path: '/events',
-    operationId: 'getProjectEvents',
-    request: {
-      query: ProjectEventsQuery,
-    },
-    responses: {
-      200: {
-        description: 'Server-sent events stream for project updates',
-        content: {
-          'text/event-stream': {
-            schema: ProjectEventResponse,
+// todo: remove /events endpoint before v1.0.0
+[
+  {path: '/replication/stream', operationId: 'getReplicationStream'},
+  {path: '/events', operationId: 'getProjectEvents'},
+].forEach(({path, operationId}) =>
+  sdkApi.openapi(
+    {
+      method: 'get',
+      path,
+      operationId,
+      responses: {
+        200: {
+          description: 'Server-sent events stream for project updates',
+          content: {
+            'text/event-stream': {
+              schema: ReplicationStreamResponse,
+            },
           },
         },
       },
     },
-  },
 
-  async c => {
-    const projectId = c.get('projectId');
-    const context = c.get('context');
-    const engine = await getEngine();
-    const includeInitialConfigs = c.req.valid('query').includeInitialConfigs === 'true';
+    async c => {
+      const projectId = c.get('projectId');
+      const context = c.get('context');
+      const engine = await getEngine();
 
-    const headers = {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    };
+      const headers = {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      };
 
-    const abortController = new AbortController();
-    const onAbort = () => abortController.abort();
-    c.req.raw.signal.addEventListener('abort', onAbort);
+      const abortController = new AbortController();
+      const onAbort = () => abortController.abort();
+      c.req.raw.signal.addEventListener('abort', onAbort);
 
-    const stream = new ReadableStream<SseEvent>({
-      async start(controller) {
-        let errored = false;
-        // heartbeat to keep proxies from closing the connection due to inactivity
-        const heartbeat = setInterval(() => {
+      const stream = new ReadableStream<SseEvent>({
+        async start(controller) {
+          let errored = false;
+          // heartbeat to keep proxies from closing the connection due to inactivity
+          const heartbeat = setInterval(() => {
+            try {
+              controller.enqueue({type: 'ping'});
+            } catch {}
+          }, 15_000);
+
           try {
-            controller.enqueue({type: 'ping'});
-          } catch {}
-        }, 15000);
+            controller.enqueue({type: 'connected'});
 
-        try {
-          controller.enqueue({type: 'connected'});
+            // eager async iterable to subscribe to events immediately
+            // required for client not to miss any updates to configs
+            const events = toEagerAsyncIterable(
+              engine.sdkUseCases.getProjectEvents(context, {
+                projectId,
+                environmentId: c.get('environmentId'),
+                abortSignal: abortController.signal,
+              }),
+            );
 
-          // eager async iterable to subscribe to events immediately
-          // required for client not to miss any updates to configs
-          const events = toEagerAsyncIterable(
-            engine.useCases.getProjectEvents(context, {
-              projectId,
-              environmentId: c.get('environmentId'),
-              abortSignal: abortController.signal,
-            }),
-          );
-
-          if (includeInitialConfigs) {
-            const {configs} = await engine.useCases.getSdkConfigs(context, {
+            const {configs} = await engine.sdkUseCases.getSdkConfigs(context, {
               projectId,
               environmentId: c.get('environmentId'),
             });
@@ -372,44 +360,44 @@ honoApi.openapi(
               configs,
             } satisfies ConfigListEventResponse);
             controller.enqueue({type: 'data', data});
-          }
 
-          for await (const event of events) {
-            const data = JSON.stringify(event satisfies ProjectEventResponse);
-            controller.enqueue({type: 'data', data});
-          }
-        } catch (err) {
-          errored = true;
-          console.error('SSE stream error:', err);
-          controller.error(err);
-        } finally {
-          clearInterval(heartbeat);
-          c.req.raw.signal.removeEventListener('abort', onAbort);
-          if (!errored) {
-            try {
-              controller.close();
-            } catch {
-              // ignore
+            for await (const event of events) {
+              const data = JSON.stringify(event satisfies ReplicationStreamResponse);
+              controller.enqueue({type: 'data', data});
+            }
+          } catch (err) {
+            errored = true;
+            console.error('SSE stream error:', err);
+            controller.error(err);
+          } finally {
+            clearInterval(heartbeat);
+            c.req.raw.signal.removeEventListener('abort', onAbort);
+            if (!errored) {
+              try {
+                controller.close();
+              } catch {
+                // ignore
+              }
             }
           }
-        }
-      },
-      async cancel() {
-        abortController.abort();
-        c.req.raw.signal.removeEventListener('abort', onAbort);
-      },
-    }).pipeThrough(new SseEncoderStream());
+        },
+        async cancel() {
+          abortController.abort();
+          c.req.raw.signal.removeEventListener('abort', onAbort);
+        },
+      }).pipeThrough(new SseEncoderStream());
 
-    return new Response(stream, {headers});
-  },
+      return new Response(stream, {headers});
+    },
+  ),
 );
 
-honoApi.get('/openapi.json', c =>
+sdkApi.get('/openapi.json', c =>
   c.json(
-    honoApi.getOpenAPI31Document({
+    sdkApi.getOpenAPI31Document({
       openapi: '3.1.0',
       info: {title: 'Replane API', version: '1.0.0'},
-      servers: [{url: 'http://localhost:3000/api/v1'}],
+      servers: [{url: 'http://localhost:8080/api/v1'}],
     }),
   ),
 );

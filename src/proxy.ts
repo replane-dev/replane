@@ -9,7 +9,7 @@ export default async function proxy(req: NextRequest, event: any) {
 
   // Apply internal matcher logic: bypass auth for excluded paths
   if (
-    pathname.startsWith('/api') ||
+    pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/static') ||
     pathname.startsWith('/_next/image') ||
     pathname.startsWith('/auth') ||

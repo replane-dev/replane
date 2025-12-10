@@ -9,7 +9,7 @@ export interface GetSdkKeyPageDataRequest {
 }
 
 export interface GetSdkKeyPageDataResponse {
-  apiKey: {
+  sdkKey: {
     id: string;
     createdAt: Date;
     name: string;
@@ -32,18 +32,18 @@ export function createGetSdkKeyPageDataUseCase(): TransactionalUseCase<
     });
 
     const [token, environments] = await Promise.all([
-      tx.sdkKeys.getById({apiKeyId: req.id, projectId: req.projectId}),
+      tx.sdkKeys.getById({sdkKeyId: req.id, projectId: req.projectId}),
       tx.projectQueryService.getEnvironments({
         projectId: req.projectId,
       }),
     ]);
 
     if (!token) {
-      return {apiKey: null, environments};
+      return {sdkKey: null, environments};
     }
 
     return {
-      apiKey: {
+      sdkKey: {
         id: token.id,
         createdAt: token.createdAt,
         name: token.name,

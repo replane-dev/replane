@@ -21,7 +21,7 @@ export default function ApiNotFound() {
               • <span className="text-foreground">/api/health</span> - Health check
             </li>
             <li>
-              • <span className="text-foreground">/api/v1/*</span> - Public API (requires API key)
+              • <span className="text-foreground">/api/v1/*</span> - Public API (requires SDK key)
             </li>
             <li>
               • <span className="text-foreground">/api/auth/*</span> - Authentication endpoints

@@ -1,13 +1,13 @@
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
-export interface GetApiKeyListRequest {
+export interface GetSdkKeyListRequest {
   currentUserEmail: NormalizedEmail;
   projectId: string;
 }
 
-export interface GetApiKeyListResponse {
-  apiKeys: Array<{
+export interface GetSdkKeyListResponse {
+  sdkKeys: Array<{
     id: string;
     createdAt: Date;
     name: string;
@@ -18,9 +18,9 @@ export interface GetApiKeyListResponse {
   }>;
 }
 
-export function createGetApiKeyListUseCase(): TransactionalUseCase<
-  GetApiKeyListRequest,
-  GetApiKeyListResponse
+export function createGetSdkKeyListUseCase(): TransactionalUseCase<
+  GetSdkKeyListRequest,
+  GetSdkKeyListResponse
 > {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
@@ -30,7 +30,7 @@ export function createGetApiKeyListUseCase(): TransactionalUseCase<
 
     const tokens = await tx.sdkKeys.list({projectId: req.projectId});
     return {
-      apiKeys: tokens.map(t => ({
+      sdkKeys: tokens.map(t => ({
         id: t.id,
         createdAt: t.createdAt,
         name: t.name,

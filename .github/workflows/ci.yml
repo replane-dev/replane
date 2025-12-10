@@ -33,10 +33,10 @@ jobs:
         env:
           # Required env vars for build (using dummy values)
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-          BASE_URL: http://localhost:3000
+          BASE_URL: http://localhost:8080
           SECRET_KEY_BASE: dummy-secret-key-for-ci-build-only
           NEXTAUTH_SECRET: dummy-secret-key-for-ci-build-only
-          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_URL: http://localhost:8080
 
   typecheck:
     name: TypeScript Check
@@ -100,7 +100,7 @@ jobs:
         run: pnpm test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/replane_test
-          BASE_URL: http://localhost:3000
+          BASE_URL: http://localhost:8080
           SECRET_KEY_BASE: test-secret-key-for-ci
           NEXTAUTH_SECRET: test-secret-key-for-ci
-          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_URL: http://localhost:8080

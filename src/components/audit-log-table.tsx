@@ -51,10 +51,10 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
       action: 'Config Version Restored',
       details: `Config name '${payload.after.name}' -> v${payload.restoredFromVersion}`,
     };
-  } else if (payload.type === 'api_key_created') {
-    return {action: 'SDK Key Created', details: `SDK Key name '${payload.apiKey.name}'`};
-  } else if (payload.type === 'api_key_deleted') {
-    return {action: 'SDK Key Deleted', details: `SDK Key name '${payload.apiKey.name}'`};
+  } else if (payload.type === 'sdk_key_created') {
+    return {action: 'SDK Key Created', details: `SDK Key name '${payload.sdkKey.name}'`};
+  } else if (payload.type === 'sdk_key_deleted') {
+    return {action: 'SDK Key Deleted', details: `SDK Key name '${payload.sdkKey.name}'`};
   } else if (payload.type === 'config_members_changed') {
     return {action: 'Config Members Changed', details: `Config name '${payload.config.name}'`};
   } else if (payload.type === 'project_created') {
@@ -353,7 +353,7 @@ export function AuditLogTable({
         },
       },
     ],
-    [],
+    [projectId],
   );
 
   const table = useReactTable({
@@ -382,7 +382,7 @@ export function AuditLogTable({
       observer.observe(el);
       return () => observer.disconnect();
     },
-    [query, projectId],
+    [query],
   );
 
   const applyDateRange = (partial: Partial<FilterState>) =>

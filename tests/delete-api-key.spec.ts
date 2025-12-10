@@ -5,11 +5,11 @@ import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keydel@example.com');
 
-describe('deleteApiKey', () => {
+describe('deleteSdkKey', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
   it('creator can delete their key', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'DeleteMe',
       description: '',
@@ -17,21 +17,21 @@ describe('deleteApiKey', () => {
       environmentId: fixture.productionEnvironmentId,
     });
 
-    await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-      id: created.apiKey.id,
+    await fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
+      id: created.sdkKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
 
-    const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+    const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
-    expect(list.apiKeys).toHaveLength(0);
+    expect(list.sdkKeys).toHaveLength(0);
   });
 
   it('non-creator cannot delete key', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'ProtectMe',
       description: '',
@@ -52,24 +52,24 @@ describe('deleteApiKey', () => {
     }
 
     await expect(
-      fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-        id: created.apiKey.id,
+      fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
+        id: created.sdkKey.id,
         currentUserEmail: otherEmail,
         projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(Error);
   });
 
-  it('creates audit messages (api_key_created & api_key_deleted)', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+  it('creates audit messages (sdk_key_created & sdk_key_deleted)', async () => {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'ToDeleteAudit',
       description: '',
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
     });
-    await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-      id: created.apiKey.id,
+    await fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
+      id: created.sdkKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
@@ -81,17 +81,17 @@ describe('deleteApiKey', () => {
       projectId: fixture.projectId,
     });
     const types = messages.map(m => m.payload.type).sort();
-    expect(types).toContain('api_key_created');
-    expect(types).toContain('api_key_deleted');
+    expect(types).toContain('sdk_key_created');
+    expect(types).toContain('sdk_key_deleted');
     expect(types).toContain('project_created');
 
     const byType: Record<string, any> = Object.fromEntries(
       messages.map(m => [m.payload.type, m.payload]),
     );
-    expect(byType.api_key_created.apiKey.id).toBe(created.apiKey.id);
-    expect(byType.api_key_deleted.apiKey.id).toBe(created.apiKey.id);
-    expect(byType.api_key_deleted.apiKey.name).toBe('ToDeleteAudit');
+    expect(byType.sdk_key_created.sdkKey.id).toBe(created.sdkKey.id);
+    expect(byType.sdk_key_deleted.sdkKey.id).toBe(created.sdkKey.id);
+    expect(byType.sdk_key_deleted.sdkKey.name).toBe('ToDeleteAudit');
     // deletion payload should not contain token
-    expect(byType.api_key_deleted.apiKey.token).toBeUndefined();
+    expect(byType.sdk_key_deleted.sdkKey.token).toBeUndefined();
   });
 });

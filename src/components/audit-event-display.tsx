@@ -385,7 +385,7 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
         )}
       </div>
     );
-  } else if (type === 'api_key_created') {
+  } else if (type === 'sdk_key_created') {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -393,32 +393,32 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
           <span className="font-semibold">SDK Key Created</span>
         </div>
         <Link
-          href={`/app/projects/${projectId}/sdk-keys/${payload.apiKey.id}`}
+          href={`/app/projects/${projectId}/sdk-keys/${payload.sdkKey.id}`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-foreground/80 transition-colors group"
         >
-          <span>{payload.apiKey.name}</span>
+          <span>{payload.sdkKey.name}</span>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground/60" />
         </Link>
-        {payload.apiKey.description && (
+        {payload.sdkKey.description && (
           <div className="text-sm">
             <span className="text-muted-foreground">Description: </span>
-            <span>{payload.apiKey.description}</span>
+            <span>{payload.sdkKey.description}</span>
           </div>
         )}
       </div>
     );
-  } else if (type === 'api_key_deleted') {
+  } else if (type === 'sdk_key_deleted') {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <Trash2 className="h-5 w-5" />
           <span className="font-semibold">SDK Key Deleted</span>
         </div>
-        <div className="text-sm font-semibold text-foreground">{payload.apiKey.name}</div>
-        {payload.apiKey.description && (
+        <div className="text-sm font-semibold text-foreground">{payload.sdkKey.name}</div>
+        {payload.sdkKey.description && (
           <div className="text-sm">
             <span className="text-muted-foreground">Description: </span>
-            <span>{payload.apiKey.description}</span>
+            <span>{payload.sdkKey.description}</span>
           </div>
         )}
       </div>

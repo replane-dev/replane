@@ -26,7 +26,7 @@ export interface NewSdkKeyViewProps {
 
 export function NewSdkKeyView({projectId, onSuccess, onCancel}: NewSdkKeyViewProps) {
   const trpc = useTRPC();
-  const createMutation = useMutation(trpc.createApiKey.mutationOptions());
+  const createMutation = useMutation(trpc.createSdkKey.mutationOptions());
 
   // Load environments for this project
   const {data: pageData} = useSuspenseQuery(trpc.getNewSdkKeyPageData.queryOptions({projectId}));
@@ -72,7 +72,7 @@ export function NewSdkKeyView({projectId, onSuccess, onCancel}: NewSdkKeyViewPro
                 projectId,
                 environmentId,
               });
-              setCreatedToken(result.apiKey.token);
+              setCreatedToken(result.sdkKey.token);
             }}
           >
             <div className="space-y-2">

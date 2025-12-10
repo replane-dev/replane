@@ -1,9 +1,7 @@
-import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {createAuditLogId} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
 
 const TEST_USER_EMAIL = normalizeEmail('auditor@example.com');
 
@@ -90,8 +88,8 @@ describe('getAuditLog', () => {
       userId: 2,
       configId: null,
       payload: {
-        type: 'api_key_created',
-        apiKey: {id: 'x', name: 'k', description: '', createdAt: now},
+        type: 'sdk_key_created',
+        sdkKey: {id: 'x', name: 'k', description: '', createdAt: now},
       },
       projectId: fixture.projectId,
     });

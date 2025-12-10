@@ -25,12 +25,12 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
 
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getSdkKeyPageData.queryOptions({id, projectId}));
-  const deleteMutation = useMutation(trpc.deleteApiKey.mutationOptions());
-  const apiKey = data.apiKey;
+  const deleteMutation = useMutation(trpc.deleteSdkKey.mutationOptions());
+  const sdkKey = data.sdkKey;
   const [confirming, setConfirming] = useState(false);
 
   // Trigger 404 page if SDK key doesn't exist
-  if (!apiKey) {
+  if (!sdkKey) {
     notFound();
   }
 
@@ -42,10 +42,10 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
           {/* Name and Created At */}
           <div>
             <h1 className="text-xl font-semibold text-foreground mb-1">
-              {apiKey.name || 'Untitled Key'}
+              {sdkKey.name || 'Untitled Key'}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Created {formatDistanceToNow(new Date(apiKey.createdAt), {addSuffix: true})}
+              Created {formatDistanceToNow(new Date(sdkKey.createdAt), {addSuffix: true})}
             </p>
           </div>
 
@@ -57,7 +57,7 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground mb-0.5">Environment</div>
-                <div className="text-sm font-medium">{apiKey.environmentName}</div>
+                <div className="text-sm font-medium">{sdkKey.environmentName}</div>
               </div>
             </div>
 
@@ -69,20 +69,20 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground mb-0.5">Created</div>
                 <div className="text-sm font-medium">
-                  {format(new Date(apiKey.createdAt), 'MMM d, yyyy')}
+                  {format(new Date(sdkKey.createdAt), 'MMM d, yyyy')}
                 </div>
               </div>
             </div>
 
             {/* Creator */}
-            {apiKey.creatorEmail && (
+            {sdkKey.creatorEmail && (
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-muted-foreground mb-0.5">Creator</div>
-                  <div className="text-sm font-medium break-all">{apiKey.creatorEmail}</div>
+                  <div className="text-sm font-medium break-all">{sdkKey.creatorEmail}</div>
                 </div>
               </div>
             )}
@@ -94,12 +94,12 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground mb-0.5">Key ID</div>
-                <div className="text-sm font-mono font-medium break-all">{apiKey.id}</div>
+                <div className="text-sm font-mono font-medium break-all">{sdkKey.id}</div>
               </div>
             </div>
 
             {/* Description */}
-            {apiKey.description && (
+            {sdkKey.description && (
               <div className="flex items-start gap-2.5 sm:col-span-2">
                 <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0 mt-0.5">
                   <AlignLeft className="h-4 w-4 text-muted-foreground" />
@@ -107,7 +107,7 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-muted-foreground mb-0.5">Description</div>
                   <p className="text-sm font-medium whitespace-pre-wrap wrap-break-word">
-                    {apiKey.description}
+                    {sdkKey.description}
                   </p>
                 </div>
               </div>
@@ -184,7 +184,7 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
           <SdkIntegrationGuide
             sdkKey={null}
             projectId={projectId}
-            environmentId={apiKey.environmentId}
+            environmentId={sdkKey.environmentId}
           />
         </div>
       </div>

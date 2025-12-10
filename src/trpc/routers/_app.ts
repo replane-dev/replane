@@ -416,7 +416,7 @@ export const appRouter = createTRPCRouter({
       });
       return result;
     }),
-  getApiKeyList: baseProcedure
+  getSdkKeyList: baseProcedure
     .input(
       z.object({
         projectId: Uuid(),
@@ -426,12 +426,12 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+      return await opts.ctx.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
         currentUserEmail: opts.ctx.currentUserEmail,
         projectId: opts.input.projectId,
       });
     }),
-  getApiKey: baseProcedure
+  getSdkKey: baseProcedure
     .input(
       z.object({
         id: Uuid(),
@@ -442,7 +442,7 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
+      return await opts.ctx.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
         id: opts.input.id,
         currentUserEmail: opts.ctx.currentUserEmail,
         projectId: opts.input.projectId,
@@ -532,7 +532,7 @@ export const appRouter = createTRPCRouter({
       });
       return {};
     }),
-  createApiKey: baseProcedure
+  createSdkKey: baseProcedure
     .input(
       z.object({
         projectId: Uuid(),
@@ -545,7 +545,7 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      return await opts.ctx.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+      return await opts.ctx.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
         currentUserEmail: opts.ctx.currentUserEmail,
         name: opts.input.name,
         description: opts.input.description ?? '',
@@ -704,7 +704,7 @@ export const appRouter = createTRPCRouter({
       });
       return result;
     }),
-  deleteApiKey: baseProcedure
+  deleteSdkKey: baseProcedure
     .input(
       z.object({
         id: Uuid(),
@@ -715,7 +715,7 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.currentUserEmail) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      await opts.ctx.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
+      await opts.ctx.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
         id: opts.input.id,
         currentUserEmail: opts.ctx.currentUserEmail,
         projectId: opts.input.projectId,

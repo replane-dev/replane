@@ -82,10 +82,10 @@ describe('Read Use Cases - Permission Checks', () => {
     });
   });
 
-  describe('getApiKeyList', () => {
+  describe('getSdkKeyList', () => {
     it('should prevent non-org member from listing SDK keys', async () => {
       await expect(
-        fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+        fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
           currentUserEmail: OUTSIDER_USER_EMAIL,
         }),
@@ -93,10 +93,10 @@ describe('Read Use Cases - Permission Checks', () => {
     });
   });
 
-  describe('getApiKey', () => {
+  describe('getSdkKey', () => {
     it('should prevent non-org member from viewing SDK key details', async () => {
-      // Create an API key first
-      const {apiKey} = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+      // Create an SDK key first
+      const {sdkKey} = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
         name: 'Test Key',
         description: 'Test',
         projectId: fixture.projectId,
@@ -105,8 +105,8 @@ describe('Read Use Cases - Permission Checks', () => {
       });
 
       await expect(
-        fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
-          id: apiKey.id,
+        fixture.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
+          id: sdkKey.id,
           projectId: fixture.projectId,
           currentUserEmail: OUTSIDER_USER_EMAIL,
         }),

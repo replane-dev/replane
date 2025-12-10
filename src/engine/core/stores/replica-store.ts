@@ -1,7 +1,16 @@
 import assert from 'assert';
 import {type Database, type Statement} from 'better-sqlite3';
 import type {Override} from '../override-condition-schemas';
+import {isDeepEqual} from '../utils';
 import type {ConfigValue} from '../zod';
+
+export interface SdkKeyReplica {
+  id: string;
+  projectId: string;
+  name: string;
+  keyHash: string;
+  environmentId: string;
+}
 
 export interface ConfigReplica {
   id: string;
@@ -29,7 +38,8 @@ export interface EnvironmentalConfigReplica {
   overrides: Override[];
 }
 
-const CONSUMER_ID_KEY = 'consumer_id';
+const CONFIGS_CONSUMER_ID_KEY = 'configs_consumer_id';
+const SDK_KEYS_CONSUMER_ID_KEY = 'sdk_keys_consumer_id';
 
 export class ReplicaStore {
   private db: Database;
@@ -64,11 +74,30 @@ export class ReplicaStore {
         value TEXT NOT NULL
       );
     `);
+    db.exec(/*sql*/ `
+      CREATE TABLE IF NOT EXISTS sdk_keys (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        environment_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        key_hash TEXT NOT NULL
+      );
+    `);
 
     const store = new ReplicaStore(db);
 
     return store;
   }
+
+  private insertSdkKeyStmt: Statement<
+    {id: string; projectId: string; environmentId: string; name: string; keyHash: string},
+    void
+  >;
+  private getSdkKeyByIdStmt: Statement<
+    {id: string},
+    {id: string; project_id: string; environment_id: string; name: string; key_hash: string}
+  >;
+  private deleteSdkKeyStmt: Statement<{id: string}, void>;
 
   private insertConfigVariant: Statement<
     {id: string; configId: string; environmentId: string | null; value: string; overrides: string},
@@ -116,13 +145,14 @@ export class ReplicaStore {
 
   private deleteConfigStmt: Statement<{id: string}, void>;
 
-  private insertKv: Statement<{key: string; value: string}, void>;
-
   private getKvStmt: Statement<{key: string}, {value: string}>;
+  private insertKvStmt: Statement<{key: string; value: string}, void>;
+  private deleteKvStmt: Statement<{key: string}, void>;
 
   private clearConfigsStmt: Statement<{}, void>;
   private clearConfigVariantsStmt: Statement<{}, void>;
-  private clearKvStmt: Statement<{}, void>;
+
+  private clearSdkKeysStmt: Statement<{}, void>;
 
   private getConfigVariantsByConfigIdStmt: Statement<
     {configId: string},
@@ -131,6 +161,34 @@ export class ReplicaStore {
 
   private constructor(db: Database) {
     this.db = db;
+
+    this.clearSdkKeysStmt = db.prepare<{}, void>(/*sql*/ `
+      DELETE FROM sdk_keys
+    `);
+
+    this.deleteKvStmt = db.prepare<{key: string}, void>(/*sql*/ `
+      DELETE FROM kv WHERE key = @key
+    `);
+
+    this.insertSdkKeyStmt = db.prepare<
+      {id: string; projectId: string; environmentId: string; name: string; keyHash: string},
+      void
+    >(/*sql*/ `
+      INSERT INTO sdk_keys (id, project_id, environment_id, name, key_hash)
+      VALUES (@id, @projectId, @environmentId, @name, @keyHash)
+    `);
+
+    this.getSdkKeyByIdStmt = db.prepare<
+      {id: string},
+      {id: string; project_id: string; environment_id: string; name: string; key_hash: string}
+    >(/*sql*/ `
+      SELECT id, project_id, environment_id, name, key_hash FROM sdk_keys WHERE id = @id
+    `);
+
+    this.deleteSdkKeyStmt = db.prepare<{id: string}, void>(/*sql*/ `
+      DELETE FROM sdk_keys WHERE id = @id
+    `);
+
     this.insertConfigVariant = db.prepare<
       {
         id: string;
@@ -232,7 +290,7 @@ export class ReplicaStore {
       DELETE FROM configs WHERE id = @id
     `);
 
-    this.insertKv = db.prepare<{key: string; value: string}, void>(/*sql*/ `
+    this.insertKvStmt = db.prepare<{key: string; value: string}, void>(/*sql*/ `
       INSERT INTO kv (key, value)
       VALUES (@key, @value)
     `);
@@ -249,16 +307,81 @@ export class ReplicaStore {
       DELETE FROM config_variants
     `);
 
-    this.clearKvStmt = db.prepare<{}, void>(/*sql*/ `
-      DELETE FROM kv
-    `);
-
     this.getConfigVariantsByConfigIdStmt = db.prepare<
       {configId: string},
       {id: string; environmentId: string | null; value: string; overrides: string}
     >(/*sql*/ `
       SELECT id, environment_id, value, overrides FROM config_variants WHERE config_id = @configId
     `);
+  }
+
+  getSdkKeyById(id: string): SdkKeyReplica | undefined {
+    const result = this.getSdkKeyByIdStmt.get({id});
+    if (!result) {
+      return undefined;
+    }
+
+    return {
+      id: result.id,
+      projectId: result.project_id,
+      environmentId: result.environment_id,
+      name: result.name,
+      keyHash: result.key_hash,
+    };
+  }
+
+  deleteSdkKey(id: string) {
+    return this.transaction(() => {
+      return this.deleteSdkKeyUnsafe(id);
+    });
+  }
+
+  deleteSdkKeyUnsafe(id: string): {type: 'ignored'} | {type: 'deleted'; entity: SdkKeyReplica} {
+    const existingSdkKey = this.getSdkKeyByIdStmt.get({id});
+    if (!existingSdkKey) {
+      return {type: 'ignored'};
+    }
+
+    this.deleteSdkKeyStmt.run({id});
+    return {
+      type: 'deleted',
+      entity: {
+        id: existingSdkKey.id,
+        projectId: existingSdkKey.project_id,
+        environmentId: existingSdkKey.environment_id,
+        name: existingSdkKey.name,
+        keyHash: existingSdkKey.key_hash,
+      },
+    };
+  }
+
+  upsertSdkKeys(sdkKeys: SdkKeyReplica[]) {
+    return this.transaction(() => {
+      return sdkKeys.map(sdkKey => this.upsertSdkKeyUnsafe(sdkKey));
+    });
+  }
+
+  private upsertSdkKeyUnsafe(sdkKey: SdkKeyReplica): 'created' | 'updated' | 'ignored' {
+    const existingSdkKey = this.getSdkKeyByIdStmt.get({id: sdkKey.id});
+    if (existingSdkKey && isDeepEqual(existingSdkKey, sdkKey)) {
+      return 'ignored';
+    }
+
+    if (existingSdkKey) {
+      // delete existing sdk key
+      this.deleteSdkKeyStmt.run({id: sdkKey.id});
+    }
+
+    // insert new sdk key
+    this.insertSdkKeyStmt.run({
+      id: sdkKey.id,
+      projectId: sdkKey.projectId,
+      environmentId: sdkKey.environmentId,
+      name: sdkKey.name,
+      keyHash: sdkKey.keyHash,
+    });
+
+    return existingSdkKey ? 'updated' : 'created';
   }
 
   getProjectConfigs(params: {projectId: string; environmentId: string}) {
@@ -383,32 +506,58 @@ export class ReplicaStore {
     };
   }
 
-  getConsumerId() {
-    return this.getKv(CONSUMER_ID_KEY);
+  getConfigsConsumerId() {
+    return this.getKv(CONFIGS_CONSUMER_ID_KEY);
   }
 
-  insertConsumerId(consumerId: string) {
-    this.setKv(CONSUMER_ID_KEY, consumerId);
+  insertConfigsConsumerId(consumerId: string) {
+    this.insertKv(CONFIGS_CONSUMER_ID_KEY, consumerId);
   }
 
-  private setKv(key: string, value: string) {
-    this.insertKv.run({key, value});
+  getSdkKeysConsumerId() {
+    return this.getKv(SDK_KEYS_CONSUMER_ID_KEY);
+  }
+
+  insertSdkKeysConsumerId(consumerId: string) {
+    this.insertKv(SDK_KEYS_CONSUMER_ID_KEY, consumerId);
+  }
+
+  private insertKv(key: string, value: string) {
+    this.insertKvStmt.run({key, value});
   }
 
   private getKv(key: string) {
     return this.getKvStmt.get({key})?.value;
   }
 
-  clear() {
+  clearConfigs() {
     this.transaction(() => {
-      this.clearUnsafe();
+      this.clearConfigsUnsafe();
     });
   }
 
-  private clearUnsafe() {
+  private clearConfigsUnsafe() {
     this.clearConfigsStmt.run({});
     this.clearConfigVariantsStmt.run({});
-    this.clearKvStmt.run({});
+    this.deleteKvStmt.run({key: CONFIGS_CONSUMER_ID_KEY});
+  }
+
+  clearSdkKeys() {
+    this.transaction(() => {
+      this.clearSdkKeysUnsafe();
+    });
+  }
+
+  clear() {
+    this.transaction(() => {
+      this.clearConfigsUnsafe();
+      this.clearSdkKeysUnsafe();
+    });
+  }
+
+  private clearSdkKeysUnsafe() {
+    this.clearSdkKeysStmt.run({});
+    this.deleteKvStmt.run({key: SDK_KEYS_CONSUMER_ID_KEY});
   }
 
   upsertConfigs(configs: ConfigReplica[]) {

@@ -29,11 +29,11 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 async function handleRequest(req: NextRequest): Promise<NextResponse> {
-  // Reconstruct the path that Hono should see (strip prefix up to /api/v1)
+  // Reconstruct the path that Hono should see (strip prefix up to /api/sdk/v1)
   const url = new URL(req.url);
   const originalPath = url.pathname;
-  // Expect pattern /api/v1/<hono-path>
-  const prefix = '/api/v1';
+  // Expect pattern /api/sdk/v1/<hono-path>
+  const prefix = '/api/sdk/v1';
   let honoPath = originalPath.startsWith(prefix) ? originalPath.slice(prefix.length) : originalPath;
   if (!honoPath.startsWith('/')) honoPath = '/' + honoPath;
 
@@ -46,8 +46,6 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
     headers: req.headers,
     body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.blob(),
   });
-
-  console.log('honoRequest', honoRequest);
 
   const response = await sdkApi.fetch(honoRequest);
   return new NextResponse(response.body, {

@@ -1,14 +1,14 @@
 // Use Web Crypto API (available in modern browsers and Node.js >= 18)
 
-export interface TokenHashingService {
-  hash(token: string): Promise<string>;
-  verify(hash: string, token: string): Promise<boolean>;
+export interface HashingService {
+  hash(source: string): Promise<string>;
+  verify(hash: string, source: string): Promise<boolean>;
 }
 
 // Simple SHA-256 hashing service (unsalted, deterministic).
 // NOTE: This is weaker than Argon2 (no memory hardness). Consider reintroducing
 // a stronger KDF if tokens need resistance against offline brute-force.
-export function createSha256TokenHashingService(): TokenHashingService {
+export function createSha256HashingService(): HashingService {
   function toHex(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     let hex = '';

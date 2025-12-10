@@ -740,7 +740,7 @@ describe('Override Evaluation', () => {
       await fixture.engine.testing.replicaService.sync();
 
       // Test base value
-      const baseResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const baseResult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -748,7 +748,7 @@ describe('Override Evaluation', () => {
       expect(baseResult.value).toEqual({maxItems: 10});
 
       // Test VIP user override
-      const vipResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const vipResult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -757,7 +757,7 @@ describe('Override Evaluation', () => {
       expect(vipResult.value).toEqual({maxItems: 100});
 
       // Test premium tier override
-      const premiumResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const premiumResult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -766,7 +766,7 @@ describe('Override Evaluation', () => {
       expect(premiumResult.value).toEqual({maxItems: 50});
 
       // Test regular user (no override match)
-      const regularResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const regularResult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'max_items_config',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -838,7 +838,7 @@ describe('Override Evaluation', () => {
       await fixture.engine.testing.replicaService.sync();
 
       // Verify override works
-      const enabledResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const enabledResult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'feature_flag',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -846,7 +846,7 @@ describe('Override Evaluation', () => {
       });
       expect(enabledResult.value).toBe(true);
 
-      const disabledResult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const disabledResult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'feature_flag',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -886,7 +886,7 @@ describe('Override Evaluation', () => {
       await fixture.engine.testing.replicaService.sync();
 
       // Number context should work with string rule
-      const adult = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const adult = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'age_restricted',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
@@ -894,7 +894,7 @@ describe('Override Evaluation', () => {
       });
       expect(adult.value).toEqual({access: 'adult'});
 
-      const minor = await fixture.engine.useCases.getConfigValue(GLOBAL_CONTEXT, {
+      const minor = await fixture.engine.sdkUseCases.getConfigValue(GLOBAL_CONTEXT, {
         name: 'age_restricted',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,

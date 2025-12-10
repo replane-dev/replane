@@ -5,11 +5,11 @@ import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keyuser@example.com');
 
-describe('api keys', () => {
+describe('sdk keys', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
-  it('creates an api key and returns one-time token', async () => {
-    const result = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+  it('creates an sdk key and returns one-time token', async () => {
+    const result = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Primary Key',
       description: 'Main key',
@@ -18,24 +18,24 @@ describe('api keys', () => {
     });
 
     // Expect format: rp_<80 hex chars> (24 random bytes + 16 uuid bytes)
-    expect(result.apiKey.token).toMatch(/^rp_[a-f0-9]{80}$/i);
-    expect(result.apiKey.name).toBe('Primary Key');
-    expect(result.apiKey.description).toBe('Main key');
+    expect(result.sdkKey.token).toMatch(/^rp_[a-f0-9]{80}$/i);
+    expect(result.sdkKey.name).toBe('Primary Key');
+    expect(result.sdkKey.description).toBe('Main key');
 
-    const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+    const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
 
-    expect(list.apiKeys).toHaveLength(1);
-    expect(list.apiKeys[0]).toMatchObject({
+    expect(list.sdkKeys).toHaveLength(1);
+    expect(list.sdkKeys[0]).toMatchObject({
       name: 'Primary Key',
       description: 'Main key',
     });
   });
 
   it('lists multiple keys ordered by createdAt desc', async () => {
-    await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'First',
       description: '',
@@ -44,7 +44,7 @@ describe('api keys', () => {
     });
     // Advance time a bit for ordering
     fixture.setNow(new Date('2020-01-01T00:01:00Z'));
-    await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Second',
       description: 'second desc',
@@ -52,16 +52,16 @@ describe('api keys', () => {
       environmentId: fixture.productionEnvironmentId,
     });
 
-    const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+    const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
 
-    expect(list.apiKeys.map(k => k.name)).toEqual(['Second', 'First']);
+    expect(list.sdkKeys.map(k => k.name)).toEqual(['Second', 'First']);
   });
 
   it('can fetch a single key by id', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -69,31 +69,31 @@ describe('api keys', () => {
       description: 'desc',
     });
 
-    const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
-      id: created.apiKey.id,
+    const single = await fixture.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
+      id: created.sdkKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
 
-    expect(single.apiKey).toBeTruthy();
-    expect(single.apiKey).toMatchObject({
-      id: created.apiKey.id,
+    expect(single.sdkKey).toBeTruthy();
+    expect(single.sdkKey).toMatchObject({
+      id: created.sdkKey.id,
       name: 'FetchMe',
       description: 'desc',
     });
   });
 
   it('returns null when fetching non-existing key', async () => {
-    const single = await fixture.engine.useCases.getApiKey(GLOBAL_CONTEXT, {
+    const single = await fixture.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
       id: '00000000-0000-0000-0000-000000000000',
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
-    expect(single.apiKey).toBeNull();
+    expect(single.sdkKey).toBeNull();
   });
 
   it('creator can delete their key', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -101,21 +101,21 @@ describe('api keys', () => {
       description: '',
     });
 
-    await fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-      id: created.apiKey.id,
+    await fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
+      id: created.sdkKey.id,
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
 
-    const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+    const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
-    expect(list.apiKeys).toHaveLength(0);
+    expect(list.sdkKeys).toHaveLength(0);
   });
 
   it('non-creator cannot delete key', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -136,8 +136,8 @@ describe('api keys', () => {
     }
 
     await expect(
-      fixture.engine.useCases.deleteApiKey(GLOBAL_CONTEXT, {
-        id: created.apiKey.id,
+      fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
+        id: created.sdkKey.id,
         currentUserEmail: otherEmail,
         projectId: fixture.projectId,
       }),

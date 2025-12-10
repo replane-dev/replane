@@ -19,7 +19,9 @@ import {
   type ConfigReplica,
   type ConfigVariantReplica,
   type EnvironmentalConfigReplica,
+  type SdkKeyReplica,
 } from './stores/replica-store';
+import {Subject} from './subject';
 import {MappedTopic} from './topic';
 import {groupBy} from './utils';
 import type {ConfigValue} from './zod';
@@ -30,8 +32,13 @@ export interface ConfigChangeEvent {
   configId: string;
 }
 
+export interface SdkKeyChangeEvent {
+  sdkKeyId: string;
+}
+
 export interface AppHubEvents {
   configs: ConfigChangeEvent;
+  sdkKeys: SdkKeyChangeEvent;
 }
 
 export interface RenderedConfig {
@@ -52,7 +59,7 @@ export class Replica {
     onFatalError: (error: unknown) => void,
     replicaEvents: Observer<ReplicaEvent>,
   ): Promise<Replica> {
-    const replicatorSource: ReplicatorSource<ConfigReplica> = {
+    const configsReplicatorSource: ReplicatorSource<ConfigReplica> = {
       getByIds: async (ids: string[]) => {
         return await getReplicaConfigs({db, configIds: ids});
       },
@@ -60,22 +67,22 @@ export class Replica {
         return (await db.selectFrom('configs').select('id').execute()).map(c => c.id);
       },
     };
-    const replicatorTarget: ReplicatorTarget<ConfigReplica> = {
-      getReplicatorConsumerId: async () => replicaStore.getConsumerId(),
+    const configsReplicatorTarget: ReplicatorTarget<ConfigReplica> = {
+      getReplicatorConsumerId: async () => replicaStore.getConfigsConsumerId(),
       insertReplicatorConsumerId: async (consumerId: string) =>
-        replicaStore.insertConsumerId(consumerId),
+        replicaStore.insertConfigsConsumerId(consumerId),
       upsert: async (entities: ConfigReplica[]) => {
         return replicaStore.upsertConfigs(entities);
       },
       delete: async (id: string) => {
         return replicaStore.deleteConfig(id);
       },
-      clear: async () => replicaStore.clear(),
+      clear: async () => replicaStore.clearConfigs(),
     };
 
     const configsReplicator = await Replicator.create<ConfigReplica, ConfigReplica>(
-      replicatorSource,
-      replicatorTarget,
+      configsReplicatorSource,
+      configsReplicatorTarget,
       (config: ConfigReplica) => config,
       (config: ConfigReplica) => config.id,
       new MappedTopic(
@@ -89,18 +96,53 @@ export class Replica {
       replicaEvents,
     );
 
-    return new Replica(replicaStore, configsReplicator);
-  }
+    const sdkKeysReplicatorSource: ReplicatorSource<SdkKeyReplica> = {
+      getByIds: async (ids: string[]) => {
+        return await getReplicaSdkKeys({db, sdkKeyIds: ids});
+      },
+      getIds: async () => {
+        return (await db.selectFrom('sdk_keys').select('id').execute()).map(k => k.id);
+      },
+    };
+    const sdkKeysReplicatorTarget: ReplicatorTarget<SdkKeyReplica> = {
+      getReplicatorConsumerId: async () => replicaStore.getSdkKeysConsumerId(),
+      insertReplicatorConsumerId: async (consumerId: string) =>
+        replicaStore.insertSdkKeysConsumerId(consumerId),
+      upsert: async (entities: SdkKeyReplica[]) => {
+        return replicaStore.upsertSdkKeys(entities);
+      },
+      clear: async () => replicaStore.clearSdkKeys(),
+      delete: async (id: string) => {
+        return replicaStore.deleteSdkKey(id);
+      },
+    };
+    const sdkKeysReplicator = await Replicator.create<SdkKeyReplica, SdkKeyReplica>(
+      sdkKeysReplicatorSource,
+      sdkKeysReplicatorTarget,
+      (sdkKey: SdkKeyReplica) => sdkKey,
+      (sdkKey: SdkKeyReplica) => sdkKey.id,
+      new MappedTopic(
+        hub.getTopic('sdkKeys'),
+        (event: SdkKeyChangeEvent): EntityChangeEvent => ({
+          entityId: event.sdkKeyId,
+        }),
+      ),
+      logger,
+      onFatalError,
+      new Subject(),
+    );
 
-  private isStopped = false;
+    return new Replica(replicaStore, configsReplicator, sdkKeysReplicator);
+  }
 
   private constructor(
     private readonly replicaStore: ReplicaStore,
     private readonly configsReplicator: Replicator<ConfigReplica, ConfigReplica>,
+    private readonly sdkKeysReplicator: Replicator<SdkKeyReplica, SdkKeyReplica>,
   ) {}
 
   async sync() {
-    await this.configsReplicator.sync();
+    await Promise.all([this.configsReplicator.sync(), this.sdkKeysReplicator.sync()]);
   }
 
   private getConfigValueWithoutOverrides(params: {
@@ -136,6 +178,10 @@ export class Replica {
       }),
       projectId: config.projectId,
     };
+  }
+
+  async getSdkKey(keyId: string): Promise<SdkKeyReplica | undefined> {
+    return this.replicaStore.getSdkKeyById(keyId);
   }
 
   async getProjectConfigs(params: {
@@ -224,6 +270,30 @@ async function getReplicaConfigs(params: {
   });
 }
 
+async function getReplicaSdkKeys(params: {
+  db: Kysely<DB>;
+  sdkKeyIds: string[];
+}): Promise<SdkKeyReplica[]> {
+  if (params.sdkKeyIds.length === 0) {
+    return [];
+  }
+
+  const query = params.db
+    .selectFrom('sdk_keys as sk')
+    .select(['sk.id as sdk_key_id', 'sk.project_id', 'sk.name', 'sk.key_hash', 'sk.environment_id'])
+    .where('sk.id', 'in', params.sdkKeyIds);
+
+  const sdkKeys = await query.execute();
+
+  return sdkKeys.map(sdkKey => ({
+    id: sdkKey.sdk_key_id,
+    projectId: sdkKey.project_id,
+    name: sdkKey.name,
+    keyHash: sdkKey.key_hash,
+    environmentId: sdkKey.environment_id,
+  }));
+}
+
 export class ReplicaService implements Service {
   readonly name = 'Replica';
 
@@ -243,6 +313,14 @@ export class ReplicaService implements Service {
       throw new Error('Replica not started');
     }
     await this.replica.sync();
+  }
+
+  async getSdkKeyById(keyId: string): Promise<SdkKeyReplica | undefined> {
+    if (!this.replica) {
+      throw new Error('Replica not started');
+    }
+
+    return this.replica.getSdkKey(keyId);
   }
 
   async getConfig(params: {

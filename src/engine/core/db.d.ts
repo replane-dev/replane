@@ -181,9 +181,9 @@ export interface SdkKeys {
   description: string;
   environment_id: string;
   id: string;
+  key_hash: string;
   name: string;
   project_id: string;
-  token_hash: string;
 }
 
 export interface Sessions {

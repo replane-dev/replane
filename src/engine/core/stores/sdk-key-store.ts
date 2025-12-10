@@ -1,11 +1,14 @@
 import type {Kysely} from 'kysely';
+import type {Context} from '../context';
 import type {DB} from '../db';
+import type {EventHubPublisher} from '../event-hub';
+import type {AppHubEvents} from '../replica';
 
 export interface SdkKeyRow {
   id: string;
   creatorId: number;
   createdAt: Date;
-  tokenHash: string;
+  keyHash: string;
   name: string;
   description: string;
   creatorEmail?: string | null;
@@ -15,7 +18,10 @@ export interface SdkKeyRow {
 }
 
 export class SdkKeyStore {
-  constructor(private readonly db: Kysely<DB>) {}
+  constructor(
+    private readonly db: Kysely<DB>,
+    private readonly hub: EventHubPublisher<AppHubEvents>,
+  ) {}
 
   async list(params: {projectId: string; environmentId?: string}) {
     let query = this.db
@@ -26,7 +32,7 @@ export class SdkKeyStore {
         't.id as id',
         't.creator_id as creator_id',
         't.created_at as created_at',
-        't.token_hash as token_hash',
+        't.key_hash as key_hash',
         't.name as name',
         't.description as description',
         'u.email as creator_email',
@@ -44,7 +50,7 @@ export class SdkKeyStore {
       id: r.id,
       creatorId: r.creator_id!,
       createdAt: r.created_at,
-      tokenHash: r.token_hash,
+      keyHash: r.key_hash,
       name: r.name,
       description: r.description,
       creatorEmail: r.creator_email ?? null,
@@ -53,32 +59,39 @@ export class SdkKeyStore {
     }));
   }
 
-  async create(key: {
-    id: string;
-    creatorId: number;
-    createdAt: Date;
-    tokenHash: string;
-    name: string;
-    description: string;
-    projectId: string;
-    environmentId: string;
-  }) {
+  async create(
+    ctx: Context,
+    key: {
+      id: string;
+      creatorId: number;
+      createdAt: Date;
+      keyHash: string;
+      name: string;
+      description: string;
+      projectId: string;
+      environmentId: string;
+    },
+  ) {
     await this.db
       .insertInto('sdk_keys')
       .values({
         id: key.id,
         creator_id: key.creatorId,
         created_at: key.createdAt,
-        token_hash: key.tokenHash,
+        key_hash: key.keyHash,
         name: key.name,
         description: key.description,
         project_id: key.projectId,
         environment_id: key.environmentId,
       })
       .execute();
+
+    this.hub.pushEvent(ctx, 'sdkKeys', {
+      sdkKeyId: key.id,
+    });
   }
 
-  async getById(params: {apiKeyId: string; projectId: string}) {
+  async getById(params: {sdkKeyId: string; projectId: string}) {
     const row = await this.db
       .selectFrom('sdk_keys as t')
       .leftJoin('users as u', 'u.id', 't.creator_id')
@@ -87,7 +100,7 @@ export class SdkKeyStore {
         't.id as id',
         't.creator_id as creator_id',
         't.created_at as created_at',
-        't.token_hash as token_hash',
+        't.key_hash as key_hash',
         't.name as name',
         't.description as description',
         'u.email as creator_email',
@@ -95,7 +108,7 @@ export class SdkKeyStore {
         't.environment_id as environment_id',
         'pe.name as environment_name',
       ])
-      .where('t.id', '=', params.apiKeyId)
+      .where('t.id', '=', params.sdkKeyId)
       .where('t.project_id', '=', params.projectId)
       .executeTakeFirst();
     if (!row) return null;
@@ -103,7 +116,7 @@ export class SdkKeyStore {
       id: row.id,
       creatorId: row.creator_id!,
       createdAt: row.created_at,
-      tokenHash: row.token_hash,
+      keyHash: row.key_hash,
       name: row.name,
       description: row.description,
       creatorEmail: row.creator_email ?? null,
@@ -113,7 +126,11 @@ export class SdkKeyStore {
     };
   }
 
-  async deleteById(id: string) {
+  async deleteById(ctx: Context, id: string) {
     await this.db.deleteFrom('sdk_keys').where('id', '=', id).execute();
+
+    this.hub.pushEvent(ctx, 'sdkKeys', {
+      sdkKeyId: id,
+    });
   }
 }

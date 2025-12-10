@@ -1,4 +1,4 @@
-import {honoApi} from '@/api';
+import {sdkApi} from '@/sdk-api';
 import {createServer, IncomingMessage, ServerResponse} from 'http';
 import next from 'next';
 import type {TLSSocket} from 'tls';
@@ -14,7 +14,7 @@ if (!process.env.SECRET_KEY_BASE) {
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({dev});
 const handle = app.getRequestHandler();
@@ -68,11 +68,17 @@ function logRequestEnd(req: IncomingMessage, res: ServerResponse, startedAt: num
   );
 }
 
-function toRequest(req: IncomingMessage): Request {
+function toSdkRequest(req: IncomingMessage): Request {
   const isEncrypted = (req.socket as TLSSocket).encrypted;
   const proto = isEncrypted ? 'https' : 'http';
   const url = new URL(req.url!, `${proto}://${req.headers.host}`);
-  url.pathname = url.pathname.slice('/api/v1'.length); // Remove /api/v1 prefix
+  if (url.pathname.startsWith('/api/v1')) {
+    url.pathname = url.pathname.slice('/api/v1'.length); // Remove /api/v1 prefix
+  } else if (url.pathname.startsWith('/api/sdk/v1')) {
+    url.pathname = url.pathname.slice('/api/sdk/v1'.length); // Remove /api/sdk/v1 prefix
+  } else {
+    throw new Error('Invalid SDK path');
+  }
 
   return new Request(url, {
     method: req.method,
@@ -94,7 +100,7 @@ async function sendResponse(res: ServerResponse, honoRes: Response) {
   res.end();
 }
 
-const API_PATH_REGEX = /^\/api\/v\d+\/.*$/;
+const SDK_PATH_REGEX = [/^\/api\/v\d+\/.*$/, /^\/api\/sdk\/v\d+\/.*$/];
 const HEALTHCHECK_PATH = (() => {
   const path = process.env.HEALTHCHECK_PATH;
   if (!path) {
@@ -110,9 +116,9 @@ app.prepare().then(() => {
     res.on('finish', () => logRequestEnd(req, res, startedAt));
     const parsedUrl = parse(req.url!, true);
 
-    if (parsedUrl.pathname && API_PATH_REGEX.test(parsedUrl.pathname)) {
-      const honoReq = toRequest(req);
-      const honoRes = await honoApi.fetch(honoReq);
+    if (parsedUrl.pathname && SDK_PATH_REGEX.some(regex => regex.test(parsedUrl.pathname!))) {
+      const honoReq = toSdkRequest(req);
+      const honoRes = await sdkApi.fetch(honoReq);
       await sendResponse(res, honoRes);
       return;
     }

@@ -75,17 +75,17 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
   const qc = useQueryClient();
   const trpc = useTRPC();
   const deleteMutation = useMutation(
-    trpc.deleteApiKey.mutationOptions({
+    trpc.deleteSdkKey.mutationOptions({
       onSuccess: async () => {
-        const key = trpc.getApiKeyList.queryKey();
+        const key = trpc.getSdkKeyList.queryKey();
         await qc.invalidateQueries({queryKey: key});
       },
     }),
   );
 
   const {
-    data: {apiKeys},
-  } = useSuspenseQuery(trpc.getApiKeyList.queryOptions({projectId}));
+    data: {sdkKeys},
+  } = useSuspenseQuery(trpc.getSdkKeyList.queryOptions({projectId}));
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -148,7 +148,7 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
         id: 'actions',
         enableHiding: false,
         cell: ({row}) => {
-          const apiKey = row.original;
+          const sdkKey = row.original;
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -163,16 +163,16 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(apiKey.name || '')}>
+                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(sdkKey.name || '')}>
                   Copy name
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
                     if (onSdkKeyClick) {
-                      onSdkKeyClick(apiKey.id);
+                      onSdkKeyClick(sdkKey.id);
                     } else {
-                      router.push(`/app/projects/${projectId}/sdk-keys/${apiKey.id}`);
+                      router.push(`/app/projects/${projectId}/sdk-keys/${sdkKey.id}`);
                     }
                   }}
                 >
@@ -183,9 +183,9 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
                   disabled={deleteMutation.isPending}
                   onClick={async e => {
                     e.stopPropagation();
-                    if (confirm(`Delete SDK key "${apiKey.name || ''}"? This cannot be undone.`)) {
+                    if (confirm(`Delete SDK key "${sdkKey.name || ''}"? This cannot be undone.`)) {
                       try {
-                        await deleteMutation.mutateAsync({id: apiKey.id, projectId});
+                        await deleteMutation.mutateAsync({id: sdkKey.id, projectId});
                       } catch {
                         // handled globally
                       }
@@ -204,7 +204,7 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
   );
 
   const table = useReactTable({
-    data: apiKeys as SdkKeyRow[],
+    data: sdkKeys as SdkKeyRow[],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

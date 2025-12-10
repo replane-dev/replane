@@ -5,13 +5,13 @@ import {Kysely, PostgresDialect} from 'kysely';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {Pool} from 'pg';
-import {ApiTokenService} from './core/api-token-service';
 import {ConfigQueryService} from './core/config-query-service';
 import {ConfigService} from './core/config-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
 import {EventHub, EventHubPublisher} from './core/event-hub';
+import {createSha256HashingService} from './core/hashing-service';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
@@ -33,24 +33,21 @@ import {ReplicaStore} from './core/stores/replica-store';
 import {SdkKeyStore} from './core/stores/sdk-key-store';
 import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
 import {WorkspaceStore} from './core/stores/workspace-store';
-import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
 import {createAddExampleConfigsUseCase} from './core/use-cases/add-example-configs-use-case';
 import {createAddWorkspaceMemberUseCase} from './core/use-cases/add-workspace-member-use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
-import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
 import {createCreateProjectEnvironmentUseCase} from './core/use-cases/create-project-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
+import {createCreateSdkKeyUseCase} from './core/use-cases/create-sdk-key-use-case';
 import {createCreateWorkspaceUseCase} from './core/use-cases/create-workspace-use-case';
-import {createDeleteApiKeyUseCase} from './core/use-cases/delete-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
 import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
+import {createDeleteSdkKeyUseCase} from './core/use-cases/delete-sdk-key-use-case';
 import {createDeleteWorkspaceUseCase} from './core/use-cases/delete-workspace-use-case';
-import {createGetApiKeyListUseCase} from './core/use-cases/get-api-key-list-use-case';
-import {createGetApiKeyUseCase} from './core/use-cases/get-api-key-use-case';
 import {createGetAppLayoutDataUseCase} from './core/use-cases/get-app-layout-data-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
@@ -73,7 +70,9 @@ import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
 import {createGetSdkConfigUseCase} from './core/use-cases/get-sdk-config-use-case';
 import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-case';
+import {createGetSdkKeyListUseCase} from './core/use-cases/get-sdk-key-list-use-case';
 import {createGetSdkKeyPageDataUseCase} from './core/use-cases/get-sdk-key-page-data-use-case';
+import {createGetSdkKeyUseCase} from './core/use-cases/get-sdk-key-use-case';
 import {createGetStatusUseCase} from './core/use-cases/get-status-use-case';
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
@@ -89,6 +88,7 @@ import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/upda
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
+import {createVerifySdkKeyUseCase} from './core/use-cases/verify-sdk-key-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
 import {WorkspaceQueryService} from './core/workspace-query-service';
@@ -129,7 +129,7 @@ function toUseCase<TReq, TRes>(
         const configProposals = new ConfigProposalStore(dbTx);
         const users = new UserStore(dbTx);
         const configUsers = new ConfigUserStore(dbTx);
-        const sdkKeys = new SdkKeyStore(dbTx);
+        const sdkKeys = new SdkKeyStore(dbTx, hub);
         const auditLogs = new AuditLogStore(dbTx);
         const projectUsers = new ProjectUserStore(dbTx);
         const projects = new ProjectStore(dbTx);
@@ -210,7 +210,7 @@ type InferEngineUserCaseMap<T> = {
 
 type UseCaseMap = Record<string, TransactionalUseCase<any, any>>;
 
-export interface ApiKeyInfo {
+export interface SdkKeyInfo {
   projectId: string;
   environmentId: string;
 }
@@ -221,9 +221,7 @@ export async function createEngine(options: EngineOptions) {
 
   const dateProvider = options.dateProvider ?? new DefaultDateProvider();
 
-  const tokenHasher = createSha256TokenHashingService();
-
-  const apiTokenService = new ApiTokenService(db, tokenHasher);
+  const hasher = createSha256HashingService();
 
   const replicaEventsBus = new ReplicaEventBus();
 
@@ -241,7 +239,7 @@ export async function createEngine(options: EngineOptions) {
     replicaEventsBus,
   );
 
-  const services: Service[] = [apiTokenService, replicaService];
+  const services: Service[] = [replicaService];
 
   for (const service of services) {
     logger.info(GLOBAL_CONTEXT, {msg: `Starting service: ${service.name}...`});
@@ -266,9 +264,9 @@ export async function createEngine(options: EngineOptions) {
     deleteConfig: createDeleteConfigUseCase({}),
     getConfigVariantVersionList: createGetConfigVariantVersionListUseCase(),
     getConfigVariantVersion: createGetConfigVariantVersionUseCase(),
-    getApiKeyList: createGetApiKeyListUseCase(),
-    getApiKey: createGetApiKeyUseCase(),
-    deleteApiKey: createDeleteApiKeyUseCase(),
+    getSdkKeyList: createGetSdkKeyListUseCase(),
+    getSdkKey: createGetSdkKeyUseCase(),
+    deleteSdkKey: createDeleteSdkKeyUseCase(),
     getProjectList: createGetProjectListUseCase(),
     getProject: createGetProjectUseCase(),
     createProject: createCreateProjectUseCase(),
@@ -282,7 +280,7 @@ export async function createEngine(options: EngineOptions) {
     updateProjectEnvironmentsOrder: createUpdateProjectEnvironmentsOrderUseCase({dateProvider}),
     deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
     restoreConfigVersion: createRestoreConfigVersionUseCase(),
-    createApiKey: createCreateApiKeyUseCase({tokenHasher}),
+    createSdkKey: createCreateSdkKeyUseCase({hasher: hasher}),
     // Combined use cases for page data
     getConfigPageData: createGetConfigPageDataUseCase(),
     getNewConfigPageData: createGetNewConfigPageDataUseCase(),
@@ -317,17 +315,23 @@ export async function createEngine(options: EngineOptions) {
   return {
     useCases: {
       ...engineUseCases,
-      getConfigValue: createGetConfigValueUseCase({configsReplica: replicaService}),
-      getSdkConfig: createGetSdkConfigUseCase({replicaService: replicaService}),
-      getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
       getHealth: createGetHealthUseCase(),
       getStatus: createGetStatusUseCase({db}),
+    },
+    // sdk use cases use replica and shouldn't have PostgreSQL access for performance reasons
+    sdkUseCases: {
+      verifySdkKey: createVerifySdkKeyUseCase({
+        replicaService: replicaService,
+        hasher: hasher,
+      }),
       getProjectEvents: createGetProjectEventsUseCase({
         replicaEventsBus: replicaEventsBus,
         replicaService: replicaService,
       }),
+      getConfigValue: createGetConfigValueUseCase({configsReplica: replicaService}),
+      getSdkConfig: createGetSdkConfigUseCase({replicaService: replicaService}),
+      getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
     },
-    verifyApiKey: apiTokenService.verifyApiKey.bind(apiTokenService),
     testing: {
       pool,
       replicaService,

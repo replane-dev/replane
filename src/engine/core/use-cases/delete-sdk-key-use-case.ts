@@ -3,28 +3,28 @@ import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
-export interface DeleteApiKeyRequest {
+export interface DeleteSdkKeyRequest {
   id: string;
   projectId: string;
   currentUserEmail: NormalizedEmail;
 }
 
-export interface DeleteApiKeyResponse {}
+export interface DeleteSdkKeyResponse {}
 
-export function createDeleteApiKeyUseCase(): TransactionalUseCase<
-  DeleteApiKeyRequest,
-  DeleteApiKeyResponse
+export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
+  DeleteSdkKeyRequest,
+  DeleteSdkKeyResponse
 > {
   return async (ctx, tx, req) => {
     const sdkKey = await tx.sdkKeys.getById({
-      apiKeyId: req.id,
+      sdkKeyId: req.id,
       projectId: req.projectId,
     });
     if (!sdkKey) {
       throw new BadRequestError('SDK key not found');
     }
 
-    await tx.permissionService.ensureCanManageApiKeys(ctx, {
+    await tx.permissionService.ensureCanManageSdkKeys(ctx, {
       projectId: sdkKey.projectId,
       currentUserEmail: req.currentUserEmail,
     });
@@ -34,7 +34,7 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
     if (!user || user.id !== sdkKey.creatorId) {
       throw new Error('Not allowed to delete this SDK key');
     }
-    await tx.sdkKeys.deleteById(sdkKey.id);
+    await tx.sdkKeys.deleteById(ctx, sdkKey.id);
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),
@@ -42,8 +42,8 @@ export function createDeleteApiKeyUseCase(): TransactionalUseCase<
       userId: user.id,
       configId: null,
       payload: {
-        type: 'api_key_deleted',
-        apiKey: {
+        type: 'sdk_key_deleted',
+        sdkKey: {
           id: sdkKey.id,
           name: sdkKey.name,
           description: sdkKey.description,

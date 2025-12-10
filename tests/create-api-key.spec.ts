@@ -5,11 +5,11 @@ import {useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keycreate@example.com');
 
-describe('createApiKey', () => {
+describe('createSdkKey', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
-  it('creates an api key and returns one-time token', async () => {
-    const result = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+  it('creates an sdk key and returns one-time token', async () => {
+    const result = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Primary Key',
       description: 'Main key',
@@ -18,39 +18,39 @@ describe('createApiKey', () => {
     });
 
     // Expect format: cm_<80 hex chars> (24 random bytes + 16 uuid bytes)
-    expect(result.apiKey.token).toMatch(/^rp_[a-f0-9]{80}$/i);
-    expect(result.apiKey.name).toBe('Primary Key');
-    expect(result.apiKey.description).toBe('Main key');
+    expect(result.sdkKey.token).toMatch(/^rp_[a-f0-9]{80}$/i);
+    expect(result.sdkKey.name).toBe('Primary Key');
+    expect(result.sdkKey.description).toBe('Main key');
   });
 
   it('returns different tokens for each creation and persists only metadata', async () => {
-    const first = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const first = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'K1',
       description: '',
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
     });
-    const second = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const second = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'K2',
       description: '',
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
     });
-    expect(first.apiKey.token).not.toBe(second.apiKey.token);
+    expect(first.sdkKey.token).not.toBe(second.sdkKey.token);
 
-    const list = await fixture.engine.useCases.getApiKeyList(GLOBAL_CONTEXT, {
+    const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       projectId: fixture.projectId,
     });
     // list entries never include full token
-    const anyWithToken = list.apiKeys.some(k => (k as any).token);
+    const anyWithToken = list.sdkKeys.some(k => (k as any).token);
     expect(anyWithToken).toBe(false);
   });
 
   it('creates audit message (api_key_created)', async () => {
-    const created = await fixture.engine.useCases.createApiKey(GLOBAL_CONTEXT, {
+    const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
       currentUserEmail: CURRENT_USER_EMAIL,
       name: 'Audit Key',
       description: 'audit',
@@ -64,14 +64,14 @@ describe('createApiKey', () => {
       orderBy: 'created_at desc, id desc',
       projectId: fixture.projectId,
     });
-    const apiKeyCreatedMsg = messages.find(m => m.payload.type === 'api_key_created');
-    expect(apiKeyCreatedMsg).toBeDefined();
-    const payload: any = apiKeyCreatedMsg!.payload;
-    expect(payload.type).toBe('api_key_created');
-    expect(payload.apiKey.id).toBe(created.apiKey.id);
-    expect(payload.apiKey.name).toBe('Audit Key');
-    expect(payload.apiKey.description).toBe('audit');
+    const sdkKeyCreatedMsg = messages.find(m => m.payload.type === 'sdk_key_created');
+    expect(sdkKeyCreatedMsg).toBeDefined();
+    const payload: any = sdkKeyCreatedMsg!.payload;
+    expect(payload.type).toBe('sdk_key_created');
+    expect(payload.sdkKey.id).toBe(created.sdkKey.id);
+    expect(payload.sdkKey.name).toBe('Audit Key');
+    expect(payload.sdkKey.description).toBe('audit');
     // token must not be present in stored payload
-    expect(payload.apiKey.token).toBeUndefined();
+    expect(payload.sdkKey.token).toBeUndefined();
   });
 });
