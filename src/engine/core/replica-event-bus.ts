@@ -2,21 +2,20 @@ import type {Observer} from './observable';
 import type {ReplicaEvent} from './replica';
 import {Subject, type Unsub} from './subject';
 
-export class ReplicaEventBus {
+export class ReplicaEventBus implements Observer<ReplicaEvent> {
   private readonly subjects = new Map<string, Subject<ReplicaEvent>>();
 
   constructor() {}
 
-  next(projectId: string, event: ReplicaEvent): void {
-    const subject = this.subjects.get(projectId);
+  next(event: ReplicaEvent): void {
+    const subject = this.subjects.get(event.entity.projectId);
     if (subject) {
       subject.next(event);
     }
   }
 
-  error(projectId: string, err: unknown): void {
-    const subject = this.subjects.get(projectId);
-    if (subject) {
+  error(err: unknown): void {
+    for (const subject of this.subjects.values()) {
       subject.error(err);
     }
   }

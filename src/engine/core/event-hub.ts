@@ -1,3 +1,4 @@
+import assert from 'assert';
 import {Kysely} from 'kysely';
 import {
   REPLICA_CLEANUP_FREQUENCY,
@@ -8,6 +9,7 @@ import type {Context} from './context';
 import type {DateProvider} from './date-provider';
 import type {DB} from './db';
 import type {Logger} from './logger';
+import type {Topic, TopicConsumer} from './topic';
 
 // error for consumer destroyed by the user
 export class ConsumerDestroyedError extends Error {
@@ -17,18 +19,33 @@ export class ConsumerDestroyedError extends Error {
   }
 }
 
-export class EventHub<T> {
+export class EventHub<T extends object> {
   constructor(
     private readonly dbForConsumer: Kysely<DB>,
     private readonly dateProvider: DateProvider,
   ) {}
 
-  async createConsumer(): Promise<EventHubConsumer<T>> {
+  getTopic<K extends keyof T>(topic: K): EventHubTopic<T[K]> {
+    assert(typeof topic === 'string', 'Topic must be a string');
+
+    return new EventHubTopic(this.dbForConsumer, this.dateProvider, topic);
+  }
+}
+
+export class EventHubTopic<T> implements Topic<T> {
+  constructor(
+    private readonly dbForConsumer: Kysely<DB>,
+    private readonly dateProvider: DateProvider,
+    private readonly topic: string,
+  ) {}
+
+  async createConsumer(): Promise<TopicConsumer<T>> {
     const consumer = await this.dbForConsumer
       .insertInto('event_consumers')
       .values({
         created_at: this.dateProvider.now(),
         last_used_at: this.dateProvider.now(),
+        topic: this.topic,
       })
       .returning(['id'])
       .executeTakeFirstOrThrow();
@@ -36,13 +53,14 @@ export class EventHub<T> {
     return new EventHubConsumer<T>(this.dbForConsumer, this.dateProvider, consumer.id);
   }
 
-  async tryRestoreConsumer(consumerId: string) {
+  async tryRestoreConsumer(consumerId: string): Promise<TopicConsumer<T> | undefined> {
     const affected = await this.dbForConsumer
       .updateTable('event_consumers')
       .set({
         last_used_at: this.dateProvider.now(),
       })
       .where('id', '=', consumerId)
+      .where('topic', '=', this.topic)
       .execute();
 
     if (affected.length !== 1) {
@@ -53,7 +71,7 @@ export class EventHub<T> {
   }
 }
 
-export class EventHubPublisher<T> {
+export class EventHubPublisher<T extends object> {
   private static cleanupCounter = REPLICA_CLEANUP_FREQUENCY; // so that the first cleanup happens immediately
 
   constructor(
@@ -62,7 +80,9 @@ export class EventHubPublisher<T> {
     private readonly dateProvider: DateProvider,
   ) {}
 
-  async pushEvent(ctx: Context, event: T) {
+  async pushEvent<K extends keyof T>(ctx: Context, topic: K, event: T[K]) {
+    assert(typeof topic === 'string', 'Topic must be a string');
+
     EventHubPublisher.cleanupCounter++;
     if (EventHubPublisher.cleanupCounter >= REPLICA_CLEANUP_FREQUENCY) {
       EventHubPublisher.cleanupCounter = 0;
@@ -70,7 +90,11 @@ export class EventHubPublisher<T> {
       await this.cleanupOldConsumers(ctx);
     }
 
-    const consumerIds = await this.db.selectFrom('event_consumers').select(['id']).execute();
+    const consumerIds = await this.db
+      .selectFrom('event_consumers')
+      .select(['id'])
+      .where('topic', '=', topic)
+      .execute();
 
     await this.db
       .insertInto('events')
@@ -104,7 +128,7 @@ export interface Event {
   data: unknown;
 }
 
-export class EventHubConsumer<T> {
+export class EventHubConsumer<T> implements TopicConsumer<T> {
   private isDestroyed = false;
   private reportCounter = REPLICA_LAST_USED_AT_REPORT_FREQUENCY; // so that the first report happens immediately
 

@@ -7,6 +7,11 @@ describe('get-health', () => {
   it('should get health', async () => {
     const result = await fixture.trpc.getHealth();
 
-    expect(result).toEqual({});
+    expect(result).toEqual({
+      status: 'ok',
+      version: expect.any(String),
+      uptime: expect.any(Number),
+      timestamp: expect.any(String),
+    });
   });
 });

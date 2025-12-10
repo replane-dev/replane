@@ -1,16 +1,18 @@
 import type {Kysely} from 'kysely';
-import {
-  REPLICA_CONFIGS_DUMP_BATCH_SIZE,
-  REPLICA_STEP_EVENTS_COUNT,
-  REPLICA_STEP_INTERVAL_MS,
-} from './constants';
-import {GLOBAL_CONTEXT, type Context} from './context';
+import {type Context} from './context';
 import type {DB} from './db';
-import {ConsumerDestroyedError, type EventHub, type EventHubConsumer} from './event-hub';
+import {type EventHub} from './event-hub';
 import type {Logger} from './logger';
+import type {Observer} from './observable';
 import type {Override, RenderedOverride} from './override-condition-schemas';
 import {renderOverrides} from './override-evaluator';
-import type {ReplicaEventBus} from './replica-event-bus';
+import {
+  Replicator,
+  type EntityChangeEvent,
+  type ReplicatorEvent,
+  type ReplicatorSource,
+  type ReplicatorTarget,
+} from './replicator';
 import type {Service} from './service';
 import {
   ReplicaStore,
@@ -18,30 +20,18 @@ import {
   type ConfigVariantReplica,
   type EnvironmentalConfigReplica,
 } from './stores/replica-store';
-import {assertNever, chunkArray, groupBy, wait} from './utils';
+import {MappedTopic} from './topic';
+import {groupBy} from './utils';
 import type {ConfigValue} from './zod';
 
-export type ReplicaEvent =
-  | {
-      type: 'config_created';
-      config: ConfigReplica;
-    }
-  | {
-      type: 'config_updated';
-      config: ConfigReplica;
-    }
-  | {
-      type: 'config_deleted';
-      config: {
-        configId: string;
-        projectId: string;
-        name: string;
-        version: number;
-      };
-    };
+export type ReplicaEvent = ReplicatorEvent<ConfigReplica>;
 
 export interface ConfigChangeEvent {
   configId: string;
+}
+
+export interface AppHubEvents {
+  configs: ConfigChangeEvent;
 }
 
 export interface RenderedConfig {
@@ -57,75 +47,60 @@ export class Replica {
   static async create(
     db: Kysely<DB>,
     replicaStore: ReplicaStore,
-
-    hub: EventHub<ConfigChangeEvent>,
+    hub: EventHub<AppHubEvents>,
     logger: Logger,
     onFatalError: (error: unknown) => void,
-    replicaEvents: ReplicaEventBus,
+    replicaEvents: Observer<ReplicaEvent>,
   ): Promise<Replica> {
-    const replica = await Replica.createLagging(db, replicaStore, hub, logger, replicaEvents);
+    const replicatorSource: ReplicatorSource<ConfigReplica> = {
+      getByIds: async (ids: string[]) => {
+        return await getReplicaConfigs({db, configIds: ids});
+      },
+      getIds: async () => {
+        return (await db.selectFrom('configs').select('id').execute()).map(c => c.id);
+      },
+    };
+    const replicatorTarget: ReplicatorTarget<ConfigReplica> = {
+      getReplicatorConsumerId: async () => replicaStore.getConsumerId(),
+      insertReplicatorConsumerId: async (consumerId: string) =>
+        replicaStore.insertConsumerId(consumerId),
+      upsert: async (entities: ConfigReplica[]) => {
+        return replicaStore.upsertConfigs(entities);
+      },
+      delete: async (id: string) => {
+        return replicaStore.deleteConfig(id);
+      },
+      clear: async () => replicaStore.clear(),
+    };
 
-    // now we need to catch up with the latest events
-    await replica.sync();
+    const configsReplicator = await Replicator.create<ConfigReplica, ConfigReplica>(
+      replicatorSource,
+      replicatorTarget,
+      (config: ConfigReplica) => config,
+      (config: ConfigReplica) => config.id,
+      new MappedTopic(
+        hub.getTopic('configs'),
+        (event: ConfigChangeEvent): EntityChangeEvent => ({
+          entityId: event.configId,
+        }),
+      ),
+      logger,
+      onFatalError,
+      replicaEvents,
+    );
 
-    void replica.loop().catch(onFatalError);
-
-    return replica;
-  }
-
-  private static async createLagging(
-    db: Kysely<DB>,
-    replicaStore: ReplicaStore,
-    hub: EventHub<ConfigChangeEvent>,
-    logger: Logger,
-    replicaEvents: ReplicaEventBus,
-  ): Promise<Replica> {
-    const consumerId = replicaStore.getConsumerId();
-
-    // restore existing consumer
-    if (consumerId) {
-      const consumer = await hub.tryRestoreConsumer(consumerId);
-      if (consumer) {
-        return new Replica(db, replicaStore, logger, consumer, replicaEvents);
-      } else {
-        // consumer is not alive, we need to clear the storage and start over
-        replicaStore.clear();
-      }
-    }
-
-    // we need to initialize a new consumer before dumping existing configs
-    const consumer = await hub.createConsumer();
-    replicaStore.insertConsumerId(consumer.consumerId);
-
-    // dump configs to the replica store
-    for await (const configs of dumpConfigs({db})) {
-      replicaStore.upsertConfigs(configs);
-    }
-
-    const replica = new Replica(db, replicaStore, logger, consumer, replicaEvents);
-
-    return replica;
+    return new Replica(replicaStore, configsReplicator);
   }
 
   private isStopped = false;
 
   private constructor(
-    private readonly db: Kysely<DB>,
     private readonly replicaStore: ReplicaStore,
-    private readonly logger: Logger,
-    private readonly hub: EventHubConsumer<ConfigChangeEvent>,
-    private readonly replicaEvents: ReplicaEventBus,
-  ) {
-    // Replica.create stats the loop
-  }
+    private readonly configsReplicator: Replicator<ConfigReplica, ConfigReplica>,
+  ) {}
 
   async sync() {
-    while (true) {
-      const {status} = await this.step();
-      if (status === 'up-to-date') {
-        break;
-      }
-    }
+    await this.configsReplicator.sync();
   }
 
   private getConfigValueWithoutOverrides(params: {
@@ -189,96 +164,14 @@ export class Replica {
     return result;
   }
 
-  private async loop() {
-    while (!this.isStopped) {
-      let status: 'lagging' | 'up-to-date' | 'unknown' = 'unknown';
-      try {
-        status = await this.step().then(s => s.status);
-      } catch (error) {
-        this.logger.error(GLOBAL_CONTEXT, {msg: 'Replica step error', error});
-
-        if (error instanceof ConsumerDestroyedError) {
-          this.isStopped = true;
-          throw error;
-        }
-      }
-
-      if (status !== 'lagging') {
-        await wait(REPLICA_STEP_INTERVAL_MS);
-      }
-    }
-  }
-
-  private async step(): Promise<{status: 'lagging' | 'up-to-date'}> {
-    const events = await this.hub.pullEvents(REPLICA_STEP_EVENTS_COUNT);
-
-    await this.processEvents(events);
-
-    await this.hub.ackEvents(events.map(e => e.id));
-
-    return {status: events.length === REPLICA_STEP_EVENTS_COUNT ? 'lagging' : 'up-to-date'};
-  }
-
-  private async processEvents(events: {id: string; data: ConfigChangeEvent}[]) {
-    const configs = await getReplicaConfigs({
-      db: this.db,
-      configIds: events.map(e => e.data.configId),
-    });
-
-    const upsertResults = this.replicaStore.upsertConfigs(configs);
-    for (let i = 0; i < upsertResults.length; i += 1) {
-      const result = upsertResults[i];
-
-      if (result === 'created') {
-        this.replicaEvents.next(configs[i].projectId, {type: 'config_created', config: configs[i]});
-      } else if (result === 'updated') {
-        this.replicaEvents.next(configs[i].projectId, {type: 'config_updated', config: configs[i]});
-      } else if (result === 'ignored') {
-        // do nothing
-      } else {
-        assertNever(result, 'Unknown upsert result');
-      }
-    }
-
-    const configsById = new Map<string, ConfigReplica>(configs.map(c => [c.id, c]));
-
-    for (const event of events) {
-      const config = configsById.get(event.data.configId);
-      if (config) continue; // already upserted
-
-      const toBeDeleted = this.replicaStore.getConfigById(event.data.configId);
-      if (!toBeDeleted) continue; // already deleted
-
-      this.replicaEvents.next(toBeDeleted.projectId, {
-        type: 'config_deleted',
-        config: {
-          configId: toBeDeleted.id,
-          projectId: toBeDeleted.projectId,
-          name: toBeDeleted.name,
-          version: toBeDeleted.version,
-        },
-      });
-      this.replicaStore.deleteConfig(toBeDeleted.id);
-    }
-  }
-
   stop() {
-    this.isStopped = true;
+    this.configsReplicator.stop();
   }
 
   async destroy() {
     this.stop();
-    await this.hub.destroy();
+    await this.configsReplicator.destroy();
     this.replicaStore.clear();
-    this.replicaEvents.complete();
-  }
-}
-
-async function* dumpConfigs(params: {db: Kysely<DB>}): AsyncGenerator<ConfigReplica[]> {
-  const configIds = await params.db.selectFrom('configs').select('id').execute();
-
-  for (const batch of chunkArray(configIds, REPLICA_CONFIGS_DUMP_BATCH_SIZE)) {
-    yield await getReplicaConfigs({db: params.db, configIds: batch.map(c => c.id)});
   }
 }
 
@@ -339,10 +232,10 @@ export class ReplicaService implements Service {
   constructor(
     private readonly db: Kysely<DB>,
     private readonly replicaStore: ReplicaStore,
-    private readonly hub: EventHub<ConfigChangeEvent>,
+    private readonly hub: EventHub<AppHubEvents>,
     private readonly logger: Logger,
     private readonly onFatalError: (error: unknown) => void,
-    private readonly replicaEvents: ReplicaEventBus,
+    private readonly replicaEvents: Observer<ReplicaEvent>,
   ) {}
 
   async sync() {

@@ -68,18 +68,18 @@ export function createGetProjectEventsUseCase(
 
     try {
       for await (const event of channel) {
-        if (event.type === 'config_deleted') {
+        if (event.type === 'deleted') {
           yield {
             type: 'config_deleted',
-            configName: event.config.name,
-            version: event.config.version,
+            configName: event.entity.name,
+            version: event.entity.version,
           };
           continue;
         }
 
         const renderedConfig = await deps.replicaService.getConfig({
           projectId: request.projectId,
-          configName: event.config.name,
+          configName: event.entity.name,
           environmentId: request.environmentId,
         });
 
@@ -87,20 +87,20 @@ export function createGetProjectEventsUseCase(
           continue;
         }
 
-        if (event.type === 'config_created') {
+        if (event.type === 'created') {
           yield {
             type: 'config_created',
-            configName: event.config.name,
+            configName: event.entity.name,
             overrides: renderedConfig.overrides,
-            version: event.config.version,
+            version: event.entity.version,
             value: renderedConfig.value,
           };
-        } else if (event.type === 'config_updated') {
+        } else if (event.type === 'updated') {
           yield {
             type: 'config_updated',
-            configName: event.config.name,
+            configName: event.entity.name,
             overrides: renderedConfig.overrides,
-            version: event.config.version,
+            version: event.entity.version,
             value: renderedConfig.value,
           };
         } else {

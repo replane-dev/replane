@@ -124,6 +124,11 @@ export class ReplicaStore {
   private clearConfigVariantsStmt: Statement<{}, void>;
   private clearKvStmt: Statement<{}, void>;
 
+  private getConfigVariantsByConfigIdStmt: Statement<
+    {configId: string},
+    {id: string; environmentId: string | null; value: string; overrides: string}
+  >;
+
   private constructor(db: Database) {
     this.db = db;
     this.insertConfigVariant = db.prepare<
@@ -247,6 +252,13 @@ export class ReplicaStore {
     this.clearKvStmt = db.prepare<{}, void>(/*sql*/ `
       DELETE FROM kv
     `);
+
+    this.getConfigVariantsByConfigIdStmt = db.prepare<
+      {configId: string},
+      {id: string; environmentId: string | null; value: string; overrides: string}
+    >(/*sql*/ `
+      SELECT id, environment_id, value, overrides FROM config_variants WHERE config_id = @configId
+    `);
   }
 
   getProjectConfigs(params: {projectId: string; environmentId: string}) {
@@ -324,7 +336,51 @@ export class ReplicaStore {
   }
 
   deleteConfig(id: string) {
+    return this.transaction(() => {
+      return this.deleteConfigUnsafe(id);
+    });
+  }
+
+  private deleteConfigUnsafe(
+    id: string,
+  ): {type: 'ignored'} | {type: 'deleted'; entity: ConfigReplica} {
+    const existingConfig = this.getConfigById(id);
+    if (!existingConfig) {
+      return {type: 'ignored'};
+    }
+
+    const configVariants = this.getConfigVariantsByConfigIdStmt.all({configId: id});
+
     this.deleteConfigStmt.run({id});
+    return {
+      type: 'deleted',
+      entity: {
+        id: existingConfig.id,
+        projectId: existingConfig.projectId,
+        name: existingConfig.name,
+        version: existingConfig.version,
+        variants: configVariants
+          .filter(v => v.environmentId !== null)
+          .map(v => ({
+            id: v.id,
+            configId: existingConfig.id,
+            environmentId: v.environmentId,
+            value: JSON.parse(v.value) as ConfigValue,
+            overrides: JSON.parse(v.overrides) as Override[],
+          })),
+        defaultVariant:
+          configVariants
+            .filter(v => v.environmentId === null)
+            ?.map(v => ({
+              id: v.id,
+              configId: existingConfig.id,
+              environmentId: v.environmentId,
+              value: JSON.parse(v.value) as ConfigValue,
+              overrides: JSON.parse(v.overrides) as Override[],
+            }))
+            .at(0) ?? null,
+      },
+    };
   }
 
   getConsumerId() {

@@ -1166,6 +1166,27 @@ export const migrations: Migration[] = [
       ALTER TABLE config_proposals ALTER COLUMN proposed_description SET NOT NULL;
     `,
   },
+  {
+    sql: /*sql*/ `
+      ALTER TABLE event_consumers ADD COLUMN topic TEXT NOT NULL DEFAULT 'config';
+      ALTER TABLE event_consumers ALTER COLUMN topic DROP DEFAULT;
+
+      ALTER TABLE events ADD COLUMN topic TEXT NOT NULL DEFAULT 'config';
+      ALTER TABLE events ALTER COLUMN topic DROP DEFAULT;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      ALTER TABLE events DROP COLUMN topic;
+
+      CREATE INDEX idx_event_consumers_topic ON event_consumers(topic);
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      UPDATE event_consumers SET topic = 'configs' WHERE topic = 'config';
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

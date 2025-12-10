@@ -17,7 +17,7 @@ import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
 import {getPgPool} from './core/pg-pool-cache';
 import {ProjectQueryService} from './core/project-query-service';
-import {ReplicaService} from './core/replica';
+import {type AppHubEvents, ReplicaService} from './core/replica';
 import {ReplicaEventBus} from './core/replica-event-bus';
 import type {Service} from './core/service';
 import {AuditLogStore} from './core/stores/audit-log-store';
@@ -124,7 +124,7 @@ function toUseCase<TReq, TRes>(
       logger,
       onConflictRetriesCount: options.onConflictRetriesCount,
       fn: async (ctx, dbTx, scheduleOptimisticEffect) => {
-        const hub = new EventHubPublisher(dbTx, logger, options.dateProvider);
+        const hub = new EventHubPublisher<AppHubEvents>(dbTx, logger, options.dateProvider);
         const configs = new ConfigStore(dbTx, hub);
         const configProposals = new ConfigProposalStore(dbTx);
         const users = new UserStore(dbTx);

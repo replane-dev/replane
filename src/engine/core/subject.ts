@@ -2,7 +2,7 @@ import type {Observable, Observer} from './observable';
 
 export type Unsub = () => void;
 
-export class Subject<T> implements Observable<T> {
+export class Subject<T> implements Observable<T>, Observer<T> {
   private observers: Set<Observer<T>> = new Set();
   private isCompleted: boolean = false;
 

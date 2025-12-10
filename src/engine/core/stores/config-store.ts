@@ -6,7 +6,7 @@ import type {Configs, DB} from '../db';
 import type {EventHubPublisher} from '../event-hub';
 import {OverrideSchema} from '../override-condition-schemas';
 import type {Override} from '../override-evaluator';
-import type {ConfigChangeEvent} from '../replica';
+import type {AppHubEvents} from '../replica';
 import {deserializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
 import {ConfigInfo, ConfigValue, Uuid, type NormalizedEmail} from '../zod';
@@ -65,7 +65,7 @@ export interface ConfigReplicaDump {
 export class ConfigStore {
   constructor(
     private readonly db: Kysely<DB>,
-    private readonly hub: EventHubPublisher<ConfigChangeEvent>,
+    private readonly hub: EventHubPublisher<AppHubEvents>,
   ) {}
 
   async getDefaultVariant(configId: string): Promise<{
@@ -211,7 +211,7 @@ export class ConfigStore {
       })
       .execute();
 
-    await this.hub.pushEvent(ctx, {configId: config.id});
+    await this.hub.pushEvent(ctx, 'configs', {configId: config.id});
   }
 
   async update(params: {
@@ -231,13 +231,13 @@ export class ConfigStore {
       .where('id', '=', params.id)
       .execute();
 
-    await this.hub.pushEvent(params.ctx, {configId: params.id});
+    await this.hub.pushEvent(params.ctx, 'configs', {configId: params.id});
   }
 
   async deleteById(ctx: Context, id: string): Promise<void> {
     await this.db.deleteFrom('configs').where('id', '=', id).execute();
 
-    await this.hub.pushEvent(ctx, {configId: id});
+    await this.hub.pushEvent(ctx, 'configs', {configId: id});
   }
 
   async getConfigSchemas(params: {

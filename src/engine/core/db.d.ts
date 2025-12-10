@@ -130,6 +130,7 @@ export interface EventConsumers {
   created_at: Timestamp;
   id: Generated<Int8>;
   last_used_at: Timestamp;
+  topic: string;
 }
 
 export interface Events {
