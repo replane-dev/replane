@@ -1,6 +1,5 @@
 'use client';
 
-import {ApiKeyExplainer} from '@/components/api-key-explainer';
 import {SdkIntegrationGuide} from '@/components/sdk-integration-guide';
 import {Button} from '@/components/ui/button';
 import {isValidUuid} from '@/engine/core/utils';
@@ -37,8 +36,6 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
 
   return (
     <div className="space-y-6">
-      <ApiKeyExplainer />
-
       {/* SDK Key Details */}
       <div className="rounded-lg border bg-card/50 p-4">
         <div className="space-y-4">

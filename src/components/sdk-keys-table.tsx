@@ -30,7 +30,7 @@ import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
 
-interface ApiKeyRow {
+interface SdkKeyRow {
   id: string;
   name: string;
   description: string;
@@ -64,13 +64,13 @@ function humanizeId(id: string): string {
 
 // columns moved inside component to use router without violating hook rules
 
-export interface ApiKeysTableProps {
+export interface SdkKeysTableProps {
   projectId: string;
   onSdkKeyClick?: (id: string) => void;
   onNewSdkKeyClick?: () => void;
 }
 
-export function ApiKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: ApiKeysTableProps) {
+export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKeysTableProps) {
   const router = useRouter();
   const qc = useQueryClient();
   const trpc = useTRPC();
@@ -91,7 +91,7 @@ export function ApiKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: ApiKe
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
 
-  const columns = React.useMemo<ColumnDef<ApiKeyRow>[]>(
+  const columns = React.useMemo<ColumnDef<SdkKeyRow>[]>(
     () => [
       {
         accessorKey: 'name',
@@ -204,7 +204,7 @@ export function ApiKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: ApiKe
   );
 
   const table = useReactTable({
-    data: apiKeys as ApiKeyRow[],
+    data: apiKeys as SdkKeyRow[],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

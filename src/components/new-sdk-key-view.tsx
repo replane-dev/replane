@@ -1,7 +1,7 @@
 'use client';
 
-import {ApiKeyExplainer} from '@/components/api-key-explainer';
 import {SdkIntegrationGuide} from '@/components/sdk-integration-guide';
+import {SdkKeyExplainer} from '@/components/sdk-key-explainer';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
@@ -53,7 +53,7 @@ export function NewSdkKeyView({projectId, onSuccess, onCancel}: NewSdkKeyViewPro
 
   return (
     <div className="space-y-6">
-      <ApiKeyExplainer />
+      <SdkKeyExplainer />
       {!createdToken && (
         <div className="rounded-lg border bg-card/50 overflow-hidden">
           <div className="border-b bg-muted/30 px-6 py-4">

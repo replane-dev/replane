@@ -1,9 +1,9 @@
 'use client';
 
-import {ApiKeyExplainer} from '@/components/api-key-explainer';
-import {ApiKeysTable} from '@/components/api-keys-table';
 import {NewSdkKeyView} from '@/components/new-sdk-key-view';
 import {SdkKeyDetailView} from '@/components/sdk-key-detail-view';
+import {SdkKeyExplainer} from '@/components/sdk-key-explainer';
+import {SdkKeysTable} from '@/components/sdk-keys-table';
 import {DelayedFullWidthSpinner} from '@/components/spinner';
 import {
   Breadcrumb,
@@ -98,8 +98,8 @@ export default function SdkKeysPage() {
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="max-w-4xl space-y-4">
-          <ApiKeyExplainer />
-          <ApiKeysTable
+          <SdkKeyExplainer />
+          <SdkKeysTable
             projectId={projectId}
             onSdkKeyClick={handleSdkKeyClick}
             onNewSdkKeyClick={handleNewSdkKeyClick}

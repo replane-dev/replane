@@ -6,7 +6,7 @@ import {Button} from './ui/button';
 
 const STORAGE_KEY = 'replane_api_key_explainer_dismissed';
 
-export function ApiKeyExplainer() {
+export function SdkKeyExplainer() {
   const [isDismissed, setIsDismissed] = useState(true); // Start as true to avoid flash
 
   useEffect(() => {

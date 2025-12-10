@@ -134,7 +134,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         header: ({column}) => (
           <Button
             variant="ghost"
-            className="h-8 px-2 text-xs"
+            className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Created
@@ -144,11 +144,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         cell: ({row}) => {
           const {display, dateTimeAttr, title} = formatDateTime(row.getValue('createdAt'));
           return (
-            <time
-              dateTime={dateTimeAttr}
-              title={title}
-              className="whitespace-nowrap text-xs text-muted-foreground"
-            >
+            <time dateTime={dateTimeAttr} title={title}>
               {display}
             </time>
           );
@@ -159,7 +155,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         header: ({column}) => (
           <Button
             variant="ghost"
-            className="h-8 px-2 text-xs"
+            className="-ml-3"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Updated
@@ -169,11 +165,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         cell: ({row}) => {
           const {display, dateTimeAttr, title} = formatDateTime(row.getValue('updatedAt'));
           return (
-            <time
-              dateTime={dateTimeAttr}
-              title={title}
-              className="whitespace-nowrap text-xs text-muted-foreground"
-            >
+            <time dateTime={dateTimeAttr} title={title}>
               {display}
             </time>
           );
