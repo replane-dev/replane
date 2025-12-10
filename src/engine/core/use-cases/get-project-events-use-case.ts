@@ -1,8 +1,10 @@
+import assert from 'assert';
 import {Channel} from 'async-channel';
 import type {Context} from '../context';
 import type {RenderedOverride} from '../override-condition-schemas';
 import type {ReplicaEvent, ReplicaService} from '../replica';
 import type {ReplicaEventBus} from '../replica-event-bus';
+import type {ConfigReplica} from '../stores/replica-store';
 import {assertNever} from '../utils';
 
 export interface GetProjectEventsRequest {
@@ -26,7 +28,13 @@ export type ProjectEvent =
       version: number;
       value: unknown;
     }
-  | {type: 'config_deleted'; configName: string; version: number};
+  | {
+      type: 'config_deleted';
+      configName: string;
+      version: number;
+      value: unknown;
+      overrides: RenderedOverride[];
+    };
 
 export interface GetProjectEventsUseCaseDeps {
   replicaEventsBus: ReplicaEventBus;
@@ -37,6 +45,27 @@ export interface GetProjectEventsUseCaseDeps {
 export function createGetProjectEventsUseCase(
   deps: GetProjectEventsUseCaseDeps,
 ): (ctx: Context, request: GetProjectEventsRequest) => AsyncIterable<ProjectEvent> {
+  const renderConfig = async (config: ConfigReplica, environmentId: string) => {
+    const configValue =
+      config.variants.find(variant => variant.environmentId === environmentId)?.value ??
+      config.defaultVariant?.value;
+    assert(configValue, 'Config value not found');
+
+    const rawConfigOverrides =
+      config.variants.find(variant => variant.environmentId === environmentId)?.overrides ??
+      config.defaultVariant?.overrides;
+    assert(rawConfigOverrides, 'Config overrides not found');
+
+    return await deps.replicaService.renderConfig({
+      environmentId: environmentId,
+      name: config.name,
+      version: config.version,
+      projectId: config.projectId,
+      value: configValue,
+      overrides: rawConfigOverrides,
+    });
+  };
+
   return async function* (ctx, request) {
     // permissions must be checked by the caller
 
@@ -68,26 +97,17 @@ export function createGetProjectEventsUseCase(
 
     try {
       for await (const event of channel) {
+        const renderedConfig = await renderConfig(event.entity, request.environmentId);
+
         if (event.type === 'deleted') {
           yield {
             type: 'config_deleted',
             configName: event.entity.name,
             version: event.entity.version,
+            value: renderedConfig.value,
+            overrides: renderedConfig.overrides,
           };
-          continue;
-        }
-
-        const renderedConfig = await deps.replicaService.getConfig({
-          projectId: request.projectId,
-          configName: event.entity.name,
-          environmentId: request.environmentId,
-        });
-
-        if (!renderedConfig) {
-          continue;
-        }
-
-        if (event.type === 'created') {
+        } else if (event.type === 'created') {
           yield {
             type: 'config_created',
             configName: event.entity.name,

@@ -165,7 +165,7 @@ export class Replica {
     return await this.renderConfig(config);
   }
 
-  private async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {
+  async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {
     return {
       name: config.name,
       version: config.version,
@@ -344,6 +344,14 @@ export class ReplicaService implements Service {
     }
 
     return await this.replica.getProjectConfigs(params);
+  }
+
+  async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {
+    if (!this.replica) {
+      throw new Error('Replica not started');
+    }
+
+    return await this.replica.renderConfig(config);
   }
 
   async start(ctx: Context) {

@@ -1,3 +1,4 @@
+import {MAX_CONFIG_VERSION} from '@/engine/core/constants';
 import {type Context} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {ConfigName} from '@/engine/core/stores/config-store';
@@ -9,6 +10,7 @@ import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
 import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
 import {assertNever, toEagerAsyncIterable} from './engine/core/utils';
+import {createSdkState} from './sdk-state';
 
 async function getEngine() {
   return getEngineSingleton();
@@ -31,7 +33,7 @@ const ConfigValueResponse = z
   })
   .openapi('ConfigValueResponse');
 
-const ConfigResponse = z
+const ConfigDto = z
   .object({
     name: ConfigName(),
     value: z.unknown(),
@@ -41,11 +43,11 @@ const ConfigResponse = z
   })
   .openapi('ConfigResponse');
 
-type ConfigResponse = z.infer<typeof ConfigResponse>;
+export type ConfigDto = z.infer<typeof ConfigDto>;
 
 const ConfigsResponse = z
   .object({
-    items: z.array(ConfigResponse),
+    items: z.array(ConfigDto),
   })
   .openapi('ConfigsResponse');
 
@@ -212,7 +214,7 @@ sdkApi.openapi(
         description: 'Config details',
         content: {
           'application/json': {
-            schema: ConfigResponse,
+            schema: ConfigDto,
           },
         },
       },
@@ -271,13 +273,13 @@ const ConfigDeletedEventResponse = z
 const ConfigListEventResponse = z
   .object({
     type: z.literal('config_list'),
-    configs: z.array(ConfigResponse),
+    configs: z.array(ConfigDto),
   })
   .openapi('ConfigListEventResponse');
 
 type ConfigListEventResponse = z.infer<typeof ConfigListEventResponse>;
 
-const ReplicationStreamResponse = z
+const ProjectEventsResponse = z
   .discriminatedUnion('type', [
     ConfigCreatedEventResponse,
     ConfigUpdatedEventResponse,
@@ -288,108 +290,286 @@ const ReplicationStreamResponse = z
     description: 'Server-sent events stream for project updates',
   });
 
-type ReplicationStreamResponse = z.infer<typeof ReplicationStreamResponse>;
+type ProjectEventsResponse = z.infer<typeof ProjectEventsResponse>;
 
-// todo: remove /events endpoint before v1.0.0
-[
-  {path: '/replication/stream', operationId: 'getReplicationStream'},
-  {path: '/events', operationId: 'getProjectEvents'},
-].forEach(({path, operationId}) =>
-  sdkApi.openapi(
-    {
-      method: 'get',
-      path,
-      operationId,
-      responses: {
-        200: {
-          description: 'Server-sent events stream for project updates',
-          content: {
-            'text/event-stream': {
-              schema: ReplicationStreamResponse,
-            },
+// this endpoint exists only for backward compatibility, will be removed before v1.0.0
+sdkApi.openapi(
+  {
+    method: 'get',
+    path: '/events',
+    operationId: 'getProjectEvents',
+    responses: {
+      200: {
+        description: 'Server-sent events stream for project updates',
+        content: {
+          'text/event-stream': {
+            schema: ProjectEventsResponse,
           },
         },
       },
     },
+  },
 
-    async c => {
-      const projectId = c.get('projectId');
-      const context = c.get('context');
-      const engine = await getEngine();
+  async c => {
+    const projectId = c.get('projectId');
+    const context = c.get('context');
+    const engine = await getEngine();
 
-      const headers = {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      };
+    const headers = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    };
 
-      const abortController = new AbortController();
-      const onAbort = () => abortController.abort();
-      c.req.raw.signal.addEventListener('abort', onAbort);
+    const abortController = new AbortController();
+    const onAbort = () => abortController.abort();
+    c.req.raw.signal.addEventListener('abort', onAbort);
 
-      const stream = new ReadableStream<SseEvent>({
-        async start(controller) {
-          let errored = false;
-          // heartbeat to keep proxies from closing the connection due to inactivity
-          const heartbeat = setInterval(() => {
-            try {
-              controller.enqueue({type: 'ping'});
-            } catch {}
-          }, 15_000);
-
+    const stream = new ReadableStream<SseEvent>({
+      async start(controller) {
+        let errored = false;
+        // heartbeat to keep proxies from closing the connection due to inactivity
+        const heartbeat = setInterval(() => {
           try {
-            controller.enqueue({type: 'connected'});
+            controller.enqueue({type: 'ping'});
+          } catch {}
+        }, 15_000);
 
-            // eager async iterable to subscribe to events immediately
-            // required for client not to miss any updates to configs
-            const events = toEagerAsyncIterable(
-              engine.sdkUseCases.getProjectEvents(context, {
-                projectId,
-                environmentId: c.get('environmentId'),
-                abortSignal: abortController.signal,
-              }),
-            );
+        try {
+          controller.enqueue({type: 'connected'});
 
-            const {configs} = await engine.sdkUseCases.getSdkConfigs(context, {
+          // eager async iterable to subscribe to events immediately
+          // required for client not to miss any updates to configs
+          const events = toEagerAsyncIterable(
+            engine.sdkUseCases.getProjectEvents(context, {
               projectId,
               environmentId: c.get('environmentId'),
-            });
-            const data = JSON.stringify({
-              type: 'config_list',
-              configs,
-            } satisfies ConfigListEventResponse);
-            controller.enqueue({type: 'data', data});
+              abortSignal: abortController.signal,
+            }),
+          );
 
-            for await (const event of events) {
-              const data = JSON.stringify(event satisfies ReplicationStreamResponse);
-              controller.enqueue({type: 'data', data});
-            }
-          } catch (err) {
-            errored = true;
-            console.error('SSE stream error:', err);
-            controller.error(err);
-          } finally {
-            clearInterval(heartbeat);
-            c.req.raw.signal.removeEventListener('abort', onAbort);
-            if (!errored) {
-              try {
-                controller.close();
-              } catch {
-                // ignore
-              }
+          const {configs} = await engine.sdkUseCases.getSdkConfigs(context, {
+            projectId,
+            environmentId: c.get('environmentId'),
+          });
+          const data = JSON.stringify({
+            type: 'config_list',
+            configs,
+          } satisfies ConfigListEventResponse);
+          controller.enqueue({type: 'data', data});
+
+          for await (const event of events) {
+            const data = JSON.stringify(event satisfies ProjectEventsResponse);
+            controller.enqueue({type: 'data', data});
+          }
+        } catch (err) {
+          errored = true;
+          console.error('SSE stream error:', err);
+          controller.error(err);
+        } finally {
+          clearInterval(heartbeat);
+          c.req.raw.signal.removeEventListener('abort', onAbort);
+          if (!errored) {
+            try {
+              controller.close();
+            } catch {
+              // ignore
             }
           }
-        },
-        async cancel() {
-          abortController.abort();
-          c.req.raw.signal.removeEventListener('abort', onAbort);
-        },
-      }).pipeThrough(new SseEncoderStream());
+        }
+      },
+      async cancel() {
+        abortController.abort();
+        c.req.raw.signal.removeEventListener('abort', onAbort);
+      },
+    }).pipeThrough(new SseEncoderStream());
 
-      return new Response(stream, {headers});
+    return new Response(stream, {headers});
+  },
+);
+
+const ReplicationStreamConfigChangeRecord = z
+  .object({
+    type: z.literal('config_change'),
+    configName: ConfigName(),
+    overrides: z.array(RenderedOverrideSchema),
+    version: z.number(),
+    value: z.unknown(),
+  })
+  .openapi('ReplicationStreamConfigChangeRecord');
+
+const ReplicationStreamInitRecord = z
+  .object({
+    type: z.literal('init'),
+    configs: z.array(ConfigDto),
+  })
+  .openapi('ReplicationStreamInitRecord');
+
+type ReplicationStreamInitRecord = z.infer<typeof ReplicationStreamInitRecord>;
+
+const ReplicationStreamRecord = z
+  .discriminatedUnion('type', [ReplicationStreamConfigChangeRecord, ReplicationStreamInitRecord])
+  .openapi('ReplicationStreamRecord');
+
+type ReplicationStreamRecord = z.infer<typeof ReplicationStreamRecord>;
+
+const StartReplicationStreamBody = z.object({
+  currentConfigs: z.array(ConfigDto),
+  fallbacks: z.array(ConfigDto),
+  requiredConfigs: z.array(z.string()),
+});
+
+export type StartReplicationStreamBody = z.infer<typeof StartReplicationStreamBody>;
+
+sdkApi.openapi(
+  {
+    method: 'post',
+    path: '/replication/stream',
+    operationId: 'startReplicationStream',
+    responses: {
+      200: {
+        description: 'Replication stream in SSE format',
+        content: {
+          'text/event-stream': {
+            schema: ReplicationStreamRecord,
+          },
+        },
+      },
     },
-  ),
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: StartReplicationStreamBody,
+          },
+        },
+      },
+    },
+  },
+
+  async c => {
+    const projectId = c.get('projectId');
+    const context = c.get('context');
+    const engine = await getEngine();
+
+    const headers = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    };
+
+    const abortController = new AbortController();
+    const onAbort = () => abortController.abort();
+    c.req.raw.signal.addEventListener('abort', onAbort);
+
+    const stream = new ReadableStream<SseEvent>({
+      async start(controller) {
+        let errored = false;
+        // heartbeat to keep proxies from closing the connection due to inactivity
+        const heartbeat = setInterval(() => {
+          try {
+            controller.enqueue({type: 'ping'});
+          } catch {}
+        }, 15_000);
+
+        try {
+          controller.enqueue({type: 'connected'});
+
+          // eager async iterable to subscribe to events immediately
+          // required for client not to miss any updates to configs
+          const events = toEagerAsyncIterable(
+            engine.sdkUseCases.getProjectEvents(context, {
+              projectId,
+              environmentId: c.get('environmentId'),
+              abortSignal: abortController.signal,
+            }),
+          );
+
+          const {configs: serverConfigs} = await engine.sdkUseCases.getSdkConfigs(context, {
+            projectId,
+            environmentId: c.get('environmentId'),
+          });
+          const clientState = c.req.valid('json');
+
+          const {rollingState, configs} = createSdkState({
+            serverConfigs: serverConfigs,
+            currentConfigs: clientState.currentConfigs,
+            fallbacks: clientState.fallbacks,
+            requiredConfigs: clientState.requiredConfigs,
+          });
+          controller.enqueue({
+            type: 'data',
+            data: JSON.stringify({
+              type: 'init',
+              configs,
+            } satisfies ReplicationStreamRecord),
+          });
+
+          for await (const event of events) {
+            if (event.type === 'config_deleted') {
+              // freeze this config to prevent this client from receiving any more
+              // updates in case if another config with the same name is created
+              //
+              // it's still possible for a client to receive an update for this config
+              // if the client disconnect before receiving the update and reconnect later
+              rollingState.upsert(event.configName, MAX_CONFIG_VERSION);
+
+              controller.enqueue({
+                type: 'data',
+                data: JSON.stringify({
+                  type: 'config_change',
+                  configName: event.configName,
+                  overrides: event.overrides,
+                  version: MAX_CONFIG_VERSION,
+                  value: event.value,
+                } satisfies ReplicationStreamRecord),
+              });
+            }
+
+            const stateChange = rollingState.upsert(event.configName, event.version);
+            if (stateChange === 'upserted') {
+              controller.enqueue({
+                type: 'data',
+                data: JSON.stringify({
+                  type: 'config_change',
+                  configName: event.configName,
+                  overrides: event.overrides,
+                  version: event.version,
+                  value: event.value,
+                } satisfies ReplicationStreamRecord),
+              });
+            } else if (stateChange === 'ignored') {
+              // do nothing
+            } else {
+              assertNever(stateChange, 'Unknown client state change');
+            }
+          }
+        } catch (err) {
+          errored = true;
+          console.error('SSE stream error:', err);
+          controller.error(err);
+        } finally {
+          clearInterval(heartbeat);
+          c.req.raw.signal.removeEventListener('abort', onAbort);
+          if (!errored) {
+            try {
+              controller.close();
+            } catch {
+              // ignore
+            }
+          }
+        }
+      },
+      async cancel() {
+        abortController.abort();
+        c.req.raw.signal.removeEventListener('abort', onAbort);
+      },
+    }).pipeThrough(new SseEncoderStream());
+
+    return new Response(stream, {headers});
+  },
 );
 
 sdkApi.get('/openapi.json', c =>
