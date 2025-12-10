@@ -35,6 +35,7 @@ import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
 import {WorkspaceStore} from './core/stores/workspace-store';
 import {createSha256TokenHashingService} from './core/token-hashing-service';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
+import {createAddExampleConfigsUseCase} from './core/use-cases/add-example-configs-use-case';
 import {createAddWorkspaceMemberUseCase} from './core/use-cases/add-workspace-member-use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
 import {createCreateApiKeyUseCase} from './core/use-cases/create-api-key-use-case';
@@ -299,6 +300,7 @@ export async function createEngine(options: EngineOptions) {
     addWorkspaceMember: createAddWorkspaceMemberUseCase(),
     removeWorkspaceMember: createRemoveWorkspaceMemberUseCase(),
     updateWorkspaceMemberRole: createUpdateWorkspaceMemberRoleUseCase(),
+    addExampleConfigs: createAddExampleConfigsUseCase({dateProvider}),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;

@@ -13,7 +13,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, Code, FileCode, MoreHorizontal} from 'lucide-react';
+import {ArrowUpDown, ChevronDown, Code, FileCode, MoreHorizontal, Sparkles} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
@@ -33,9 +33,11 @@ import {
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {getQueryClient, useTRPC} from '@/trpc/client';
-import {useSuspenseQuery} from '@tanstack/react-query';
+import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {Suspense} from 'react';
 import {toast} from 'sonner';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
   const d = value instanceof Date ? value : new Date(String(value ?? ''));
@@ -79,9 +81,24 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
   const trpc = useTRPC();
   const deleteOrPropose = useDeleteOrProposeConfig();
 
-  const {
-    data: {configs},
-  } = useSuspenseQuery(trpc.getConfigList.queryOptions({projectId}));
+  const configListQuery = useSuspenseQuery(trpc.getConfigList.queryOptions({projectId}));
+  const {configs} = configListQuery.data;
+
+  const addExampleConfigsMutation = useMutation(
+    trpc.addExampleConfigs.mutationOptions({
+      onSuccess: data => {
+        if (data.addedConfigsCount > 0) {
+          toast.success(`Added ${data.addedConfigsCount} example config(s)`);
+          configListQuery.refetch();
+        } else {
+          toast.info('All example configs already exist');
+        }
+      },
+      onError: error => {
+        toast.error('Failed to add example configs', {description: error.message});
+      },
+    }),
+  );
 
   const columns = React.useMemo<
     ColumnDef<{
@@ -105,7 +122,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         header: 'Description',
         cell: ({row}) => (
           <div
-            className="max-w-[100px] truncate"
+            className="max-w-[400px] truncate"
             title={String(row.getValue('descriptionPreview') ?? '')}
           >
             {row.getValue('descriptionPreview')}
@@ -117,16 +134,21 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         header: ({column}) => (
           <Button
             variant="ghost"
+            className="h-8 px-2 text-xs"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
-            Created At
-            <ArrowUpDown />
+            Created
+            <ArrowUpDown className="ml-1 h-3 w-3" />
           </Button>
         ),
         cell: ({row}) => {
           const {display, dateTimeAttr, title} = formatDateTime(row.getValue('createdAt'));
           return (
-            <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap">
+            <time
+              dateTime={dateTimeAttr}
+              title={title}
+              className="whitespace-nowrap text-xs text-muted-foreground"
+            >
               {display}
             </time>
           );
@@ -137,16 +159,21 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         header: ({column}) => (
           <Button
             variant="ghost"
+            className="h-8 px-2 text-xs"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
-            Updated At
-            <ArrowUpDown />
+            Updated
+            <ArrowUpDown className="ml-1 h-3 w-3" />
           </Button>
         ),
         cell: ({row}) => {
           const {display, dateTimeAttr, title} = formatDateTime(row.getValue('updatedAt'));
           return (
-            <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap">
+            <time
+              dateTime={dateTimeAttr}
+              title={title}
+              className="whitespace-nowrap text-xs text-muted-foreground"
+            >
               {display}
             </time>
           );
@@ -275,7 +302,22 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
           onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
           className="max-w-md"
         />
-        <Button variant="outline" className="ml-auto" onClick={() => setShowGenerateTypes(true)}>
+        {isDevelopment && (
+          <Button
+            variant="outline"
+            className="ml-auto"
+            onClick={() => addExampleConfigsMutation.mutate({projectId})}
+            disabled={addExampleConfigsMutation.isPending}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {addExampleConfigsMutation.isPending ? 'Adding...' : 'Add example configs'}
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          className={isDevelopment ? '' : 'ml-auto'}
+          onClick={() => setShowGenerateTypes(true)}
+        >
           <FileCode className="h-4 w-4 mr-2" />
           Generate types
         </Button>

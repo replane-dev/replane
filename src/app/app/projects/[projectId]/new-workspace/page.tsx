@@ -2,6 +2,7 @@
 
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
+import {useProjects} from '@/contexts/project-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
@@ -16,14 +17,18 @@ export default function NewWorkspacePage() {
 
   const createWorkspace = useMutation(trpc.createWorkspace.mutationOptions());
 
+  const {refresh: refreshAppLayout} = useProjects();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
       const {projectId} = await createWorkspace.mutateAsync({name});
-      // Navigate to the new workspace's first project or configs
-      router.push(`/app/projects/${projectId}`);
+      console.log('projectId', projectId);
+      await refreshAppLayout();
+      // Navigate to the new workspace's first project configs
+      router.push(`/app/projects/${projectId}/configs`);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create workspace');
     } finally {

@@ -1,5 +1,8 @@
 import assert from 'assert';
+import {DefaultDateProvider} from '../date-provider';
 import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
+import {ConfigStore} from '../stores/config-store';
+import type {ConfigVariantStore} from '../stores/config-variant-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import {createProjectId, Project, ProjectStore} from '../stores/project-store';
 import type {ProjectUserStore} from '../stores/project-user-store';
@@ -8,7 +11,8 @@ import {createWorkspaceId, Workspace, WorkspaceStore} from '../stores/workspace-
 import type {TransactionalUseCase} from '../use-case';
 import type {UserStore} from '../user-store';
 import {createUuidV7} from '../uuid';
-import type {NormalizedEmail} from '../zod';
+import {type NormalizedEmail} from '../zod';
+import {createExampleConfigs} from './add-example-configs-use-case';
 
 export interface CreateWorkspaceRequest {
   currentUserEmail: NormalizedEmail;
@@ -38,9 +42,12 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
       projectStore: tx.projects,
       projectUserStore: tx.projectUsers,
       projectEnvironmentStore: tx.projectEnvironments,
+      configs: tx.configs,
+      configVariants: tx.configVariants,
       users: tx.users,
       auditLogs: tx.auditLogs,
       now,
+      exampleProject: false,
     });
     return {workspaceId: workspace.id, projectId: project.id};
   };
@@ -56,7 +63,10 @@ export async function createWorkspace(params: {
   projectEnvironmentStore: ProjectEnvironmentStore;
   users: UserStore;
   auditLogs: AuditLogStore;
+  configs: ConfigStore;
+  configVariants: ConfigVariantStore;
   now: Date;
+  exampleProject: boolean;
 }) {
   const {
     currentUserEmail,
@@ -67,8 +77,11 @@ export async function createWorkspace(params: {
     projectUserStore,
     projectEnvironmentStore,
     auditLogs,
+    configs,
+    configVariants,
     now,
     users,
+    exampleProject,
   } = params;
 
   const workspace: Workspace = {
@@ -98,7 +111,7 @@ export async function createWorkspace(params: {
     allowSelfApprovals: false,
     createdAt: new Date(),
     updatedAt: new Date(),
-    isExample: false,
+    isExample: true,
   };
   await projectStore.create(project);
   await projectUserStore.create([
@@ -110,21 +123,23 @@ export async function createWorkspace(params: {
       updatedAt: new Date(),
     },
   ]);
+  const productionId = createUuidV7();
   await projectEnvironmentStore.create({
     projectId: project.id,
     name: 'Production',
     order: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
-    id: createUuidV7(),
+    id: productionId,
   });
+  const developmentId = createUuidV7();
   await projectEnvironmentStore.create({
     projectId: project.id,
     name: 'Development',
     order: 2,
     createdAt: new Date(),
     updatedAt: new Date(),
-    id: createUuidV7(),
+    id: developmentId,
   });
 
   const currentUser = await users.getByEmail(currentUserEmail);
@@ -144,6 +159,18 @@ export async function createWorkspace(params: {
       },
     },
   });
+
+  if (exampleProject) {
+    await createExampleConfigs({
+      projectId: project.id,
+      configs: configs,
+      configVariants: configVariants,
+      projectEnvironments: projectEnvironmentStore,
+      dateProvider: new DefaultDateProvider(),
+      users: users,
+      currentUser: currentUser,
+    });
+  }
 
   return {workspace, project};
 }

@@ -129,7 +129,7 @@ export class ConfigStore {
     }));
   }
 
-  async getAll(params: {
+  async getProjectConfigs(params: {
     currentUserEmail: NormalizedEmail;
     projectId: string;
   }): Promise<ConfigInfo[]> {
@@ -271,8 +271,6 @@ export class ConfigStore {
       .where('c.project_id', '=', params.projectId)
       .orderBy('c.name')
       .execute();
-
-    console.log(rows);
 
     return rows.map(row => {
       if (row.use_default_schema !== false) {

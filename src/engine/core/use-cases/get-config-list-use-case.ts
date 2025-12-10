@@ -30,7 +30,7 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
 
     return {
       configs: await tx.configs
-        .getAll({
+        .getProjectConfigs({
           currentUserEmail: req.currentUserEmail,
           projectId: req.projectId,
         })

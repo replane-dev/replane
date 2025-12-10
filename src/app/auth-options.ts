@@ -1,8 +1,12 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {DefaultDateProvider} from '@/engine/core/date-provider';
 import type {DB} from '@/engine/core/db';
+import {EventHubPublisher} from '@/engine/core/event-hub';
 import {createLogger, type Logger} from '@/engine/core/logger';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {AuditLogStore} from '@/engine/core/stores/audit-log-store';
+import {ConfigStore} from '@/engine/core/stores/config-store';
+import {ConfigVariantStore} from '@/engine/core/stores/config-variant-store';
 import {ProjectEnvironmentStore} from '@/engine/core/stores/project-environment-store';
 import {ProjectStore} from '@/engine/core/stores/project-store';
 import {ProjectUserStore} from '@/engine/core/stores/project-user-store';
@@ -139,7 +143,11 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
       const projectStore = new ProjectStore(tx);
       const projectUserStore = new ProjectUserStore(tx);
       const projectEnvironmentStore = new ProjectEnvironmentStore(tx);
-
+      const configs = new ConfigStore(
+        tx,
+        new EventHubPublisher(tx, logger, new DefaultDateProvider()),
+      );
+      const configVariants = new ConfigVariantStore(tx);
       await createWorkspace({
         currentUserEmail: normalizeEmail(user.email ?? 'unknown@replane.dev'),
         name: 'Personal',
@@ -151,6 +159,9 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
         users: new UserStore(tx),
         auditLogs: new AuditLogStore(tx),
         now: new Date(),
+        configs,
+        configVariants,
+        exampleProject: true,
       });
 
       // Auto-add new users to workspaces that have auto_add_new_users enabled

@@ -946,6 +946,22 @@ export const appRouter = createTRPCRouter({
       });
       return {proposals};
     }),
+  addExampleConfigs: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const result = await opts.ctx.engine.useCases.addExampleConfigs(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
+        currentUserEmail: opts.ctx.currentUserEmail,
+      });
+      return result;
+    }),
 });
 
 export type AppRouter = typeof appRouter;
