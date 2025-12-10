@@ -11,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {Skeleton} from '@/components/ui/skeleton';
 import {useTRPC} from '@/trpc/client';
-import {useSuspenseQuery} from '@tanstack/react-query';
-import {useState} from 'react';
+import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
+import {useEffect, useRef, useState} from 'react';
 import {toast} from 'sonner';
 
 interface SdkIntegrationGuideProps {
@@ -42,13 +43,30 @@ export function SdkIntegrationGuide({
 
   const [environmentId, setEnvironmentId] = useState(initialEnvironmentId ?? defaultEnvironment.id);
 
+  // Track pending environment name for toast after fetch completes
+  const pendingEnvNameRef = useRef<string | null>(null);
+
   // Fetch generated types for the project and environment
-  const {data} = useSuspenseQuery(
+  // Using useQuery instead of useSuspenseQuery to prevent unmounting Monaco editors
+  // when the environment changes (which would dispose the editor and cause errors)
+  const {
+    data: typesData,
+    isLoading: isTypesLoading,
+    isFetching: isTypesFetching,
+  } = useQuery(
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId,
     }),
   );
+
+  // Show toast when fetch completes after environment change
+  useEffect(() => {
+    if (!isTypesFetching && pendingEnvNameRef.current) {
+      toast.success(`Switched to ${pendingEnvNameRef.current} environment`);
+      pendingEnvNameRef.current = null;
+    }
+  }, [isTypesFetching]);
 
   const handleCopy = async (code: string, snippetId: string) => {
     try {
@@ -70,8 +88,9 @@ export function SdkIntegrationGuide({
 
   const installSnippet = `npm install replane-sdk`;
 
-  const defineTypesSnippet = `${data.types}`;
+  const defineTypesSnippet = typesData?.types ?? '';
 
+  const exampleConfigName = typesData?.exampleConfigName ?? 'your-config';
   const usageSnippet = `import { createReplaneClient } from 'replane-sdk';
 import { type Configs } from './types';
 
@@ -82,10 +101,10 @@ const replane = await createReplaneClient<Configs>({
 });
 
 // Get config value with full type safety
-const config = replane.getConfig('${data.exampleConfigName}');
+const config = replane.getConfig('${exampleConfigName}');
 
 // Use context for overrides (see https://replane.dev/docs/guides/override-rules)
-const userConfig = replane.getConfig('${data.exampleConfigName}', {
+const userConfig = replane.getConfig('${exampleConfigName}', {
     context: {
         userId: 'user-123',
         country: 'US',
@@ -108,7 +127,16 @@ replane.close();`;
           <Label htmlFor="sdk-environment-select" className="text-sm font-medium">
             Environment
           </Label>
-          <Select value={environmentId} onValueChange={setEnvironmentId}>
+          <Select
+            value={environmentId}
+            onValueChange={id => {
+              const env = environmentsData.environments.find(e => e.id === id);
+              if (env) {
+                pendingEnvNameRef.current = env.name;
+              }
+              setEnvironmentId(id);
+            }}
+          >
             <SelectTrigger id="sdk-environment-select">
               <SelectValue placeholder="Select environment" />
             </SelectTrigger>
@@ -151,11 +179,16 @@ replane.close();`;
             size="sm"
             onClick={() => handleCopy(defineTypesSnippet, 'generated')}
             className="h-7 text-xs"
+            disabled={isTypesLoading || !typesData}
           >
             Copy
           </Button>
         </div>
-        <CodeSnippet code={defineTypesSnippet} language="typescript" />
+        {isTypesLoading || !typesData ? (
+          <Skeleton className="h-48 w-full rounded-lg" />
+        ) : (
+          <CodeSnippet code={defineTypesSnippet} language="typescript" />
+        )}
         <p className="text-xs text-muted-foreground">
           This is the generated code for the selected environment. It includes the types for the
           configs and the client. You can use this code to integrate the Replane SDK into your
@@ -173,11 +206,16 @@ replane.close();`;
             size="sm"
             onClick={() => handleCopy(usageSnippet, 'basic')}
             className="h-7 text-xs"
+            disabled={isTypesLoading || !typesData}
           >
             {copiedSnippet === 'basic' ? 'Copied!' : 'Copy'}
           </Button>
         </div>
-        <CodeSnippet tabSize={4} code={usageSnippet} language="typescript" />
+        {isTypesLoading || !typesData ? (
+          <Skeleton className="h-64 w-full rounded-lg" />
+        ) : (
+          <CodeSnippet tabSize={4} code={usageSnippet} language="typescript" />
+        )}
         {!sdkKey && (
           <p className="text-xs text-muted-foreground italic">
             Replace <code className="px-1 py-0.5 bg-muted rounded">your-project-sdk-key-here</code>{' '}

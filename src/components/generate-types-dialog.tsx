@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {Skeleton} from '@/components/ui/skeleton';
 import {useTRPC} from '@/trpc/client';
-import {useSuspenseQuery} from '@tanstack/react-query';
-import {Suspense, useState} from 'react';
+import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
+import {Suspense, useEffect, useRef, useState} from 'react';
 import {toast} from 'sonner';
 
 interface GenerateTypesDialogProps {
@@ -63,17 +64,30 @@ function GenerateTypesContent() {
 
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(defaultEnvironment.id);
 
+  // Track pending environment name for toast after fetch completes
+  const pendingEnvNameRef = useRef<string | null>(null);
+
   // Fetch generated types for selected environment
-  const {data} = useSuspenseQuery(
+  // Using useQuery instead of useSuspenseQuery to prevent unmounting the Monaco editor
+  // when the environment changes (which would dispose the editor and cause errors)
+  const {data, isLoading, isFetching} = useQuery(
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId: selectedEnvironmentId,
     }),
   );
 
+  // Show toast when fetch completes after environment change
+  useEffect(() => {
+    if (!isFetching && pendingEnvNameRef.current) {
+      toast.success(`Switched to ${pendingEnvNameRef.current} environment`);
+      pendingEnvNameRef.current = null;
+    }
+  }, [isFetching]);
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(data.types);
+      await navigator.clipboard.writeText(data?.types ?? '');
       toast.success('Copied to clipboard');
     } catch (e) {
       console.error(e);
@@ -89,7 +103,16 @@ function GenerateTypesContent() {
         <Label htmlFor="environment-select" className="text-sm font-medium">
           Environment
         </Label>
-        <Select value={selectedEnvironmentId} onValueChange={setSelectedEnvironmentId}>
+        <Select
+          value={selectedEnvironmentId}
+          onValueChange={id => {
+            const env = environmentsData.environments.find(e => e.id === id);
+            if (env) {
+              pendingEnvNameRef.current = env.name;
+            }
+            setSelectedEnvironmentId(id);
+          }}
+        >
           <SelectTrigger id="environment-select">
             <SelectValue placeholder="Select environment" />
           </SelectTrigger>
@@ -107,11 +130,21 @@ function GenerateTypesContent() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">Generated Types</Label>
-          <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            className="h-7 text-xs"
+            disabled={isLoading || !data}
+          >
             Copy
           </Button>
         </div>
-        <CodeSnippet code={data.types} language="typescript" />
+        {isLoading || !data ? (
+          <Skeleton className="h-48 w-full rounded-lg" />
+        ) : (
+          <CodeSnippet code={data.types} language="typescript" />
+        )}
       </div>
     </div>
   );
