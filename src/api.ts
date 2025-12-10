@@ -8,7 +8,7 @@ import {cors} from 'hono/cors';
 import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
 import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
-import {toEagerAsyncIterable} from './engine/core/utils';
+import {assertNever, toEagerAsyncIterable} from './engine/core/utils';
 
 async function getEngine() {
   return getEngineSingleton();
@@ -339,20 +339,18 @@ honoApi.openapi(
     const onAbort = () => abortController.abort();
     c.req.raw.signal.addEventListener('abort', onAbort);
 
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream<Uint8Array>({
+    const stream = new ReadableStream<SseEvent>({
       async start(controller) {
         let errored = false;
         // heartbeat to keep proxies from closing the connection due to inactivity
         const heartbeat = setInterval(() => {
           try {
-            controller.enqueue(encoder.encode(`: ping\n\n`));
+            controller.enqueue({type: 'ping'});
           } catch {}
         }, 15000);
 
         try {
-          controller.enqueue(encoder.encode(`: connected\n\n`));
+          controller.enqueue({type: 'connected'});
 
           // eager async iterable to subscribe to events immediately
           // required for client not to miss any updates to configs
@@ -373,12 +371,12 @@ honoApi.openapi(
               type: 'config_list',
               configs,
             } satisfies ConfigListEventResponse);
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            controller.enqueue({type: 'data', data});
           }
 
           for await (const event of events) {
             const data = JSON.stringify(event satisfies ProjectEventResponse);
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            controller.enqueue({type: 'data', data});
           }
         } catch (err) {
           errored = true;
@@ -400,7 +398,7 @@ honoApi.openapi(
         abortController.abort();
         c.req.raw.signal.removeEventListener('abort', onAbort);
       },
-    });
+    }).pipeThrough(new SseEncoderStream());
 
     return new Response(stream, {headers});
   },
@@ -415,3 +413,25 @@ honoApi.get('/openapi.json', c =>
     }),
   ),
 );
+
+type SseEvent = {type: 'data'; data: string} | {type: 'ping'} | {type: 'connected'};
+
+class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
+  constructor() {
+    const encoder = new TextEncoder();
+
+    super({
+      transform(chunk, controller) {
+        if (chunk.type === 'data') {
+          controller.enqueue(encoder.encode(`data: ${chunk.data}\n\n`));
+        } else if (chunk.type === 'ping') {
+          controller.enqueue(encoder.encode(': ping\n\n'));
+        } else if (chunk.type === 'connected') {
+          controller.enqueue(encoder.encode(': connected\n\n'));
+        } else {
+          assertNever(chunk, 'Unknown SSE event type');
+        }
+      },
+    });
+  }
+}
