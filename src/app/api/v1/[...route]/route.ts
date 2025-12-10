@@ -47,8 +47,6 @@ async function handleRequest(req: NextRequest): Promise<NextResponse> {
     body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.blob(),
   });
 
-  console.log('honoRequest', honoRequest);
-
   const response = await sdkApi.fetch(honoRequest);
   return new NextResponse(response.body, {
     headers: response.headers,
