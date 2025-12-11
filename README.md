@@ -129,8 +129,6 @@ Configure at least one OAuth provider. You can enable multiple providers simulta
 
 ### Optional
 
-- `ORGANIZATION_NAME` – display name shown in the UI (e.g. sidebar project switcher). If not set, the label is omitted.
-- `ALLOW_SELF_APPROVALS` – if set to `true`, allows proposers to approve their own proposals. By default (false), self-approvals are not allowed.
 - `DATABASE_SSL_CA` – custom SSL/TLS certificate authority (CA) for PostgreSQL connections. Use this when connecting to databases that require custom SSL certificates.
 
 ## JavaScript SDK
