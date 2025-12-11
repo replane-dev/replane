@@ -416,7 +416,6 @@ type ReplicationStreamRecord = z.infer<typeof ReplicationStreamRecord>;
 
 const StartReplicationStreamBody = z.object({
   currentConfigs: z.array(ConfigDto),
-  fallbacks: z.array(ConfigDto),
   requiredConfigs: z.array(z.string()),
 });
 
@@ -496,7 +495,6 @@ sdkApi.openapi(
           const {rollingState, configs} = createSdkState({
             serverConfigs: serverConfigs,
             currentConfigs: clientState.currentConfigs,
-            fallbacks: clientState.fallbacks,
             requiredConfigs: clientState.requiredConfigs,
           });
           controller.enqueue({

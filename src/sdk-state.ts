@@ -41,10 +41,6 @@ export function createSdkState(
     addConfig(config);
   }
 
-  for (const config of options.fallbacks) {
-    addConfig(config);
-  }
-
   const missingConfigs = new Set<string>();
   for (const configName of options.requiredConfigs) {
     if (!configs.has(configName)) {
