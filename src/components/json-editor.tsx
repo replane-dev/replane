@@ -213,7 +213,7 @@ function refreshJsonDiagnostics(monaco: typeof Monaco) {
 
   // Configure Monaco's JSON language service
   // By predefining all meta-schemas, we avoid remote requests for security and performance
-  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+  monaco.json.jsonDefaults.setDiagnosticsOptions({
     validate: true,
     allowComments: false,
     enableSchemaRequest: true,
@@ -265,7 +265,7 @@ export function JsonEditor({
   const path = React.useMemo(() => `inmemory://model/${id ?? reactId}.json`, [id, reactId]);
   const schemaUri = React.useMemo(() => `inmemory://schema/${id ?? reactId}.json`, [id, reactId]);
 
-  const monacoRef = React.useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = React.useRef<Parameters<OnMount>[0] | null>(null);
   const monacoNsRef = React.useRef<typeof Monaco | null>(null);
   const registeredRef = React.useRef(false);
 
@@ -308,7 +308,7 @@ export function JsonEditor({
         refreshJsonDiagnostics(monaco);
       }
     };
-  }, [schema, path, id, reactId]);
+  }, [schema, path, id, reactId, schemaUri]);
 
   return (
     <div className="border rounded-md relative">
