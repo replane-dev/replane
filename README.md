@@ -168,7 +168,7 @@ const client = await createReplaneClient<Configs>({
 
 // Get config value (receives realtime updates via SSE in background)
 try {
-  const featureFlag = client.getConfig('new-onboarding'); // TypeScript knows: boolean
+  const featureFlag = client.get('new-onboarding'); // TypeScript knows: boolean
   console.log('Feature flag:', featureFlag);
 } catch (error) {
   // Handle error (e.g., config not found)
@@ -176,11 +176,11 @@ try {
 }
 
 // Typed config - no need to specify type again
-const passwordRequirements = client.getConfig('password-requirements');
+const passwordRequirements = client.get('password-requirements');
 console.log('Min length:', passwordRequirements.minLength);
 
 // With context for override evaluation
-const billingEnabled = client.getConfig('billing-enabled', {
+const billingEnabled = client.get('billing-enabled', {
   context: {
     userId: 'user-123',
     plan: 'premium',

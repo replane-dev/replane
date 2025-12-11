@@ -101,10 +101,10 @@ const replane = await createReplaneClient<Configs>({
 });
 
 // Get config value with full type safety
-const config = replane.getConfig('${exampleConfigName}');
+const config = replane.get('${exampleConfigName}');
 
 // Use context for overrides (see https://replane.dev/docs/guides/override-rules)
-const userConfig = replane.getConfig('${exampleConfigName}', {
+const userConfig = replane.get('${exampleConfigName}', {
     context: {
         userId: 'user-123',
         country: 'US',
@@ -112,7 +112,7 @@ const userConfig = replane.getConfig('${exampleConfigName}', {
 });
 
 // Configs are automatically updated in realtime via SSE
-// No need to refetch or reload - just call getConfig() again
+// No need to refetch or reload - just call get() again
 
 // Clean up when your application shuts down
 replane.close();`;
