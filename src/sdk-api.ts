@@ -392,7 +392,7 @@ sdkApi.openapi(
 const ReplicationStreamConfigChangeRecord = z
   .object({
     type: z.literal('config_change'),
-    configName: ConfigName(),
+    name: ConfigName(),
     overrides: z.array(RenderedOverrideSchema),
     version: z.number(),
     value: z.unknown(),
@@ -518,7 +518,7 @@ sdkApi.openapi(
                 type: 'data',
                 data: JSON.stringify({
                   type: 'config_change',
-                  configName: event.configName,
+                  name: event.configName,
                   overrides: event.overrides,
                   version: MAX_CONFIG_VERSION,
                   value: event.value,
@@ -532,7 +532,7 @@ sdkApi.openapi(
                 type: 'data',
                 data: JSON.stringify({
                   type: 'config_change',
-                  configName: event.configName,
+                  name: event.configName,
                   overrides: event.overrides,
                   version: event.version,
                   value: event.value,
