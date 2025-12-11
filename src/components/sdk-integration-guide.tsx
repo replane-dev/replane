@@ -86,12 +86,12 @@ export function SdkIntegrationGuide({
   const baseUrl =
     typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
 
-  const installSnippet = `npm install replane-sdk`;
+  const installSnippet = `npm install @replanejs/sdk`;
 
   const defineTypesSnippet = typesData?.types ?? '';
 
   const exampleConfigName = typesData?.exampleConfigName ?? 'your-config';
-  const usageSnippet = `import { createReplaneClient } from 'replane-sdk';
+  const usageSnippet = `import { createReplaneClient } from '@replanejs/sdk';
 import { type Configs } from './types';
 
 // Create client (fetches project's configs during initialization)

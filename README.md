@@ -139,17 +139,17 @@ Install:
 
 ```bash
 # npm
-npm i replane-sdk
+npm i @replanejs/sdk
 # pnpm
-pnpm add replane-sdk
+pnpm add @replanejs/sdk
 # yarn
-yarn add replane-sdk
+yarn add @replanejs/sdk
 ```
 
 Basic usage:
 
 ```ts
-import {createReplaneClient, createInMemoryReplaneClient} from 'replane-sdk';
+import {createReplaneClient, createInMemoryReplaneClient} from '@replanejs/sdk';
 
 interface PasswordRequirements {
   minLength: number;
