@@ -13,6 +13,7 @@ import {
 import {Separator} from '@/components/ui/separator';
 import {Sheet, SheetContent, SheetDescription, SheetTitle} from '@/components/ui/sheet';
 import {SidebarTrigger} from '@/components/ui/sidebar';
+import {useUnsavedChangesGuard} from '@/hooks/use-unsaved-changes-guard';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {Fragment, Suspense, useCallback} from 'react';
 import {useProjectId} from '../utils';
@@ -71,12 +72,17 @@ export default function SdkKeysPage() {
     updateUrl('new');
   }, [updateUrl]);
 
-  const handleSheetClose = useCallback(() => {
+  const closeSheet = useCallback(() => {
     updateUrl('closed');
   }, [updateUrl]);
 
+  const {handleOpenChange, handleDirtyChange, ConfirmDialog} = useUnsavedChangesGuard({
+    isOpen: sheetOpen,
+    onClose: closeSheet,
+  });
+
   const handleSdkKeyDeleted = () => {
-    handleSheetClose();
+    handleOpenChange(false);
     router.refresh();
   };
 
@@ -105,7 +111,7 @@ export default function SdkKeysPage() {
         </div>
       </div>
 
-      <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
+      <Sheet open={sheetOpen} onOpenChange={handleOpenChange}>
         <SheetContent
           side="right"
           className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl p-0"
@@ -124,20 +130,24 @@ export default function SdkKeysPage() {
               {sheetMode === 'new' ? (
                 <NewSdkKeyView
                   projectId={projectId}
-                  onSuccess={handleSheetClose}
-                  onCancel={handleSheetClose}
+                  onSuccess={() => handleOpenChange(false)}
+                  onCancel={() => handleOpenChange(false)}
+                  onDirtyChange={handleDirtyChange}
                 />
               ) : selectedSdkKeyId ? (
                 <SdkKeyDetailView
                   projectId={projectId}
                   id={selectedSdkKeyId}
                   onDelete={handleSdkKeyDeleted}
+                  onDirtyChange={handleDirtyChange}
                 />
               ) : null}
             </div>
           </Suspense>
         </SheetContent>
       </Sheet>
+
+      {ConfirmDialog}
     </Fragment>
   );
 }

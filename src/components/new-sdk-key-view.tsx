@@ -15,16 +15,17 @@ import {
 import {Textarea} from '@/components/ui/textarea';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {useState} from 'react';
+import React, {useState} from 'react';
 import {toast} from 'sonner';
 
 export interface NewSdkKeyViewProps {
   projectId: string;
   onSuccess?: (id: string) => void;
   onCancel?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function NewSdkKeyView({projectId, onSuccess, onCancel}: NewSdkKeyViewProps) {
+export function NewSdkKeyView({projectId, onSuccess, onCancel, onDirtyChange}: NewSdkKeyViewProps) {
   const trpc = useTRPC();
   const createMutation = useMutation(trpc.createSdkKey.mutationOptions());
 
@@ -39,6 +40,14 @@ export function NewSdkKeyView({projectId, onSuccess, onCancel}: NewSdkKeyViewPro
     return prodEnv?.id ?? environments[0]?.id ?? '';
   });
   const [createdToken, setCreatedToken] = useState<string | null>(null);
+
+  // Track dirty state - form is dirty if name or description has been changed
+  const isDirty = name.trim() !== '' || description.trim() !== '';
+  React.useEffect(() => {
+    if (onDirtyChange && !createdToken) {
+      onDirtyChange(isDirty);
+    }
+  }, [onDirtyChange, isDirty, createdToken]);
 
   if (environments.length === 0) {
     return (

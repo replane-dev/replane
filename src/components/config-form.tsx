@@ -96,6 +96,7 @@ export interface ConfigFormProps {
   onValuesChange?: (values: {value: string; overrides: Override[]}) => void;
   onTestOverrides?: () => void;
   projectUsers: Array<{email: string; role: 'admin' | 'maintainer'}>;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export function ConfigForm(props: ConfigFormProps) {
@@ -123,6 +124,7 @@ export function ConfigForm(props: ConfigFormProps) {
     onValuesChange,
     onTestOverrides,
     projectUsers,
+    onDirtyChange,
   } = props;
 
   const defaultName = currentName ?? '';
@@ -467,6 +469,13 @@ export function ConfigForm(props: ConfigFormProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedDefaultVariant?.value, watchedDefaultVariant?.overrides]);
+
+  // Notify parent when form dirty state changes
+  React.useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(form.formState.isDirty);
+    }
+  }, [onDirtyChange, form.formState.isDirty]);
 
   // Reactive schema for Value editor
   const enabled = watchedDefaultVariant?.schemaEnabled ?? false;

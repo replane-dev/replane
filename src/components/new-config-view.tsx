@@ -12,9 +12,10 @@ export interface NewConfigViewProps {
   projectId: string;
   onSuccess?: (configName: string) => void;
   onCancel?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function NewConfigView({projectId, onSuccess, onCancel}: NewConfigViewProps) {
+export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: NewConfigViewProps) {
   const router = useRouter();
   const trpc = useTRPC();
   const createConfig = useMutation(trpc.createConfig.mutationOptions());
@@ -110,6 +111,7 @@ export function NewConfigView({projectId, onSuccess, onCancel}: NewConfigViewPro
       onCancel={handleCancel}
       onSubmit={handleSubmit}
       projectUsers={projectUsers}
+      onDirtyChange={onDirtyChange}
     />
   );
 }

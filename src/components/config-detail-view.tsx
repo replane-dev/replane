@@ -40,6 +40,7 @@ export interface ConfigDetailViewProps {
   configName: string;
   onDelete?: () => void;
   onProposalCreated?: (proposalId: string) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export function ConfigDetailView({
@@ -47,6 +48,7 @@ export function ConfigDetailView({
   configName,
   onDelete,
   onProposalCreated,
+  onDirtyChange,
 }: ConfigDetailViewProps) {
   const router = useRouter();
   const trpc = useTRPC();
@@ -335,6 +337,7 @@ export function ConfigDetailView({
           setShowOverrideTester(true);
         }}
         projectUsers={pageData.projectUsers}
+        onDirtyChange={onDirtyChange}
       />
 
       {showOverrideTester && (

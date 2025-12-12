@@ -15,9 +15,10 @@ export interface SdkKeyDetailViewProps {
   id: string;
   projectId: string;
   onDelete?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProps) {
+export function SdkKeyDetailView({id, projectId, onDelete, onDirtyChange}: SdkKeyDetailViewProps) {
   // Validate UUID format before making any requests
   if (!isValidUuid(id)) {
     notFound();
