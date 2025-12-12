@@ -19,7 +19,6 @@ export interface AuditLogPayloadConfig {
   name: string;
   projectId: string;
   description: string;
-  creatorId: number;
   createdAt: Date;
   version: number;
 }
@@ -300,6 +299,13 @@ export interface WorkspaceMemberRoleChangedAuditLogPayload extends BaseAuditLogP
   };
 }
 
+export interface UserAccountDeletedAuditLogPayload extends BaseAuditLogPayload<'user_account_deleted'> {
+  user: {
+    id: number;
+    email: string;
+  };
+}
+
 export type AuditLogPayload =
   | ConfigCreatedAuditLogPayload
   | ConfigUpdatedAuditLogPayload
@@ -327,7 +333,8 @@ export type AuditLogPayload =
   | WorkspaceDeletedAuditLogPayload
   | WorkspaceMemberAddedAuditLogPayload
   | WorkspaceMemberRemovedAuditLogPayload
-  | WorkspaceMemberRoleChangedAuditLogPayload;
+  | WorkspaceMemberRoleChangedAuditLogPayload
+  | UserAccountDeletedAuditLogPayload;
 
 export interface AuditLog {
   id: AuditLogId;

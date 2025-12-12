@@ -5,6 +5,7 @@ import * as React from 'react';
 import {SettingsDialog} from './settings-dialog';
 
 export type SettingsSection =
+  | 'account-general'
   | 'account-preferences'
   | 'org-general'
   | 'org-members'

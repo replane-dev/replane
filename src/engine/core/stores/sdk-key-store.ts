@@ -6,12 +6,10 @@ import type {AppHubEvents} from '../replica';
 
 export interface SdkKeyRow {
   id: string;
-  creatorId: number;
   createdAt: Date;
   keyHash: string;
   name: string;
   description: string;
-  creatorEmail?: string | null;
   projectId: string;
   environmentId: string;
   environmentName: string;
@@ -26,16 +24,13 @@ export class SdkKeyStore {
   async list(params: {projectId: string; environmentId?: string}) {
     let query = this.db
       .selectFrom('sdk_keys as t')
-      .leftJoin('users as u', 'u.id', 't.creator_id')
       .leftJoin('project_environments as pe', 'pe.id', 't.environment_id')
       .select([
         't.id as id',
-        't.creator_id as creator_id',
         't.created_at as created_at',
         't.key_hash as key_hash',
         't.name as name',
         't.description as description',
-        'u.email as creator_email',
         't.environment_id as environment_id',
         'pe.name as environment_name',
       ])
@@ -48,12 +43,10 @@ export class SdkKeyStore {
 
     return rows.map(r => ({
       id: r.id,
-      creatorId: r.creator_id!,
       createdAt: r.created_at,
       keyHash: r.key_hash,
       name: r.name,
       description: r.description,
-      creatorEmail: r.creator_email ?? null,
       environmentId: r.environment_id,
       environmentName: r.environment_name!,
     }));
@@ -63,7 +56,6 @@ export class SdkKeyStore {
     ctx: Context,
     key: {
       id: string;
-      creatorId: number;
       createdAt: Date;
       keyHash: string;
       name: string;
@@ -76,7 +68,6 @@ export class SdkKeyStore {
       .insertInto('sdk_keys')
       .values({
         id: key.id,
-        creator_id: key.creatorId,
         created_at: key.createdAt,
         key_hash: key.keyHash,
         name: key.name,
@@ -94,16 +85,13 @@ export class SdkKeyStore {
   async getById(params: {sdkKeyId: string; projectId: string}) {
     const row = await this.db
       .selectFrom('sdk_keys as t')
-      .leftJoin('users as u', 'u.id', 't.creator_id')
       .leftJoin('project_environments as pe', 'pe.id', 't.environment_id')
       .select([
         't.id as id',
-        't.creator_id as creator_id',
         't.created_at as created_at',
         't.key_hash as key_hash',
         't.name as name',
         't.description as description',
-        'u.email as creator_email',
         't.project_id as project_id',
         't.environment_id as environment_id',
         'pe.name as environment_name',
@@ -114,12 +102,10 @@ export class SdkKeyStore {
     if (!row) return null;
     return {
       id: row.id,
-      creatorId: row.creator_id!,
       createdAt: row.created_at,
       keyHash: row.key_hash,
       name: row.name,
       description: row.description,
-      creatorEmail: row.creator_email ?? null,
       projectId: row.project_id,
       environmentId: row.environment_id,
       environmentName: row.environment_name!,

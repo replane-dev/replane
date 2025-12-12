@@ -83,7 +83,6 @@ export interface ConfigProposalVariants {
 
 export interface Configs {
   created_at: Timestamp;
-  creator_id: number;
   description: string;
   id: string;
   name: string;
@@ -160,7 +159,6 @@ export interface Projects {
   created_at: Timestamp;
   description: string;
   id: string;
-  is_example: Generated<boolean>;
   name: string;
   require_proposals: boolean;
   updated_at: Timestamp;
@@ -177,7 +175,6 @@ export interface ProjectUsers {
 
 export interface SdkKeys {
   created_at: Timestamp;
-  creator_id: number;
   description: string;
   environment_id: string;
   id: string;

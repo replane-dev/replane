@@ -29,11 +29,11 @@ export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    // Only allow creator to delete for now
     const user = await tx.users.getByEmail(req.currentUserEmail);
-    if (!user || user.id !== sdkKey.creatorId) {
-      throw new Error('Not allowed to delete this SDK key');
+    if (!user) {
+      throw new BadRequestError('User not found');
     }
+
     await tx.sdkKeys.deleteById(ctx, sdkKey.id);
     await tx.auditLogs.create({
       id: createAuditLogId(),

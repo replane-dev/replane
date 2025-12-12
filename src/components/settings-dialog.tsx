@@ -16,6 +16,7 @@ import {Skeleton} from '@/components/ui/skeleton';
 import {Globe, Settings as SettingsIcon, User, Users} from 'lucide-react';
 import * as React from 'react';
 import {Suspense} from 'react';
+import {AccountGeneralSettings} from './settings/account-general-settings';
 import {AccountPreferencesSettings} from './settings/account-preferences-settings';
 import {ProjectEnvironmentsSettings} from './settings/project-environments-settings';
 import {ProjectGeneralSettings} from './settings/project-general-settings';
@@ -24,6 +25,7 @@ import {WorkspaceGeneralSettings} from './settings/workspace-general-settings';
 import {WorkspaceMembersSettings} from './settings/workspace-members-settings';
 
 type SettingsSection =
+  | 'account-general'
   | 'account-preferences'
   | 'org-general'
   | 'org-members'
@@ -58,7 +60,10 @@ export function SettingsDialog({
   const navSections = [
     {
       label: 'Account',
-      items: [{name: 'Preferences', icon: User, section: 'account-preferences' as SettingsSection}],
+      items: [
+        {name: 'General', icon: SettingsIcon, section: 'account-general' as SettingsSection},
+        {name: 'Preferences', icon: User, section: 'account-preferences' as SettingsSection},
+      ],
     },
     {
       label: 'Workspace',
@@ -79,6 +84,7 @@ export function SettingsDialog({
 
   const getSectionTitle = (section: SettingsSection): {title: string; breadcrumb: string[]} => {
     const map: Record<SettingsSection, {title: string; breadcrumb: string[]}> = {
+      'account-general': {title: 'Account', breadcrumb: ['Account', 'General']},
       'account-preferences': {title: 'Preferences', breadcrumb: ['Account', 'Preferences']},
       'org-general': {title: 'Workspace Settings', breadcrumb: ['Workspace', 'General']},
       'org-members': {title: 'Workspace Members', breadcrumb: ['Workspace', 'Members']},
@@ -127,6 +133,7 @@ export function SettingsDialog({
           <main className="flex h-[600px] flex-1 flex-col overflow-hidden py-4">
             <div className="flex flex-1 flex-col overflow-y-auto p-6">
               <Suspense fallback={<SettingsLoadingFallback />}>
+                {activeSection === 'account-general' && <AccountGeneralSettings />}
                 {activeSection === 'account-preferences' && <AccountPreferencesSettings />}
                 {activeSection === 'org-general' && (
                   <WorkspaceGeneralSettings workspaceId={workspaceId} />

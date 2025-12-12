@@ -57,7 +57,6 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       allowSelfApprovals: req.allowSelfApprovals ?? false,
       createdAt: now,
       updatedAt: now,
-      isExample: false,
     });
 
     const production: ProjectEnvironment = {

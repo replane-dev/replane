@@ -31,7 +31,6 @@ describe('getSdkKeyList', () => {
     });
 
     expect(list.sdkKeys.map(k => k.name)).toEqual(['Second', 'First']);
-    expect(list.sdkKeys.every(k => k.creatorEmail === CURRENT_USER_EMAIL)).toBe(true);
   });
 
   it('updates list after deletion', async () => {

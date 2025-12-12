@@ -103,7 +103,6 @@ export async function createExampleConfigs(params: {
       description: config.description,
       createdAt: now,
       updatedAt: now,
-      creatorId: currentUser.id,
       version: 1,
     });
 

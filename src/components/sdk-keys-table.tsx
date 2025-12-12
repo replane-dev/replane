@@ -35,7 +35,6 @@ interface SdkKeyRow {
   name: string;
   description: string;
   createdAt: string | Date;
-  creatorEmail: string | null;
   environmentId: string;
   environmentName: string;
 }
@@ -134,15 +133,6 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
             </time>
           );
         },
-      },
-      {
-        accessorKey: 'creatorEmail',
-        header: 'Creator',
-        cell: ({row}) => (
-          <span className="truncate" title={String(row.getValue('creatorEmail') || '')}>
-            {row.getValue('creatorEmail') || '—'}
-          </span>
-        ),
       },
       {
         id: 'actions',

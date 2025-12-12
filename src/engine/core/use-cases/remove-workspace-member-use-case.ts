@@ -62,10 +62,10 @@ export function createRemoveWorkspaceMemberUseCase(): TransactionalUseCase<
     const user = await tx.users.getByEmail(req.currentUserEmail);
     assert(user, 'Current user not found');
 
-    await tx.workspaceMembers.delete(req.workspaceId, req.memberEmail);
-    await tx.projectUsers.deleteUserFromWorkspaceProjects({
+    // Remove member from workspace and all its projects
+    await tx.workspaceMemberService.removeMemberFromWorkspace({
       workspaceId: req.workspaceId,
-      userEmail: normalizeEmail(req.memberEmail),
+      memberEmail: normalizeEmail(req.memberEmail),
     });
 
     await tx.auditLogs.create({

@@ -32,7 +32,6 @@ export function Project() {
     allowSelfApprovals: z.boolean(),
     createdAt: z.date(),
     updatedAt: z.date(),
-    isExample: z.boolean(),
   });
 }
 
@@ -47,7 +46,6 @@ export interface ProjectInfo {
   allowSelfApprovals: boolean;
   createdAt: Date;
   updatedAt: Date;
-  isExample: boolean;
   // role in the project if the current user is a member (admin | maintainer)
   myRole?: 'admin' | 'maintainer';
 }
@@ -85,7 +83,6 @@ export class ProjectStore {
         'projects.require_proposals',
         'projects.allow_self_approvals',
         'projects.updated_at',
-        'projects.is_example',
         'project_users.role as myRole',
       ]);
 
@@ -100,7 +97,6 @@ export class ProjectStore {
       allowSelfApprovals: p.allow_self_approvals,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
-      isExample: p.is_example,
       myRole: p.myRole ?? undefined,
     }));
   }
@@ -143,7 +139,6 @@ export class ProjectStore {
         'projects.require_proposals',
         'projects.allow_self_approvals',
         'projects.updated_at',
-        'projects.is_example',
         'project_users.role as myRole',
       ]);
 
@@ -224,6 +219,5 @@ function mapProject(project: Selectable<Projects>): Project {
     allowSelfApprovals: project.allow_self_approvals,
     createdAt: project.created_at,
     updatedAt: project.updated_at,
-    isExample: project.is_example,
   };
 }

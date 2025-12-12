@@ -156,7 +156,6 @@ export function createCreateConfigUseCase(
       description: req.description,
       createdAt: now,
       updatedAt: now,
-      creatorId: currentUser.id,
       version: 1,
     });
 
@@ -269,7 +268,6 @@ export function createCreateConfigUseCase(
           projectId: fullConfig.projectId,
           name: fullConfig.name,
           description: fullConfig.description,
-          creatorId: fullConfig.creatorId,
           createdAt: fullConfig.createdAt,
           version: fullConfig.version,
         },

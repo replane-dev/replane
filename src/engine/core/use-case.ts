@@ -16,6 +16,7 @@ import type {SdkKeyStore} from './stores/sdk-key-store';
 import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {WorkspaceStore} from './stores/workspace-store';
 import type {UserStore} from './user-store';
+import type {WorkspaceMemberService} from './workspace-member-service';
 import type {WorkspaceQueryService} from './workspace-query-service';
 import type {NormalizedEmail} from './zod';
 
@@ -55,6 +56,8 @@ export interface UseCaseTransaction {
   // Workspace stores
   workspaces: WorkspaceStore;
   workspaceMembers: WorkspaceMemberStore;
+  // Services
+  workspaceMemberService: WorkspaceMemberService;
   // Query services
   configQueryService: ConfigQueryService;
   projectQueryService: ProjectQueryService;

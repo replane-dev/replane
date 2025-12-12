@@ -30,7 +30,6 @@ export interface ProjectListItem {
   requireProposals: boolean;
   allowSelfApprovals: boolean;
   myRole?: 'admin' | 'maintainer';
-  isExample: boolean;
 }
 
 export interface ProjectUser {
@@ -87,7 +86,6 @@ export class ProjectQueryService {
       requireProposals: p.requireProposals,
       allowSelfApprovals: p.allowSelfApprovals,
       myRole: p.myRole,
-      isExample: p.isExample,
     }));
   }
 

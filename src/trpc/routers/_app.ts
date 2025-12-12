@@ -74,6 +74,17 @@ export const appRouter = createTRPCRouter({
       currentUserEmail: opts.ctx.currentUserEmail,
     });
   }),
+  deleteUserAccount: baseProcedure
+    .input(z.object({confirmEmail: z.string().email()}))
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.deleteUserAccount(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        confirmEmail: opts.input.confirmEmail,
+      });
+    }),
   getWorkspaceMembers: baseProcedure.input(z.object({workspaceId: Uuid()})).query(async opts => {
     if (!opts.ctx.currentUserEmail) {
       throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});

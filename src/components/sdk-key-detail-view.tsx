@@ -74,19 +74,6 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
               </div>
             </div>
 
-            {/* Creator */}
-            {sdkKey.creatorEmail && (
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-muted-foreground mb-0.5">Creator</div>
-                  <div className="text-sm font-medium break-all">{sdkKey.creatorEmail}</div>
-                </div>
-              </div>
-            )}
-
             {/* Key ID */}
             <div className="flex items-center gap-2.5 sm:col-span-2">
               <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
@@ -191,3 +178,4 @@ export function SdkKeyDetailView({id, projectId, onDelete}: SdkKeyDetailViewProp
     </div>
   );
 }
+

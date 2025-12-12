@@ -13,7 +13,6 @@ export interface GetSdkKeyResponse {
     createdAt: Date;
     name: string;
     description: string;
-    creatorEmail: string | null;
     environmentId: string;
     environmentName: string;
   } | null;
@@ -37,7 +36,6 @@ export function createGetSdkKeyUseCase(): TransactionalUseCase<
         createdAt: sdkKey.createdAt,
         name: sdkKey.name,
         description: sdkKey.description,
-        creatorEmail: sdkKey.creatorEmail ?? null,
         environmentId: sdkKey.environmentId,
         environmentName: sdkKey.environmentName,
       },

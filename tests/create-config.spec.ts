@@ -30,7 +30,6 @@ describe('createConfig', () => {
     expect(config).toBeDefined();
     expect(config?.config.name).toBe('new_config');
     expect(config?.config.description).toBe('A new config for testing');
-    expect(config?.config.creatorId).toBe(TEST_USER_ID);
     expect(config?.config.id).toBe(configId);
     expect(config?.config.version).toBe(1);
     expect(config?.config.projectId).toBe(fixture.projectId);

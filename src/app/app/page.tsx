@@ -4,20 +4,30 @@ import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
+import {toast} from 'sonner';
 
 export default function AppPage() {
   const trpc = useTRPC();
-  const projectsQuery = trpc.getProjectList.queryOptions();
-  const {data} = useSuspenseQuery({...projectsQuery});
+  // use app layout data, because it guarantees at least one project
+  const appLayoutDataQuery = trpc.getAppLayoutData.queryOptions();
+  const {
+    data: {projects},
+  } = useSuspenseQuery({...appLayoutDataQuery});
   const router = useRouter();
 
   React.useEffect(() => {
-    if (data.projects.length === 0) return; // should not happen, backend guarantees at least one project
+    if (projects.length === 0) {
+      // should not happen, backend guarantees at least one project
+      // show error
 
-    const projectId = data.projects.find(p => !p.isExample)?.id ?? data.projects[0]!.id;
+      toast.error('Something went wrong (no projects found), please contact support');
+      return;
+    }
+
+    const projectId = projects[0]!.id;
 
     router.replace(`/app/projects/${projectId}/configs`);
-  }, [data.projects, router]);
+  }, [projects, router]);
 
   return null;
 }

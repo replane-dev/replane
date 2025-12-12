@@ -53,7 +53,6 @@ export function createCreateSdkKeyUseCase(deps: {
 
     await tx.sdkKeys.create(ctx, {
       id: sdkKeyId,
-      creatorId: user.id,
       createdAt: now,
       keyHash: sdkKeyHash,
       projectId: req.projectId,

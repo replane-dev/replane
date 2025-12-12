@@ -71,7 +71,6 @@ describe('getConfig', () => {
     expect(config).toBeDefined();
     expect(config?.config.name).toBe('test-config');
     expect(config?.config.description).toBe('A test config');
-    expect(config?.config.creatorId).toBe(TEST_USER_ID);
     expect(config?.config.id).toBe(configId);
     expect(config?.config.version).toBe(1);
     expect(config?.config.projectId).toBe(fixture.projectId);

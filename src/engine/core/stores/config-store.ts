@@ -44,7 +44,6 @@ export function Config() {
     description: ConfigDescription(),
     createdAt: z.date(),
     updatedAt: z.date(),
-    creatorId: z.number(),
     projectId: z.string(),
     version: z.number(),
   });
@@ -150,7 +149,6 @@ export class ConfigStore {
         'configs.id',
         'configs.name',
         'configs.description',
-        'configs.creator_id',
         'config_users.role as myRole',
         'configs.project_id',
       ]);
@@ -205,7 +203,6 @@ export class ConfigStore {
         id: config.id,
         name: config.name,
         description: config.description,
-        creator_id: config.creatorId,
         project_id: config.projectId,
         version: config.version,
       })
@@ -296,7 +293,6 @@ export class ConfigStore {
 function mapConfig(config: Selectable<Configs>): Config {
   return {
     id: config.id,
-    creatorId: config.creator_id,
     name: config.name,
     description: config.description,
     createdAt: config.created_at,

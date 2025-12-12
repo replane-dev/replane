@@ -8,7 +8,6 @@ export interface ProjectSummary {
   id: string;
   name: string;
   workspaceId: string;
-  isExample: boolean;
   requireProposals: boolean;
   allowSelfApprovals: boolean;
   myRole: 'admin' | 'maintainer' | undefined;
@@ -43,7 +42,6 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
         requireProposals: p.requireProposals,
         allowSelfApprovals: p.allowSelfApprovals,
         myRole: p.myRole,
-        isExample: p.isExample,
       })),
     [appLayoutData.projects],
   );

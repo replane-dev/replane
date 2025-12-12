@@ -78,7 +78,6 @@ export class ConfigQueryService {
         name: config.name,
         projectId: config.projectId,
         description: config.description,
-        creatorId: config.creatorId,
         createdAt: config.createdAt,
         updatedAt: config.updatedAt,
         version: config.version,

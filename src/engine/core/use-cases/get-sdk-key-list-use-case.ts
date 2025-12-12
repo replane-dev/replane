@@ -12,7 +12,6 @@ export interface GetSdkKeyListResponse {
     createdAt: Date;
     name: string;
     description: string;
-    creatorEmail: string | null;
     environmentId: string;
     environmentName: string;
   }>;
@@ -35,7 +34,6 @@ export function createGetSdkKeyListUseCase(): TransactionalUseCase<
         createdAt: t.createdAt,
         name: t.name,
         description: t.description,
-        creatorEmail: t.creatorEmail,
         environmentId: t.environmentId,
         environmentName: t.environmentName,
       })),

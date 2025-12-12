@@ -14,7 +14,6 @@ export interface GetSdkKeyPageDataResponse {
     createdAt: Date;
     name: string;
     description: string;
-    creatorEmail: string | null;
     environmentId: string;
     environmentName: string;
   } | null;
@@ -48,7 +47,6 @@ export function createGetSdkKeyPageDataUseCase(): TransactionalUseCase<
         createdAt: token.createdAt,
         name: token.name,
         description: token.description,
-        creatorEmail: token.creatorEmail ?? null,
         environmentId: token.environmentId,
         environmentName: token.environmentName,
       },

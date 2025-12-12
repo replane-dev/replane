@@ -47,6 +47,7 @@ import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case
 import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createDeleteSdkKeyUseCase} from './core/use-cases/delete-sdk-key-use-case';
+import {createDeleteUserAccountUseCase} from './core/use-cases/delete-user-account-use-case';
 import {createDeleteWorkspaceUseCase} from './core/use-cases/delete-workspace-use-case';
 import {createGetAppLayoutDataUseCase} from './core/use-cases/get-app-layout-data-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
@@ -91,6 +92,7 @@ import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-us
 import {createVerifySdkKeyUseCase} from './core/use-cases/verify-sdk-key-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
+import {WorkspaceMemberService} from './core/workspace-member-service';
 import {WorkspaceQueryService} from './core/workspace-query-service';
 
 export interface EngineOptions {
@@ -157,6 +159,7 @@ function toUseCase<TReq, TRes>(
           configVariants,
           configVariantVersions,
         );
+        const workspaceMemberService = new WorkspaceMemberService(workspaceMembers, projectUsers);
 
         // Query services
         const configQueryService = new ConfigQueryService(
@@ -171,7 +174,17 @@ function toUseCase<TReq, TRes>(
           projectEnvironments,
           projectUsers,
         );
-        const workspaceQueryService = new WorkspaceQueryService(workspaces);
+        const workspaceQueryService = new WorkspaceQueryService(
+          workspaces,
+          workspaceMembers,
+          projects,
+          projectUsers,
+          projectEnvironments,
+          configs,
+          configVariants,
+          users,
+          auditLogs,
+        );
 
         const tx: UseCaseTransaction = {
           scheduleOptimisticEffect,
@@ -190,6 +203,7 @@ function toUseCase<TReq, TRes>(
           configVariantVersions,
           workspaces,
           workspaceMembers,
+          workspaceMemberService,
           configQueryService,
           projectQueryService,
           workspaceQueryService,
@@ -299,6 +313,8 @@ export async function createEngine(options: EngineOptions) {
     removeWorkspaceMember: createRemoveWorkspaceMemberUseCase(),
     updateWorkspaceMemberRole: createUpdateWorkspaceMemberRoleUseCase(),
     addExampleConfigs: createAddExampleConfigsUseCase({dateProvider}),
+    // User account use cases
+    deleteUserAccount: createDeleteUserAccountUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;

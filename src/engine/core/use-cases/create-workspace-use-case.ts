@@ -119,7 +119,6 @@ export async function createWorkspace(params: {
     allowSelfApprovals: false,
     createdAt: new Date(),
     updatedAt: new Date(),
-    isExample: true,
   };
   await projectStore.create(project);
   await projectUserStore.create([

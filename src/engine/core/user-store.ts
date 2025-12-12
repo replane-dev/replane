@@ -32,6 +32,10 @@ export class UserStore {
 
     return undefined;
   }
+
+  async deleteById(userId: number): Promise<void> {
+    await this.db.deleteFrom('users').where('id', '=', userId).execute();
+  }
 }
 
 function mapUser(user: Selectable<Users>): User {

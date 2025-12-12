@@ -1198,6 +1198,26 @@ export const migrations: Migration[] = [
       ALTER TABLE workspaces DROP COLUMN IF EXISTS personal_workspace_user_id;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Drop creator_id from configs table as it's not needed
+      DROP INDEX IF EXISTS idx_configs_creator_id;
+      ALTER TABLE configs DROP COLUMN IF EXISTS creator_id;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Drop is_example from projects table as it's not needed
+      ALTER TABLE projects DROP COLUMN IF EXISTS is_example;
+    `,
+  },
+  {
+    sql: /*sql*/ `
+      -- Drop creator_id from sdk_keys table as it's not needed
+      DROP INDEX IF EXISTS idx_sdk_keys_creator_id;
+      ALTER TABLE sdk_keys DROP COLUMN IF EXISTS creator_id;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
