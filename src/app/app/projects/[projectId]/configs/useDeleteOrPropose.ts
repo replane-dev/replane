@@ -19,12 +19,12 @@ export function useDeleteOrProposeConfig() {
     async function deleteOrPropose(params: {
       config: ConfigDetails;
       message: string | null;
-      myRole: 'owner' | 'editor' | 'viewer' | string;
+      myRole: 'maintainer' | 'editor' | 'viewer';
       prevVersion: number;
       onAfterDelete?: () => void | Promise<void>;
       onAfterPropose?: (proposalId: string) => void | Promise<void>;
     }) {
-      const requireProposal = requireProposals || params.myRole !== 'owner';
+      const requireProposal = requireProposals || params.myRole !== 'maintainer';
       if (requireProposal) {
         const ok = confirm(
           `Create a deletion proposal for "${params.config.config.name}"? It will require approval by an owner.`,

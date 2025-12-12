@@ -201,7 +201,11 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
                 <DropdownMenuItem
                   onClick={e => {
                     e.stopPropagation();
-                    router.push(`/app/projects/${projectId}/configs/${config.name}`);
+                    if (onConfigClick) {
+                      onConfigClick(config.name);
+                    } else {
+                      router.push(`/app/projects/${projectId}/configs/${config.name}`);
+                    }
                   }}
                 >
                   View details
