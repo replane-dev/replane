@@ -150,7 +150,7 @@ async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
       const configVariants = new ConfigVariantStore(tx);
       await createWorkspace({
         currentUserEmail: normalizeEmail(user.email ?? 'unknown@replane.dev'),
-        name: 'Personal',
+        name: {type: 'personal'},
         workspaceStore,
         workspaceMemberStore,
         projectStore,

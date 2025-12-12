@@ -36,7 +36,7 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
 
     const {workspace, project} = await createWorkspace({
       currentUserEmail: req.currentUserEmail,
-      name: req.name,
+      name: {type: 'custom', name: req.name},
       workspaceStore: tx.workspaces,
       workspaceMemberStore: tx.workspaceMembers,
       projectStore: tx.projects,
@@ -55,7 +55,7 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
 
 export async function createWorkspace(params: {
   currentUserEmail: NormalizedEmail;
-  name: string;
+  name: {type: 'personal'} | {type: 'custom'; name: string};
   workspaceStore: WorkspaceStore;
   workspaceMemberStore: WorkspaceMemberStore;
   projectStore: ProjectStore;
@@ -84,9 +84,17 @@ export async function createWorkspace(params: {
     exampleProject,
   } = params;
 
+  const user = await users.getByEmail(currentUserEmail);
+  assert(user, 'Current user not found');
+  const workspaceName =
+    name.type === 'personal' && user.name
+      ? `${user.name}'s Replane`
+      : name.type === 'custom'
+        ? name.name
+        : 'Personal';
   const workspace: Workspace = {
     id: createWorkspaceId(),
-    name,
+    name: workspaceName,
     autoAddNewUsers: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -155,7 +163,7 @@ export async function createWorkspace(params: {
       type: 'workspace_created',
       workspace: {
         id: workspace.id,
-        name: name,
+        name: workspaceName,
       },
     },
   });

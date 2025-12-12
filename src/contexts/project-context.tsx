@@ -18,7 +18,6 @@ export interface WorkspaceSummary {
   id: string;
   name: string;
   myRole: 'admin' | 'member' | undefined;
-  isPersonal: boolean;
 }
 
 interface ProjectContextValue {
@@ -54,7 +53,6 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
         id: w.id,
         name: w.name,
         myRole: w.myRole,
-        isPersonal: w.isPersonal,
       })),
     [appLayoutData.workspaces],
   );

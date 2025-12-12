@@ -220,7 +220,6 @@ export interface Workspaces {
   created_at: Timestamp;
   id: string;
   name: string;
-  personal_workspace_user_id: number | null;
   updated_at: Timestamp;
 }
 

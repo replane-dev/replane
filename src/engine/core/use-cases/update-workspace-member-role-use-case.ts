@@ -42,13 +42,6 @@ export function createUpdateWorkspaceMemberRoleUseCase(): TransactionalUseCase<
       throw new ForbiddenError('Only workspace admins can update member roles');
     }
 
-    // Prevent updating roles in personal workspaces
-    if (workspace.personalWorkspaceUserId) {
-      throw new BadRequestError(
-        'Cannot update member roles in personal workspace. Personal workspaces can only have one member.',
-      );
-    }
-
     // Check if member exists
     const existingMember = await tx.workspaceMembers.getByWorkspaceIdAndEmail({
       workspaceId: req.workspaceId,

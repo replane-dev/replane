@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {BadRequestError, ForbiddenError, NotFoundError} from '../errors';
+import {ForbiddenError, NotFoundError} from '../errors';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
@@ -32,13 +32,6 @@ export function createDeleteWorkspaceUseCase(): TransactionalUseCase<
     // Only admins can delete workspaces
     if (workspace.myRole !== 'admin') {
       throw new ForbiddenError('Only workspace admins can delete the workspace');
-    }
-
-    // Prevent deletion of personal workspaces
-    if (workspace.personalWorkspaceUserId) {
-      throw new BadRequestError(
-        'Cannot delete personal workspace. Personal workspaces are automatically created for each user.',
-      );
     }
 
     const user = await tx.users.getByEmail(req.currentUserEmail);

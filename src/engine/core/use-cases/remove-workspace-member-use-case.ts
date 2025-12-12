@@ -41,13 +41,6 @@ export function createRemoveWorkspaceMemberUseCase(): TransactionalUseCase<
       throw new ForbiddenError('Only workspace admins can remove members');
     }
 
-    // Prevent removing members from personal workspaces
-    if (workspace.personalWorkspaceUserId) {
-      throw new BadRequestError(
-        'Cannot remove members from personal workspace. Personal workspaces can only have one member.',
-      );
-    }
-
     // Check if member exists
     const existingMember = await tx.workspaceMembers.getByWorkspaceIdAndEmail({
       workspaceId: req.workspaceId,

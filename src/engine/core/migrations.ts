@@ -1192,6 +1192,12 @@ export const migrations: Migration[] = [
       ALTER TABLE sdk_keys RENAME COLUMN token_hash TO key_hash;
     `,
   },
+  {
+    sql: /*sql*/ `
+      -- Remove personal workspace concept - workspaces are now all regular workspaces
+      ALTER TABLE workspaces DROP COLUMN IF EXISTS personal_workspace_user_id;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

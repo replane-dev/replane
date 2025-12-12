@@ -38,7 +38,6 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
   };
 
   const canEdit = org.myRole === 'admin';
-  const isPersonal = !!org.personalWorkspaceUserId;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -58,16 +57,13 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
             disabled={!canEdit}
             maxLength={100}
           />
-          {isPersonal && (
-            <p className="text-xs text-muted-foreground mt-1.5">This is your personal workspace</p>
-          )}
         </div>
         <Button type="submit" disabled={saving || !canEdit || name.trim() === ''}>
           {saving ? 'Saving…' : 'Save changes'}
         </Button>
       </form>
 
-      {!isPersonal && canEdit && (
+      {canEdit && (
         <div className="pt-6 border-t">
           <div className="space-y-3">
             <div>

@@ -19,7 +19,6 @@ export function Workspace() {
     id: z.string(),
     name: WorkspaceName(),
     autoAddNewUsers: z.boolean(),
-    personalWorkspaceUserId: z.number().nullable().optional(),
     createdAt: z.date(),
     updatedAt: z.date(),
   });
@@ -27,7 +26,6 @@ export function Workspace() {
 
 export interface Workspace extends z.infer<ReturnType<typeof Workspace>> {
   autoAddNewUsers: boolean;
-  personalWorkspaceUserId?: number | null;
 }
 
 export interface WorkspaceInfo {
@@ -37,7 +35,6 @@ export interface WorkspaceInfo {
   createdAt: Date;
   updatedAt: Date;
   myRole: 'admin' | 'member';
-  isPersonal: boolean;
 }
 
 export class WorkspaceStore {
@@ -64,7 +61,6 @@ export class WorkspaceStore {
         'workspaces.created_at',
         'workspaces.updated_at',
         'workspace_members.role as myRole',
-        'workspaces.personal_workspace_user_id',
       ]);
 
     const rows = await workspacesQuery.execute();
@@ -76,7 +72,6 @@ export class WorkspaceStore {
       createdAt: w.created_at,
       updatedAt: w.updated_at,
       myRole: w.myRole,
-      isPersonal: w.personal_workspace_user_id !== null,
     }));
   }
 
@@ -101,7 +96,6 @@ export class WorkspaceStore {
         'workspaces.created_at',
         'workspaces.updated_at',
         'workspace_members.role as myRole',
-        'workspaces.personal_workspace_user_id',
       ])
       .where('workspaces.id', '=', params.id)
       .executeTakeFirst();
@@ -137,7 +131,6 @@ export class WorkspaceStore {
         id: workspace.id,
         name: workspace.name,
         auto_add_new_users: workspace.autoAddNewUsers,
-        personal_workspace_user_id: workspace.personalWorkspaceUserId ?? null,
         created_at: workspace.createdAt,
         updated_at: workspace.updatedAt,
       })
@@ -167,20 +160,6 @@ export class WorkspaceStore {
       .executeTakeFirst();
     return row ? row.cnt : 0;
   }
-
-  async getPersonalWorkspaceByUserId(userId: number): Promise<Workspace | undefined> {
-    const row = await this.db
-      .selectFrom('workspaces')
-      .where('personal_workspace_user_id', '=', userId)
-      .selectAll()
-      .executeTakeFirst();
-
-    if (!row) {
-      return undefined;
-    }
-
-    return mapWorkspace(row);
-  }
 }
 
 function mapWorkspace(workspace: Selectable<Workspaces>): Workspace {
@@ -188,7 +167,6 @@ function mapWorkspace(workspace: Selectable<Workspaces>): Workspace {
     id: workspace.id,
     name: workspace.name,
     autoAddNewUsers: workspace.auto_add_new_users,
-    personalWorkspaceUserId: workspace.personal_workspace_user_id,
     createdAt: workspace.created_at,
     updatedAt: workspace.updated_at,
   };

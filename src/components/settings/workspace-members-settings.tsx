@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {Info, Trash2} from 'lucide-react';
+import {Trash2} from 'lucide-react';
 import * as React from 'react';
 import {toast} from 'sonner';
 
@@ -38,8 +38,7 @@ export function WorkspaceMembersSettings({workspaceId}: {workspaceId: string}) {
 
   const [savingMembers, setSavingMembers] = React.useState(false);
 
-  const isPersonal = !!org.personalWorkspaceUserId;
-  const canManage = org.myRole === 'admin' && !isPersonal;
+  const canManage = org.myRole === 'admin';
 
   const handleAddMember = () => {
     setMembers(prev => [...prev, {email: '', role: 'member'}]);
@@ -108,25 +107,12 @@ export function WorkspaceMembersSettings({workspaceId}: {workspaceId: string}) {
           <h3 className="text-lg font-semibold">Workspace members</h3>
           <p className="text-sm text-muted-foreground">Manage who can access this workspace</p>
         </div>
-        {!isPersonal && canManage && (
+        {canManage && (
           <Button size="sm" variant="outline" onClick={handleAddMember}>
             New member
           </Button>
         )}
       </div>
-
-      {isPersonal && (
-        <div className="rounded-lg border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/20 p-4">
-          <div className="flex items-start gap-3">
-            <Info className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm text-foreground/80">
-                This is your personal workspace. You cannot add or remove members.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="space-y-3">
         {members.length > 0 && (
