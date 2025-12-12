@@ -13,7 +13,15 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, Code, FileCode, MoreHorizontal, Sparkles} from 'lucide-react';
+import {
+  ArrowUpDown,
+  ChevronDown,
+  Code,
+  ExternalLink,
+  FileCode,
+  FileCog,
+  MoreHorizontal,
+} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
@@ -261,7 +269,7 @@ function ConfigTableImpl({
         },
       },
     ],
-    [deleteOrPropose, projectId, router, trpc.getConfig],
+    [deleteOrPropose, onConfigClick, projectId, router, trpc.getConfig],
   );
 
   const table = useReactTable({
@@ -303,6 +311,69 @@ function ConfigTableImpl({
     }
   };
 
+  // Empty state
+  if (configs.length === 0) {
+    return (
+      <div className="w-full">
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="rounded-full bg-muted/50 p-4 mb-6">
+            <FileCog className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">No configs yet</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-md mb-8">
+            Configs are dynamic values you can change without redeploying. Create your first config
+            to get started.
+          </p>
+          <div className="flex gap-3">
+            {isDevelopment && (
+              <Button
+                variant="outline"
+                onClick={() => addExampleConfigsMutation.mutate({projectId})}
+                disabled={addExampleConfigsMutation.isPending}
+              >
+                {addExampleConfigsMutation.isPending ? 'Adding...' : 'Add examples'}
+              </Button>
+            )}
+            <Button onClick={handleNewConfigClick}>Create config</Button>
+          </div>
+
+          {/* Helpful links */}
+          <div className="mt-12 pt-8 border-t">
+            <div className="flex justify-center">
+              <a
+                href="https://replane.dev/docs/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Read documentation
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Integration Guide Dialog */}
+        {onSdkGuideChange && (
+          <Dialog open={showSdkGuide} onOpenChange={onSdkGuideChange}>
+            <DialogContent className="lg:max-w-4xl md:max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+              <DialogTitle>SDK Integration Guide</DialogTitle>
+              <DialogDescription>
+                Learn how to integrate Replane into your application
+              </DialogDescription>
+              <SdkIntegrationGuide projectId={projectId} />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Generate Types Dialog */}
+        {onCodegenChange && (
+          <GenerateTypesDialog open={showCodegen} onOpenChange={onCodegenChange} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-4">
@@ -312,22 +383,7 @@ function ConfigTableImpl({
           onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
           className="max-w-md"
         />
-        {isDevelopment && (
-          <Button
-            variant="outline"
-            className="ml-auto"
-            onClick={() => addExampleConfigsMutation.mutate({projectId})}
-            disabled={addExampleConfigsMutation.isPending}
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            {addExampleConfigsMutation.isPending ? 'Adding...' : 'Add example configs'}
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          className={isDevelopment ? '' : 'ml-auto'}
-          onClick={onCodegenClick}
-        >
+        <Button variant="outline" className="ml-auto" onClick={onCodegenClick}>
           <FileCode className="h-4 w-4 mr-2" />
           Generate types
         </Button>
@@ -394,7 +450,7 @@ function ConfigTableImpl({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                  No configs yet.
                 </TableCell>
               </TableRow>
             )}

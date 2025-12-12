@@ -153,6 +153,11 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
       action: 'Workspace Member Role Changed',
       details: `Changed ${payload.member.email} from ${payload.before.role} to ${payload.after.role}`,
     };
+  } else if (payload.type === 'user_account_deleted') {
+    return {
+      action: 'User Account Deleted',
+      details: `User account deleted: ${payload.user.email}`,
+    };
   } else {
     assertNever(payload, `Unhandled payload type: ${JSON.stringify(payload)}`);
   }
@@ -514,11 +519,11 @@ export function AuditLogTable({
                   ) : query.isFetchingNextPage ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : query.hasNextPage ? (
-                    'Scroll to load more…'
+                    'Scroll down for more'
                   ) : data.length === 0 ? (
-                    'No results'
+                    'No audit logs yet'
                   ) : (
-                    'End of results'
+                    'All logs loaded'
                   )}
                 </div>
               </TableCell>

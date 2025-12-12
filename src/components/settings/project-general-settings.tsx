@@ -136,12 +136,13 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
               onClick={async () => {
                 const confirmName = prompt(`Type "${project.name}" to confirm deletion:`);
                 if (confirmName !== project.name) return;
+                // Redirect optimistically before deletion to avoid errors
+                router.push('/app');
                 try {
                   await deleteProject.mutateAsync({id: projectId, confirmName});
-                  toast.success('Project deleted');
-                  router.push('/app');
                 } catch (e: any) {
-                  toast.error(e?.message ?? 'Failed to delete');
+                  // User has already navigated away, but log the error
+                  console.error('Failed to delete project:', e);
                 }
               }}
             >

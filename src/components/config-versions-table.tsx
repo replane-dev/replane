@@ -1,6 +1,6 @@
 'use client';
 
-import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
+import {useSuspenseQuery} from '@tanstack/react-query';
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
-import {toast} from 'sonner';
 
 function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
   const d = value instanceof Date ? value : new Date(String(value ?? ''));
@@ -212,15 +211,7 @@ export function ConfigVersionsTable({
         },
       },
     ],
-    [
-      name,
-      router,
-      currentConfigVersion,
-      variant,
-      configId,
-      environmentId,
-      projectId,
-    ],
+    [name, router, currentConfigVersion, variant, configId, environmentId, projectId],
   );
 
   const table = useReactTable({
@@ -320,7 +311,7 @@ export function ConfigVersionsTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                  No config versions yet.
                 </TableCell>
               </TableRow>
             )}

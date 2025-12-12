@@ -50,7 +50,7 @@ export function AccountGeneralSettings() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h3 className="text-lg font-semibold">Account</h3>
+        <h3 className="text-lg font-semibold">Account settings</h3>
         <p className="text-sm text-muted-foreground">Manage your account settings</p>
       </div>
 

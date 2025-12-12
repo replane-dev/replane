@@ -28,6 +28,7 @@ import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils'
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
+import {Layers} from 'lucide-react';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
 import {z} from 'zod';
@@ -773,20 +774,7 @@ export function ConfigForm(props: ConfigFormProps) {
         <div className="rounded-xl border p-6 space-y-6">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
+              <Layers />
             </div>
             <div>
               <h3 className="text-lg font-semibold">Base Configuration</h3>

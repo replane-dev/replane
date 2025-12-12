@@ -143,7 +143,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
       <div className="space-y-6 max-w-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold">Environments</h3>
+            <h3 className="text-lg font-semibold">Project environments</h3>
             <p className="text-sm text-muted-foreground">
               Manage project environments and their order
             </p>

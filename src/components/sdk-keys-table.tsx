@@ -13,7 +13,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, MoreHorizontal} from 'lucide-react';
+import {ArrowUpDown, ChevronDown, ExternalLink, Key, MoreHorizontal} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -29,6 +29,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {useTRPC} from '@/trpc/client';
+import {SdkKeyExplainer} from './sdk-key-explainer';
 
 interface SdkKeyRow {
   id: string;
@@ -89,6 +90,14 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+
+  const handleNewSdkKeyClick = () => {
+    if (onNewSdkKeyClick) {
+      onNewSdkKeyClick();
+    } else {
+      router.push(`/app/projects/${projectId}/sdk-keys/new`);
+    }
+  };
 
   const columns = React.useMemo<ColumnDef<SdkKeyRow>[]>(
     () => [
@@ -232,8 +241,43 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
     [router, projectId, onSdkKeyClick],
   );
 
+  // Empty state
+  if (sdkKeys.length === 0) {
+    return (
+      <div className="w-full">
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="rounded-full bg-muted/50 p-4 mb-6">
+            <Key className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">No SDK keys yet</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-md mb-8">
+            SDK keys allow your applications to securely access configs. Create your first SDK key
+            to get started.
+          </p>
+          <Button onClick={handleNewSdkKeyClick}>Create SDK key</Button>
+
+          {/* Helpful links */}
+          <div className="mt-12 pt-8 border-t">
+            <div className="flex justify-center">
+              <a
+                href="https://replane.dev/docs/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Read documentation
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
+      <SdkKeyExplainer />
       <div className="flex items-center py-4 gap-4">
         <Input
           placeholder="Search SDK keys by name"
@@ -307,7 +351,7 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                  No SDK keys yet.
                 </TableCell>
               </TableRow>
             )}

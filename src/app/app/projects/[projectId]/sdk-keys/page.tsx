@@ -2,7 +2,6 @@
 
 import {NewSdkKeyView} from '@/components/new-sdk-key-view';
 import {SdkKeyDetailView} from '@/components/sdk-key-detail-view';
-import {SdkKeyExplainer} from '@/components/sdk-key-explainer';
 import {SdkKeysTable} from '@/components/sdk-keys-table';
 import {DelayedFullWidthSpinner} from '@/components/spinner';
 import {
@@ -97,8 +96,7 @@ export default function SdkKeysPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="max-w-4xl space-y-4">
-          <SdkKeyExplainer />
+        <div className="space-y-4">
           <SdkKeysTable
             projectId={projectId}
             onSdkKeyClick={handleSdkKeyClick}

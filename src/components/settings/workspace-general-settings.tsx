@@ -79,12 +79,13 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
               onClick={async () => {
                 if (!confirm(`Delete workspace "${org.name}"? This will delete all projects.`))
                   return;
+                // Redirect optimistically before deletion to avoid errors
+                router.push('/app');
                 try {
                   await deleteWorkspace.mutateAsync({workspaceId});
-                  toast.success('Workspace deleted');
-                  router.push('/app');
                 } catch (e: any) {
-                  toast.error(e?.message ?? 'Failed to delete');
+                  // User has already navigated away, but log the error
+                  console.error('Failed to delete workspace:', e);
                 }
               }}
             >

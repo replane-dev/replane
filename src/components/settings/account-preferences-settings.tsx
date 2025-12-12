@@ -16,7 +16,7 @@ export function AccountPreferencesSettings() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h3 className="text-lg font-semibold">Preferences</h3>
+        <h3 className="text-lg font-semibold">Account preferences</h3>
         <p className="text-sm text-muted-foreground">Customize your experience</p>
       </div>
 
