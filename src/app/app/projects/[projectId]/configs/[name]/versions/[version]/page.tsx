@@ -202,6 +202,7 @@ export default function ConfigVersionDetailsPage() {
                 <div className="p-6">
                   <JsonEditor
                     id={`config-value-${version.version}`}
+                    editorName={`${name} - Value`}
                     aria-label="Config value JSON"
                     value={valueJson}
                     onChange={() => {}}
@@ -223,6 +224,7 @@ export default function ConfigVersionDetailsPage() {
                   {schemaJson ? (
                     <JsonEditor
                       id={`config-schema-${version.version}`}
+                      editorName={`${name} - Schema`}
                       aria-label="Config schema JSON"
                       value={schemaJson}
                       onChange={() => {}}

@@ -540,7 +540,6 @@ export function ConfigForm(props: ConfigFormProps) {
     watchedName,
     watchedDescription,
     watchedDefaultVariant,
-    watchedEnvVariants,
     watchedMembers,
     defaultDescription,
     defaultMaintainerEmails,
@@ -761,6 +760,7 @@ export function ConfigForm(props: ConfigFormProps) {
                         hasDefaultVariant={true}
                         defaultSchemaAvailable={watchedDefaultVariant?.schemaEnabled ?? false}
                         defaultSchema={liveSchema}
+                        configName={watchedName || currentName}
                       />
                     </div>
                   )}
@@ -807,6 +807,7 @@ export function ConfigForm(props: ConfigFormProps) {
             watchedVariant={watchedDefaultVariant}
             overrideBuilderDefaultValue={overrideBuilderDefaultValue}
             liveSchema={liveSchema}
+            configName={watchedName || currentName}
           />
         </div>
 
@@ -886,7 +887,7 @@ export function ConfigForm(props: ConfigFormProps) {
       </form>
 
       {/* Sticky button panel */}
-      <div className="sticky bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-3">
+      <div className="sticky bottom-0 z-5 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-3">
         <div className="flex gap-2">
           {(mode === 'new' || mode === 'edit') && (
             <Tooltip>

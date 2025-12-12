@@ -144,6 +144,7 @@ export default function AuditLogMessagePage() {
             <div className="p-6">
               <JsonEditor
                 id={`audit-message-${message.id}`}
+                editorName="Audit Log Payload"
                 aria-label="Audit log message payload JSON"
                 value={payloadJson}
                 onChange={() => {}}

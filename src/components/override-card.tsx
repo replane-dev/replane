@@ -23,6 +23,7 @@ interface OverrideCardProps {
   projectId?: string;
   onUpdate: (updatedOverride: Override) => void;
   onRemove: () => void;
+  configName?: string;
 }
 
 const OverrideCardComponent = ({
@@ -33,6 +34,7 @@ const OverrideCardComponent = ({
   projectId,
   onUpdate,
   onRemove,
+  configName,
 }: OverrideCardProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [viewMode, setViewMode] = useState<'form' | 'json'>('form');
@@ -197,6 +199,11 @@ const OverrideCardComponent = ({
                 </div>
                 <JsonEditor
                   id={`override-value-${index}`}
+                  editorName={
+                    configName
+                      ? `${configName} - ${override.name || `Override ${index + 1}`}`
+                      : `${override.name || `Override ${index + 1}`} - Value`
+                  }
                   height={180}
                   value={JSON.stringify(override.value, null, 2)}
                   onChange={(value: string) => {
@@ -260,6 +267,11 @@ const OverrideCardComponent = ({
             <TabsContent value="json" className="mt-0">
               <JsonEditor
                 id={`override-json-${index}`}
+                editorName={
+                  configName
+                    ? `${configName} - ${override.name || `Override ${index + 1}`} (JSON)`
+                    : `${override.name || `Override ${index + 1}`} - JSON`
+                }
                 height={400}
                 value={viewMode === 'json' ? localJsonValue : JSON.stringify(override, null, 2)}
                 onChange={handleJsonChange}

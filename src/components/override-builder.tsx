@@ -14,6 +14,7 @@ interface OverrideBuilderProps {
   schema?: any;
   defaultValue?: any; // Current config value to use as default for new overrides
   projectId?: string;
+  configName?: string;
 }
 
 export function OverrideBuilder({
@@ -23,6 +24,7 @@ export function OverrideBuilder({
   schema,
   defaultValue,
   projectId,
+  configName,
 }: OverrideBuilderProps) {
   const handleAddOverride = useCallback(() => {
     const newOverride: Override = {
@@ -65,6 +67,7 @@ export function OverrideBuilder({
               readOnly={readOnly}
               schema={schema}
               projectId={projectId}
+              configName={configName}
               onUpdate={updatedOverride => handleUpdateOverride(overrideIndex, updatedOverride)}
               onRemove={() => handleRemoveOverride(overrideIndex)}
             />

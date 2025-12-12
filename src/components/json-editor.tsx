@@ -1,6 +1,6 @@
 'use client';
 
-import Editor, {type OnChange, type OnMount} from '@monaco-editor/react';
+import Editor, {type OnMount} from '@monaco-editor/react';
 // Import only the main meta-schemas (not sub-schemas) to keep $schema autocomplete clean
 import draft2019MetaSchema from 'ajv/dist/refs/json-schema-2019-09/schema.json';
 import draft2020MetaSchema from 'ajv/dist/refs/json-schema-2020-12/schema.json';
@@ -9,6 +9,8 @@ import draft07MetaSchema from 'ajv/dist/refs/json-schema-draft-07.json';
 import type * as Monaco from 'monaco-editor';
 import {useTheme} from 'next-themes';
 import * as React from 'react';
+
+import {Dialog, DialogContent, DialogHeader, DialogTitle} from '@/components/ui/dialog';
 
 // Draft-04 meta-schema (not available in ajv package, defined inline)
 // Source: http://json-schema.org/draft-04/schema#
@@ -242,105 +244,302 @@ export type JsonEditorProps = {
    */
   schema?: unknown | undefined;
   id?: string; // to make model path stable for schema matching
+  /**
+   * Optional callback to open full-screen editor.
+   * When provided, an expand button will be shown in the editor.
+   */
+  onFullScreen?: () => void;
+  /**
+   * Name/label for the editor. Used as the title in full-screen mode.
+   * Required for better UX in full-screen dialog.
+   */
+  editorName: string;
+  /**
+   * If true, emit onChange on every keystroke instead of only on blur.
+   * Default is false (emit on blur only).
+   */
+  emitOnChange?: boolean;
 };
 
-export function JsonEditor({
-  value,
-  onChange,
-  height = 300,
-  placeholder,
-  readOnly,
-  schema,
-  id,
-  ...rest
-}: JsonEditorProps) {
-  const {resolvedTheme} = useTheme();
-  const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
+export type JsonEditorRef = {
+  setValue: (value: string) => void;
+  getValue: () => string;
+};
 
-  const handleChange: OnChange = val => {
-    onChange(val ?? '');
-  };
+const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
+  (
+    {
+      value,
+      onChange,
+      height = 300,
+      placeholder,
+      readOnly,
+      schema,
+      id,
+      onFullScreen,
+      emitOnChange,
+      ...rest
+    },
+    ref,
+  ) => {
+    const {resolvedTheme} = useTheme();
+    const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
 
-  const reactId = React.useId();
-  const path = React.useMemo(() => `inmemory://model/${id ?? reactId}.json`, [id, reactId]);
-  const schemaUri = React.useMemo(() => `inmemory://schema/${id ?? reactId}.json`, [id, reactId]);
+    const reactId = React.useId();
+    const path = React.useMemo(() => `inmemory://model/${id ?? reactId}.json`, [id, reactId]);
+    const schemaUri = React.useMemo(() => `inmemory://schema/${id ?? reactId}.json`, [id, reactId]);
 
-  const monacoRef = React.useRef<Parameters<OnMount>[0] | null>(null);
-  const monacoNsRef = React.useRef<typeof Monaco | null>(null);
-  const registeredRef = React.useRef(false);
+    const monacoRef = React.useRef<Parameters<OnMount>[0] | null>(null);
+    const monacoNsRef = React.useRef<typeof Monaco | null>(null);
+    const registeredRef = React.useRef(false);
+    const currentValueRef = React.useRef(value);
 
-  const handleMount: OnMount = (editor, monaco) => {
-    monacoRef.current = editor;
-    monacoNsRef.current = monaco as unknown as typeof Monaco;
-    // Ensure the model has our path so fileMatch works
-    const model = editor.getModel();
-    if (!model || model.uri.toString() !== path) {
-      const newModel = monaco.editor.createModel(value ?? '', 'json', monaco.Uri.parse(path));
-      editor.setModel(newModel);
-    }
-    // Register schema on mount if provided
-    if (schema) {
-      jsonSchemaRegistry.set(path, {uri: schemaUri, schema});
-      refreshJsonDiagnostics(monaco as unknown as typeof Monaco);
-      registeredRef.current = true;
-    } else {
-      // Ensure diagnostics at least enabled
-      refreshJsonDiagnostics(monaco as unknown as typeof Monaco);
-    }
-  };
+    // Expose imperative methods via ref
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        setValue: (newValue: string) => {
+          const editor = monacoRef.current;
+          if (editor) {
+            const model = editor.getModel();
+            if (model) {
+              model.setValue(newValue);
+              currentValueRef.current = newValue;
+              // Emit change immediately when set via ref
+              onChange(newValue);
+            }
+          }
+        },
+        getValue: () => {
+          const editor = monacoRef.current;
+          if (editor) {
+            return editor.getValue();
+          }
+          return value;
+        },
+      }),
+      // Empty deps array is intentional - we want stable ref methods that access the latest monacoRef
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [onChange],
+    );
 
-  React.useEffect(() => {
-    const monaco = monacoNsRef.current;
-    if (!monaco) return;
-    if (schema) {
-      jsonSchemaRegistry.set(path, {uri: schemaUri, schema});
-      registeredRef.current = true;
-    } else if (registeredRef.current) {
-      jsonSchemaRegistry.delete(path);
-      registeredRef.current = false;
-    }
-    refreshJsonDiagnostics(monaco);
+    const handleMount: OnMount = (editor, monaco) => {
+      monacoRef.current = editor;
+      monacoNsRef.current = monaco as unknown as typeof Monaco;
+      // Ensure the model has our path so fileMatch works
+      const model = editor.getModel();
+      if (!model || model.uri.toString() !== path) {
+        const newModel = monaco.editor.createModel(value ?? '', 'json', monaco.Uri.parse(path));
+        editor.setModel(newModel);
+      }
+      // Register schema on mount if provided
+      if (schema) {
+        jsonSchemaRegistry.set(path, {uri: schemaUri, schema});
+        refreshJsonDiagnostics(monaco as unknown as typeof Monaco);
+        registeredRef.current = true;
+      } else {
+        // Ensure diagnostics at least enabled
+        refreshJsonDiagnostics(monaco as unknown as typeof Monaco);
+      }
 
-    return () => {
-      // Cleanup when component unmounts or ids change
-      if (jsonSchemaRegistry.has(path)) {
-        jsonSchemaRegistry.delete(path);
-        refreshJsonDiagnostics(monaco);
+      if (emitOnChange) {
+        // Emit changes on every change
+        editor.onDidChangeModelContent(() => {
+          const currentValue = editor.getValue();
+          if (currentValue !== currentValueRef.current) {
+            currentValueRef.current = currentValue;
+            onChange(currentValue);
+          }
+        });
+      } else {
+        // Emit changes only on blur
+        editor.onDidBlurEditorText(() => {
+          const currentValue = editor.getValue();
+          if (currentValue !== currentValueRef.current) {
+            currentValueRef.current = currentValue;
+            onChange(currentValue);
+          }
+        });
       }
     };
-  }, [schema, path, id, reactId, schemaUri]);
+
+    // Sync currentValueRef when value prop changes
+    React.useEffect(() => {
+      currentValueRef.current = value;
+    }, [value]);
+
+    React.useEffect(() => {
+      const monaco = monacoNsRef.current;
+      if (!monaco) return;
+      if (schema) {
+        jsonSchemaRegistry.set(path, {uri: schemaUri, schema});
+        registeredRef.current = true;
+      } else if (registeredRef.current) {
+        jsonSchemaRegistry.delete(path);
+        registeredRef.current = false;
+      }
+      refreshJsonDiagnostics(monaco);
+
+      return () => {
+        // Cleanup when component unmounts or ids change
+        if (jsonSchemaRegistry.has(path)) {
+          jsonSchemaRegistry.delete(path);
+          refreshJsonDiagnostics(monaco);
+        }
+      };
+    }, [schema, path, id, reactId, schemaUri]);
+
+    return (
+      <div className="border rounded-md relative h-full">
+        <Editor
+          {...rest}
+          language="json"
+          defaultLanguage="json"
+          theme={editorTheme}
+          path={path}
+          value={value}
+          onMount={handleMount}
+          height={height}
+          options={{
+            readOnly: !!readOnly,
+            minimap: {enabled: false},
+            scrollBeyondLastLine: false,
+            scrollbar: {alwaysConsumeMouseWheel: false},
+            wordWrap: 'on',
+            tabSize: 2,
+            insertSpaces: true,
+            automaticLayout: true,
+            formatOnPaste: true,
+            formatOnType: true,
+            fixedOverflowWidgets: true,
+          }}
+        />
+        {placeholder && !value && (
+          <div className="pointer-events-none absolute left-0 top-0 p-3 text-muted-foreground/60 text-sm">
+            {placeholder}
+          </div>
+        )}
+        {onFullScreen && !readOnly && (
+          <button
+            onClick={onFullScreen}
+            className="absolute top-2 right-6 p-1.5 rounded-md bg-background/70 hover:bg-background border hover:border-foreground/20 transition-colors"
+            title="Expand to full screen"
+            type="button"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+          </button>
+        )}
+      </div>
+    );
+  },
+);
+
+JsonEditorImpl.displayName = 'JsonEditorImpl';
+
+export function JsonEditor(props: JsonEditorProps) {
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const baseId = React.useId();
+  const normalEditorRef = React.useRef<JsonEditorRef>(null);
+  const fullscreenEditorRef = React.useRef<JsonEditorRef>(null);
+  const isClosingRef = React.useRef(false);
+
+  // Generate unique IDs for each editor instance
+  const normalId = props.id ?? `${baseId}-normal`;
+  const fullscreenId = props.id ? `${props.id}-fullscreen` : `${baseId}-fullscreen`;
+
+  const handleFullScreenOpen = () => {
+    isClosingRef.current = false;
+    setIsFullScreen(true);
+  };
+
+  const handleFullScreenClose = () => {
+    // Set flag to prevent blur handler from overwriting the value
+    isClosingRef.current = true;
+
+    // Before closing, ensure the full-screen editor's current value is saved
+    if (fullscreenEditorRef.current) {
+      const currentValue = fullscreenEditorRef.current.getValue();
+      // Update normal editor and notify parent directly
+      normalEditorRef.current?.setValue(currentValue);
+      props.onChange(currentValue);
+    }
+    setIsFullScreen(false);
+  };
+
+  const handleFullScreenChange = (value: string) => {
+    // Skip if we're in the process of closing (blur event from unmounting editor)
+    if (isClosingRef.current) {
+      return;
+    }
+    // Update normal editor via ref (this also calls props.onChange)
+    normalEditorRef.current?.setValue(value);
+  };
 
   return (
-    <div className="border rounded-md relative">
-      <Editor
-        {...rest}
-        language="json"
-        defaultLanguage="json"
-        theme={editorTheme}
-        path={path}
-        value={value}
-        onChange={handleChange}
-        onMount={handleMount}
-        height={height}
-        options={{
-          readOnly: !!readOnly,
-          minimap: {enabled: false},
-          scrollBeyondLastLine: false,
-          scrollbar: {alwaysConsumeMouseWheel: false},
-          wordWrap: 'on',
-          tabSize: 2,
-          insertSpaces: true,
-          automaticLayout: true,
-          formatOnPaste: true,
-          formatOnType: true,
-          fixedOverflowWidgets: true,
-        }}
+    <>
+      <JsonEditorImpl
+        ref={normalEditorRef}
+        value={props.value}
+        onChange={props.onChange}
+        height={props.height}
+        placeholder={props.placeholder}
+        readOnly={props.readOnly}
+        schema={props.schema}
+        aria-label={props['aria-label']}
+        id={normalId}
+        editorName={props.editorName}
+        onFullScreen={handleFullScreenOpen}
       />
-      {placeholder && !value && (
-        <div className="pointer-events-none absolute left-0 top-0 p-3 text-muted-foreground/60 text-sm">
-          {placeholder}
-        </div>
-      )}
-    </div>
+      <Dialog
+        open={isFullScreen}
+        onOpenChange={open => {
+          if (!open) {
+            handleFullScreenClose();
+          }
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col p-0"
+          onEscapeKeyDown={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleFullScreenClose();
+          }}
+        >
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle>{props.editorName}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 p-4 overflow-hidden">
+            <div className="h-full">
+              <JsonEditorImpl
+                ref={fullscreenEditorRef}
+                value={props.value}
+                onChange={handleFullScreenChange}
+                height="100%"
+                placeholder={props.placeholder}
+                readOnly={props.readOnly}
+                schema={props.schema}
+                aria-label={props['aria-label']}
+                id={fullscreenId}
+                editorName={props.editorName}
+                onFullScreen={undefined}
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

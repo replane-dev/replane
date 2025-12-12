@@ -189,6 +189,7 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
             </p>
             <JsonEditor
               id="override-test-context"
+              editorName="Test Context"
               height={200}
               value={contextJson}
               onChange={setContextJson}

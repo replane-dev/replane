@@ -56,6 +56,7 @@ interface ConfigVariantFieldsProps {
   hasDefaultVariant?: boolean; // Whether a default variant exists at all
   defaultSchemaAvailable?: boolean; // Whether default variant has a schema enabled
   defaultSchema?: any; // The actual default schema for validation
+  configName?: string; // The config name to display in editor titles
 }
 
 export function ConfigVariantFields({
@@ -78,6 +79,7 @@ export function ConfigVariantFields({
   isEnvironmentVariant = false,
   hasDefaultVariant = true,
   defaultSchemaAvailable = false,
+  configName,
   defaultSchema,
 }: ConfigVariantFieldsProps) {
   // Build field name based on whether this is default variant or environment variant
@@ -187,6 +189,7 @@ export function ConfigVariantFields({
                   schema={liveSchema}
                   projectId={projectId}
                   defaultValue={overrideBuilderDefaultValue}
+                  configName={configName}
                 />
               </FormControl>
               {!canEditOverrides && (
@@ -238,6 +241,21 @@ export function ConfigVariantFields({
             <FormControl>
               <JsonEditor
                 id={`${editorIdPrefix ?? 'config'}-value-${environmentId}`}
+                editorName={
+                  configName
+                    ? `${configName} - ${
+                        hasOverrides
+                          ? 'Base Value'
+                          : isEnvironmentVariant
+                            ? `${environmentName} Value`
+                            : 'Value'
+                      }`
+                    : hasOverrides
+                      ? 'Base Value'
+                      : isEnvironmentVariant
+                        ? `Value - ${environmentName}`
+                        : 'Configuration Value'
+                }
                 height={mode === 'new' ? 300 : 360}
                 value={field.value}
                 onChange={field.onChange}
@@ -379,6 +397,13 @@ export function ConfigVariantFields({
                 <FormControl>
                   <JsonEditor
                     id={`${editorIdPrefix ?? 'config'}-schema-${environmentId}`}
+                    editorName={
+                      configName
+                        ? `${configName} - ${isEnvironmentVariant ? `${environmentName} Schema` : 'Schema'}`
+                        : isEnvironmentVariant
+                          ? `Schema - ${environmentName}`
+                          : 'Configuration Schema'
+                    }
                     height={mode === 'new' ? 300 : 360}
                     value={field.value ?? ''}
                     onChange={field.onChange}
