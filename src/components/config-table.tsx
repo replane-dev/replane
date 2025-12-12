@@ -66,16 +66,30 @@ function humanizeId(id: string): string {
 export interface ConfigTableProps {
   onConfigClick?: (configName: string) => void;
   onNewConfigClick?: () => void;
+  showSdkGuide?: boolean;
+  showCodegen?: boolean;
+  onSdkGuideClick?: () => void;
+  onCodegenClick?: () => void;
+  onSdkGuideChange?: (open: boolean) => void;
+  onCodegenChange?: (open: boolean) => void;
 }
 
-function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
+function ConfigTableImpl({
+  onConfigClick,
+  onNewConfigClick,
+  showSdkGuide = false,
+  showCodegen = false,
+  onSdkGuideClick,
+  onCodegenClick,
+  onSdkGuideChange,
+  onCodegenChange,
+}: ConfigTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [showIntegrationGuide, setShowIntegrationGuide] = React.useState(false);
-  const [showGenerateTypes, setShowGenerateTypes] = React.useState(false);
+
   const projectId = useProjectId();
 
   const trpc = useTRPC();
@@ -312,7 +326,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
         <Button
           variant="outline"
           className={isDevelopment ? '' : 'ml-auto'}
-          onClick={() => setShowGenerateTypes(true)}
+          onClick={onCodegenClick}
         >
           <FileCode className="h-4 w-4 mr-2" />
           Generate types
@@ -394,7 +408,7 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
           Ready to integrate project configs into your app?
         </p>
         <button
-          onClick={() => setShowIntegrationGuide(true)}
+          onClick={onSdkGuideClick}
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <Code className="h-3.5 w-3.5" />
@@ -403,20 +417,22 @@ function ConfigTableImpl({onConfigClick, onNewConfigClick}: ConfigTableProps) {
       </div>
 
       {/* Integration Guide Dialog */}
-      <Dialog open={showIntegrationGuide} onOpenChange={setShowIntegrationGuide}>
-        <DialogContent className="lg:max-w-4xl md:max-w-2xl w-full max-h-[85vh] overflow-y-auto">
-          <DialogTitle>SDK Integration Guide</DialogTitle>
-          <DialogDescription>
-            Follow these steps to integrate Replane SDK into your application
-          </DialogDescription>
-          <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
-            <SdkIntegrationGuide projectId={projectId} />
-          </Suspense>
-        </DialogContent>
-      </Dialog>
+      {onSdkGuideChange && (
+        <Dialog open={showSdkGuide} onOpenChange={onSdkGuideChange}>
+          <DialogContent className="lg:max-w-4xl md:max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+            <DialogTitle>SDK Integration Guide</DialogTitle>
+            <DialogDescription>
+              Follow these steps to integrate Replane SDK into your application
+            </DialogDescription>
+            <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
+              <SdkIntegrationGuide projectId={projectId} />
+            </Suspense>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Generate Types Dialog */}
-      <GenerateTypesDialog open={showGenerateTypes} onOpenChange={setShowGenerateTypes} />
+      {onCodegenChange && <GenerateTypesDialog open={showCodegen} onOpenChange={onCodegenChange} />}
     </div>
   );
 }

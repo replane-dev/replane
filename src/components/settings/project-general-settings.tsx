@@ -69,6 +69,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
             id="project-name"
             value={name}
             onChange={e => setName(e.target.value)}
+            placeholder="e.g., Mobile App, Web Dashboard, API Service"
             disabled={!canEdit}
             required
           />
@@ -79,6 +80,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
             id="project-desc"
             value={description}
             onChange={e => setDescription(e.target.value)}
+            placeholder="Describe what this project is for..."
             disabled={!canEdit}
             rows={3}
           />

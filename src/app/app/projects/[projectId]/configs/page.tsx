@@ -32,6 +32,16 @@ function getSheetStateFromUrl(searchParams: URLSearchParams): {
   return {open: false, mode: 'new', configName: null};
 }
 
+function getDialogStateFromUrl(searchParams: URLSearchParams): {
+  showSdkGuide: boolean;
+  showCodegen: boolean;
+} {
+  return {
+    showSdkGuide: searchParams.has('sdk-guide'),
+    showCodegen: searchParams.has('codegen'),
+  };
+}
+
 export default function ConfigPage() {
   const projectId = useProjectId();
   const router = useRouter();
@@ -43,22 +53,35 @@ export default function ConfigPage() {
   const sheetMode = urlState.mode;
   const selectedConfigName = urlState.configName;
 
-  const updateUrl = useCallback((mode: 'new' | 'detail' | 'closed', configName?: string) => {
-    const params = new URLSearchParams(window.location.search);
-    params.delete('new');
-    params.delete('config');
-    params.delete('list');
+  const dialogState = getDialogStateFromUrl(searchParams);
+  const showSdkGuide = dialogState.showSdkGuide;
+  const showCodegen = dialogState.showCodegen;
 
-    if (mode === 'new') {
-      params.set('new', '');
-    } else if (mode === 'detail' && configName) {
-      params.set('config', configName);
-    }
+  const updateUrl = useCallback(
+    (mode: 'new' | 'detail' | 'closed' | 'sdk-guide' | 'codegen', configName?: string) => {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('new');
+      params.delete('config');
+      params.delete('list');
+      params.delete('sdk-guide');
+      params.delete('codegen');
 
-    const query = params.toString();
-    const newUrl = query ? `?${query}` : '?list=true';
-    window.history.replaceState(null, '', newUrl);
-  }, []);
+      if (mode === 'new') {
+        params.set('new', '');
+      } else if (mode === 'detail' && configName) {
+        params.set('config', configName);
+      } else if (mode === 'sdk-guide') {
+        params.set('sdk-guide', '');
+      } else if (mode === 'codegen') {
+        params.set('codegen', '');
+      }
+
+      const query = params.toString();
+      const newUrl = query ? `?${query}` : window.location.pathname;
+      window.history.replaceState(null, '', newUrl);
+    },
+    [],
+  );
 
   const handleConfigClick = useCallback(
     (configName: string) => {
@@ -80,6 +103,28 @@ export default function ConfigPage() {
     router.refresh();
   };
 
+  const handleSdkGuideClick = useCallback(() => {
+    updateUrl('sdk-guide');
+  }, [updateUrl]);
+
+  const handleCodegenClick = useCallback(() => {
+    updateUrl('codegen');
+  }, [updateUrl]);
+
+  const handleSdkGuideChange = useCallback(
+    (open: boolean) => {
+      updateUrl(open ? 'sdk-guide' : 'closed');
+    },
+    [updateUrl],
+  );
+
+  const handleCodegenChange = useCallback(
+    (open: boolean) => {
+      updateUrl(open ? 'codegen' : 'closed');
+    },
+    [updateUrl],
+  );
+
   return (
     <Fragment>
       <header className="flex h-16 shrink-0 items-center gap-2">
@@ -96,7 +141,16 @@ export default function ConfigPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <ConfigTable onConfigClick={handleConfigClick} onNewConfigClick={handleNewConfigClick} />
+        <ConfigTable
+          onConfigClick={handleConfigClick}
+          onNewConfigClick={handleNewConfigClick}
+          showSdkGuide={showSdkGuide}
+          showCodegen={showCodegen}
+          onSdkGuideClick={handleSdkGuideClick}
+          onCodegenClick={handleCodegenClick}
+          onSdkGuideChange={handleSdkGuideChange}
+          onCodegenChange={handleCodegenChange}
+        />
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>

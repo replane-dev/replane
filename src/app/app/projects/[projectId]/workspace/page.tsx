@@ -164,7 +164,7 @@ function CreateWorkspaceForm({onCreated}: {onCreated: (orgId: string) => void}) 
         </Label>
         <Input
           id="org-name"
-          placeholder="My Workspace"
+          placeholder="e.g., Acme Corp, Marketing Team, Personal Projects"
           value={name}
           onChange={e => setName(e.target.value)}
           required

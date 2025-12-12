@@ -4,6 +4,7 @@ import {ChevronDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
 import {useProjectId, useWorkspace} from '@/app/app/projects/[projectId]/utils';
+import {CreateProjectDialog} from '@/components/create-project-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,11 +15,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem} from '@/components/ui/sidebar';
 import {useProjects} from '@/contexts/project-context';
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 
 export function ProjectSwitcher() {
   const projectId = useProjectId();
   const {projects: allProjects} = useProjects();
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
 
   const workspace = useWorkspace();
 
@@ -78,17 +80,21 @@ export function ProjectSwitcher() {
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="gap-2 p-2">
-              <Link href={`/app/projects/${projectId}/new-project`}>
-                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" />
-                </div>
-                <div className="text-muted-foreground font-medium">New project</div>
-              </Link>
+            <DropdownMenuItem className="gap-2 p-2" onSelect={() => setCreateProjectOpen(true)}>
+              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                <Plus className="size-4" />
+              </div>
+              <div className="text-muted-foreground font-medium">New project</div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <CreateProjectDialog
+        open={createProjectOpen}
+        onOpenChange={setCreateProjectOpen}
+        workspaceId={workspace.id}
+        workspaceName={workspace.name}
+      />
     </SidebarMenu>
   );
 }

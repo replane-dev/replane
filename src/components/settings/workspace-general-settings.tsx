@@ -54,6 +54,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
             id="org-name"
             value={name}
             onChange={e => setName(e.target.value)}
+            placeholder="e.g., Acme Corp, Marketing Team, Personal Projects"
             disabled={!canEdit}
             maxLength={100}
           />

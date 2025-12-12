@@ -125,6 +125,7 @@ export default function GeneralSettingsPage() {
                   <Input
                     value={name}
                     onChange={e => setName(e.target.value)}
+                    placeholder="e.g., Mobile App, Web Dashboard, API Service"
                     required
                     readOnly={!canEditDetails}
                     aria-readonly={!canEditDetails}
@@ -138,7 +139,7 @@ export default function GeneralSettingsPage() {
                   <Textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder="Optional description"
+                    placeholder="Describe what this project is for..."
                     readOnly={!canEditDetails}
                     aria-readonly={!canEditDetails}
                     rows={4}

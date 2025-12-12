@@ -4,6 +4,7 @@ import {ChevronsUpDown, Plus} from 'lucide-react';
 import Link from 'next/link';
 
 import {useProjectId, useWorkspace} from '@/app/app/projects/[projectId]/utils';
+import {CreateWorkspaceDialog} from '@/components/create-workspace-dialog';
 import {ReplaneIcon} from '@/components/replane-icon';
 import {
   DropdownMenu,
@@ -15,13 +16,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
 import {useProjects} from '@/contexts/project-context';
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 
 export function OrgSwitcher() {
   const {isMobile} = useSidebar();
   const projectId = useProjectId();
   const workspace = useWorkspace();
   const {workspaces, projects} = useProjects();
+  const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
 
   // For each workspace, find the first project to navigate to
   const workspaceLinks = useMemo(() => {
@@ -29,12 +31,13 @@ export function OrgSwitcher() {
       const firstProjectInWorkspace = projects.find(p => p.workspaceId === ws.id);
       return {
         workspace: ws,
+        // If no project exists, just use the workspace ID - the layout will handle showing the create project dialog
         href: firstProjectInWorkspace
           ? `/app/projects/${firstProjectInWorkspace.id}/configs`
-          : `/app/projects/${ws.id}/new-project`,
+          : `/app/projects/${projectId}/configs`,
       };
     });
-  }, [workspaces, projects]);
+  }, [workspaces, projects, projectId]);
 
   return (
     <SidebarMenu>
@@ -71,17 +74,22 @@ export function OrgSwitcher() {
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="gap-2 p-2">
-              <Link href={`/app/projects/${projectId}/new-workspace`}>
-                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" />
-                </div>
-                <div className="text-muted-foreground font-medium">New workspace</div>
-              </Link>
+            <DropdownMenuItem
+              className="gap-2 p-2"
+              onSelect={() => setCreateWorkspaceOpen(true)}
+            >
+              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                <Plus className="size-4" />
+              </div>
+              <div className="text-muted-foreground font-medium">New workspace</div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <CreateWorkspaceDialog
+        open={createWorkspaceOpen}
+        onOpenChange={setCreateWorkspaceOpen}
+      />
     </SidebarMenu>
   );
 }

@@ -611,7 +611,7 @@ export function ConfigForm(props: ConfigFormProps) {
               <FormControl>
                 <Textarea
                   rows={3}
-                  placeholder="Optional description"
+                  placeholder="Describe what this config controls..."
                   readOnly={!canEditDescription}
                   {...field}
                 />
