@@ -28,8 +28,8 @@ export default withSentryConfig(nextConfig, {
     enabled: true,
   },
 
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
-  tunnelRoute: true,
+  // Route browser requests to Sentry through our custom server to circumvent ad-blockers
+  tunnelRoute: '/api/internal/monitoring',
 
   // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,

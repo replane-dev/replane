@@ -19,8 +19,6 @@ declare global {
 const config = typeof window !== 'undefined' ? window.__SENTRY_CONFIG__ : undefined;
 
 if (config?.dsn) {
-  console.log('Init Sentry with config', config);
-
   Sentry.init({
     dsn: config.dsn,
 

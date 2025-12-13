@@ -78,6 +78,7 @@ term_handler() {
     echo "[entrypoint] Stopping app (PID $APP_PID)..."
     kill "$APP_PID" || true
     wait "$APP_PID" || true
+    sleep 1 # give the app a moment to exit
     echo "[entrypoint] App stopped"
   fi
 
