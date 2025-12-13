@@ -680,6 +680,14 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
         </div>
       </div>
     );
+  } else if (type === 'user_account_deleted') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          User account <strong>{payload.user.email}</strong> was deleted
+        </div>
+      </div>
+    );
   } else {
     assertNever(type, 'Unhandled audit event type');
   }
