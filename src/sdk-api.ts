@@ -5,6 +5,7 @@ import {ConfigName} from '@/engine/core/stores/config-store';
 import {createUuidV4} from '@/engine/core/uuid';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';
+import * as Sentry from '@sentry/nextjs';
 import {cors} from 'hono/cors';
 import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
@@ -67,6 +68,14 @@ sdkApi.onError((err, c) => {
     return c.json({msg: 'Forbidden'}, 403);
   }
 
+  Sentry.captureException(err, {
+    extra: {
+      method: c.req.method,
+      url: c.req.url,
+      path: c.req.path,
+    },
+  });
+
   console.error('API error:', err);
   return c.json({msg: 'Internal server error'}, 500);
 });
@@ -101,6 +110,13 @@ sdkApi.use('*', async (c, next) => {
     c.set('environmentId', verified.environmentId);
     await next();
   } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        method: c.req.method,
+        url: c.req.url,
+        path: c.req.path,
+      },
+    });
     console.error(e);
     return c.json({msg: 'Auth failure'}, 500);
   }
@@ -365,6 +381,12 @@ sdkApi.openapi(
           }
         } catch (err) {
           errored = true;
+          Sentry.captureException(err, {
+            extra: {
+              endpoint: '/events',
+              projectId,
+            },
+          });
           console.error('SSE stream error:', err);
           controller.error(err);
         } finally {
@@ -546,6 +568,12 @@ sdkApi.openapi(
           }
         } catch (err) {
           errored = true;
+          Sentry.captureException(err, {
+            extra: {
+              endpoint: '/replication/stream',
+              projectId,
+            },
+          });
           console.error('SSE stream error:', err);
           controller.error(err);
         } finally {

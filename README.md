@@ -131,6 +131,23 @@ Configure at least one OAuth provider. You can enable multiple providers simulta
 
 - `DATABASE_SSL_CA` – custom SSL/TLS certificate authority (CA) for PostgreSQL connections. Use this when connecting to databases that require custom SSL certificates.
 
+### Error Tracking (Sentry)
+
+Replane supports optional [Sentry](https://sentry.io) integration for error tracking and performance monitoring. When enabled, errors from the server, SDK API, and client-side UI are automatically reported.
+
+- `SENTRY_DSN` – Your Sentry Data Source Name (DSN). Enables Sentry when set.
+- `SENTRY_ENVIRONMENT` – Environment name for Sentry (e.g., `production`, `staging`).
+- `SENTRY_TRACES_SAMPLE_RATE` – Sample rate for performance tracing (0.0 to 1.0). Defaults to `0.1` (10%).
+
+Example configuration:
+
+```yaml
+environment:
+  SENTRY_DSN: https://xxx@xxx.ingest.sentry.io/xxx
+  SENTRY_ENVIRONMENT: production
+  SENTRY_TRACES_SAMPLE_RATE: '0.1'
+```
+
 ## JavaScript SDK
 
 Install:

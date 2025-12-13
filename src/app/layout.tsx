@@ -43,9 +43,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const sentryConfig = {
+    dsn: process.env.SENTRY_DSN || '',
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1',
+  };
+
   return (
     <TRPCReactProvider>
       <html lang="en" suppressHydrationWarning>
+        <head>
+          {/* Inject Sentry config at runtime for client-side initialization */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.__SENTRY_CONFIG__=${JSON.stringify(sentryConfig)};`,
+            }}
+          />
+        </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AuthSession>

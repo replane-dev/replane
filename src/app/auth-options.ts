@@ -17,6 +17,7 @@ import {UserStore} from '@/engine/core/user-store';
 import {ensureDefined, normalizeEmail, runTransactional} from '@/engine/core/utils';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
 import PostgresAdapter from '@auth/pg-adapter';
+import * as Sentry from '@sentry/nextjs';
 import {Kysely, PostgresDialect} from 'kysely';
 import {type AuthOptions, type User} from 'next-auth';
 import GithubProvider from 'next-auth/providers/github';
@@ -114,16 +115,30 @@ export function getAuthOptions(): AuthOptions {
     ].flat(),
     callbacks: {
       async signIn({account, profile}) {
-        if (account?.provider === 'google') {
-          return !!(profile as GoogleProfile | undefined)?.email_verified;
+        try {
+          if (account?.provider === 'google') {
+            return !!(profile as GoogleProfile | undefined)?.email_verified;
+          }
+          return true;
+        } catch (error) {
+          Sentry.captureException(error, {
+            extra: {provider: account?.provider, event: 'signIn'},
+          });
+          throw error;
         }
-        return true;
       },
     },
     events: {
       async createUser({user}) {
-        // TODO: don't create user if initUser fails
-        await initUser(db, user, logger);
+        try {
+          // TODO: don't create user if initUser fails
+          await initUser(db, user, logger);
+        } catch (error) {
+          Sentry.captureException(error, {
+            extra: {event: 'createUser'},
+          });
+          throw error;
+        }
       },
     },
   } satisfies AuthOptions;

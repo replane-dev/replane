@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.1",
+    "@sentry/nextjs": "^9.31.0",
     "@hookform/resolvers": "^5.2.2",
     "@icons-pack/react-simple-icons": "^13.8.0",
     "@monaco-editor/react": "^4.7.0",

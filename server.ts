@@ -1,4 +1,7 @@
+import './sentry.server.config';
+
 import {sdkApi} from '@/sdk-api';
+import * as Sentry from '@sentry/nextjs';
 import {createServer, IncomingMessage, ServerResponse} from 'http';
 import next from 'next';
 import type {TLSSocket} from 'tls';
@@ -116,34 +119,53 @@ app.prepare().then(() => {
     res.on('finish', () => logRequestEnd(req, res, startedAt));
     const parsedUrl = parse(req.url!, true);
 
-    if (parsedUrl.pathname && SDK_PATH_REGEX.some(regex => regex.test(parsedUrl.pathname!))) {
-      const honoReq = toSdkRequest(req);
-      const honoRes = await sdkApi.fetch(honoReq);
-      await sendResponse(res, honoRes);
-      return;
-    }
+    try {
+      if (parsedUrl.pathname && SDK_PATH_REGEX.some(regex => regex.test(parsedUrl.pathname!))) {
+        const honoReq = toSdkRequest(req);
+        const honoRes = await sdkApi.fetch(honoReq);
+        await sendResponse(res, honoRes);
+        return;
+      }
 
-    if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
-      const nextHealth = await Promise.all([
-        healthcheckAwareSelfFetch('/health')
-          .then(res => ({healthy: !res || res.status === 200}))
-          .catch(() => ({healthy: false})),
-        healthcheckAwareSelfFetch('/api/internal/health')
-          .then(res => ({healthy: !res || res.status === 200}))
-          .catch(() => ({healthy: false})),
-      ]).then(([nextHealth, internalHealth]) => {
-        return {
-          healthy: nextHealth.healthy && internalHealth.healthy,
-        };
+      if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
+        const nextHealth = await Promise.all([
+          healthcheckAwareSelfFetch('/health')
+            .then(res => ({healthy: !res || res.status === 200}))
+            .catch(() => ({healthy: false})),
+          healthcheckAwareSelfFetch('/api/internal/health')
+            .then(res => ({healthy: !res || res.status === 200}))
+            .catch(() => ({healthy: false})),
+        ]).then(([nextHealth, internalHealth]) => {
+          return {
+            healthy: nextHealth.healthy && internalHealth.healthy,
+          };
+        });
+
+        res.statusCode = nextHealth.healthy ? 200 : 500;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({}));
+        return;
+      }
+
+      handle(req, res, parsedUrl);
+    } catch (error) {
+      // Report error to Sentry if enabled
+      Sentry.captureException(error, {
+        extra: {
+          method: req.method,
+          url: req.url,
+          pathname: parsedUrl.pathname,
+        },
       });
 
-      res.statusCode = nextHealth.healthy ? 200 : 500;
-      res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({}));
-      return;
-    }
+      console.error('Server error:', error);
 
-    handle(req, res, parsedUrl);
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({msg: 'Internal server error'}));
+      }
+    }
   }).listen(PORT);
 
   console.log(

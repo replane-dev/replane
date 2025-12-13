@@ -4,6 +4,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import type {NormalizedEmail} from '@/engine/core/zod';
 import type {Engine} from '@/engine/engine';
 import {getEngineSingleton} from '@/engine/engine-singleton';
+import * as Sentry from '@sentry/nextjs';
 import {initTRPC} from '@trpc/server';
 import {getServerSession} from 'next-auth';
 import {cache} from 'react';
@@ -35,7 +36,14 @@ const t = initTRPC.context<TrpcContext>().create({
    * @see https://trpc.io/docs/server/data-transformers
    */
   transformer: superjson,
-  errorFormatter: ({shape, error}) => {
+  errorFormatter: ({shape, error, path}) => {
+    Sentry.captureException(error.cause ?? error, {
+      extra: {
+        path,
+        code: error.code,
+      },
+    });
+
     // Pass through BadRequestError codes to the frontend
     if (error.cause instanceof BadRequestError && error.cause.code) {
       return {
@@ -48,6 +56,7 @@ const t = initTRPC.context<TrpcContext>().create({
         },
       };
     }
+
     return shape;
   },
 });
