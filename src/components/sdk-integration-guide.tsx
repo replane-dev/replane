@@ -14,6 +14,7 @@ import {
 import {Skeleton} from '@/components/ui/skeleton';
 import {useTRPC} from '@/trpc/client';
 import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
+import Link from 'next/link';
 import {useEffect, useRef, useState} from 'react';
 import {toast} from 'sonner';
 
@@ -190,10 +191,9 @@ replane.close();`;
           <CodeSnippet code={defineTypesSnippet} language="typescript" />
         )}
         <p className="text-xs text-muted-foreground">
-          This is the generated code for the selected environment. It includes the types for the
-          configs and the client. You can use this code to integrate the Replane SDK into your
-          application. You can also generate the code for different environments by selecting a
-          different environment in the selector above.
+          This is the generated code for the selected environment. You can use this code to
+          integrate the Replane SDK into your application. You can also generate the code for
+          different environments by selecting a different environment in the selector above.
         </p>
       </div>
 
@@ -219,7 +219,13 @@ replane.close();`;
         {!sdkKey && (
           <p className="text-xs text-muted-foreground italic">
             Replace <code className="px-1 py-0.5 bg-muted rounded">your-project-sdk-key-here</code>{' '}
-            with your actual SDK key.
+            with your actual SDK key.{' '}
+            <Link
+              href={`/app/projects/${projectId}/sdk-keys?new`}
+              className="text-primary underline hover:no-underline"
+            >
+              Create a new SDK key
+            </Link>
           </p>
         )}
       </div>
