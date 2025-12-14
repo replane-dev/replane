@@ -1,10 +1,18 @@
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {ConfigProposalRejectionReason, ConfigProposals, DB} from '../db';
+import {OverrideSchema} from '../override-condition-schemas';
 import type {Override} from '../override-evaluator';
 import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
-import {ConfigMember, ConfigSchema, ConfigValue, Uuid} from '../zod';
+import {
+  ConfigMember,
+  ConfigSchema,
+  ConfigValue,
+  Uuid,
+  type ConfigSchema as ConfigSchemaType,
+  type ConfigValue as ConfigValueType,
+} from '../zod';
 
 export type ConfigProposalId = string;
 export type ConfigProposalVariantId = string;
@@ -15,6 +23,10 @@ export function createConfigProposalVariantId(): ConfigProposalVariantId {
 
 export function createConfigProposalId() {
   return createUuidV7() as ConfigProposalId;
+}
+
+export function ConfigProposalOverrides() {
+  return z.array(OverrideSchema).max(100);
 }
 
 export function ConfigProposal() {
@@ -31,11 +43,19 @@ export function ConfigProposal() {
       .enum(['config_edited', 'config_deleted', 'another_proposal_approved', 'rejected_explicitly'])
       .nullable(),
     baseConfigVersion: z.number(),
+    // Original values (snapshot at proposal creation time)
     originalMembers: z.array(ConfigMember()),
     originalDescription: z.string(),
+    originalValue: ConfigValue(),
+    originalSchema: ConfigSchema().nullable(),
+    originalOverrides: ConfigProposalOverrides(),
+    // Proposed values
     proposedDelete: z.boolean(),
     proposedDescription: z.string(),
     proposedMembers: z.array(ConfigMember()),
+    proposedValue: ConfigValue(),
+    proposedSchema: ConfigSchema().nullable(),
+    proposedOverrides: ConfigProposalOverrides(),
     message: z.string().nullable(),
   });
 }
@@ -63,12 +83,11 @@ export interface PendingProposalWithProposerEmail {
   baseConfigVersion: number;
 }
 
-// Variant change within a proposal
+// Variant change within a proposal (for environment-specific variants only)
 export interface ConfigProposalVariant {
   id: string;
   proposalId: string;
-  configVariantId: string;
-  environmentId: string | null;
+  environmentId: string;
   // undefined = no change proposed, null = explicitly set to null, value = set to value
   proposedValue: ConfigValue;
   proposedSchema: ConfigSchema | null;
@@ -77,7 +96,6 @@ export interface ConfigProposalVariant {
 }
 
 export interface ConfigProposalVariantWithEnvironment extends ConfigProposalVariant {
-  environmentId: string | null;
   environmentName: string;
 }
 
@@ -321,11 +339,21 @@ export class ConfigProposalStore {
         rejected_in_favor_of_proposal_id: proposal.rejectedInFavorOfProposalId,
         rejection_reason: proposal.rejectionReason,
         base_config_version: proposal.baseConfigVersion,
+        // Original values (snapshot)
         original_members: serializeJson(proposal.originalMembers),
         original_description: proposal.originalDescription,
+        original_value: serializeJson(proposal.originalValue),
+        original_schema:
+          proposal.originalSchema !== null ? serializeJson(proposal.originalSchema) : null,
+        original_overrides: serializeJson(proposal.originalOverrides),
+        // Proposed values
         proposed_delete: proposal.proposedDelete,
         proposed_description: proposal.proposedDescription,
         proposed_members: serializeJson(proposal.proposedMembers),
+        proposed_value: serializeJson(proposal.proposedValue),
+        proposed_schema:
+          proposal.proposedSchema !== null ? serializeJson(proposal.proposedSchema) : null,
+        proposed_overrides: serializeJson(proposal.proposedOverrides),
         message: proposal.message,
       })
       .execute();
@@ -336,6 +364,9 @@ export class ConfigProposalStore {
     proposedDescription?: string;
     proposedMembers?: ConfigMember[];
     proposedDelete?: boolean;
+    proposedValue?: ConfigValueType;
+    proposedSchema?: ConfigSchemaType | null;
+    proposedOverrides?: Override[];
     approvedAt?: Date;
     rejectedAt?: Date;
     reviewerId?: number;
@@ -349,6 +380,18 @@ export class ConfigProposalStore {
         proposed_members:
           params.proposedMembers !== undefined ? serializeJson(params.proposedMembers) : undefined,
         proposed_delete: params.proposedDelete,
+        proposed_value:
+          params.proposedValue !== undefined ? serializeJson(params.proposedValue) : undefined,
+        proposed_schema:
+          params.proposedSchema !== undefined
+            ? params.proposedSchema !== null
+              ? serializeJson(params.proposedSchema)
+              : null
+            : undefined,
+        proposed_overrides:
+          params.proposedOverrides !== undefined
+            ? serializeJson(params.proposedOverrides)
+            : undefined,
         approved_at: params.approvedAt,
         rejected_at: params.rejectedAt,
         reviewer_id: params.reviewerId,
@@ -365,23 +408,6 @@ export class ConfigProposalStore {
 
   // =============== Proposal Variants ===============
 
-  async createVariant(variant: ConfigProposalVariant): Promise<void> {
-    await this.db
-      .insertInto('config_proposal_variants')
-      .values({
-        id: variant.id,
-        proposal_id: variant.proposalId,
-        config_variant_id: variant.configVariantId,
-        environment_id: variant.environmentId,
-        use_default_schema: variant.useDefaultSchema,
-        proposed_value: serializeJson(variant.proposedValue),
-        proposed_schema:
-          variant.proposedSchema !== undefined ? serializeJson(variant.proposedSchema) : null,
-        proposed_overrides: serializeJson(variant.proposedOverrides),
-      })
-      .execute();
-  }
-
   async createVariants(variants: ConfigProposalVariant[]): Promise<void> {
     if (variants.length === 0) return;
 
@@ -391,7 +417,6 @@ export class ConfigProposalStore {
         variants.map(variant => ({
           id: variant.id,
           proposal_id: variant.proposalId,
-          config_variant_id: variant.configVariantId,
           environment_id: variant.environmentId,
           use_default_schema: variant.useDefaultSchema,
           proposed_value: serializeJson(variant.proposedValue),
@@ -408,12 +433,10 @@ export class ConfigProposalStore {
   ): Promise<ConfigProposalVariantWithEnvironment[]> {
     const rows = await this.db
       .selectFrom('config_proposal_variants as cpv')
-      .innerJoin('config_variants as cv', 'cv.id', 'cpv.config_variant_id')
       .leftJoin('project_environments as pe', 'pe.id', 'cpv.environment_id')
       .select([
         'cpv.id',
         'cpv.proposal_id',
-        'cpv.config_variant_id',
         'cpv.environment_id',
         'cpv.use_default_schema',
         'cpv.proposed_value',
@@ -428,7 +451,6 @@ export class ConfigProposalStore {
       (row): ConfigProposalVariantWithEnvironment => ({
         id: row.id,
         proposalId: row.proposal_id,
-        configVariantId: row.config_variant_id,
         environmentId: row.environment_id,
         useDefaultSchema: row.use_default_schema,
         proposedValue: deserializeJson<ConfigValue>(row.proposed_value),
@@ -438,31 +460,6 @@ export class ConfigProposalStore {
         environmentName: row.environment_name ?? '',
       }),
     );
-  }
-
-  async getVariantByProposalIdAndConfigVariantId(
-    proposalId: string,
-    configVariantId: string,
-  ): Promise<ConfigProposalVariant | null> {
-    const row = await this.db
-      .selectFrom('config_proposal_variants')
-      .selectAll()
-      .where('proposal_id', '=', proposalId)
-      .where('config_variant_id', '=', configVariantId)
-      .executeTakeFirst();
-
-    if (!row) return null;
-
-    return {
-      id: row.id,
-      proposalId: row.proposal_id,
-      configVariantId: row.config_variant_id,
-      environmentId: row.environment_id,
-      useDefaultSchema: row.use_default_schema,
-      proposedValue: deserializeJson<ConfigValue>(row.proposed_value),
-      proposedSchema: row.proposed_schema !== null ? deserializeJson(row.proposed_schema) : null,
-      proposedOverrides: deserializeJson<Override[]>(row.proposed_overrides),
-    };
   }
 
   async deleteVariantsByProposalId(proposalId: string): Promise<void> {
@@ -485,11 +482,21 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     rejectedInFavorOfProposalId: proposal.rejected_in_favor_of_proposal_id,
     rejectionReason: proposal.rejection_reason,
     baseConfigVersion: proposal.base_config_version,
+    // Original values (snapshot)
     originalMembers: deserializeJson(proposal.original_members) ?? [],
     originalDescription: proposal.original_description,
+    originalValue: deserializeJson(proposal.original_value),
+    originalSchema:
+      proposal.original_schema !== null ? deserializeJson(proposal.original_schema) : null,
+    originalOverrides: deserializeJson(proposal.original_overrides) ?? [],
+    // Proposed values
     proposedDelete: proposal.proposed_delete,
     proposedDescription: proposal.proposed_description,
     proposedMembers: deserializeJson(proposal.proposed_members),
+    proposedValue: deserializeJson(proposal.proposed_value),
+    proposedSchema:
+      proposal.proposed_schema !== null ? deserializeJson(proposal.proposed_schema) : null,
+    proposedOverrides: deserializeJson(proposal.proposed_overrides) ?? [],
     message: proposal.message,
   };
 }

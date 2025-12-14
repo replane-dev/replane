@@ -12,8 +12,7 @@ export interface GetConfigProposalRequest {
 }
 
 export interface ProposedVariantDetails {
-  configVariantId: string;
-  environmentId: string | null;
+  environmentId: string;
   environmentName: string;
   proposedValue: ConfigValue;
   proposedSchema: ConfigSchema | null;
@@ -24,6 +23,16 @@ export interface ProposedVariantDetails {
   currentSchema: ConfigSchema | null;
   currentOverrides: Override[];
   currentUseDefaultSchema: boolean;
+}
+
+export interface ProposedDefaultVariant {
+  proposedValue: ConfigValue;
+  proposedSchema: ConfigSchema | null;
+  proposedOverrides: Override[];
+  // Original values for comparison
+  originalValue: ConfigValue;
+  originalSchema: ConfigSchema | null;
+  originalOverrides: Override[];
 }
 
 export interface ConfigProposalDetails {
@@ -43,6 +52,9 @@ export interface ConfigProposalDetails {
   proposedDelete: boolean;
   proposedDescription: string;
   proposedMembers: Array<{email: string; role: 'maintainer' | 'editor'}>;
+  // Default variant (base config) changes
+  proposedDefaultVariant: ProposedDefaultVariant;
+  // Environment-specific variant changes
   proposedVariants: ProposedVariantDetails[];
   message: string | null;
   status: 'pending' | 'approved' | 'rejected';
@@ -108,7 +120,11 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
 
     // Fetch variant changes for approval logic
     const proposalVariantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
-    const hasSchemaChanges = proposalVariantChanges.some(vc => vc.proposedSchema !== undefined);
+    // Check for schema changes in environment variants or default variant
+    const hasEnvSchemaChanges = proposalVariantChanges.some(vc => vc.proposedSchema !== undefined);
+    const hasDefaultSchemaChange =
+      JSON.stringify(proposal.proposedSchema) !== JSON.stringify(proposal.originalSchema);
+    const hasSchemaChanges = hasEnvSchemaChanges || hasDefaultSchemaChange;
 
     // Determine approval policy and eligible approvers
     const maintainerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
@@ -173,22 +189,19 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const variantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
     const proposedVariants: ProposedVariantDetails[] = [];
     for (const vc of variantChanges) {
-      const variant = await tx.configVariants.getById(vc.configVariantId);
-      if (variant) {
-        proposedVariants.push({
-          configVariantId: vc.configVariantId,
-          environmentId: vc.environmentId,
-          environmentName: vc.environmentName,
-          proposedValue: vc.proposedValue,
-          proposedSchema: vc.proposedSchema,
-          proposedOverrides: vc.proposedOverrides,
-          useDefaultSchema: vc.useDefaultSchema,
-          currentValue: variant.value,
-          currentSchema: variant.schema,
-          currentOverrides: variant.overrides,
-          currentUseDefaultSchema: variant.useDefaultSchema,
-        });
-      }
+      const currentVariant = await tx.configVariants.getById(vc.environmentId);
+      proposedVariants.push({
+        environmentId: vc.environmentId,
+        environmentName: vc.environmentName,
+        proposedValue: vc.proposedValue,
+        proposedSchema: vc.proposedSchema,
+        proposedOverrides: vc.proposedOverrides,
+        useDefaultSchema: vc.useDefaultSchema,
+        currentValue: currentVariant?.value ?? config.value,
+        currentSchema: currentVariant?.schema ?? null,
+        currentOverrides: currentVariant?.overrides ?? [],
+        currentUseDefaultSchema: currentVariant?.useDefaultSchema ?? true,
+      });
     }
 
     return {
@@ -209,6 +222,14 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         proposedDelete: proposal.proposedDelete,
         proposedDescription: proposal.proposedDescription,
         proposedMembers: proposal.proposedMembers,
+        proposedDefaultVariant: {
+          proposedValue: proposal.proposedValue,
+          proposedSchema: proposal.proposedSchema,
+          proposedOverrides: proposal.proposedOverrides,
+          originalValue: proposal.originalValue,
+          originalSchema: proposal.originalSchema,
+          originalOverrides: proposal.originalOverrides,
+        },
         proposedVariants,
         message: proposal.message,
         status,

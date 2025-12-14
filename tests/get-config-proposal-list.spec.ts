@@ -94,7 +94,7 @@ describe('getConfigProposalList', () => {
           },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -128,7 +128,7 @@ describe('getConfigProposalList', () => {
           },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -175,7 +175,7 @@ describe('getConfigProposalList', () => {
           },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );

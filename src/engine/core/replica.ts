@@ -1,3 +1,4 @@
+import assert from 'assert';
 import type {Kysely} from 'kysely';
 import {type Context} from './context';
 import type {DB} from './db';
@@ -212,11 +213,13 @@ export class Replica {
 
   stop() {
     this.configsReplicator.stop();
+    this.sdkKeysReplicator.stop();
   }
 
   async destroy() {
     this.stop();
     await this.configsReplicator.destroy();
+    await this.sdkKeysReplicator.destroy();
     this.replicaStore.clear();
   }
 }
@@ -231,41 +234,51 @@ async function getReplicaConfigs(params: {
 
   const query = params.db
     .selectFrom('configs as c')
-    .innerJoin('config_variants as cv', 'cv.config_id', 'c.id')
+    .leftJoin('config_variants as cv', 'cv.config_id', 'c.id')
     .select([
       'c.id as config_id',
       'c.name',
       'c.project_id',
       'c.version',
+      'c.value',
+      'c.overrides',
       'cv.id as variant_id',
-      'cv.environment_id',
-      'cv.value',
-      'cv.overrides',
+      'cv.environment_id as variant_environment_id',
+      'cv.value as variant_value',
+      'cv.overrides as variant_overrides',
     ])
     .where('c.id', 'in', params.configIds);
 
   const configs = await query.execute();
 
-  return groupBy(configs, config => ({
-    configId: config.config_id,
-    projectId: config.project_id,
-    name: config.name,
-    version: config.version,
-  })).map(([config, value]): ConfigReplica => {
-    const variants: ConfigVariantReplica[] = value.map(variant => ({
-      id: variant.variant_id,
-      configId: variant.config_id,
-      environmentId: variant.environment_id,
-      value: JSON.parse(variant.value) as ConfigValue,
-      overrides: JSON.parse(variant.overrides) as Override[],
-    }));
+  return groupBy(configs, config => config.config_id).map(([configId, value]): ConfigReplica => {
+    const variants: ConfigVariantReplica[] = value
+      .filter(x => x.variant_environment_id !== null)
+      .map(variant => {
+        // if for rows with environment_id !== null, the variant_id, config_id, environment_id, value, and overrides cannot be null
+        assert(variant.variant_id !== null, 'Variant ID cannot be null');
+        assert(variant.config_id !== null, 'Variant config ID cannot be null');
+        assert(variant.variant_environment_id !== null, 'Variant environment ID cannot be null');
+        assert(variant.variant_value !== null, 'Variant value cannot be null');
+        assert(variant.variant_overrides !== null, 'Variant overrides cannot be null');
+
+        return {
+          id: variant.variant_id,
+          configId: variant.config_id,
+          environmentId: variant.variant_environment_id,
+          value: JSON.parse(variant.variant_value) as ConfigValue,
+          overrides: JSON.parse(variant.variant_overrides) as Override[],
+        };
+      });
+    const firstVariant = value[0];
     return {
-      id: config.configId,
-      projectId: config.projectId,
-      name: config.name,
-      version: config.version,
-      variants: variants.filter(variant => variant.environmentId !== null),
-      defaultVariant: variants.find(variant => variant.environmentId === null) ?? null,
+      id: configId,
+      projectId: firstVariant.project_id,
+      name: firstVariant.name,
+      version: firstVariant.version,
+      variants: variants,
+      value: JSON.parse(firstVariant.value) as ConfigValue,
+      overrides: JSON.parse(firstVariant.overrides) as Override[],
     };
   });
 }

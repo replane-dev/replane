@@ -181,7 +181,7 @@ describe('Read Use Cases - Permission Checks', () => {
           ],
           currentUserEmail: CURRENT_USER_EMAIL,
           proposedDelete: false,
-          defaultVariant: null,
+          defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
           message: null,
         },
       );

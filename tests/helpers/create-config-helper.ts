@@ -34,12 +34,19 @@ export function convertLegacyCreateConfigParams(
     editorEmails: params.editorEmails,
     maintainerEmails: params.maintainerEmails,
     projectId: params.projectId,
+    // Default variant (base config) stored in configs table
+    defaultVariant: {
+      value: params.value,
+      schema: params.schema,
+      overrides: params.overrides,
+    },
+    // Environment variants use the same values with useDefaultSchema
     environmentVariants: environments.map(env => ({
       environmentId: env.id,
       value: params.value,
       schema: params.schema,
       overrides: params.overrides,
-      useDefaultSchema: false,
+      useDefaultSchema: true,
     })),
   };
 }

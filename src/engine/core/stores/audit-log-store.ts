@@ -21,6 +21,15 @@ export interface AuditLogPayloadConfig {
   description: string;
   createdAt: Date;
   version: number;
+  value: unknown;
+  schema: unknown | null;
+  overrides: unknown;
+  environmentVariants: Array<{
+    environmentId: string;
+    value: unknown;
+    schema: unknown | null;
+    overrides: unknown;
+  }>;
 }
 
 export interface ConfigCreatedAuditLogPayload extends BaseAuditLogPayload<'config_created'> {
@@ -179,6 +188,12 @@ export interface ConfigProposalCreatedAuditLogPayload extends BaseAuditLogPayloa
   proposedSchema?: {newSchema: unknown};
   proposedOverrides?: {newOverrides: unknown};
   proposedMembers?: Array<{email: string; role: string}>;
+  proposedVariants?: Array<{
+    environmentId: string;
+    proposedValue: unknown;
+    proposedSchema: unknown | null;
+    proposedOverrides: unknown;
+  }>;
   message: string | null;
 }
 

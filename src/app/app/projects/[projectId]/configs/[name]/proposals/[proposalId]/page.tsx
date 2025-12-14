@@ -245,7 +245,7 @@ export default function ReviewConfigProposalPage() {
                   Proposal description
                 </div>
                 {proposal.message ? (
-                  <p className="text-sm text-foreground/80 dark:text-foreground/70 whitespace-pre-wrap break-words">
+                  <p className="text-sm text-foreground/80 dark:text-foreground/70 whitespace-pre-wrap wrap-break-word">
                     {proposal.message}
                   </p>
                 ) : (
@@ -486,6 +486,7 @@ export default function ReviewConfigProposalPage() {
                 description: proposal.proposedDescription,
                 members: proposal.proposedMembers,
               }}
+              proposedDefaultVariant={proposal.proposedDefaultVariant}
               proposedVariants={proposal.proposedVariants}
             />
           )}

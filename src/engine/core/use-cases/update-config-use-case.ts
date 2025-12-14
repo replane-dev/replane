@@ -10,7 +10,7 @@ export interface UpdateConfigRequest {
   description: string;
   editorEmails: string[];
   maintainerEmails: string[];
-  defaultVariant?: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
+  defaultVariant: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
   environmentVariants: Array<{
     environmentId: string;
     value: ConfigValue;

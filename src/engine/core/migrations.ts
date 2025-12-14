@@ -4,6 +4,7 @@ import type {Context} from './context';
 import type {Logger} from './logger';
 
 export interface Migration {
+  name: string;
   sql: string;
 }
 
@@ -13,6 +14,7 @@ const DEFAULT_WORKSPACE_ID = '32234b32-b7d9-4401-91e2-745a0cfb092b';
 
 export const migrations: Migration[] = [
   {
+    name: 'Create auth tables (users, accounts, sessions, verification_token)',
     sql: /*sql*/ `
       CREATE TABLE verification_token
       (
@@ -64,6 +66,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Create configs, config_users, api_tokens, config_versions, audit_messages tables',
     sql: /*sql*/ `
       CREATE TABLE configs (
         id UUID PRIMARY KEY,
@@ -136,7 +139,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
-    // add projects
+    name: 'Add projects table and example configs',
     sql: /*sql*/ `
       CREATE TABLE projects (
         id UUID PRIMARY KEY,
@@ -247,6 +250,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Make audit_messages.project_id nullable',
     sql: /*sql*/ `
       ALTER TABLE audit_messages
       DROP CONSTRAINT IF EXISTS audit_messages_project_id_fkey,
@@ -258,6 +262,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Create config_proposals table',
     sql: /*sql*/ `
       CREATE TABLE config_proposals (
         id UUID PRIMARY KEY,
@@ -281,6 +286,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add proposal_id to config_versions',
     sql: /*sql*/ `
       -- add proposal_id to config_versions
       ALTER TABLE config_versions
@@ -290,6 +296,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add proposed_delete flag to config_proposals',
     sql: /*sql*/ `
       -- add proposed_delete flag to config_proposals to support deletion proposals
       ALTER TABLE config_proposals
@@ -297,6 +304,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add proposed_members to config_proposals',
     sql: /*sql*/ `
       -- add proposed_members to config_proposals to support membership changes via proposals
       ALTER TABLE config_proposals
@@ -304,6 +312,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Make config names unique per project',
     sql: /*sql*/ `
       -- drop unique config index and create project_id, name index
       DROP INDEX IF EXISTS idx_configs_name;
@@ -311,12 +320,14 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Drop configs_name_key constraint',
     sql: /*sql*/ `
       ALTER TABLE configs
       DROP CONSTRAINT IF EXISTS configs_name_key;
     `,
   },
   {
+    name: 'Add rejection_reason to config_proposals',
     sql: /*sql*/ `
       -- add rejection_reason to config_proposals to track why a proposal was rejected
       CREATE TYPE config_proposal_rejection_reason AS ENUM (
@@ -331,6 +342,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Create config_version_members table',
     sql: /*sql*/ `
       -- create separate table for config version members
       CREATE TABLE config_version_members (
@@ -344,6 +356,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Remove viewer role from config_user_role enum',
     sql: /*sql*/ `
       -- Remove 'viewer' role from config_user_role enum
       -- Step 1: Create new enum without 'viewer'
@@ -367,6 +380,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add message column to config_proposals',
     sql: /*sql*/ `
       -- Add message column to config_proposals for proposal descriptions
       ALTER TABLE config_proposals
@@ -374,6 +388,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add overrides column to configs, config_versions, config_proposals',
     sql: /*sql*/ `
       -- Add overrides column to configs table for conditional value overrides
       ALTER TABLE configs
@@ -389,6 +404,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Unified three-tier role system (owner→admin→maintainer)',
     sql: /*sql*/ `
       -- Unified three-tier role system migration
       -- Project: 'owner' → 'admin', 'admin' → 'maintainer'
@@ -438,6 +454,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Convert JSONB columns to TEXT',
     sql: /*sql*/ `
       -- Convert JSONB columns to TEXT columns
       -- Migrate configs table
@@ -465,6 +482,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Introduce environments, config_variants, rename tables',
     sql: /*sql*/ `
       -- Major refactor: Introduce environments and restructure schema
 
@@ -674,6 +692,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add environment_id to sdk_keys',
     sql: /*sql*/ `
       -- Add environment_id foreign key to sdk_keys
       ALTER TABLE sdk_keys ADD COLUMN environment_id UUID NULL;
@@ -699,6 +718,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add original_members and original_description to config_proposals',
     sql: /*sql*/ `
       -- Rename members_snapshot to original_members and add original_description
       ALTER TABLE config_proposals
@@ -713,6 +733,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Unify proposal system with config_proposal_variants',
     sql: /*sql*/ `
       -- Unify config_proposals and config_variant_proposals into a single proposal system
       -- A proposal can now include both config-level changes (description, members, deletion)
@@ -744,6 +765,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add order column to project_environments',
     sql: /*sql*/ `
       -- Add order column to project_environments
       ALTER TABLE project_environments
@@ -770,6 +792,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add updated_at column to configs',
     sql: /*sql*/ `
       -- Add updated_at column to configs table
       ALTER TABLE configs
@@ -788,6 +811,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add organizations table and organization_members',
     sql: /*sql*/ `
       -- Add organizations table
       CREATE TABLE organizations (
@@ -856,6 +880,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Move governance settings from organizations to projects',
     sql: /*sql*/ `
       -- Migration 27: Move governance settings from organizations to projects
 
@@ -885,6 +910,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add personal organizations for users',
     sql: /*sql*/ `
       -- Add personal_org_user_id column to organizations for personal organizations
       ALTER TABLE organizations
@@ -924,6 +950,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add auto_add_new_users to organizations',
     sql: /*sql*/ `
       -- Add auto_add_new_users column to organizations
       ALTER TABLE organizations
@@ -941,6 +968,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Create default projects for personal organizations',
     sql: /*sql*/ `
       -- Create default projects for personal organizations and rename them
 
@@ -1008,6 +1036,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Rename organizations to workspaces',
     sql: /*sql*/ `
       -- Migration: Rename organizations to workspaces
 
@@ -1043,6 +1072,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add support for default config variants (environment_id = NULL)',
     sql: /*sql*/ `
       -- Add support for default config variants (environment_id = NULL)
 
@@ -1061,6 +1091,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Add use_default_schema to config_variants',
     sql: /*sql*/ `
       -- Add use_default_schema column to config_variants
       -- When true, the variant inherits its schema from the default variant
@@ -1068,6 +1099,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Remove version column from config_variants',
     sql: /*sql*/ `
       -- Remove version column from config_variants
       -- Versioning is now tracked at the config level, not variant level
@@ -1076,6 +1108,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Update config_proposal_variants for full-state proposals',
     sql: /*sql*/ `
       -- Update config_proposal_variants to support full-state proposals
       -- Delete all existing proposals (old diff-based proposals are incompatible)
@@ -1092,6 +1125,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Create event_consumers and events tables',
     sql: /*sql*/ `
       CREATE TABLE event_consumers (
         id BIGSERIAL PRIMARY KEY,
@@ -1110,6 +1144,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Make overrides NOT NULL in config_variants and config_proposal_variants',
     sql: /*sql*/ `
       -- make overrides column in config_variants and config_proposal_variants not null
       -- and update existing records to use [] for empty overrides
@@ -1121,6 +1156,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Make proposed_value NOT NULL in config_proposal_variants',
     sql: /*sql*/ `
       -- make proposed_value not null (drop proposals with variants with nulls)
       DELETE FROM config_proposals WHERE id IN (
@@ -1131,13 +1167,13 @@ export const migrations: Migration[] = [
     `,
   },
   {
-    // drop default from use_default_schema column in config_proposal_variants
+    name: 'Drop default from use_default_schema in config_proposal_variants',
     sql: /*sql*/ `
       ALTER TABLE config_proposal_variants ALTER COLUMN use_default_schema DROP DEFAULT;
     `,
   },
   {
-    // make config_variant_versions value and overrides not null
+    name: 'Make value and overrides NOT NULL in config_variant_versions',
     sql: /*sql*/ `
       DELETE FROM config_variant_versions WHERE value IS NULL;
       UPDATE config_variant_versions SET overrides = '[]' WHERE overrides IS NULL;
@@ -1147,26 +1183,27 @@ export const migrations: Migration[] = [
     `,
   },
   {
-    // make proposed_members not null
+    name: 'Make proposed_members NOT NULL in config_proposals',
     sql: /*sql*/ `
       DELETE FROM config_proposals WHERE proposed_members IS NULL;
       ALTER TABLE config_proposals ALTER COLUMN proposed_members SET NOT NULL;
     `,
   },
   {
-    // make proposed delete non default
+    name: 'Drop default from proposed_delete in config_proposals',
     sql: /*sql*/ `
       ALTER TABLE config_proposals ALTER COLUMN proposed_delete DROP DEFAULT;
     `,
   },
   {
-    // make proposed description not null
+    name: 'Make proposed_description NOT NULL in config_proposals',
     sql: /*sql*/ `
       DELETE FROM config_proposals WHERE proposed_description IS NULL;
       ALTER TABLE config_proposals ALTER COLUMN proposed_description SET NOT NULL;
     `,
   },
   {
+    name: 'Add topic column to event_consumers and events',
     sql: /*sql*/ `
       ALTER TABLE event_consumers ADD COLUMN topic TEXT NOT NULL DEFAULT 'config';
       ALTER TABLE event_consumers ALTER COLUMN topic DROP DEFAULT;
@@ -1176,6 +1213,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Move topic to event_consumers only',
     sql: /*sql*/ `
       ALTER TABLE events DROP COLUMN topic;
 
@@ -1183,22 +1221,26 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Rename event topic from config to configs',
     sql: /*sql*/ `
       UPDATE event_consumers SET topic = 'configs' WHERE topic = 'config';
     `,
   },
   {
+    name: 'Rename sdk_keys.token_hash to key_hash',
     sql: /*sql*/ `
       ALTER TABLE sdk_keys RENAME COLUMN token_hash TO key_hash;
     `,
   },
   {
+    name: 'Remove personal_workspace_user_id from workspaces',
     sql: /*sql*/ `
       -- Remove personal workspace concept - workspaces are now all regular workspaces
       ALTER TABLE workspaces DROP COLUMN IF EXISTS personal_workspace_user_id;
     `,
   },
   {
+    name: 'Drop creator_id from configs',
     sql: /*sql*/ `
       -- Drop creator_id from configs table as it's not needed
       DROP INDEX IF EXISTS idx_configs_creator_id;
@@ -1206,16 +1248,134 @@ export const migrations: Migration[] = [
     `,
   },
   {
+    name: 'Drop is_example from projects',
     sql: /*sql*/ `
       -- Drop is_example from projects table as it's not needed
       ALTER TABLE projects DROP COLUMN IF EXISTS is_example;
     `,
   },
   {
+    name: 'Drop creator_id from sdk_keys',
     sql: /*sql*/ `
       -- Drop creator_id from sdk_keys table as it's not needed
       DROP INDEX IF EXISTS idx_sdk_keys_creator_id;
       ALTER TABLE sdk_keys DROP COLUMN IF EXISTS creator_id;
+    `,
+  },
+  {
+    name: 'Move base config from config_variants to configs table',
+    sql: /*sql*/ `
+      -- Migration: Move base config value/schema/overrides from config_variants (env_id=null) to configs table
+
+      -- Step 1: Add value, schema, overrides columns to configs table
+      ALTER TABLE configs ADD COLUMN value TEXT NULL;
+      ALTER TABLE configs ADD COLUMN schema TEXT NULL;
+      ALTER TABLE configs ADD COLUMN overrides TEXT NULL;
+
+      -- Step 2: Migrate data from config_variants where environment_id IS NULL to configs
+      UPDATE configs c
+      SET
+        value = cv.value,
+        schema = cv.schema,
+        overrides = cv.overrides
+      FROM config_variants cv
+      WHERE cv.config_id = c.id AND cv.environment_id IS NULL;
+
+      -- Step 3: For configs without a default variant, set default values
+      -- (this handles edge cases where no default variant exists)
+      UPDATE configs
+      SET overrides = '[]'
+      WHERE overrides IS NULL;
+
+      UPDATE configs
+      SET value = 'null'
+      WHERE value IS NULL;
+
+      -- Step 4: Make value and overrides NOT NULL (schema remains nullable)
+      ALTER TABLE configs ALTER COLUMN value SET NOT NULL;
+      ALTER TABLE configs ALTER COLUMN overrides SET NOT NULL;
+
+      -- Step 5: Delete config_variants where environment_id IS NULL (data now in configs)
+      DELETE FROM config_variants WHERE environment_id IS NULL;
+
+      -- Step 6: Drop the unique index that allowed NULL environment_id
+      DROP INDEX IF EXISTS config_variants_config_id_environment_id_unique;
+
+      -- Step 7: Make environment_id NOT NULL in config_variants
+      ALTER TABLE config_variants ALTER COLUMN environment_id SET NOT NULL;
+
+      -- Step 8: Add new unique constraint for config_id + environment_id
+      CREATE UNIQUE INDEX config_variants_config_id_environment_id_unique
+        ON config_variants(config_id, environment_id);
+
+      -- Step 9: Clean up config_proposal_variants that reference null environment_id
+      -- These were for default variant proposals, which now should reference configs directly
+      DELETE FROM config_proposal_variants WHERE environment_id IS NULL;
+    `,
+  },
+  {
+    name: 'Add proposed/original value/schema/overrides to config_proposals',
+    sql: /*sql*/ `
+      -- Migration 31: Add value/schema/overrides to config_proposals table
+      -- This allows proposals to include changes to the base config (default variant)
+
+      -- Step 1: Add columns for proposed default variant values
+      ALTER TABLE config_proposals ADD COLUMN proposed_value TEXT NULL;
+      ALTER TABLE config_proposals ADD COLUMN proposed_schema TEXT NULL;
+      ALTER TABLE config_proposals ADD COLUMN proposed_overrides TEXT NULL;
+
+      -- Step 2: Add columns for original default variant values (for comparison/diff)
+      ALTER TABLE config_proposals ADD COLUMN original_value TEXT NULL;
+      ALTER TABLE config_proposals ADD COLUMN original_schema TEXT NULL;
+      ALTER TABLE config_proposals ADD COLUMN original_overrides TEXT NULL;
+
+      -- Step 3: Populate original values from configs for existing proposals
+      UPDATE config_proposals cp
+      SET
+        original_value = c.value,
+        original_schema = c.schema,
+        original_overrides = c.overrides,
+        proposed_value = c.value,
+        proposed_schema = c.schema,
+        proposed_overrides = c.overrides
+      FROM configs c
+      WHERE cp.config_id = c.id;
+
+      -- Step 4: Set defaults for any nulls (shouldn't happen but be safe)
+      UPDATE config_proposals
+      SET proposed_overrides = '[]'
+      WHERE proposed_overrides IS NULL;
+
+      UPDATE config_proposals
+      SET original_overrides = '[]'
+      WHERE original_overrides IS NULL;
+
+      UPDATE config_proposals
+      SET proposed_value = 'null'
+      WHERE proposed_value IS NULL;
+
+      UPDATE config_proposals
+      SET original_value = 'null'
+      WHERE original_value IS NULL;
+
+      -- Step 5: Make the non-nullable columns NOT NULL
+      ALTER TABLE config_proposals ALTER COLUMN proposed_value SET NOT NULL;
+      ALTER TABLE config_proposals ALTER COLUMN proposed_overrides SET NOT NULL;
+      ALTER TABLE config_proposals ALTER COLUMN original_value SET NOT NULL;
+      ALTER TABLE config_proposals ALTER COLUMN original_overrides SET NOT NULL;
+    `,
+  },
+  {
+    name: 'Drop config_variant_id from config_proposal_variants',
+    sql: /*sql*/ `
+      ALTER TABLE config_proposal_variants DROP COLUMN config_variant_id;
+    `,
+  },
+  {
+    name: 'Make config_proposal_variants.environment_id NOT NULL',
+    sql: /*sql*/ `
+      DELETE FROM config_proposal_variants WHERE environment_id IS NULL;
+      ALTER TABLE config_proposal_variants ALTER COLUMN environment_id SET NOT NULL;
     `,
   },
 ];
@@ -1250,7 +1410,8 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
     });
 
     for (let i = runMigrations.length; i < migrations.length; i++) {
-      logger.info(ctx, {msg: `Running migration ${i}: ${migrations[i].sql}`});
+      const migration = migrations[i];
+      logger.info(ctx, {msg: `Running migration ${i + 1}: ${migration.name}`});
       try {
         // Run each migration in its own SERIALIZABLE transaction
         await client.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
@@ -1260,16 +1421,17 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
             VALUES ($1, $2, $3)
             RETURNING id;
           `,
-          [i + 1, migrations[i].sql, new Date()],
+          [i + 1, migration.sql, new Date()],
         );
-        await client.query(migrations[i].sql);
+        await client.query(migration.sql);
 
-        assert(newMigration.length === 1, `Failed to insert migration ${i}`);
+        assert(newMigration.length === 1, `Failed to insert migration ${i + 1}: ${migration.name}`);
         await client.query('COMMIT');
+        logger.info(ctx, {msg: `Completed migration ${i + 1}: ${migration.name}`});
       } catch (error) {
-        console.error(`Error running migration ${i}:`, error);
+        console.error(`Error running migration ${i + 1} (${migration.name}):`, error);
         await client.query('ROLLBACK');
-        throw new Error(`Failed to insert migration ${i}`, {cause: error});
+        throw new Error(`Failed to run migration ${i + 1}: ${migration.name}`, {cause: error});
       }
     }
   } finally {

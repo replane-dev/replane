@@ -96,27 +96,19 @@ export async function createExampleConfigs(params: {
     }
 
     const configId = createConfigId();
+
+    // Create config with default variant data included directly
     await configs.create(GLOBAL_CONTEXT, {
       id: configId,
       name: config.name,
       projectId: projectId,
       description: config.description,
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-    });
-
-    // Create default variant
-    await configVariants.create({
-      id: createUuidV7(),
-      configId: configId,
-      environmentId: null,
       value: config.value,
       schema: asConfigSchema(config.schema),
       overrides: config.overrides,
       createdAt: now,
       updatedAt: now,
-      useDefaultSchema: false,
+      version: 1,
     });
 
     // Create environment-specific variants

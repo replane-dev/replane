@@ -815,6 +815,7 @@ describe('Override Evaluation', () => {
         description: 'Feature flag',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
+        defaultVariant: {value: asConfigValue(false), schema: null, overrides: []},
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,

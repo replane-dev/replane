@@ -37,7 +37,7 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
 
   async function handleSubmit(data: {
     name: string;
-    defaultVariant?: {
+    defaultVariant: {
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];

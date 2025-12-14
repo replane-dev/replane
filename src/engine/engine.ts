@@ -328,6 +328,13 @@ export async function createEngine(options: EngineOptions) {
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
+  const stopServices = async () => {
+    for (const service of services) {
+      logger.info(GLOBAL_CONTEXT, {msg: `Stopping service: ${service.name}...`});
+      await service.stop(GLOBAL_CONTEXT);
+    }
+  };
+
   return {
     useCases: {
       ...engineUseCases,
@@ -359,11 +366,9 @@ export async function createEngine(options: EngineOptions) {
       workspaceMembers: new WorkspaceMemberStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
+    stopServices,
     stop: async () => {
-      for (const service of services) {
-        logger.info(GLOBAL_CONTEXT, {msg: `Stopping service: ${service.name}...`});
-        await service.stop(GLOBAL_CONTEXT);
-      }
+      await stopServices();
       freePool();
     },
   };

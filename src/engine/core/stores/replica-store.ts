@@ -1,4 +1,3 @@
-import assert from 'assert';
 import {type Database, type Statement} from 'better-sqlite3';
 import type {Override} from '../override-condition-schemas';
 import {isDeepEqual} from '../utils';
@@ -16,15 +15,16 @@ export interface ConfigReplica {
   id: string;
   projectId: string;
   name: string;
+  value: ConfigValue;
+  overrides: Override[];
   version: number;
   variants: ConfigVariantReplica[];
-  defaultVariant: ConfigVariantReplica | null;
 }
 
 export interface ConfigVariantReplica {
   id: string;
   configId: string;
-  environmentId: string | null;
+  environmentId: string;
   value: ConfigValue;
   overrides: Override[];
 }
@@ -49,6 +49,8 @@ export class ReplicaStore {
       CREATE TABLE IF NOT EXISTS configs (
         id TEXT PRIMARY KEY,
         project_id TEXT NOT NULL,
+        value TEXT NOT NULL,
+        overrides TEXT NOT NULL,
         name TEXT NOT NULL,
         version INTEGER NOT NULL
       );
@@ -57,7 +59,7 @@ export class ReplicaStore {
       CREATE TABLE IF NOT EXISTS config_variants (
         id TEXT PRIMARY KEY,
         config_id TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
-        environment_id TEXT NULL,
+        environment_id TEXT NOT NULL,
         value TEXT NOT NULL,
         overrides TEXT NOT NULL
       );
@@ -100,14 +102,21 @@ export class ReplicaStore {
   private deleteSdkKeyStmt: Statement<{id: string}, void>;
 
   private insertConfigVariant: Statement<
-    {id: string; configId: string; environmentId: string | null; value: string; overrides: string},
+    {id: string; configId: string; environmentId: string; value: string; overrides: string},
     void
   >;
 
   private getConfigVersionById: Statement<{id: string}, {version: number}>;
 
   private insertConfig: Statement<
-    {id: string; projectId: string; name: string; version: number},
+    {
+      id: string;
+      projectId: string;
+      name: string;
+      version: number;
+      value: string;
+      overrides: string;
+    },
     void
   >;
 
@@ -117,8 +126,8 @@ export class ReplicaStore {
       projectId: string;
       name: string;
       version: number;
-      value: string | null;
-      overrides: string | null;
+      value: string;
+      overrides: string;
     }
   >;
 
@@ -128,19 +137,19 @@ export class ReplicaStore {
       projectId: string;
       name: string;
       version: number;
-      value: string | null;
-      overrides: string | null;
+      value: string;
+      overrides: string;
     }
   >;
 
   private getConfigByIdStmt: Statement<
     {configId: string},
-    {id: string; projectId: string; name: string; version: number}
+    {id: string; projectId: string; name: string; version: number; value: string; overrides: string}
   >;
 
   private getConfigValueStmt: Statement<
     {projectId: string; environmentId: string; configName: string},
-    {value: string | null}
+    {value: string}
   >;
 
   private deleteConfigStmt: Statement<{id: string}, void>;
@@ -156,7 +165,7 @@ export class ReplicaStore {
 
   private getConfigVariantsByConfigIdStmt: Statement<
     {configId: string},
-    {id: string; environmentId: string | null; value: string; overrides: string}
+    {id: string; environmentId: string; value: string; overrides: string}
   >;
 
   private constructor(db: Database) {
@@ -193,7 +202,7 @@ export class ReplicaStore {
       {
         id: string;
         configId: string;
-        environmentId: string | null;
+        environmentId: string;
         value: string;
         overrides: string;
       },
@@ -208,11 +217,18 @@ export class ReplicaStore {
     `);
 
     this.insertConfig = db.prepare<
-      {id: string; projectId: string; name: string; version: number},
+      {
+        id: string;
+        projectId: string;
+        name: string;
+        version: number;
+        value: string;
+        overrides: string;
+      },
       void
     >(/*sql*/ `
-      INSERT INTO configs (id, project_id, name, version)
-      VALUES (@id, @projectId, @name, @version)
+      INSERT INTO configs (id, project_id, name, version, value, overrides)
+      VALUES (@id, @projectId, @name, @version, @value, @overrides)
     `);
 
     this.getProjectConfigsStmt = db.prepare<
@@ -221,8 +237,8 @@ export class ReplicaStore {
         projectId: string;
         name: string;
         version: number;
-        value: string | null;
-        overrides: string | null;
+        value: string;
+        overrides: string;
       }
     >(/*sql*/ `
       SELECT
@@ -230,11 +246,10 @@ export class ReplicaStore {
         c.project_id,
         c.name,
         c.version,
-        COALESCE(cv.value, cv_default.value) as value,
-        COALESCE(cv.overrides, cv_default.overrides) as overrides
+        COALESCE(cv.value, c.value) as value,
+        COALESCE(cv.overrides, c.overrides) as overrides
       FROM configs c
       LEFT JOIN config_variants cv ON cv.config_id = c.id AND cv.environment_id = @environmentId
-      LEFT JOIN config_variants cv_default ON cv_default.config_id = c.id AND cv_default.environment_id IS NULL
       WHERE c.project_id = @projectId
     `);
 
@@ -244,8 +259,8 @@ export class ReplicaStore {
         projectId: string;
         name: string;
         version: number;
-        value: string | null;
-        overrides: string | null;
+        value: string;
+        overrides: string;
       }
     >(/*sql*/ `
       SELECT
@@ -253,36 +268,43 @@ export class ReplicaStore {
         c.project_id,
         c.name,
         c.version,
-        COALESCE(cv.value, cv_default.value) as value,
-        COALESCE(cv.overrides, cv_default.overrides) as overrides
+        COALESCE(cv.value, c.value) as value,
+        COALESCE(cv.overrides, c.overrides) as overrides
       FROM configs c
       LEFT JOIN config_variants cv ON cv.config_id = c.id AND cv.environment_id = @environmentId
-      LEFT JOIN config_variants cv_default ON cv_default.config_id = c.id AND cv_default.environment_id IS NULL
       WHERE c.project_id = @projectId AND c.name = @configName
     `);
 
     this.getConfigByIdStmt = db.prepare<
       {configId: string},
-      {id: string; projectId: string; name: string; version: number}
+      {
+        id: string;
+        projectId: string;
+        name: string;
+        version: number;
+        value: string;
+        overrides: string;
+      }
     >(/*sql*/ `
       SELECT
         c.id,
         c.project_id,
         c.name,
-        c.version
+        c.version,
+        c.value,
+        c.overrides
       FROM configs c
       WHERE c.id = @configId
     `);
 
     this.getConfigValueStmt = db.prepare<
       {projectId: string; environmentId: string; configName: string},
-      {value: string | null}
+      {value: string}
     >(/*sql*/ `
       SELECT
-        COALESCE(cv.value, cv_default.value) as value
+        COALESCE(cv.value, c.value) as value
       FROM configs c
       LEFT JOIN config_variants cv ON cv.config_id = c.id AND cv.environment_id = @environmentId
-      LEFT JOIN config_variants cv_default ON cv_default.config_id = c.id AND cv_default.environment_id IS NULL
       WHERE c.project_id = @projectId AND c.name = @configName
     `);
 
@@ -309,7 +331,7 @@ export class ReplicaStore {
 
     this.getConfigVariantsByConfigIdStmt = db.prepare<
       {configId: string},
-      {id: string; environmentId: string | null; value: string; overrides: string}
+      {id: string; environmentId: string; value: string; overrides: string}
     >(/*sql*/ `
       SELECT id, environment_id, value, overrides FROM config_variants WHERE config_id = @configId
     `);
@@ -387,19 +409,14 @@ export class ReplicaStore {
   getProjectConfigs(params: {projectId: string; environmentId: string}) {
     const configs = this.getProjectConfigsStmt.all(params);
 
-    return configs.map(config => {
-      assert(typeof config.value === 'string', 'Value must be a string');
-      assert(typeof config.overrides === 'string', 'Overrides must be a string');
-
-      return {
-        name: config.name,
-        version: config.version,
-        environmentId: params.environmentId,
-        value: JSON.parse(config.value) as ConfigValue,
-        overrides: JSON.parse(config.overrides) as Override[],
-        projectId: config.projectId,
-      };
-    });
+    return configs.map(config => ({
+      name: config.name,
+      version: config.version,
+      environmentId: params.environmentId,
+      value: JSON.parse(config.value) as ConfigValue,
+      overrides: JSON.parse(config.overrides) as Override[],
+      projectId: config.projectId,
+    }));
   }
 
   getConfigById(id: string) {
@@ -413,6 +430,8 @@ export class ReplicaStore {
       projectId: config.projectId,
       name: config.name,
       version: config.version,
+      value: JSON.parse(config.value) as ConfigValue,
+      overrides: JSON.parse(config.overrides) as Override[],
     };
   }
 
@@ -429,9 +448,6 @@ export class ReplicaStore {
     if (!config) {
       return undefined;
     }
-
-    assert(typeof config.value === 'string', 'Value must be a string');
-    assert(typeof config.overrides === 'string', 'Overrides must be a string');
 
     return {
       name: config.name,
@@ -454,7 +470,6 @@ export class ReplicaStore {
       return undefined;
     }
 
-    assert(config.value !== null, 'Value must not be null');
     return JSON.parse(config.value) as ConfigValue;
   }
 
@@ -481,6 +496,8 @@ export class ReplicaStore {
         id: existingConfig.id,
         projectId: existingConfig.projectId,
         name: existingConfig.name,
+        value: existingConfig.value,
+        overrides: existingConfig.overrides,
         version: existingConfig.version,
         variants: configVariants
           .filter(v => v.environmentId !== null)
@@ -491,17 +508,6 @@ export class ReplicaStore {
             value: JSON.parse(v.value) as ConfigValue,
             overrides: JSON.parse(v.overrides) as Override[],
           })),
-        defaultVariant:
-          configVariants
-            .filter(v => v.environmentId === null)
-            ?.map(v => ({
-              id: v.id,
-              configId: existingConfig.id,
-              environmentId: v.environmentId,
-              value: JSON.parse(v.value) as ConfigValue,
-              overrides: JSON.parse(v.overrides) as Override[],
-            }))
-            .at(0) ?? null,
       },
     };
   }
@@ -584,6 +590,8 @@ export class ReplicaStore {
       projectId: config.projectId,
       name: config.name,
       version: config.version,
+      value: JSON.stringify(config.value),
+      overrides: JSON.stringify(config.overrides),
     });
 
     // insert new variants
@@ -594,17 +602,6 @@ export class ReplicaStore {
         environmentId: variant.environmentId,
         value: JSON.stringify(variant.value),
         overrides: JSON.stringify(variant.overrides),
-      });
-    }
-
-    // insert default variant
-    if (config.defaultVariant) {
-      this.insertConfigVariant.run({
-        id: config.defaultVariant.id,
-        configId: config.id,
-        environmentId: config.defaultVariant.environmentId,
-        value: JSON.stringify(config.defaultVariant.value),
-        overrides: JSON.stringify(config.defaultVariant.overrides),
       });
     }
 

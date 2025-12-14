@@ -15,7 +15,7 @@ export interface PendingConfigProposalSummary {
 }
 
 export interface ConfigVariantWithEnvironmentName extends ConfigVariant {
-  environmentName: string | null; // null for default variant
+  environmentName: string;
 }
 
 export interface ConfigDetails {
@@ -59,11 +59,9 @@ export class ConfigQueryService {
     const myConfigRole =
       configUsers.find(cu => cu.user_email_normalized === opts.currentUserEmail)?.role ?? 'viewer';
 
-    // Get all variants for this config (including default variant with environmentId=null)
-    const allVariants = await this.configVariants.getByConfigId(config.id);
-
-    // Include all variants - the UI will handle separating default from environment-specific
-    const variants: ConfigVariantWithEnvironmentName[] = allVariants;
+    // Get all environment-specific variants for this config
+    // (default variant is now part of the config itself)
+    const variants = await this.configVariants.getByConfigId(config.id);
 
     // Get pending config-level proposals (deletion, members, description)
     const pendingConfigProposals = await this.configProposals.getPendingProposalsWithProposerEmails(
@@ -73,15 +71,7 @@ export class ConfigQueryService {
     );
 
     return {
-      config: {
-        id: config.id,
-        name: config.name,
-        projectId: config.projectId,
-        description: config.description,
-        createdAt: config.createdAt,
-        updatedAt: config.updatedAt,
-        version: config.version,
-      } satisfies Config,
+      config,
       variants,
       editorEmails: configUsers
         .filter(cu => cu.role === 'editor')

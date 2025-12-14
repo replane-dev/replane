@@ -47,15 +47,16 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       throw new BadRequestError('Config was edited by another user. Please, refresh the page.');
     }
 
-    // Get all variants for this config
     const currentVariants = await tx.configVariants.getByConfigId(req.configId);
 
     // Fetch all version snapshots at the specified config version
     const versionSnapshots: Array<{
       configVariantId: string;
+      environmentId: string;
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];
+      useDefaultSchema: boolean;
     }> = [];
 
     for (const variant of currentVariants) {
@@ -66,23 +67,24 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       if (snapshot) {
         versionSnapshots.push({
           configVariantId: variant.id,
+          environmentId: variant.environmentId,
           value: snapshot.value,
           schema: snapshot.schema,
           overrides: snapshot.overrides,
+          useDefaultSchema: variant.useDefaultSchema,
         });
       }
     }
 
-    if (versionSnapshots.length === 0) {
-      throw new BadRequestError('No variants found at the specified version');
+    // Find version metadata from any snapshot (they share the same description at the same version)
+    let snapshotDetail = null;
+    if (versionSnapshots.length > 0) {
+      snapshotDetail = await tx.configVariantVersions.getByConfigVariantIdAndVersion({
+        configVariantId: versionSnapshots[0].configVariantId,
+        version: req.versionToRestore,
+      });
     }
 
-    // Find the config metadata at that version
-    const anySnapshot = versionSnapshots[0];
-    const snapshotDetail = await tx.configVariantVersions.getByConfigVariantIdAndVersion({
-      configVariantId: anySnapshot.configVariantId,
-      version: req.versionToRestore,
-    });
     if (!snapshotDetail) {
       throw new BadRequestError('Version snapshot not found');
     }
@@ -90,34 +92,22 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    // Reconstruct full config state from version snapshots
-    const defaultVariantSnapshot = versionSnapshots.find(
-      snapshot =>
-        currentVariants.find(v => v.id === snapshot.configVariantId)?.environmentId === null,
-    );
-    const environmentVariantSnapshots = versionSnapshots.filter(
-      snapshot =>
-        currentVariants.find(v => v.id === snapshot.configVariantId)?.environmentId !== null,
-    );
+    // Reconstruct environment variants from version snapshots
+    const environmentVariants = versionSnapshots.map(snapshot => ({
+      environmentId: snapshot.environmentId,
+      value: snapshot.value,
+      schema: snapshot.schema,
+      overrides: snapshot.overrides,
+      useDefaultSchema: snapshot.useDefaultSchema,
+    }));
 
-    const defaultVariant = defaultVariantSnapshot
-      ? {
-          value: defaultVariantSnapshot.value,
-          schema: defaultVariantSnapshot.schema,
-          overrides: defaultVariantSnapshot.overrides,
-        }
-      : undefined;
-
-    const environmentVariants = environmentVariantSnapshots.map(snapshot => {
-      const variant = currentVariants.find(v => v.id === snapshot.configVariantId)!;
-      return {
-        environmentId: variant.environmentId!,
-        value: snapshot.value,
-        schema: snapshot.schema,
-        overrides: snapshot.overrides,
-        useDefaultSchema: variant.useDefaultSchema,
-      };
-    });
+    // Default variant comes from current config (restore doesn't change default variant for now)
+    // TODO: Add version tracking for default variant in configs table
+    const defaultVariant = {
+      value: config.value,
+      schema: config.schema,
+      overrides: config.overrides,
+    };
 
     // Get current members (restore doesn't change members)
     const currentMembers = await tx.configUsers.getByConfigId(req.configId);

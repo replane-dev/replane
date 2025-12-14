@@ -67,7 +67,7 @@ export class Replicator<TSource, TTarget> {
     // now we need to catch up with the latest events
     await replicator.sync();
 
-    void replicator.loop().catch(onFatalError);
+    replicator.loopPromise = replicator.loop().catch(onFatalError);
 
     return replicator;
   }
@@ -151,6 +151,8 @@ export class Replicator<TSource, TTarget> {
     }
   }
 
+  private loopPromise: Promise<void> | undefined;
+
   private async loop() {
     while (!this._isStopped) {
       let status: 'lagging' | 'up-to-date' | 'unknown' = 'unknown';
@@ -213,8 +215,11 @@ export class Replicator<TSource, TTarget> {
     }
   }
 
-  stop() {
+  async stop() {
     this._isStopped = true;
+    if (this.loopPromise) {
+      await this.loopPromise;
+    }
   }
 
   async destroy() {
@@ -274,6 +279,6 @@ export class ReplicatorService<TSource, TTarget> implements Service {
   }
 
   async stop(ctx: Context) {
-    this.replicator?.stop();
+    await this.replicator?.stop();
   }
 }

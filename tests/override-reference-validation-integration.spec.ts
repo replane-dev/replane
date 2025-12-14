@@ -256,6 +256,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Config to patch',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
+        defaultVariant: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
@@ -332,6 +333,7 @@ describe('Override Reference Validation - Integration Tests', () => {
           description: 'Config to patch',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
+          defaultVariant: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
@@ -359,6 +361,7 @@ describe('Override Reference Validation - Integration Tests', () => {
           description: 'Config to patch',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
+          defaultVariant: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,

@@ -106,27 +106,23 @@ export function createApproveConfigProposalUseCase(
       });
     } else {
       // Fetch the full proposed state from the proposal
+      // Environment-specific variants are stored in config_proposal_variants
       const proposalVariants = await tx.configProposals.getVariantsByProposalId(proposal.id);
 
-      // Separate default and environment variants
-      const defaultVariantProposal = proposalVariants.find(v => v.environmentId === null);
-      const environmentVariantProposals = proposalVariants.filter(v => v.environmentId !== null);
-
-      const defaultVariant = defaultVariantProposal
-        ? {
-            value: defaultVariantProposal.proposedValue,
-            schema: defaultVariantProposal.proposedSchema ?? null,
-            overrides: defaultVariantProposal.proposedOverrides,
-          }
-        : undefined;
-
-      const environmentVariants = environmentVariantProposals.map(v => ({
-        environmentId: v.environmentId!,
+      const environmentVariants = proposalVariants.map(v => ({
+        environmentId: v.environmentId,
         value: v.proposedValue,
         schema: v.proposedSchema ?? null,
         overrides: v.proposedOverrides,
         useDefaultSchema: v.useDefaultSchema,
       }));
+
+      // Default variant is stored directly in the proposal
+      const defaultVariant = {
+        value: proposal.proposedValue,
+        schema: proposal.proposedSchema,
+        overrides: proposal.proposedOverrides,
+      };
 
       // Extract members from proposedMembers
       const editorEmails =

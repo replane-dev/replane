@@ -72,7 +72,11 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue('test'),
+        schema: null,
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
       currentUserEmail: CURRENT_USER_EMAIL,
@@ -108,7 +112,11 @@ describe('createConfigProposal', () => {
       description: 'To be deleted',
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({x: 1}),
+        schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+        overrides: [],
+      },
       message: null,
       environmentVariants: [
         {
@@ -171,7 +179,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({x: 1}),
+        schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+        overrides: [],
+      },
       message: null,
     });
 
@@ -222,7 +234,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({x: 1}),
+        schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });
@@ -273,7 +289,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({x: 1}),
+        schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });
@@ -306,7 +326,11 @@ describe('createConfigProposal', () => {
         maintainerEmails: [],
         environmentVariants: [],
         currentUserEmail: CURRENT_USER_EMAIL,
-        defaultVariant: null,
+        defaultVariant: {
+          value: asConfigValue('test'),
+          schema: null,
+          overrides: [],
+        },
         message: null,
         proposedDelete: false,
       }),
@@ -351,7 +375,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: OTHER_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue('test'),
+        schema: null,
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });
@@ -401,7 +429,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({x: 1}),
+        schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });
@@ -460,6 +492,11 @@ describe('createConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       prevVersion: 1,
+      defaultVariant: {
+        value: asConfigValue(1),
+        schema: null,
+        overrides: [],
+      },
     });
 
     // Create proposal - should track version 2
@@ -487,7 +524,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue(1),
+        schema: null,
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });
@@ -536,6 +577,11 @@ describe('createConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       prevVersion: 1,
+      defaultVariant: {
+        value: asConfigValue(1),
+        schema: null,
+        overrides: [],
+      },
     });
 
     // Try to create a proposal based on version 1 (should fail)
@@ -564,7 +610,11 @@ describe('createConfigProposal', () => {
           },
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
-        defaultVariant: null,
+        defaultVariant: {
+          value: asConfigValue(1),
+          schema: null,
+          overrides: [],
+        },
         message: null,
         proposedDelete: false,
       }),
@@ -594,7 +644,11 @@ describe('createConfigProposal', () => {
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue('test'),
+        schema: null,
+        overrides: [],
+      },
       message: null,
     });
 
@@ -649,7 +703,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({enabled: true}),
+        schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });
@@ -706,7 +764,11 @@ describe('createConfigProposal', () => {
         },
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {
+        value: asConfigValue({count: 10}),
+        schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
+        overrides: [],
+      },
       message: null,
       proposedDelete: false,
     });

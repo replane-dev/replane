@@ -76,7 +76,7 @@ describe('approveConfigProposal', () => {
       description: 'New description',
       editorEmails: [],
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       environmentVariants: [
@@ -133,7 +133,7 @@ describe('approveConfigProposal', () => {
       configId,
       description: 'Test',
       editorEmails: [newMemberEmail],
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
       proposedDelete: false,
       maintainerEmails: [],
@@ -189,7 +189,7 @@ describe('approveConfigProposal', () => {
       configId,
       proposedDelete: true,
       currentUserEmail: CURRENT_USER_EMAIL,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
       environmentVariants: [],
       description: 'To be deleted',
@@ -252,7 +252,7 @@ describe('approveConfigProposal', () => {
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -284,7 +284,7 @@ describe('approveConfigProposal', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -354,7 +354,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -411,7 +411,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -468,7 +468,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -536,7 +536,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -546,6 +546,7 @@ describe('approveConfigProposal', () => {
       description: 'Direct update',
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
+      defaultVariant: {value: asConfigValue('test'), schema: null, overrides: []},
       environmentVariants: [
         {
           environmentId: fixture.productionEnvironmentId,
@@ -619,7 +620,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -677,7 +678,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -737,7 +738,7 @@ describe('approveConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -825,7 +826,7 @@ describe('approveConfigProposal (allowSelfApprovals=false)', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -906,7 +907,7 @@ describe('approveConfigProposal (allowSelfApprovals=true)', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 

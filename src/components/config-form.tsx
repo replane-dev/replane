@@ -76,13 +76,12 @@ export interface ConfigFormProps {
   onSubmit: (data: {
     action: 'save' | 'propose';
     name: string;
-    defaultVariant?: {
+    defaultVariant: {
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];
     };
     environmentVariants: Array<{
-      configVariantId?: string;
       environmentId: string;
       value: ConfigValue;
       schema: ConfigSchema | null;

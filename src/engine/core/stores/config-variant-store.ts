@@ -7,7 +7,7 @@ import type {ConfigSchema, ConfigValue} from '../zod';
 export interface ConfigVariant {
   id: string;
   configId: string;
-  environmentId: string | null;
+  environmentId: string;
   value: ConfigValue;
   schema: ConfigSchema | null;
   overrides: Override[];
@@ -47,12 +47,10 @@ export class ConfigVariantStore {
     return this.mapRow(row);
   }
 
-  async getByConfigId(
-    configId: string,
-  ): Promise<(ConfigVariant & {environmentName: string | null})[]> {
+  async getByConfigId(configId: string): Promise<(ConfigVariant & {environmentName: string})[]> {
     const rows = await this.db
       .selectFrom('config_variants as cv')
-      .leftJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
+      .innerJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
       .select([
         'cv.id',
         'cv.config_id',
@@ -71,21 +69,8 @@ export class ConfigVariantStore {
 
     return rows.map(r => ({
       ...this.mapRow(r),
-      environmentName: r.environment_name ?? null,
+      environmentName: r.environment_name,
     }));
-  }
-
-  async getDefaultVariant(configId: string): Promise<ConfigVariant | null> {
-    const row = await this.db
-      .selectFrom('config_variants')
-      .selectAll()
-      .where('config_id', '=', configId)
-      .where('environment_id', 'is', null)
-      .executeTakeFirst();
-
-    if (!row) return null;
-
-    return this.mapRow(row);
   }
 
   async deleteByEnvironmentId(params: {configId: string; environmentId: string}): Promise<void> {
@@ -170,7 +155,7 @@ export class ConfigVariantStore {
   private mapRow(row: {
     id: string;
     config_id: string;
-    environment_id: string | null;
+    environment_id: string;
     value: string;
     schema: string | null;
     overrides: string;

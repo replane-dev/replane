@@ -38,22 +38,18 @@ export function useDeleteOrProposeConfig() {
           editorEmails: params.config.editorEmails,
           maintainerEmails: params.config.maintainerEmails,
           description: params.config.config.description,
-          environmentVariants: params.config.variants
-            .filter(v => v.environmentId !== null)
-            .map(x => {
-              const envId = x.environmentId;
-              if (envId === null) {
-                throw new Error('Default variant should not be in environment variants');
-              }
-              return {
-                environmentId: envId,
-                value: x.value,
-                schema: x.schema,
-                overrides: x.overrides,
-                useDefaultSchema: x.useDefaultSchema,
-              };
-            }),
-          defaultVariant: params.config.variants.find(v => v.environmentId === null) ?? null,
+          environmentVariants: params.config.variants.map(x => ({
+            environmentId: x.environmentId,
+            value: x.value,
+            schema: x.schema,
+            overrides: x.overrides,
+            useDefaultSchema: x.useDefaultSchema,
+          })),
+          defaultVariant: {
+            value: params.config.config.value,
+            schema: params.config.config.schema,
+            overrides: params.config.config.overrides,
+          },
           message: params.message,
         });
         const proposalId = (res as any)?.configProposalId ?? (res as any)?.proposalId ?? '';

@@ -18,8 +18,7 @@ export interface CreateConfigRequest {
   editorEmails: string[];
   maintainerEmails: string[];
   projectId: string;
-  // New flexible variant structure
-  defaultVariant?: {
+  defaultVariant: {
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
@@ -35,7 +34,7 @@ export interface CreateConfigRequest {
 
 export interface CreateConfigResponse {
   configId: ConfigId;
-  configVariantIds: Array<{variantId: string; environmentId: string | null}>;
+  configVariantIds: Array<{variantId: string; environmentId: string}>;
 }
 
 export interface CreateConfigUseCaseDeps {
@@ -148,51 +147,20 @@ export function createCreateConfigUseCase(
     const configId = createConfigId();
     const now = deps.dateProvider.now();
 
-    // Create config (metadata only)
     await tx.configs.create(ctx, {
       id: configId,
       name: req.name,
       projectId: req.projectId,
       description: req.description,
+      value: req.defaultVariant.value,
+      schema: req.defaultVariant.schema,
+      overrides: req.defaultVariant.overrides,
       createdAt: now,
       updatedAt: now,
       version: 1,
     });
 
-    const configVariantIds: Array<{variantId: string; environmentId: string | null}> = [];
-
-    // Create default variant if provided
-    if (req.defaultVariant) {
-      const variantId = createUuidV7();
-      await tx.configVariants.create({
-        id: variantId,
-        configId,
-        environmentId: null,
-        value: req.defaultVariant.value,
-        schema: req.defaultVariant.schema,
-        overrides: req.defaultVariant.overrides,
-        createdAt: now,
-        updatedAt: now,
-        useDefaultSchema: false, // Default variant doesn't inherit from itself
-      });
-
-      configVariantIds.push({variantId, environmentId: null});
-
-      // Create version history for default variant
-      await tx.configVariantVersions.create({
-        id: createUuidV7(),
-        configVariantId: variantId,
-        version: 1,
-        name: req.name,
-        description: req.description,
-        value: req.defaultVariant.value,
-        schema: req.defaultVariant.schema,
-        overrides: req.defaultVariant.overrides,
-        authorId: currentUser.id,
-        proposalId: null,
-        createdAt: now,
-      });
-    }
+    const configVariantIds: Array<{variantId: string; environmentId: string}> = [];
 
     // Create environment-specific variants
     for (const envVariant of environmentVariants) {
@@ -270,6 +238,15 @@ export function createCreateConfigUseCase(
           description: fullConfig.description,
           createdAt: fullConfig.createdAt,
           version: fullConfig.version,
+          value: fullConfig.value,
+          schema: fullConfig.schema,
+          overrides: fullConfig.overrides,
+          environmentVariants: environmentVariants.map(v => ({
+            environmentId: v.environmentId,
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
         },
       },
     });

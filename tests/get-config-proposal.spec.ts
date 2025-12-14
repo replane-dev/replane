@@ -94,7 +94,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -160,7 +160,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: CURRENT_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -211,7 +211,7 @@ describe('getConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
       currentUserEmail: OTHER_USER_EMAIL,
     });
@@ -265,7 +265,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -323,7 +323,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -381,7 +381,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -443,7 +443,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -509,7 +509,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -541,7 +541,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -603,7 +603,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -655,7 +655,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -713,7 +713,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -776,7 +776,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -831,7 +831,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -870,7 +870,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -922,7 +922,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -986,7 +986,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -996,6 +996,7 @@ describe('getConfigProposal', () => {
       description: 'Test',
       editorEmails: [THIRD_USER_EMAIL], // THIRD_USER instead of OTHER_USER
       maintainerEmails: [CURRENT_USER_EMAIL],
+      defaultVariant: {value: asConfigValue({count: 1}), schema: null, overrides: []},
       environmentVariants: [
         {
           environmentId: fixture.productionEnvironmentId,
@@ -1068,7 +1069,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -1130,7 +1131,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -1181,7 +1182,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -1241,7 +1242,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -1273,7 +1274,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -1305,7 +1306,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -1375,7 +1376,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -1407,7 +1408,7 @@ describe('getConfigProposal', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -1483,7 +1484,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -1548,7 +1549,7 @@ describe('getConfigProposal', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -1614,7 +1615,7 @@ describe('getConfigProposal', () => {
         },
       ],
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
       currentUserEmail: OTHER_USER_EMAIL,
     });

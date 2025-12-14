@@ -100,17 +100,21 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
     const config = await queryClient.fetchQuery(
       trpc.getConfig.queryOptions({projectId: params.projectId, name: params.configName}),
     );
-    const variant =
-      config.config?.variants.find(v => v.environmentId === params.environmentId) ??
-      config.config?.variants.find(v => v.environmentId === null);
+    // First try to find environment-specific variant, fall back to default in config.config.config
+    const variant = config.config?.variants.find(v => v.environmentId === params.environmentId);
 
-    if (!variant) {
-      throw new Error(
-        `No variant found for project ${params.projectId} and config ${params.configName} and environment ${params.environmentId}`,
-      );
+    if (variant) {
+      return variant.value;
     }
 
-    return variant.value;
+    // Fall back to the default variant stored in config.config.config (the inner config object)
+    if (config.config?.config.value !== undefined) {
+      return config.config.config.value;
+    }
+
+    throw new Error(
+      `No variant found for project ${params.projectId} and config ${params.configName} and environment ${params.environmentId}`,
+    );
   };
 
   const projectId = useProjectId();
@@ -254,7 +258,7 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
                         <CollapsibleTrigger className="w-full">
                           <div className="flex items-center justify-between p-3 hover:bg-muted/20">
                             <div className="flex items-center gap-2">
-                              <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]_&]:rotate-90" />
+                              <ChevronRight className="h-4 w-4 transition-transform in-data-[state=open]:rotate-90" />
                               {match(overrideEval.result)
                                 .with('matched', () => (
                                   <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />

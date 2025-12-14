@@ -89,7 +89,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -121,7 +121,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -153,7 +153,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: CURRENT_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -247,7 +247,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -279,7 +279,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -364,7 +364,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       });
 
@@ -394,7 +394,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       });
 
@@ -418,7 +418,7 @@ describe('rejectAllPendingConfigProposals', () => {
             overrides: [],
           },
         ],
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -520,7 +520,7 @@ describe('rejectAllPendingConfigProposals', () => {
             useDefaultSchema: false,
           },
         ],
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -552,7 +552,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -678,7 +678,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -710,7 +710,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -787,7 +787,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -819,7 +819,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -894,7 +894,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -926,7 +926,7 @@ describe('rejectAllPendingConfigProposals', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );

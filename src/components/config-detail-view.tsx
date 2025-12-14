@@ -65,16 +65,16 @@ export function ConfigDetailView({
   const requireProposals = pageData.project?.requireProposals ?? false;
   const [proposalMessage, setProposalMessage] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
-  const [pendingProposalData, setPendingProposalData] = useState<any>(null);
+  const [pendingProposalData, setPendingProposalData] = useState<SubmitData | null>(null);
   const [showPendingWarning, setShowPendingWarning] = useState(false);
-  const [pendingEditData, setPendingEditData] = useState<any>(null);
+  const [pendingEditData, setPendingEditData] = useState<SubmitData | null>(null);
   const [liveValue, setLiveValue] = useState<any>(null);
-  const [liveOverrides, setLiveOverrides] = useState<any>(null);
+  const [liveOverrides, setLiveOverrides] = useState<Override[]>([]);
   const [showOverrideTester, setShowOverrideTester] = useState(false);
 
   const config = pageData.config;
 
-  const configVariants = config?.variants;
+  const defaultConfigValue = config?.config?.value ?? null;
 
   const onValuesChange = useCallback(
     (values: {value: string; overrides: Override[]}) => {
@@ -82,15 +82,14 @@ export function ConfigDetailView({
       try {
         setLiveValue(JSON.parse(values.value));
       } catch {
-        const defaultVar = configVariants?.find(v => v.environmentId === null);
-        setLiveValue(defaultVar?.value ?? null);
+        setLiveValue(defaultConfigValue);
       }
     },
-    [configVariants],
+    [defaultConfigValue],
   );
 
   async function executeUpdateConfig(data: {
-    defaultVariant?: {
+    defaultVariant: {
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];
@@ -132,16 +131,15 @@ export function ConfigDetailView({
     notFound();
   }
 
-  async function handleSubmit(data: {
+  type SubmitData = {
     action: 'save' | 'propose';
     name: string;
-    defaultVariant?: {
+    defaultVariant: {
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];
     };
     environmentVariants: Array<{
-      configVariantId?: string;
       environmentId: string;
       value: ConfigValue;
       schema: ConfigSchema | null;
@@ -151,26 +149,15 @@ export function ConfigDetailView({
     description: string;
     maintainerEmails: string[];
     editorEmails: string[];
-  }) {
+  };
+
+  async function handleSubmit(data: SubmitData) {
     if (!config) {
       throw new Error('unreachable: we do not render form when config is undefined');
     }
 
     if (data.action === 'propose') {
-      setPendingProposalData({
-        configId: config.config.id,
-        description: data.description,
-        editorEmails: data.editorEmails,
-        maintainerEmails: data.maintainerEmails,
-        defaultVariant: data.defaultVariant,
-        environmentVariants: data.environmentVariants.map(v => ({
-          environmentId: v.environmentId,
-          value: v.value,
-          schema: v.schema,
-          overrides: v.overrides,
-          useDefaultSchema: v.useDefaultSchema,
-        })),
-      });
+      setPendingProposalData(data);
       setShowProposalDialog(true);
       return;
     }
@@ -297,30 +284,19 @@ export function ConfigDetailView({
           id: env.id,
           name: env.name,
         }))}
-        defaultVariant={(() => {
-          const defaultVar = config.variants.find(v => v.environmentId === null);
-          if (defaultVar) {
-            return {
-              value: defaultVar.value,
-              schema: defaultVar.schema,
-              overrides: defaultVar.overrides as Override[],
-            };
-          }
-          return undefined;
-        })()}
-        environmentVariants={config.variants
-          .filter(
-            (v): v is typeof v & {environmentId: string; environmentName: string} =>
-              v.environmentId !== null && v.environmentName !== null,
-          )
-          .map(v => ({
-            configVariantId: v.id,
-            environmentId: v.environmentId,
-            value: v.value,
-            schema: v.schema,
-            overrides: v.overrides as Override[],
-            useDefaultSchema: v.useDefaultSchema,
-          }))}
+        defaultVariant={{
+          value: config.config.value,
+          schema: config.config.schema,
+          overrides: config.config.overrides as Override[],
+        }}
+        environmentVariants={config.variants.map(v => ({
+          configVariantId: v.id,
+          environmentId: v.environmentId,
+          value: v.value,
+          schema: v.schema,
+          overrides: v.overrides as Override[],
+          useDefaultSchema: v.useDefaultSchema,
+        }))}
         defaultDescription={config.config?.description ?? ''}
         defaultMaintainerEmails={config.maintainerEmails}
         defaultEditorEmails={config.editorEmails}
@@ -342,12 +318,8 @@ export function ConfigDetailView({
 
       {showOverrideTester && (
         <OverrideTester
-          baseValue={liveValue || config.variants.find(v => v.environmentId === null)?.value || {}}
-          overrides={
-            liveOverrides ||
-            (config.variants.find(v => v.environmentId === null)?.overrides as any) ||
-            []
-          }
+          baseValue={liveValue || config.config.value || {}}
+          overrides={liveOverrides || (config.config.overrides as any) || []}
           open={showOverrideTester}
           onOpenChange={setShowOverrideTester}
         />
@@ -444,7 +416,7 @@ export function ConfigDetailView({
                 try {
                   const res = await createConfigProposal.mutateAsync({
                     projectId: projectId,
-                    configId: pendingProposalData.configId,
+                    configId: config.config.id,
                     baseVersion: config.config.version,
                     proposedDelete: false,
                     description: pendingProposalData.description,

@@ -1,4 +1,3 @@
-import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {Context} from '../context';
@@ -7,9 +6,16 @@ import type {EventHubPublisher} from '../event-hub';
 import {OverrideSchema} from '../override-condition-schemas';
 import type {Override} from '../override-evaluator';
 import type {AppHubEvents} from '../replica';
-import {deserializeJson} from '../store-utils';
+import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
-import {ConfigInfo, ConfigValue, Uuid, type NormalizedEmail} from '../zod';
+import {
+  ConfigInfo,
+  ConfigSchema,
+  ConfigValue,
+  Uuid,
+  type ConfigSchema as ConfigSchemaType,
+  type NormalizedEmail,
+} from '../zod';
 
 export type ConfigId = string;
 
@@ -42,6 +48,9 @@ export function Config() {
     id: Uuid(),
     name: ConfigName(),
     description: ConfigDescription(),
+    value: ConfigValue(),
+    schema: ConfigSchema().nullable(),
+    overrides: ConfigOverrides(),
     createdAt: z.date(),
     updatedAt: z.date(),
     projectId: z.string(),
@@ -68,18 +77,15 @@ export class ConfigStore {
   ) {}
 
   async getDefaultVariant(configId: string): Promise<{
-    id: string;
     value: ConfigValue;
-    schema: unknown | null;
+    schema: ConfigSchemaType | null;
     overrides: Override[];
     version: number;
   } | null> {
     const row = await this.db
-      .selectFrom('config_variants as cv')
-      .innerJoin('configs as c', 'c.id', 'cv.config_id')
-      .select(['cv.id', 'cv.value', 'cv.schema', 'cv.overrides', 'c.version'])
-      .where('cv.config_id', '=', configId)
-      .where('cv.environment_id', 'is', null)
+      .selectFrom('configs')
+      .select(['value', 'schema', 'overrides', 'version'])
+      .where('id', '=', configId)
       .executeTakeFirst();
 
     if (!row) {
@@ -87,7 +93,6 @@ export class ConfigStore {
     }
 
     return {
-      id: row.id,
       value: deserializeJson(row.value),
       schema: row.schema ? deserializeJson(row.schema) : null,
       overrides: deserializeJson(row.overrides) ?? [],
@@ -99,7 +104,7 @@ export class ConfigStore {
     Array<{
       name: string;
       projectId: string;
-      environmentId: string | null;
+      environmentId: string;
       value: ConfigValue;
       overrides: Override[];
       version: number;
@@ -203,6 +208,9 @@ export class ConfigStore {
         id: config.id,
         name: config.name,
         description: config.description,
+        value: serializeJson(config.value),
+        schema: serializeJson(config.schema),
+        overrides: serializeJson(config.overrides),
         project_id: config.projectId,
         version: config.version,
       })
@@ -215,6 +223,9 @@ export class ConfigStore {
     ctx: Context;
     id: string;
     description: string;
+    value: ConfigValue;
+    schema: ConfigSchemaType | null;
+    overrides: Override[];
     version: number;
     updatedAt: Date;
   }): Promise<void> {
@@ -222,6 +233,9 @@ export class ConfigStore {
       .updateTable('configs')
       .set({
         description: params.description,
+        value: serializeJson(params.value),
+        schema: serializeJson(params.schema),
+        overrides: serializeJson(params.overrides),
         version: params.version,
         updated_at: params.updatedAt,
       })
@@ -251,37 +265,26 @@ export class ConfigStore {
           ]),
         ),
       )
-      .leftJoin('config_variants as cv_default', jb =>
-        jb.on(eb =>
-          eb.and([
-            eb('cv_default.config_id', '=', eb.ref('c.id')),
-            eb('cv_default.environment_id', 'is', null),
-          ]),
-        ),
-      )
       .select([
         'c.name',
+        'c.schema as default_schema',
         'cv.use_default_schema as use_default_schema',
         'cv.schema as environment_schema',
-        'cv_default.schema as default_schema',
       ])
       .where('c.project_id', '=', params.projectId)
       .orderBy('c.name')
       .execute();
 
     return rows.map(row => {
-      if (row.use_default_schema !== false) {
-        assert(row.default_schema, 'Default schema is required when use_default_schema is true');
+      // If no environment variant or using default schema, use the config's schema
+      if (!row.environment_schema || row.use_default_schema !== false) {
         return {
           name: row.name,
-          schema: JSON.parse(row.default_schema),
+          schema: row.default_schema ? JSON.parse(row.default_schema) : null,
         };
       }
 
-      assert(
-        row.environment_schema,
-        'Environment schema is required when use_default_schema is false',
-      );
+      // Use the environment-specific schema
       return {
         name: row.name,
         schema: JSON.parse(row.environment_schema),
@@ -295,6 +298,9 @@ function mapConfig(config: Selectable<Configs>): Config {
     id: config.id,
     name: config.name,
     description: config.description,
+    value: deserializeJson(config.value),
+    schema: config.schema ? deserializeJson(config.schema) : null,
+    overrides: deserializeJson(config.overrides) ?? [],
     createdAt: config.created_at,
     updatedAt: config.updated_at,
     projectId: config.project_id,

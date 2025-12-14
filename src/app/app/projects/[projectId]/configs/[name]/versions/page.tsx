@@ -39,13 +39,8 @@ export default function ConfigVersionsPage() {
   const configInfo = configData?.config;
 
   // Select environment: use selected, or default to Production, or first variant
-  // Filter out default variants (where environmentId is null)
-  const environmentVariants = useMemo(
-    () =>
-      configInfo?.variants.filter(v => v.environmentId !== null && v.environmentName !== null) ??
-      [],
-    [configInfo?.variants],
-  );
+  // All variants are now environment-specific (default is in config.config)
+  const environmentVariants = useMemo(() => configInfo?.variants ?? [], [configInfo?.variants]);
 
   const variant = useMemo(() => {
     if (environmentVariants.length === 0) return null;

@@ -197,13 +197,11 @@ export const appRouter = createTRPCRouter({
         editorEmails: EditorArray(),
         maintainerEmails: MaintainerArray(),
         projectId: Uuid(),
-        defaultVariant: z
-          .object({
-            value: ConfigValue(),
-            schema: ConfigSchema().nullable(),
-            overrides: ConfigOverrides(),
-          })
-          .optional(),
+        defaultVariant: z.object({
+          value: ConfigValue(),
+          schema: ConfigSchema().nullable(),
+          overrides: ConfigOverrides(),
+        }),
         environmentVariants: z.array(
           z.object({
             environmentId: Uuid(),
@@ -232,13 +230,11 @@ export const appRouter = createTRPCRouter({
         description: ConfigDescription(),
         editorEmails: EditorArray(),
         maintainerEmails: MaintainerArray(),
-        defaultVariant: z
-          .object({
-            value: ConfigValue(),
-            schema: ConfigSchema().nullable(),
-            overrides: ConfigOverrides(),
-          })
-          .optional(),
+        defaultVariant: z.object({
+          value: ConfigValue(),
+          schema: ConfigSchema().nullable(),
+          overrides: ConfigOverrides(),
+        }),
         environmentVariants: z.array(
           z.object({
             environmentId: Uuid(),
@@ -812,13 +808,11 @@ export const appRouter = createTRPCRouter({
         description: ConfigDescription(),
         editorEmails: EditorArray(),
         maintainerEmails: MaintainerArray(),
-        defaultVariant: z
-          .object({
-            value: ConfigValue(),
-            schema: ConfigSchema().nullable(),
-            overrides: ConfigOverrides(),
-          })
-          .nullable(),
+        defaultVariant: z.object({
+          value: ConfigValue(),
+          schema: ConfigSchema().nullable(),
+          overrides: ConfigOverrides(),
+        }),
         environmentVariants: z.array(
           z.object({
             environmentId: Uuid(),

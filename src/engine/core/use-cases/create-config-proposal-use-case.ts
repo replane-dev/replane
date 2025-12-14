@@ -21,7 +21,7 @@ export interface CreateConfigProposalRequest {
   description: string;
   editorEmails: string[];
   maintainerEmails: string[];
-  defaultVariant: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]} | null;
+  defaultVariant: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
   environmentVariants: Array<{
     environmentId: string;
     value: ConfigValue;
@@ -89,17 +89,25 @@ export function createCreateConfigProposalUseCase(
         rejectionReason: null,
         rejectedInFavorOfProposalId: null,
         baseConfigVersion: config.version,
+        // Original values (snapshot)
         originalMembers: currentMembers.map(m => ({
           email: m.user_email_normalized,
           role: m.role,
         })),
         originalDescription: config.description,
+        originalValue: config.value,
+        originalSchema: config.schema,
+        originalOverrides: config.overrides,
+        // For deletion, proposed values are same as original
         proposedDelete: true,
         proposedDescription: config.description,
         proposedMembers: currentMembers.map(m => ({
           email: m.user_email_normalized,
           role: m.role,
         })),
+        proposedValue: config.value,
+        proposedSchema: config.schema,
+        proposedOverrides: config.overrides,
         message: req.message ?? null,
       });
 
@@ -137,57 +145,43 @@ export function createCreateConfigProposalUseCase(
         rejectionReason: null,
         rejectedInFavorOfProposalId: null,
         baseConfigVersion: config.version,
+        // Original values (snapshot)
         originalMembers: currentMembers.map(m => ({
           email: m.user_email_normalized,
           role: m.role,
         })),
         originalDescription: config.description,
+        originalValue: config.value,
+        originalSchema: config.schema,
+        originalOverrides: config.overrides,
+        // Proposed values
         proposedDelete: false,
         proposedDescription: req.description!,
         proposedMembers: proposedMembers,
+        proposedValue: req.defaultVariant.value,
+        proposedSchema: req.defaultVariant.schema,
+        proposedOverrides: req.defaultVariant.overrides,
         message: req.message ?? null,
       });
 
-      // Get all current variants to map them to config_variant_id
+      // Get all current environment variants to map them to config_variant_id
+      // (Default variant is stored in configs table, not config_variants)
       const currentVariants = await tx.configVariants.getByConfigId(req.configId);
 
-      // Create variant entries for the proposed state
+      // Create variant entries for the proposed environment-specific state
       const proposalVariants: ConfigProposalVariant[] = [];
 
-      // Add default variant if provided
-      if (req.defaultVariant) {
-        const defaultVariant = currentVariants.find(v => v.environmentId === null);
-        if (defaultVariant) {
-          proposalVariants.push({
-            id: createConfigProposalVariantId(),
-            proposalId: configProposalId,
-            configVariantId: defaultVariant.id,
-            environmentId: null,
-            useDefaultSchema: false,
-            proposedValue: req.defaultVariant.value,
-            proposedSchema: req.defaultVariant.schema ?? null,
-            proposedOverrides: req.defaultVariant.overrides,
-          });
-        }
-      }
-
       // Add environment variants
-      for (const envVariant of req.environmentVariants!) {
-        const currentVariant = currentVariants.find(
-          v => v.environmentId === envVariant.environmentId,
-        );
-        if (currentVariant) {
-          proposalVariants.push({
-            id: createConfigProposalVariantId(),
-            proposalId: configProposalId,
-            configVariantId: currentVariant.id,
-            environmentId: envVariant.environmentId,
-            useDefaultSchema: envVariant.useDefaultSchema ?? false,
-            proposedValue: envVariant.value,
-            proposedSchema: envVariant.schema ?? null,
-            proposedOverrides: envVariant.overrides,
-          });
-        }
+      for (const envVariant of req.environmentVariants) {
+        proposalVariants.push({
+          id: createConfigProposalVariantId(),
+          proposalId: configProposalId,
+          environmentId: envVariant.environmentId,
+          useDefaultSchema: envVariant.useDefaultSchema ?? false,
+          proposedValue: envVariant.value,
+          proposedSchema: envVariant.schema ?? null,
+          proposedOverrides: envVariant.overrides,
+        });
       }
 
       await tx.configProposals.createVariants(proposalVariants);
@@ -205,6 +199,12 @@ export function createCreateConfigProposalUseCase(
           proposedDelete: false,
           proposedDescription: req.description!,
           proposedMembers: proposedMembers,
+          proposedVariants: proposalVariants.map(v => ({
+            environmentId: v.environmentId,
+            proposedValue: v.proposedValue,
+            proposedSchema: v.proposedSchema,
+            proposedOverrides: v.proposedOverrides,
+          })),
           message: req.message,
         },
       });

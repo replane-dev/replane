@@ -172,6 +172,11 @@ export class AppFixture {
       editorEmails: params.editorEmails,
       maintainerEmails: params.maintainerEmails,
       projectId: params.projectId,
+      defaultVariant: {
+        value: asConfigValue(params.value),
+        schema: params.schema !== null ? asConfigSchema(params.schema) : null,
+        overrides: params.overrides,
+      },
       environmentVariants: environments.map(env => ({
         environmentId: env.id,
         value: asConfigValue(params.value),
@@ -184,8 +189,10 @@ export class AppFixture {
 
   async destroy(ctx: Context) {
     if (this._engine) {
+      await this._engine.stopServices();
       await this._engine.testing.dropDb(ctx);
-      this._engine.stop();
+      // engine.stop() closes pg connection, so we cant drop db after it
+      await this._engine.stop();
     }
 
     this._trpc = undefined;

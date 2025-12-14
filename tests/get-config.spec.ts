@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
-import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/trpc-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -234,7 +234,7 @@ describe('getConfig', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -294,7 +294,7 @@ describe('getConfig', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -326,7 +326,7 @@ describe('getConfig', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -386,7 +386,7 @@ describe('getConfig', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -443,7 +443,7 @@ describe('getConfig', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -501,7 +501,7 @@ describe('getConfig', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       });
 
@@ -538,7 +538,7 @@ describe('getConfig', () => {
         ],
         currentUserEmail: THIRD_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       });
 
@@ -590,7 +590,7 @@ describe('getConfig', () => {
       ],
       currentUserEmail: OTHER_USER_EMAIL,
       proposedDelete: false,
-      defaultVariant: null,
+      defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
     });
 
@@ -658,7 +658,7 @@ describe('getConfig', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );
@@ -697,7 +697,7 @@ describe('getConfig', () => {
         ],
         currentUserEmail: OTHER_USER_EMAIL,
         proposedDelete: false,
-        defaultVariant: null,
+        defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
     );

@@ -55,8 +55,7 @@ function DiffRow(props: {
 }
 
 export interface ProposedVariantChange {
-  configVariantId: string;
-  environmentId: string | null;
+  environmentId: string;
   environmentName: string;
   proposedValue: ConfigValue;
   proposedSchema: ConfigSchema | null;
@@ -66,6 +65,15 @@ export interface ProposedVariantChange {
   currentSchema: ConfigSchema | null;
   currentOverrides: Override[];
   currentUseDefaultSchema: boolean;
+}
+
+export interface ProposedDefaultVariant {
+  proposedValue: ConfigValue;
+  proposedSchema: ConfigSchema | null;
+  proposedOverrides: Override[];
+  originalValue: ConfigValue;
+  originalSchema: ConfigSchema | null;
+  originalOverrides: Override[];
 }
 
 export interface ConfigProposalDiffProps {
@@ -78,12 +86,14 @@ export interface ConfigProposalDiffProps {
     description: string;
     members: Array<{email: string; role: 'maintainer' | 'editor'}>;
   };
+  proposedDefaultVariant: ProposedDefaultVariant;
   proposedVariants: ProposedVariantChange[];
 }
 
 export function ConfigProposalDiff({
   current,
   proposed,
+  proposedDefaultVariant,
   proposedVariants = [],
 }: ConfigProposalDiffProps) {
   const diffs: Array<{title: string; before: unknown; after: unknown}> = [];
@@ -91,6 +101,44 @@ export function ConfigProposalDiff({
   // Only show description if it's not null and actually changed
   if (current.description !== proposed.description) {
     diffs.push({title: 'Description', before: current.description, after: proposed.description});
+  }
+
+  // Default variant diffs (base config)
+  const defaultVariantDiffs: Array<{title: string; before: unknown; after: unknown}> = [];
+  if (proposedDefaultVariant) {
+    // Check value changes
+    if (
+      JSON.stringify(proposedDefaultVariant.proposedValue) !==
+      JSON.stringify(proposedDefaultVariant.originalValue)
+    ) {
+      defaultVariantDiffs.push({
+        title: 'Value',
+        before: proposedDefaultVariant.originalValue,
+        after: proposedDefaultVariant.proposedValue,
+      });
+    }
+    // Check schema changes
+    if (
+      JSON.stringify(proposedDefaultVariant.proposedSchema) !==
+      JSON.stringify(proposedDefaultVariant.originalSchema)
+    ) {
+      defaultVariantDiffs.push({
+        title: 'Schema',
+        before: proposedDefaultVariant.originalSchema,
+        after: proposedDefaultVariant.proposedSchema,
+      });
+    }
+    // Check overrides changes
+    if (
+      JSON.stringify(proposedDefaultVariant.proposedOverrides) !==
+      JSON.stringify(proposedDefaultVariant.originalOverrides)
+    ) {
+      defaultVariantDiffs.push({
+        title: 'Overrides',
+        before: proposedDefaultVariant.originalOverrides,
+        after: proposedDefaultVariant.proposedOverrides,
+      });
+    }
   }
 
   // Members diff (maintainers/editors)
@@ -128,7 +176,12 @@ export function ConfigProposalDiff({
     }
   }
 
-  if (diffs.length === 0 && memberChanges.length === 0 && proposedVariants.length === 0) {
+  if (
+    diffs.length === 0 &&
+    memberChanges.length === 0 &&
+    defaultVariantDiffs.length === 0 &&
+    proposedVariants.length === 0
+  ) {
     return (
       <div className="rounded-lg border bg-card/50 p-6">
         <div className="text-center">
@@ -143,6 +196,7 @@ export function ConfigProposalDiff({
 
   // Render config-level changes (description, members) in a separate card
   const hasConfigLevelChanges = diffs.length > 0 || memberChanges.length > 0;
+  const hasDefaultVariantChanges = defaultVariantDiffs.length > 0;
 
   return (
     <div className="space-y-6">
@@ -235,6 +289,28 @@ export function ConfigProposalDiff({
         </div>
       )}
 
+      {/* Default variant (base config) changes card */}
+      {hasDefaultVariantChanges && (
+        <div className="rounded-lg border bg-card/50 overflow-hidden">
+          <div className="border-b bg-muted/30 px-6 py-4">
+            <h3 className="text-base font-semibold text-foreground">
+              Proposed changes (Base Configuration)
+            </h3>
+          </div>
+          <div className="p-6 space-y-6">
+            {defaultVariantDiffs.map(d => (
+              <DiffRow
+                key={d.title}
+                title={d.title}
+                before={d.before}
+                after={d.after}
+                language="json"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Environment-specific changes cards */}
       {proposedVariants.map(variant => {
         const variantDiffs = [];
@@ -287,10 +363,7 @@ export function ConfigProposalDiff({
         if (variantDiffs.length === 0 && !useDefaultSchemaChanged) return null;
 
         return (
-          <div
-            key={variant.configVariantId}
-            className="rounded-lg border bg-card/50 overflow-hidden"
-          >
+          <div key={variant.environmentId} className="rounded-lg border bg-card/50 overflow-hidden">
             <div className="border-b bg-muted/30 px-6 py-4">
               <h3 className="text-base font-semibold text-foreground">
                 Proposed changes ({variant.environmentName})

@@ -24,7 +24,7 @@ export interface UpdateConfigParams {
   description: string;
   editorEmails: string[];
   maintainerEmails: string[];
-  defaultVariant?: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
+  defaultVariant: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
   environmentVariants: Array<{
     environmentId: string;
     value: ConfigValue;
@@ -162,12 +162,8 @@ export class ConfigService {
       throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
     }
 
-    // Fetch all current variants
-    const currentVariants = await this.configVariants.getByConfigId(params.configId);
-
-    // Separate default and environment variants
-    const currentDefaultVariant = currentVariants.find(v => v.environmentId === null);
-    const currentEnvVariants = currentVariants.filter(v => v.environmentId !== null);
+    // Fetch all current environment variants (default is now in configs table)
+    const currentEnvVariants = await this.configVariants.getByConfigId(params.configId);
 
     // Determine what changed
     const descriptionChanged = params.description !== existingConfig.description;
@@ -187,18 +183,11 @@ export class ConfigService {
       JSON.stringify([...params.maintainerEmails].sort()) !==
         JSON.stringify([...currentMaintainers].sort());
 
-    // Detect variant changes
+    // Detect default variant changes (default variant is stored in configs table)
     const defaultVariantChanged =
-      (params.defaultVariant && !currentDefaultVariant) ||
-      (!params.defaultVariant && currentDefaultVariant) ||
-      (params.defaultVariant &&
-        currentDefaultVariant &&
-        (JSON.stringify(params.defaultVariant.value) !==
-          JSON.stringify(currentDefaultVariant.value) ||
-          JSON.stringify(params.defaultVariant.schema) !==
-            JSON.stringify(currentDefaultVariant.schema) ||
-          JSON.stringify(params.defaultVariant.overrides) !==
-            JSON.stringify(currentDefaultVariant.overrides)));
+      JSON.stringify(params.defaultVariant.value) !== JSON.stringify(existingConfig.value) ||
+      JSON.stringify(params.defaultVariant.schema) !== JSON.stringify(existingConfig.schema) ||
+      JSON.stringify(params.defaultVariant.overrides) !== JSON.stringify(existingConfig.overrides);
 
     // Find environment variants to create, update, or delete
     const variantsToCreate: typeof params.environmentVariants = [];
@@ -339,6 +328,9 @@ export class ConfigService {
       ctx,
       id: existingConfig.id,
       description: params.description,
+      value: params.defaultVariant.value,
+      schema: params.defaultVariant.schema,
+      overrides: params.defaultVariant.overrides,
       version: nextVersion,
       updatedAt: now,
     });
@@ -392,60 +384,19 @@ export class ConfigService {
             description: params.description,
             createdAt: existingConfig.createdAt,
             version: nextVersion,
+            environmentVariants: currentEnvVariants.map(v => ({
+              environmentId: v.environmentId,
+              value: v.value,
+              schema: v.schema,
+              overrides: v.overrides,
+            })),
+            value: params.defaultVariant.value,
+            schema: params.defaultVariant.schema,
+            overrides: params.defaultVariant.overrides,
           },
           added: membersDiff.added,
           removed: membersDiff.removed,
         },
-      });
-    }
-
-    // Create/update default variant
-    if (params.defaultVariant) {
-      if (!currentDefaultVariant) {
-        // Create new default variant
-        await this.configVariants.create({
-          id: createUuidV7(),
-          configId: params.configId,
-          environmentId: null,
-          value: params.defaultVariant.value,
-          schema: params.defaultVariant.schema,
-          overrides: params.defaultVariant.overrides,
-          createdAt: now,
-          updatedAt: now,
-          useDefaultSchema: false,
-        });
-      } else if (defaultVariantChanged) {
-        // Update existing default variant
-        await this.configVariants.update({
-          id: currentDefaultVariant.id,
-          configId: currentDefaultVariant.configId,
-          value: params.defaultVariant.value,
-          schema: params.defaultVariant.schema,
-          overrides: params.defaultVariant.overrides,
-          updatedAt: now,
-          useDefaultSchema: false,
-        });
-
-        // Create version history for default variant
-        await this.configVariantVersions.create({
-          id: createUuidV7(),
-          configVariantId: currentDefaultVariant.id,
-          version: nextVersion,
-          name: existingConfig.name,
-          description: params.description,
-          value: params.defaultVariant.value,
-          schema: params.defaultVariant.schema,
-          overrides: params.defaultVariant.overrides,
-          authorId: currentUser.id ?? null,
-          proposalId: params.originalProposalId ?? null,
-          createdAt: now,
-        });
-      }
-    } else if (currentDefaultVariant) {
-      // Delete default variant
-      await this.configVariants.delete({
-        configId: params.configId,
-        variantId: currentDefaultVariant.id,
       });
     }
 
@@ -533,6 +484,15 @@ export class ConfigService {
             description: existingConfig.description,
             createdAt: existingConfig.createdAt,
             version: existingConfig.version,
+            value: existingConfig.value,
+            schema: existingConfig.schema,
+            overrides: existingConfig.overrides,
+            environmentVariants: currentEnvVariants.map(v => ({
+              environmentId: v.environmentId,
+              value: v.value,
+              schema: v.schema,
+              overrides: v.overrides,
+            })),
           },
           after: {
             id: existingConfig.id,
@@ -541,6 +501,15 @@ export class ConfigService {
             description: params.description,
             createdAt: existingConfig.createdAt,
             version: nextVersion,
+            value: params.defaultVariant.value,
+            schema: params.defaultVariant.schema,
+            overrides: params.defaultVariant.overrides,
+            environmentVariants: params.environmentVariants.map(v => ({
+              environmentId: v.environmentId,
+              value: v.value,
+              schema: v.schema,
+              overrides: v.overrides,
+            })),
           },
         },
       });
@@ -619,6 +588,15 @@ export class ConfigService {
           description: existingConfig.description,
           createdAt: existingConfig.createdAt,
           version: existingConfig.version,
+          value: existingConfig.value,
+          schema: existingConfig.schema,
+          overrides: existingConfig.overrides,
+          environmentVariants: variants.map(v => ({
+            environmentId: v.environmentId,
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
         },
       },
     });

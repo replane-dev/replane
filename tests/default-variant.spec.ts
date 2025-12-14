@@ -32,12 +32,11 @@ describe('Default Variant', () => {
 
       expect(configId).toBeDefined();
 
-      // Should have created a default variant (environmentId = null)
-      const defaultVariantEntry = configVariantIds.find(v => v.environmentId === null);
-      expect(defaultVariantEntry).toBeDefined();
-      expect(defaultVariantEntry?.variantId).toBeDefined();
+      // Default variant is now stored in configs table, not config_variants
+      // So there should be no variant entries returned (only env-specific variants are in config_variants)
+      expect(configVariantIds).toHaveLength(0);
 
-      // getConfig filters out default variants for the UI, so we check that configs were created
+      // getConfig should return the config with default variant data
       const {config} = await fixture.trpc.getConfig({
         name: 'default-only-config',
         projectId: fixture.projectId,
@@ -46,8 +45,12 @@ describe('Default Variant', () => {
       expect(config).toBeDefined();
       expect(config?.config.id).toBe(configId);
       expect(config?.config.name).toBe('default-only-config');
-      // variants in getConfig won't include default variant (filtered out in UI layer)
-      // but the config was created successfully
+      // Default variant data is now in config.config (value, schema, overrides)
+      expect(config?.config.value).toEqual({feature: 'enabled'});
+      expect(config?.config.schema).toEqual({
+        type: 'object',
+        properties: {feature: {type: 'string'}},
+      });
     });
 
     it('should create config with default variant and some environment-specific variants', async () => {
@@ -79,9 +82,8 @@ describe('Default Variant', () => {
 
       expect(configId).toBeDefined();
 
-      // Should have default variant (null environmentId)
-      const defaultVariantEntry = configVariantIds.find(v => v.environmentId === null);
-      expect(defaultVariantEntry).toBeDefined();
+      // Default variant is now in configs table, only env-specific variants are returned
+      expect(configVariantIds).toHaveLength(1);
 
       // Should have production-specific variant
       const prodVariantEntry = configVariantIds.find(
@@ -89,7 +91,7 @@ describe('Default Variant', () => {
       );
       expect(prodVariantEntry).toBeDefined();
 
-      // getConfig should return the production variant
+      // getConfig should return the config with default in config and production variant
       const {config} = await fixture.trpc.getConfig({
         name: 'mixed-variants-config',
         projectId: fixture.projectId,
@@ -97,7 +99,10 @@ describe('Default Variant', () => {
 
       expect(config).toBeDefined();
 
-      // Only production variant should appear in UI response (default is filtered, dev falls back to default)
+      // Default variant data is in config.config
+      expect(config?.config.value).toEqual({limit: 100});
+
+      // Production variant should be in variants array
       const prodVariant = config?.variants.find(
         v => v.environmentId === fixture.productionEnvironmentId,
       );
@@ -105,7 +110,8 @@ describe('Default Variant', () => {
       expect(prodVariant?.value).toEqual({limit: 1000});
     });
 
-    it('should create config with all environment-specific variants (no default needed)', async () => {
+    it('should create config with all environment-specific variants', async () => {
+      // Now we always need a default variant since it's stored in configs table
       const {configId, configVariantIds} = await fixture.engine.useCases.createConfig(
         GLOBAL_CONTEXT,
         {
@@ -115,7 +121,12 @@ describe('Default Variant', () => {
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
-          // No default variant
+          // Default variant is required and stored in configs table
+          defaultVariant: {
+            value: asConfigValue({env: 'default'}),
+            schema: null,
+            overrides: [],
+          },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
@@ -137,10 +148,6 @@ describe('Default Variant', () => {
 
       expect(configId).toBeDefined();
 
-      // Should NOT have default variant
-      const defaultVariantEntry = configVariantIds.find(v => v.environmentId === null);
-      expect(defaultVariantEntry).toBeUndefined();
-
       // Should have both environment-specific variants
       expect(configVariantIds).toHaveLength(2);
 
@@ -150,6 +157,9 @@ describe('Default Variant', () => {
       });
 
       expect(config).toBeDefined();
+
+      // Default variant is in config.config
+      expect(config?.config.value).toEqual({env: 'default'});
 
       // Should have both environment-specific variants
       const prodVariant = config?.variants.find(
@@ -165,61 +175,55 @@ describe('Default Variant', () => {
   });
 
   describe('validation', () => {
-    it('should throw error when missing environments and no default variant', async () => {
-      await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-          name: 'invalid-missing-default',
-          description: 'Should fail',
-          currentUserEmail: CURRENT_USER_EMAIL,
-          editorEmails: [],
-          maintainerEmails: [],
-          projectId: fixture.projectId,
-          // Only providing production variant, missing development
-          environmentVariants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: asConfigValue({test: true}),
-              schema: null,
-              overrides: [],
-              useDefaultSchema: true,
-            },
-          ],
-        }),
-      ).rejects.toThrow(BadRequestError);
+    it('should allow creating config with only some environment variants when default is provided', async () => {
+      // With the new design, defaultVariant is required and missing environment
+      // variants will fall back to the default values. This should succeed.
+      const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'partial-env-with-default',
+        description: 'Should succeed with default fallback',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [],
+        projectId: fixture.projectId,
+        // Only providing production variant, missing development - but default is provided
+        environmentVariants: [
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({test: true}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
+        ],
+        defaultVariant: {
+          value: asConfigValue({test: true}),
+          schema: null,
+          overrides: [],
+        },
+      });
 
-      await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-          name: 'invalid-missing-default2',
-          description: 'Should fail',
-          currentUserEmail: CURRENT_USER_EMAIL,
-          editorEmails: [],
-          maintainerEmails: [],
-          projectId: fixture.projectId,
-          environmentVariants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: asConfigValue({test: true}),
-              schema: null,
-              overrides: [],
-              useDefaultSchema: true,
-            },
-          ],
-        }),
-      ).rejects.toThrow(/Default variant is required/);
+      expect(result.configId).toBeDefined();
     });
 
-    it('should throw error when neither default nor environment variants provided', async () => {
-      await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-          name: 'invalid-no-variants',
-          description: 'Should fail',
-          currentUserEmail: CURRENT_USER_EMAIL,
-          editorEmails: [],
-          maintainerEmails: [],
-          projectId: fixture.projectId,
-          // Neither defaultVariant nor environmentVariants
-        }),
-      ).rejects.toThrow(BadRequestError);
+    it('should allow creating config with only default variant (no environment variants)', async () => {
+      // With the new design, defaultVariant is always required and
+      // environmentVariants can be empty - missing environments will use default values
+      const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'default-only-config',
+        description: 'Should succeed with only default',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [],
+        projectId: fixture.projectId,
+        // No environment variants, just default
+        defaultVariant: {
+          value: asConfigValue({test: true}),
+          schema: null,
+          overrides: [],
+        },
+      });
+
+      expect(result.configId).toBeDefined();
     });
 
     it('should validate default variant value against schema', async () => {
@@ -345,9 +349,8 @@ describe('Default Variant', () => {
 
       expect(configId).toBeDefined();
 
-      // Should have created exactly 1 variant (the default)
-      expect(configVariantIds).toHaveLength(1);
-      expect(configVariantIds[0].environmentId).toBeNull();
+      // Default is now stored in configs table, so no config_variants created
+      expect(configVariantIds).toHaveLength(0);
     });
 
     it('should create environment-specific variants that override default', async () => {
@@ -374,15 +377,13 @@ describe('Default Variant', () => {
         ],
       });
 
-      // Should have 2 variants: default + production
-      expect(configVariantIds).toHaveLength(2);
+      // Only production variant in config_variants (default is in configs table)
+      expect(configVariantIds).toHaveLength(1);
 
-      const hasDefault = configVariantIds.some(v => v.environmentId === null);
       const hasProd = configVariantIds.some(
         v => v.environmentId === fixture.productionEnvironmentId,
       );
 
-      expect(hasDefault).toBe(true);
       expect(hasProd).toBe(true);
     });
   });
@@ -463,34 +464,40 @@ describe('Default Variant', () => {
       ).rejects.toThrow(BadRequestError);
     });
 
-    it('should fail when useDefaultSchema is true but no default variant is provided', async () => {
-      await expect(
-        fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-          name: 'schema-inherit-no-default-config',
-          description: 'Test schema inheritance without default',
-          currentUserEmail: CURRENT_USER_EMAIL,
-          editorEmails: [],
-          maintainerEmails: [],
-          projectId: fixture.projectId,
-          // No default variant
-          environmentVariants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: asConfigValue({count: 100}),
-              schema: null,
-              overrides: [],
-              useDefaultSchema: true, // This should fail
-            },
-            {
-              environmentId: fixture.developmentEnvironmentId,
-              value: asConfigValue({count: 200}),
-              schema: null,
-              overrides: [],
-              useDefaultSchema: true,
-            },
-          ],
-        }),
-      ).rejects.toThrow(/Cannot use default schema when no default variant is provided/);
+    it('should allow useDefaultSchema when default variant has null schema', async () => {
+      // When useDefaultSchema is true and default variant has null schema,
+      // no validation is performed (like skipping schema validation)
+      const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'schema-inherit-null-schema-config',
+        description: 'Test schema inheritance with null schema',
+        currentUserEmail: CURRENT_USER_EMAIL,
+        editorEmails: [],
+        maintainerEmails: [],
+        projectId: fixture.projectId,
+        environmentVariants: [
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({count: 100}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({count: 200}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
+        ],
+        defaultVariant: {
+          value: asConfigValue({test: true}),
+          schema: null, // null schema means no validation
+          overrides: [],
+        },
+      });
+
+      expect(result.configId).toBeDefined();
     });
 
     it('should allow useDefaultSchema with null default schema (no validation)', async () => {
@@ -551,8 +558,11 @@ describe('Default Variant', () => {
 
       expect(config).toBeDefined();
       expect(config?.config.name).toBe('api-response-test');
-      // Note: default variant is not included in variants array in getConfig response
-      // This is by design - the UI shows environment tabs, not the default
+      // Default variant data is now in config.config
+      expect(config?.config.value).toEqual({key: 'default-value'});
+      expect(config?.config.schema).toEqual({type: 'object'});
+      // No environment variants
+      expect(config?.variants).toHaveLength(0);
     });
 
     it('should return both environment variants when they exist alongside default', async () => {
@@ -592,11 +602,12 @@ describe('Default Variant', () => {
       });
 
       expect(config).toBeDefined();
-      // Should have 3 variants: default + 2 environment-specific
-      expect(config?.variants).toHaveLength(3);
 
-      const defaultVariant = config?.variants.find(v => v.environmentId === null);
-      expect(defaultVariant?.value).toEqual({base: 'default'});
+      // Default variant data is in config.config
+      expect(config?.config.value).toEqual({base: 'default'});
+
+      // Should have 2 environment-specific variants
+      expect(config?.variants).toHaveLength(2);
 
       const prodVariant = config?.variants.find(
         v => v.environmentId === fixture.productionEnvironmentId,
@@ -787,15 +798,20 @@ describe('Default Variant', () => {
       ).rejects.toThrow(/does not match schema/);
     });
 
-    it('should fail patch when useDefaultSchema is true but no default variant exists', async () => {
-      // Create config with only environment variants (no default)
-      const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
-        name: 'patch-no-default-config',
-        description: 'Test patch without default',
+    it('should successfully update when useDefaultSchema is true and default has schema', async () => {
+      // Create config with default variant with schema
+      await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+        name: 'patch-with-default-config',
+        description: 'Test patch with default',
         currentUserEmail: CURRENT_USER_EMAIL,
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
+        defaultVariant: {
+          value: asConfigValue({key: 'default'}),
+          schema: asConfigSchema({type: 'object', properties: {key: {type: 'string'}}}),
+          overrides: [],
+        },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
@@ -812,49 +828,51 @@ describe('Default Variant', () => {
             useDefaultSchema: true,
           },
         ],
-        defaultVariant: {
-          value: asConfigValue({key: 'default'}),
-          schema: asConfigSchema({type: 'object', properties: {key: {type: 'string'}}}),
-          overrides: [],
-        },
       });
 
-      const prodVariantId = configVariantIds.find(
-        v => v.environmentId === fixture.productionEnvironmentId,
-      )?.variantId;
-
       const {config} = await fixture.trpc.getConfig({
-        name: 'patch-no-default-config',
+        name: 'patch-with-default-config',
         projectId: fixture.projectId,
       });
       const configId = config!.config.id;
 
-      // Try to update with useDefaultSchema when no default exists
-      await expect(
-        fixture.trpc.updateConfig({
-          configId,
-          description: 'Test patch without default',
-          editorEmails: [],
-          maintainerEmails: [],
-          environmentVariants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: asConfigValue({key: 'updated'}),
-              schema: null,
-              overrides: [],
-              useDefaultSchema: true,
-            },
-            {
-              environmentId: fixture.developmentEnvironmentId,
-              value: asConfigValue({key: 'dev'}),
-              schema: null,
-              overrides: [],
-              useDefaultSchema: true,
-            },
-          ],
-          prevVersion: config!.config.version,
-        }),
-      ).rejects.toThrow(/no default variant/);
+      // Update with useDefaultSchema - should succeed since default has schema
+      await fixture.trpc.updateConfig({
+        configId,
+        description: 'Test patch with default - updated',
+        editorEmails: [],
+        maintainerEmails: [],
+        defaultVariant: {
+          value: asConfigValue({key: 'updated-default'}),
+          schema: asConfigSchema({type: 'object', properties: {key: {type: 'string'}}}),
+          overrides: [],
+        },
+        environmentVariants: [
+          {
+            environmentId: fixture.productionEnvironmentId,
+            value: asConfigValue({key: 'updated-prod'}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
+          {
+            environmentId: fixture.developmentEnvironmentId,
+            value: asConfigValue({key: 'updated-dev'}),
+            schema: null,
+            overrides: [],
+            useDefaultSchema: true,
+          },
+        ],
+        prevVersion: config!.config.version,
+      });
+
+      const {config: updatedConfig} = await fixture.trpc.getConfig({
+        name: 'patch-with-default-config',
+        projectId: fixture.projectId,
+      });
+
+      expect(updatedConfig?.config.value).toEqual({key: 'updated-default'});
+      expect(updatedConfig?.config.description).toBe('Test patch with default - updated');
     });
   });
 });
