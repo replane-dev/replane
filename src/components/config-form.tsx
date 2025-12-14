@@ -438,6 +438,12 @@ export function ConfigForm(props: ConfigFormProps) {
       editorEmails,
     });
 
+    // Reset the form's dirty state after successful submission
+    // This marks the current values as the new "default" values
+    if (action === 'save') {
+      form.reset(values, {keepValues: true});
+    }
+
     // Reset action ref after submission
     submitActionRef.current = null;
   }
