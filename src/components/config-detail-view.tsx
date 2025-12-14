@@ -1,6 +1,6 @@
 'use client';
 
-import {ConfigForm} from '@/components/config-form';
+import {ConfigForm, type ConfigFormSubmitData} from '@/components/config-form';
 import {OverrideTester} from '@/components/override-tester';
 import {PendingProposalsWarningDialog} from '@/components/pending-proposals-warning-dialog';
 import {
@@ -25,7 +25,6 @@ import {
 import {Label} from '@/components/ui/label';
 import {Textarea} from '@/components/ui/textarea';
 import type {Override} from '@/engine/core/override-evaluator';
-import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {formatDistanceToNow} from 'date-fns';
@@ -65,9 +64,9 @@ export function ConfigDetailView({
   const requireProposals = pageData.project?.requireProposals ?? false;
   const [proposalMessage, setProposalMessage] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
-  const [pendingProposalData, setPendingProposalData] = useState<SubmitData | null>(null);
+  const [pendingProposalData, setPendingProposalData] = useState<ConfigFormSubmitData | null>(null);
   const [showPendingWarning, setShowPendingWarning] = useState(false);
-  const [pendingEditData, setPendingEditData] = useState<SubmitData | null>(null);
+  const [pendingEditData, setPendingEditData] = useState<ConfigFormSubmitData | null>(null);
   const [liveValue, setLiveValue] = useState<any>(null);
   const [liveOverrides, setLiveOverrides] = useState<Override[]>([]);
   const [showOverrideTester, setShowOverrideTester] = useState(false);
@@ -88,24 +87,7 @@ export function ConfigDetailView({
     [defaultConfigValue],
   );
 
-  async function executeUpdateConfig(data: {
-    defaultVariant: {
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-    };
-    environmentVariants: Array<{
-      configVariantId?: string;
-      environmentId: string;
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-      useDefaultSchema: boolean;
-    }>;
-    description: string;
-    maintainerEmails: string[];
-    editorEmails: string[];
-  }) {
+  async function executeUpdateConfig(data: ConfigFormSubmitData) {
     if (!config) return;
 
     await updateConfig.mutateAsync({
@@ -131,35 +113,9 @@ export function ConfigDetailView({
     notFound();
   }
 
-  type SubmitData = {
-    action: 'save' | 'propose';
-    name: string;
-    defaultVariant: {
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-    };
-    environmentVariants: Array<{
-      environmentId: string;
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-      useDefaultSchema: boolean;
-    }>;
-    description: string;
-    maintainerEmails: string[];
-    editorEmails: string[];
-  };
-
-  async function handleSubmit(data: SubmitData) {
+  async function handleSave(data: ConfigFormSubmitData) {
     if (!config) {
       throw new Error('unreachable: we do not render form when config is undefined');
-    }
-
-    if (data.action === 'propose') {
-      setPendingProposalData(data);
-      setShowProposalDialog(true);
-      return;
     }
 
     if (config.pendingConfigProposals.length > 0) {
@@ -169,6 +125,15 @@ export function ConfigDetailView({
     }
 
     await executeUpdateConfig(data);
+  }
+
+  async function handlePropose(data: ConfigFormSubmitData) {
+    if (!config) {
+      throw new Error('unreachable: we do not render form when config is undefined');
+    }
+
+    setPendingProposalData(data);
+    setShowProposalDialog(true);
   }
 
   async function confirmEdit() {
@@ -276,14 +241,12 @@ export function ConfigDetailView({
 
       <ConfigForm
         onValuesChange={onValuesChange}
-        mode={requireProposals || config.myRole === 'viewer' ? 'proposal' : 'edit'}
-        role={requireProposals || config.myRole === 'viewer' ? 'maintainer' : config.myRole}
+        mode="edit"
+        role={config.myRole}
         currentName={configName}
         currentPendingProposalsCount={config.pendingConfigProposals.length}
-        environments={pageData.environments.map(env => ({
-          id: env.id,
-          name: env.name,
-        }))}
+        environments={pageData.environments}
+        requireProposals={requireProposals}
         defaultVariant={{
           value: config.config.value,
           schema: config.config.schema,
@@ -305,10 +268,10 @@ export function ConfigDetailView({
         updatedAt={config.config.updatedAt}
         currentVersion={config.config.version}
         versionsLink={`/app/projects/${projectId}/configs/${encodeURIComponent(configName)}/versions`}
-        saving={updateConfig.isPending}
-        proposing={createConfigProposal.isPending}
+        submitting={updateConfig.isPending || createConfigProposal.isPending}
         onDelete={onDelete}
-        onSubmit={handleSubmit}
+        onSave={handleSave}
+        onPropose={handlePropose}
         onTestOverrides={() => {
           setShowOverrideTester(true);
         }}

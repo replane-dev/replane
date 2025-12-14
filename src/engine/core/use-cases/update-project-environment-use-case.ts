@@ -8,6 +8,7 @@ export interface UpdateProjectEnvironmentRequest {
   environmentId: string;
   projectId: string;
   name: string;
+  requireProposals: boolean;
   currentUserEmail: NormalizedEmail;
 }
 
@@ -63,6 +64,7 @@ export function createUpdateProjectEnvironmentUseCase(
     await tx.projectEnvironments.update({
       id: req.environmentId,
       name: req.name,
+      requireProposals: req.requireProposals,
       updatedAt: deps.dateProvider.now(),
     });
 

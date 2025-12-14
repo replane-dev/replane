@@ -64,6 +64,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       projectId,
       name: 'Production',
       order: 1,
+      requireProposals: true,
       createdAt: now,
       updatedAt: now,
     };
@@ -73,6 +74,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       projectId,
       name: 'Development',
       order: 2,
+      requireProposals: true,
       createdAt: now,
       updatedAt: now,
     };

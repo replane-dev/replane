@@ -6,6 +6,7 @@ import {BadRequestError} from './errors';
 import {diffMembers} from './member-diff';
 import type {Override} from './override-condition-schemas';
 import type {PermissionService} from './permission-service';
+import {isProposalRequired} from './proposal-requirement';
 import {createAuditLogId, type AuditLogStore} from './stores/audit-log-store';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './stores/config-store';
@@ -13,11 +14,18 @@ import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariantStore} from './stores/config-variant-store';
 import type {ConfigVariantVersionStore} from './stores/config-variant-version-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
+import type {Project} from './stores/project-store';
 import type {User} from './user-store';
 import {normalizeEmail, validateAgainstJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {validateOverrideReferences} from './validate-override-references';
 import type {ConfigMember, ConfigSchema, ConfigValue} from './zod';
+
+export interface ApprovalRequiredResult {
+  required: boolean;
+  reason?: string;
+  affectedEnvironmentIds?: string[];
+}
 
 export interface UpdateConfigParams {
   configId: string;
@@ -58,6 +66,89 @@ export class ConfigService {
     private readonly configVariants: ConfigVariantStore,
     private readonly configVariantVersions: ConfigVariantVersionStore,
   ) {}
+
+  /**
+   * Checks if approval is required for a config update.
+   * Approval is required when:
+   * 1. The project has requireProposals enabled AND
+   * 2. Either the default value has changed OR an environment with requireProposals enabled has changes
+   *
+   * @param params - The parameters to check
+   * @returns An object indicating whether approval is required and why
+   */
+  async isApprovalRequired(params: {
+    project: Project;
+    existingConfig: Config;
+    currentVariants: Array<{
+      id: string;
+      environmentId: string;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
+      overrides: Override[];
+    }>;
+    proposedDefaultVariant: {
+      value: ConfigValue;
+      schema: ConfigSchema | null;
+      overrides: Override[];
+    };
+    proposedEnvironmentVariants: Array<{
+      environmentId: string;
+      value: ConfigValue;
+      schema: ConfigSchema | null;
+      overrides: Override[];
+    }>;
+    currentMembers: {
+      editorEmails: string[];
+      maintainerEmails: string[];
+    };
+    proposedMembers: {
+      editorEmails: string[];
+      maintainerEmails: string[];
+    };
+  }): Promise<ApprovalRequiredResult> {
+    const {
+      project,
+      existingConfig,
+      currentVariants,
+      proposedDefaultVariant,
+      proposedEnvironmentVariants,
+      currentMembers,
+      proposedMembers,
+    } = params;
+
+    // Get all environments for the project
+    const environments = await this.projectEnvironments.getByProjectId(project.id);
+
+    // Use the pure function for the actual logic
+    return isProposalRequired({
+      projectRequiresProposals: project.requireProposals,
+      environments: environments.map(e => ({
+        id: e.id,
+        requireProposals: e.requireProposals,
+      })),
+      current: {
+        defaultVariant: {
+          value: existingConfig.value,
+          schema: existingConfig.schema,
+          overrides: existingConfig.overrides,
+        },
+        environmentVariants: currentVariants.map(v => ({
+          environmentId: v.environmentId,
+          value: v.value,
+          schema: v.schema,
+          overrides: v.overrides,
+        })),
+        editorEmails: currentMembers.editorEmails,
+        maintainerEmails: currentMembers.maintainerEmails,
+      },
+      proposed: {
+        defaultVariant: proposedDefaultVariant,
+        environmentVariants: proposedEnvironmentVariants,
+        editorEmails: proposedMembers.editorEmails,
+        maintainerEmails: proposedMembers.maintainerEmails,
+      },
+    });
+  }
 
   /**
    * Validates that no user appears with multiple roles.

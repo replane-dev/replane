@@ -1,8 +1,7 @@
 'use client';
 
-import {ConfigForm} from '@/components/config-form';
+import {ConfigForm, type ConfigFormSubmitData} from '@/components/config-form';
 import type {Override} from '@/engine/core/override-evaluator';
-import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
@@ -35,24 +34,7 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
   const userEmail = session?.user?.email;
   if (!userEmail) throw new Error('User email is required');
 
-  async function handleSubmit(data: {
-    name: string;
-    defaultVariant: {
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-    };
-    environmentVariants: Array<{
-      environmentId: string;
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-      useDefaultSchema: boolean;
-    }>;
-    description: string;
-    maintainerEmails: string[];
-    editorEmails: string[];
-  }) {
+  async function handleCreate(data: ConfigFormSubmitData) {
     await createConfig.mutateAsync({
       name: data.name,
       description: data.description ?? '',
@@ -60,7 +42,13 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
       maintainerEmails: data.maintainerEmails,
       projectId,
       defaultVariant: data.defaultVariant,
-      environmentVariants: data.environmentVariants,
+      environmentVariants: data.environmentVariants.map(v => ({
+        environmentId: v.environmentId,
+        value: v.value,
+        schema: v.schema,
+        overrides: v.overrides as Override[],
+        useDefaultSchema: v.useDefaultSchema,
+      })),
     });
 
     if (onSuccess) {
@@ -93,10 +81,8 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
     <ConfigForm
       mode="new"
       role="maintainer"
-      environments={environments.map(env => ({
-        id: env.id,
-        name: env.name,
-      }))}
+      environments={environments}
+      requireProposals={false}
       defaultVariant={{
         value: null,
         schema: null,
@@ -107,9 +93,9 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
       defaultEditorEmails={[]}
       defaultDescription={''}
       editorIdPrefix="new-config"
-      saving={createConfig.isPending}
+      submitting={createConfig.isPending}
       onCancel={handleCancel}
-      onSubmit={handleSubmit}
+      onCreate={handleCreate}
       projectUsers={projectUsers}
       onDirtyChange={onDirtyChange}
     />

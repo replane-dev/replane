@@ -18,6 +18,7 @@ export interface ProjectDetails {
 export interface ProjectEnvironment {
   id: string;
   name: string;
+  requireProposals: boolean;
 }
 
 export interface ProjectListItem {
@@ -71,6 +72,7 @@ export class ProjectQueryService {
     return environments.map(env => ({
       id: env.id,
       name: env.name,
+      requireProposals: env.requireProposals,
     }));
   }
 

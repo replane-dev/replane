@@ -48,10 +48,47 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
       throw new BadRequestError('Project not found');
     }
 
+    // Check if approval is required using the new per-environment logic
     if (project.requireProposals) {
-      throw new BadRequestError(
-        'Direct config changes are disabled. Please create a proposal instead.',
-      );
+      const currentVariants = await tx.configVariants.getByConfigId(req.configId);
+      const currentMembers = await tx.configUsers.getByConfigId(req.configId);
+      const currentEditorEmails = currentMembers
+        .filter(m => m.role === 'editor')
+        .map(m => m.user_email_normalized);
+      const currentMaintainerEmails = currentMembers
+        .filter(m => m.role === 'maintainer')
+        .map(m => m.user_email_normalized);
+
+      const approvalResult = await tx.configService.isApprovalRequired({
+        project,
+        existingConfig: config,
+        currentVariants: currentVariants.map(v => ({
+          id: v.id,
+          environmentId: v.environmentId,
+          value: v.value,
+          schema: v.schema,
+          overrides: v.overrides,
+        })),
+        proposedDefaultVariant: req.defaultVariant,
+        proposedEnvironmentVariants: req.environmentVariants,
+        currentMembers: {
+          editorEmails: currentEditorEmails,
+          maintainerEmails: currentMaintainerEmails,
+        },
+        proposedMembers: {
+          editorEmails: req.editorEmails,
+          maintainerEmails: req.maintainerEmails,
+        },
+      });
+
+      if (approvalResult.required) {
+        throw new BadRequestError(
+          `Direct config changes are disabled. ${approvalResult.reason}. Please create a proposal instead.`,
+          {
+            code: 'APPROVAL_REQUIRED',
+          },
+        );
+      }
     }
 
     // Call configService.updateConfig with full state

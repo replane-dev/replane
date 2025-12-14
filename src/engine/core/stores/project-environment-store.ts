@@ -6,6 +6,7 @@ export interface ProjectEnvironment {
   projectId: string;
   name: string;
   order: number;
+  requireProposals: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +65,7 @@ export class ProjectEnvironmentStore {
         project_id: environment.projectId,
         name: environment.name,
         order: environment.order,
+        require_proposals: environment.requireProposals,
         created_at: environment.createdAt,
         updated_at: environment.updatedAt,
       })
@@ -74,6 +76,7 @@ export class ProjectEnvironmentStore {
     id: string;
     name?: string;
     order?: number;
+    requireProposals?: boolean;
     updatedAt: Date;
   }): Promise<void> {
     const updates: any = {
@@ -86,6 +89,10 @@ export class ProjectEnvironmentStore {
 
     if (params.order !== undefined) {
       updates.order = params.order;
+    }
+
+    if (params.requireProposals !== undefined) {
+      updates.require_proposals = params.requireProposals;
     }
 
     await this.db
@@ -104,6 +111,7 @@ export class ProjectEnvironmentStore {
     project_id: string;
     name: string;
     order: number;
+    require_proposals: boolean;
     created_at: Date;
     updated_at: Date;
   }): ProjectEnvironment {
@@ -112,6 +120,7 @@ export class ProjectEnvironmentStore {
       projectId: row.project_id,
       name: row.name,
       order: row.order,
+      requireProposals: row.require_proposals,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

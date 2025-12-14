@@ -138,7 +138,7 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
     OrConditionSchema as any,
     NotConditionSchema as any,
   ]),
-) as any;
+);
 
 // ========================================
 // Rendered Condition Schemas (after resolving references)
@@ -269,7 +269,7 @@ export const RenderedConditionSchema: z.ZodType<RenderedCondition> = z.lazy(() =
     RenderedOrConditionSchema as any,
     RenderedNotConditionSchema as any,
   ]),
-) as any;
+);
 
 // ========================================
 // Override Schemas

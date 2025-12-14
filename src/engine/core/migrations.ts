@@ -1378,6 +1378,25 @@ export const migrations: Migration[] = [
       ALTER TABLE config_proposal_variants ALTER COLUMN environment_id SET NOT NULL;
     `,
   },
+  {
+    name: 'Add require_approvals column to project_environments',
+    sql: /*sql*/ `
+      ALTER TABLE project_environments
+      ADD COLUMN require_approvals BOOLEAN NOT NULL DEFAULT TRUE;
+    `,
+  },
+  {
+    name: 'Rename require_approvals to require_proposals in project_environments',
+    sql: /*sql*/ `
+      ALTER TABLE project_environments RENAME COLUMN require_approvals TO require_proposals;
+    `,
+  },
+  {
+    name: 'Remove default for require_proposals in project_environments',
+    sql: /*sql*/ `
+      ALTER TABLE project_environments ALTER COLUMN require_proposals DROP DEFAULT;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

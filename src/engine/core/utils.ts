@@ -371,3 +371,11 @@ export function isDeepEqual(a: unknown, b: unknown): boolean {
 
   return false;
 }
+
+export type SettledResult<T> = {type: 'success'; value: T} | {type: 'error'; error: unknown};
+
+export function toSettledResult<T>(promise: Promise<T>): Promise<SettledResult<T>> {
+  return promise
+    .then(value => ({type: 'success' as const, value}))
+    .catch(error => ({type: 'error' as const, error}));
+}

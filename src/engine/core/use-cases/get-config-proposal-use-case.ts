@@ -189,7 +189,10 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const variantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
     const proposedVariants: ProposedVariantDetails[] = [];
     for (const vc of variantChanges) {
-      const currentVariant = await tx.configVariants.getById(vc.environmentId);
+      const currentVariant = await tx.configVariants.getByConfigIdAndEnvironmentId({
+        configId: proposal.configId,
+        environmentId: vc.environmentId,
+      });
       proposedVariants.push({
         environmentId: vc.environmentId,
         environmentName: vc.environmentName,

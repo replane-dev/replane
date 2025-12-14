@@ -14,7 +14,7 @@ export interface RestoreConfigVersionRequest {
 }
 
 export interface RestoreConfigVersionResponse {
-  newVersion: number;
+  newVersion?: number;
 }
 
 export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
@@ -117,6 +117,50 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     const maintainerEmails = currentMembers
       .filter(m => m.role === 'maintainer')
       .map(m => m.user_email_normalized);
+
+    // Get the project to check requireProposals setting
+    const project = await tx.projects.getById({
+      id: config.projectId,
+      currentUserEmail: req.currentUserEmail,
+    });
+    if (!project) {
+      throw new BadRequestError('Project not found');
+    }
+
+    // Check if approval is required using the new per-environment logic
+    if (project.requireProposals) {
+      const approvalResult = await tx.configService.isApprovalRequired({
+        project,
+        existingConfig: config,
+        currentVariants: currentVariants.map(v => ({
+          id: v.id,
+          environmentId: v.environmentId,
+          value: v.value,
+          schema: v.schema,
+          overrides: v.overrides,
+        })),
+        proposedDefaultVariant: defaultVariant,
+        proposedEnvironmentVariants: environmentVariants,
+        // Restore doesn't change members, so pass the same values for current and proposed
+        currentMembers: {
+          editorEmails,
+          maintainerEmails,
+        },
+        proposedMembers: {
+          editorEmails,
+          maintainerEmails,
+        },
+      });
+
+      if (approvalResult.required) {
+        throw new BadRequestError(
+          `Direct config restore is disabled. ${approvalResult.reason}. Please create a proposal instead.`,
+          {
+            code: 'APPROVAL_REQUIRED',
+          },
+        );
+      }
+    }
 
     // Call updateConfig with the reconstructed state
     await tx.configService.updateConfig(ctx, {

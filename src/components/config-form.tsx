@@ -23,21 +23,23 @@ import {Separator} from '@/components/ui/separator';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
+import {isProposalRequired} from '@/engine/core/proposal-requirement';
 import {ConfigOverrides} from '@/engine/core/stores/config-store';
 import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
-import {Layers} from 'lucide-react';
+import {Layers, ShieldCheck} from 'lucide-react';
 import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
 import {z} from 'zod';
 
-type Mode = 'new' | 'edit' | 'proposal';
+type Mode = 'new' | 'edit';
 
 export interface Environment {
   id: string;
   name: string;
+  requireProposals: boolean;
 }
 
 export interface ConfigVariantData {
@@ -49,11 +51,31 @@ export interface ConfigVariantData {
   useDefaultSchema?: boolean; // Whether to inherit schema from default variant
 }
 
+export interface ConfigFormSubmitData {
+  name: string;
+  defaultVariant: {
+    value: ConfigValue;
+    schema: ConfigSchema | null;
+    overrides: Override[];
+  };
+  environmentVariants: Array<{
+    environmentId: string;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
+    overrides: Override[];
+    useDefaultSchema: boolean;
+  }>;
+  description: string;
+  maintainerEmails: string[];
+  editorEmails: string[];
+}
+
 export interface ConfigFormProps {
   mode: Mode;
   role: 'viewer' | 'maintainer' | 'editor';
   currentName?: string; // used in edit mode (read-only display)
   environments: Environment[]; // Available environments
+  requireProposals: boolean; // Whether the project requires proposals
   defaultVariant?: {
     value: unknown;
     schema: unknown | null;
@@ -63,8 +85,7 @@ export interface ConfigFormProps {
   defaultDescription?: string;
   defaultMaintainerEmails?: string[];
   defaultEditorEmails?: string[];
-  proposing?: boolean;
-  saving?: boolean;
+  submitting?: boolean;
   editorIdPrefix?: string;
   createdAt?: string | Date;
   updatedAt?: string | Date;
@@ -73,25 +94,12 @@ export interface ConfigFormProps {
   versionsLink?: string; // link to versions page
   onCancel?: () => void;
   onDelete?: () => Promise<void> | void;
-  onSubmit: (data: {
-    action: 'save' | 'propose';
-    name: string;
-    defaultVariant: {
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-    };
-    environmentVariants: Array<{
-      environmentId: string;
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-      useDefaultSchema: boolean;
-    }>;
-    description: string;
-    maintainerEmails: string[];
-    editorEmails: string[];
-  }) => Promise<void> | void;
+  /** Called when creating a new config */
+  onCreate?: (data: ConfigFormSubmitData) => Promise<void> | void;
+  /** Called when saving changes directly */
+  onSave?: (data: ConfigFormSubmitData) => Promise<void> | void;
+  /** Called when proposing changes */
+  onPropose?: (data: ConfigFormSubmitData) => Promise<void> | void;
   onValuesChange?: (values: {value: string; overrides: Override[]}) => void;
   onTestOverrides?: () => void;
   projectUsers: Array<{email: string; role: 'admin' | 'maintainer'}>;
@@ -105,13 +113,13 @@ export function ConfigForm(props: ConfigFormProps) {
     currentName,
     currentPendingProposalsCount,
     environments,
+    requireProposals,
     defaultVariant,
     environmentVariants,
     defaultDescription = '',
     defaultMaintainerEmails = [],
     defaultEditorEmails = [],
-    proposing,
-    saving,
+    submitting,
     editorIdPrefix,
     createdAt,
     updatedAt,
@@ -119,7 +127,9 @@ export function ConfigForm(props: ConfigFormProps) {
     versionsLink,
     onCancel,
     onDelete,
-    onSubmit,
+    onCreate,
+    onSave,
+    onPropose,
     onValuesChange,
     onTestOverrides,
     projectUsers,
@@ -135,13 +145,12 @@ export function ConfigForm(props: ConfigFormProps) {
   const role: 'viewer' | 'maintainer' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
 
   // Permissions
-  const isProposal = mode === 'proposal';
-  const canEditDescription = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
-  const canEditValue = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
-  const canEditSchema = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
-  const canEditOverrides = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
-  const canEditMembers = mode === 'new' ? true : isProposal ? true : role === 'maintainer';
-  const canSubmit = mode === 'new' ? true : isProposal ? true : role !== 'viewer';
+  const canEditDescription = mode === 'new' ? true : role === 'maintainer';
+  const canEditValue = mode === 'new' ? true : role === 'maintainer' || role === 'editor';
+  const canEditSchema = mode === 'new' ? true : role === 'maintainer';
+  const canEditOverrides = mode === 'new' ? true : role === 'maintainer' || role === 'editor';
+  const canEditMembers = mode === 'new' ? true : role === 'maintainer';
+  const canSubmit = mode === 'new' ? true : role !== 'viewer';
   const showMembers = true;
 
   // Track which action button was clicked
@@ -415,10 +424,6 @@ export function ConfigForm(props: ConfigFormProps) {
       });
     }
 
-    // Determine action: use tracked action, or default based on mode
-    const action: 'save' | 'propose' =
-      submitActionRef.current ?? (mode === 'proposal' ? 'propose' : 'save');
-
     // Transform member array back to maintainerEmails and editorEmails
     const members = (values.members ?? []).filter(m => m.email.trim());
     const maintainerEmails = members
@@ -428,21 +433,27 @@ export function ConfigForm(props: ConfigFormProps) {
       .filter(m => m.role === 'editor')
       .map(m => m.email.trim().toLowerCase());
 
-    await onSubmit({
-      action,
+    const submitData: ConfigFormSubmitData = {
       name: values.name ?? defaultName,
       defaultVariant: processedDefaultVariant,
       environmentVariants: processedEnvVariants,
       description: values.description ?? '',
       maintainerEmails: maintainerEmails,
       editorEmails,
-    });
+    };
 
-    // Reset the form's dirty state after successful submission
-    // This marks the current values as the new "default" values
-    if (action === 'save') {
-      form.reset(values, {keepValues: true});
+    // Call the appropriate callback based on action
+    const action = submitActionRef.current;
+    if (mode === 'new' && onCreate) {
+      await onCreate(submitData);
+    } else if (action === 'propose' && onPropose) {
+      await onPropose(submitData);
+    } else if (onSave) {
+      await onSave(submitData);
     }
+
+    // Reset the form's dirty state after successful save
+    form.reset(values, {keepValues: true});
 
     // Reset action ref after submission
     submitActionRef.current = null;
@@ -566,6 +577,102 @@ export function ConfigForm(props: ConfigFormProps) {
     ...(watchedEnvVariants?.filter((v: any) => v.enabled) ?? []),
   ];
   const hasDifferentSchemas = useSchemaDiffCheck(allVariantsForDiffCheck);
+
+  // Determine if a proposal is required for the current changes
+  const proposalRequiredResult = React.useMemo(() => {
+    if (mode === 'new' || !requireProposals) {
+      return {required: false};
+    }
+
+    // Parse current form values to compare with defaults
+    const currentEditors = (watchedMembers ?? [])
+      .filter(m => m.role === 'editor' && m.email.trim())
+      .map(m => m.email.trim().toLowerCase());
+    const currentMaintainers = (watchedMembers ?? [])
+      .filter(m => m.role === 'maintainer' && m.email.trim())
+      .map(m => m.email.trim().toLowerCase());
+
+    // Parse default variant values
+    let proposedDefaultValue: unknown = null;
+    let proposedDefaultSchema: unknown = null;
+    let proposedDefaultOverrides: Override[] = [];
+    try {
+      proposedDefaultValue = watchedDefaultVariant?.value
+        ? JSON.parse(watchedDefaultVariant.value)
+        : null;
+    } catch {}
+    try {
+      proposedDefaultSchema =
+        watchedDefaultVariant?.schemaEnabled && watchedDefaultVariant?.schema
+          ? JSON.parse(watchedDefaultVariant.schema)
+          : null;
+    } catch {}
+    proposedDefaultOverrides = (watchedDefaultVariant?.overrides ?? []) as Override[];
+
+    // Parse environment variants
+    const proposedEnvVariants = (watchedEnvVariants ?? [])
+      .filter((v: any) => v.enabled)
+      .map((v: any) => {
+        let value: unknown = null;
+        let schema: unknown = null;
+        try {
+          value = v.value ? JSON.parse(v.value) : null;
+        } catch {}
+        try {
+          schema = v.schemaEnabled && v.schema ? JSON.parse(v.schema) : null;
+        } catch {}
+        return {
+          environmentId: v.environmentId,
+          value,
+          schema,
+          overrides: (v.overrides ?? []) as Override[],
+        };
+      });
+
+    return isProposalRequired({
+      projectRequiresProposals: requireProposals,
+      environments: environments.map(e => ({
+        id: e.id,
+        requireProposals: e.requireProposals,
+      })),
+      current: {
+        defaultVariant: {
+          value: defaultVariant?.value ?? null,
+          schema: defaultVariant?.schema ?? null,
+          overrides: defaultVariant?.overrides ?? [],
+        },
+        environmentVariants: environmentVariants.map(v => ({
+          environmentId: v.environmentId,
+          value: v.value,
+          schema: v.schema,
+          overrides: v.overrides,
+        })),
+        editorEmails: defaultEditorEmails,
+        maintainerEmails: defaultMaintainerEmails,
+      },
+      proposed: {
+        defaultVariant: {
+          value: proposedDefaultValue,
+          schema: proposedDefaultSchema,
+          overrides: proposedDefaultOverrides,
+        },
+        environmentVariants: proposedEnvVariants,
+        editorEmails: currentEditors,
+        maintainerEmails: currentMaintainers,
+      },
+    });
+  }, [
+    mode,
+    requireProposals,
+    environments,
+    defaultVariant,
+    environmentVariants,
+    defaultEditorEmails,
+    defaultMaintainerEmails,
+    watchedDefaultVariant,
+    watchedEnvVariants,
+    watchedMembers,
+  ]);
 
   return (
     <Form {...form}>
@@ -742,11 +849,9 @@ export function ConfigForm(props: ConfigFormProps) {
                             </span>
                           </FormLabel>
                         </div>
-                        {isCustomized && (
-                          <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
-                            Customized
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {env.requireProposals && <ChangesRequireProposalsBadge />}
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -794,7 +899,8 @@ export function ConfigForm(props: ConfigFormProps) {
               <h3 className="text-lg font-semibold">Base Configuration</h3>
               <p className="text-sm text-muted-foreground">The foundation for all environments</p>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {requireProposals && <ChangesRequireProposalsBadge />}
               <Help className="max-w-sm">
                 <p>
                   Define the base value, schema, and overrides here. Environments without custom
@@ -903,53 +1009,69 @@ export function ConfigForm(props: ConfigFormProps) {
       {/* Sticky button panel */}
       <div className="sticky bottom-0 z-5 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-3">
         <div className="flex gap-2">
-          {(mode === 'new' || mode === 'edit') && (
+          {mode === 'new' && onCreate && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
                   <Button
                     type="submit"
                     form="config-form"
-                    disabled={!!saving || !canSubmit || !hasChanges}
+                    disabled={!!submitting || !canSubmit || !hasChanges}
                     onClick={() => {
                       submitActionRef.current = 'save';
                     }}
                   >
-                    {saving
-                      ? mode === 'new'
-                        ? 'Creating…'
-                        : 'Saving…'
-                      : mode === 'new'
-                        ? 'Create config'
-                        : 'Save changes'}
+                    {submitting ? 'Creating…' : 'Create config'}
                   </Button>
                 </span>
               </TooltipTrigger>
-              {!hasChanges && !saving && canSubmit && (
+              {!hasChanges && !submitting && canSubmit && (
+                <TooltipContent>
+                  <p>Fill in the required fields to create a config.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          )}
+          {mode === 'edit' && !proposalRequiredResult.required && onSave && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    type="submit"
+                    form="config-form"
+                    disabled={!!submitting || !canSubmit || !hasChanges}
+                    onClick={() => {
+                      submitActionRef.current = 'save';
+                    }}
+                  >
+                    {submitting ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!hasChanges && !submitting && canSubmit && (
                 <TooltipContent>
                   <p>No changes have been made to save.</p>
                 </TooltipContent>
               )}
             </Tooltip>
           )}
-          {(mode === 'edit' || mode === 'proposal') && (
+          {mode === 'edit' && proposalRequiredResult.required && onPropose && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
                   <Button
                     type="submit"
                     form="config-form"
-                    variant={mode === 'edit' ? 'outline' : 'default'}
-                    disabled={!!proposing || !canSubmit || !hasChanges}
+                    disabled={!!submitting || !canSubmit || !hasChanges}
                     onClick={() => {
                       submitActionRef.current = 'propose';
                     }}
                   >
-                    {proposing ? 'Proposing…' : 'Create proposal'}
+                    {submitting ? 'Proposing…' : 'Propose changes'}
                   </Button>
                 </span>
               </TooltipTrigger>
-              {!hasChanges && !proposing && canSubmit && (
+              {!hasChanges && !submitting && canSubmit && (
                 <TooltipContent>
                   <p>No changes have been made to propose.</p>
                 </TooltipContent>
@@ -968,7 +1090,7 @@ export function ConfigForm(props: ConfigFormProps) {
                 Test overrides
               </Button>
             )}
-          {mode !== 'proposal' && onDelete && role === 'maintainer' && (
+          {onDelete && role === 'maintainer' && (
             <div className="ml-auto">
               <Button
                 variant="outline"
@@ -989,5 +1111,17 @@ export function ConfigForm(props: ConfigFormProps) {
         </div>
       </div>
     </Form>
+  );
+}
+
+function ChangesRequireProposalsBadge() {
+  return (
+    <span
+      className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-1 rounded-full"
+      title="Changes to this environment require approval"
+    >
+      <ShieldCheck className="h-3 w-3" />
+      Changes require approval
+    </span>
   );
 }

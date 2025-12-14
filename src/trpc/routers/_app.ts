@@ -615,6 +615,7 @@ export const appRouter = createTRPCRouter({
         environmentId: Uuid(),
         name: z.string().min(1).max(50),
         projectId: Uuid(),
+        requireProposals: z.boolean(),
       }),
     )
     .mutation(async opts => {
@@ -626,6 +627,7 @@ export const appRouter = createTRPCRouter({
         name: opts.input.name,
         currentUserEmail: opts.ctx.currentUserEmail,
         projectId: opts.input.projectId,
+        requireProposals: opts.input.requireProposals,
       });
     }),
   deleteProjectEnvironment: baseProcedure

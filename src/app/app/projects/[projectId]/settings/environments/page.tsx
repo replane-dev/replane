@@ -55,12 +55,15 @@ export default function EnvironmentsSettingsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedEnvironment, setSelectedEnvironment] = useState<{id: string; name: string} | null>(
-    null,
-  );
+  const [selectedEnvironment, setSelectedEnvironment] = useState<{
+    id: string;
+    name: string;
+    requireProposals: boolean;
+  } | null>(null);
   const [newEnvironmentName, setNewEnvironmentName] = useState('');
   const [copyFromEnvironmentId, setCopyFromEnvironmentId] = useState('');
   const [editEnvironmentName, setEditEnvironmentName] = useState('');
+  const [editRequireProposals, setEditRequireProposals] = useState(true);
 
   // Mutations
   const createEnvironment = useMutation(trpc.createProjectEnvironment.mutationOptions());
@@ -103,6 +106,7 @@ export default function EnvironmentsSettingsPage() {
         environmentId: selectedEnvironment.id,
         name: editEnvironmentName.trim(),
         projectId,
+        requireProposals: editRequireProposals,
       });
       toast.success('Environment updated successfully');
       setShowEditDialog(false);
@@ -276,6 +280,7 @@ export default function EnvironmentsSettingsPage() {
                       onClick={() => {
                         setSelectedEnvironment(env);
                         setEditEnvironmentName(env.name);
+                        setEditRequireProposals(env.requireProposals);
                         setShowEditDialog(true);
                       }}
                     >

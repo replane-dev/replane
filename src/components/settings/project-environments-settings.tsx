@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {
@@ -18,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {Switch} from '@/components/ui/switch';
+import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {ArrowDown, ArrowUp, Globe, Info, Pencil, Trash2} from 'lucide-react';
+import {ArrowDown, ArrowUp, Globe, Info, Pencil, ShieldCheck, Trash2} from 'lucide-react';
 import {useState} from 'react';
 import {toast} from 'sonner';
 
@@ -35,12 +38,15 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedEnvironment, setSelectedEnvironment] = useState<{id: string; name: string} | null>(
-    null,
-  );
+  const [selectedEnvironment, setSelectedEnvironment] = useState<{
+    id: string;
+    name: string;
+    requireProposals: boolean;
+  } | null>(null);
   const [newEnvironmentName, setNewEnvironmentName] = useState('');
   const [copyFromEnvironmentId, setCopyFromEnvironmentId] = useState('');
   const [editEnvironmentName, setEditEnvironmentName] = useState('');
+  const [editRequireProposals, setEditRequireProposals] = useState(false);
 
   const createEnvironment = useMutation(trpc.createProjectEnvironment.mutationOptions());
   const updateEnvironment = useMutation(trpc.updateProjectEnvironment.mutationOptions());
@@ -80,11 +86,13 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
         environmentId: selectedEnvironment.id,
         name: editEnvironmentName.trim(),
         projectId,
+        requireProposals: editRequireProposals,
       });
       toast.success('Environment updated successfully');
       setShowEditDialog(false);
       setSelectedEnvironment(null);
       setEditEnvironmentName('');
+      setEditRequireProposals(false);
     } catch (e: any) {
       toast.error(e?.message ?? 'Failed to update environment');
     }
@@ -183,6 +191,19 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm font-medium">{env.name}</span>
+                {env.requireProposals && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-full cursor-default">
+                        <ShieldCheck className="h-3 w-3" />
+                        Requires proposals
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Changes to this environment require proposals</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Button
@@ -212,6 +233,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                   onClick={() => {
                     setSelectedEnvironment(env);
                     setEditEnvironmentName(env.name);
+                    setEditRequireProposals(env.requireProposals);
                     setShowEditDialog(true);
                   }}
                 >
@@ -307,7 +329,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Environment</DialogTitle>
-            <DialogDescription>Rename this environment.</DialogDescription>
+            <DialogDescription>Configure environment settings.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -319,6 +341,32 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                 maxLength={50}
               />
             </div>
+            {projectData.project?.requireProposals && (
+              <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="edit-require-proposals" className="cursor-pointer">
+                      Require proposals
+                    </Label>
+                    <Help>
+                      <p>
+                        When enabled, changes to config values in this environment will require
+                        approval through a proposal. This only applies when the project has
+                        &quot;Require proposals&quot; enabled.
+                      </p>
+                    </Help>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Changes to this environment require proposal
+                  </p>
+                </div>
+                <Switch
+                  id="edit-require-proposals"
+                  checked={editRequireProposals}
+                  onCheckedChange={setEditRequireProposals}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -327,6 +375,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                 setShowEditDialog(false);
                 setSelectedEnvironment(null);
                 setEditEnvironmentName('');
+                setEditRequireProposals(false);
               }}
             >
               Cancel

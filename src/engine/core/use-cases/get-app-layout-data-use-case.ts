@@ -25,8 +25,6 @@ export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    console.log('workspaces', workspaces);
-
     return {projects, workspaces};
   };
 }

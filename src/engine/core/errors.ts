@@ -1,7 +1,13 @@
 export class BadRequestError extends Error {
   code?: string;
 
-  constructor(message: string, options?: {cause?: unknown; code?: string}) {
+  constructor(
+    message: string,
+    options?: {
+      cause?: unknown;
+      code?: string;
+    },
+  ) {
     super(message, {cause: options?.cause});
     this.name = 'BadRequestError';
     this.code = options?.code;

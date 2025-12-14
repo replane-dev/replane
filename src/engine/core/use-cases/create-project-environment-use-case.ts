@@ -75,6 +75,7 @@ export function createCreateProjectEnvironmentUseCase(
       projectId: req.projectId,
       name: req.name,
       order: maxOrder + 1,
+      requireProposals: true,
       createdAt: now,
       updatedAt: now,
     });

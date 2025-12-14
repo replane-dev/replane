@@ -1,4 +1,5 @@
 import {Lazy} from '@/engine/core/lazy';
+import * as Sentry from '@sentry/nextjs';
 import {ENGINE_STOP_TIMEOUT_MS} from './core/constants';
 import {GLOBAL_CONTEXT} from './core/context';
 import {createLogger} from './core/logger';
@@ -54,6 +55,7 @@ export const engineLazy = new Lazy(async () => {
       unsynced: process.env.REPLICA_STORAGE_UNSYNCED === 'true',
     },
     onFatalError: async error => {
+      Sentry.captureException(error);
       logger.error(GLOBAL_CONTEXT, {msg: 'Engine fatal error', error});
       await Promise.race([
         (async () => {

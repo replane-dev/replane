@@ -159,6 +159,7 @@ export interface ProjectEnvironments {
   name: string;
   order: Generated<number>;
   project_id: string;
+  require_proposals: boolean;
   updated_at: Timestamp;
 }
 
