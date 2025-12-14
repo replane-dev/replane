@@ -177,7 +177,7 @@ interface Configs {
   'billing-enabled': boolean;
 }
 
-const client = await createReplaneClient<Configs>({
+const replane = await createReplaneClient<Configs>({
   // Each SDK key is tied to one project only
   sdkKey: process.env.REPLANE_SDK_KEY!,
   baseUrl: 'https://api.my-host.com',
@@ -185,7 +185,7 @@ const client = await createReplaneClient<Configs>({
 
 // Get config value (receives realtime updates via SSE in background)
 try {
-  const featureFlag = client.get('new-onboarding'); // TypeScript knows: boolean
+  const featureFlag = replane.get('new-onboarding'); // TypeScript knows: boolean
   console.log('Feature flag:', featureFlag);
 } catch (error) {
   // Handle error (e.g., config not found)
@@ -193,11 +193,11 @@ try {
 }
 
 // Typed config - no need to specify type again
-const passwordRequirements = client.get('password-requirements');
+const passwordRequirements = replane.get('password-requirements');
 console.log('Min length:', passwordRequirements.minLength);
 
 // With context for override evaluation
-const billingEnabled = client.get('billing-enabled', {
+const billingEnabled = replane.get('billing-enabled', {
   context: {
     userId: 'user-123',
     plan: 'premium',
@@ -209,14 +209,14 @@ if (billingEnabled) {
 }
 
 // When done, clean up resources
-client.close();
+replane.close();
 ```
 
 Notes
 
 - Create an SDK key in the Replane UI. It's shown once; store it securely.
 - Each SDK key is tied to a specific project. If you need configs from multiple projects, create separate SDK keys and initialize separate clients for each project.
-- The client receives realtime updates via SSE in the background and maintains an up-to-date cache.
+- The Replane client receives realtime updates via SSE in the background and maintains an up-to-date cache.
 - Works in Node (18+) and modern browsers. Provide `fetchFn` if your environment doesn't expose `fetch`.
 
 ## Backups
