@@ -420,17 +420,6 @@ export class ConfigService {
     const nextVersion = existingConfig.version + 1;
     const now = this.dateProvider.now();
 
-    await this.configs.update({
-      ctx,
-      id: existingConfig.id,
-      description: params.description,
-      value: params.defaultVariant.value,
-      schema: params.defaultVariant.schema,
-      overrides: params.defaultVariant.overrides,
-      version: nextVersion,
-      updatedAt: now,
-    });
-
     // Update members if changed
     if (membersChanged) {
       const newMembers: ConfigMember[] = [
@@ -532,6 +521,17 @@ export class ConfigService {
         variantId,
       });
     }
+
+    await this.configs.update({
+      ctx,
+      id: existingConfig.id,
+      description: params.description,
+      value: params.defaultVariant.value,
+      schema: params.defaultVariant.schema,
+      overrides: params.defaultVariant.overrides,
+      version: nextVersion,
+      updatedAt: now,
+    });
 
     // Create version history - one version record with all variants and members
     const newMembers = [

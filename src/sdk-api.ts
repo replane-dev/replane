@@ -554,6 +554,7 @@ sdkApi.openapi(
                   value: event.value,
                 } satisfies ReplicationStreamRecord),
               });
+              continue;
             }
 
             const stateChange = rollingState.upsert(event.configName, event.version);
