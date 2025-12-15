@@ -151,9 +151,11 @@ export class ConfigStore {
       .where('configs.project_id', '=', params.projectId)
       .select([
         'configs.created_at',
+        'configs.updated_at',
         'configs.id',
         'configs.name',
         'configs.description',
+        'configs.version',
         'config_users.role as myRole',
         'configs.project_id',
       ]);
@@ -163,10 +165,10 @@ export class ConfigStore {
     return configs.map(c => ({
       name: c.name,
       createdAt: c.created_at,
-      updatedAt: c.created_at, // No updated_at on configs table anymore, use created_at
+      updatedAt: c.updated_at,
       descriptionPreview: c.description.substring(0, 100),
       myRole: c.myRole ?? 'viewer',
-      version: 1, // No version on configs table, placeholder
+      version: c.version,
       id: c.id,
       projectId: c.project_id,
     }));
