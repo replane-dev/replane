@@ -3,7 +3,7 @@ import {type Context} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {ConfigName} from '@/engine/core/stores/config-store';
 import {createUuidV4} from '@/engine/core/uuid';
-import {getEngineSingleton} from '@/engine/engine-singleton';
+import {getProxySingleton} from '@/engine/proxy-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';
 import * as Sentry from '@sentry/nextjs';
 import {cors} from 'hono/cors';
@@ -13,8 +13,8 @@ import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
 import {assertNever, toEagerAsyncIterable} from './engine/core/utils';
 import {createSdkState} from './sdk-state';
 
-async function getEngine() {
-  return getEngineSingleton();
+async function getProxy() {
+  return getProxySingleton();
 }
 
 interface HonoEnv {
@@ -102,9 +102,9 @@ sdkApi.use('*', async (c, next) => {
   const token = bearer;
   if (!token) return c.json({msg: 'Missing SDK key'}, 401);
   try {
-    const engine = await getEngine();
+    const proxy = await getProxy();
     const ctx = c.get('context');
-    const verified = await engine.sdkUseCases.verifySdkKey(ctx, {key: token});
+    const verified = await proxy.useCases.verifySdkKey(ctx, {key: token});
     if (!verified) return c.json({msg: 'Invalid SDK key'}, 401);
     c.set('projectId', verified.projectId);
     c.set('environmentId', verified.environmentId);
@@ -157,7 +157,7 @@ sdkApi.openapi(
     const {name} = c.req.valid('param');
     const {context: contextStr} = c.req.valid('query');
 
-    const engine = await getEngine();
+    const proxy = await getProxy();
 
     // Parse context if provided
     let context: Record<string, unknown> | undefined;
@@ -173,7 +173,7 @@ sdkApi.openapi(
       }
     }
 
-    const result = await engine.sdkUseCases.getConfigValue(c.get('context'), {
+    const result = await proxy.useCases.getConfigValue(c.get('context'), {
       name,
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
@@ -205,8 +205,8 @@ sdkApi.openapi(
     },
   },
   async c => {
-    const engine = await getEngine();
-    const {configs} = await engine.sdkUseCases.getSdkConfigs(c.get('context'), {
+    const proxy = await getProxy();
+    const {configs} = await proxy.useCases.getSdkConfigs(c.get('context'), {
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
     });
@@ -242,9 +242,9 @@ sdkApi.openapi(
   async c => {
     const {name} = c.req.valid('param');
 
-    const engine = await getEngine();
+    const proxy = await getProxy();
 
-    const result = await engine.sdkUseCases.getSdkConfig(c.get('context'), {
+    const result = await proxy.useCases.getSdkConfig(c.get('context'), {
       name,
       projectId: c.get('projectId'),
       environmentId: c.get('environmentId'),
@@ -329,7 +329,7 @@ sdkApi.openapi(
   async c => {
     const projectId = c.get('projectId');
     const context = c.get('context');
-    const engine = await getEngine();
+    const proxy = await getProxy();
 
     const headers = {
       'Content-Type': 'text/event-stream',
@@ -358,14 +358,14 @@ sdkApi.openapi(
           // eager async iterable to subscribe to events immediately
           // required for client not to miss any updates to configs
           const events = toEagerAsyncIterable(
-            engine.sdkUseCases.getProjectEvents(context, {
+            proxy.useCases.getProjectEvents(context, {
               projectId,
               environmentId: c.get('environmentId'),
               abortSignal: abortController.signal,
             }),
           );
 
-          const {configs} = await engine.sdkUseCases.getSdkConfigs(context, {
+          const {configs} = await proxy.useCases.getSdkConfigs(context, {
             projectId,
             environmentId: c.get('environmentId'),
           });
@@ -472,7 +472,7 @@ sdkApi.openapi(
   async c => {
     const projectId = c.get('projectId');
     const context = c.get('context');
-    const engine = await getEngine();
+    const proxy = await getProxy();
 
     const headers = {
       'Content-Type': 'text/event-stream',
@@ -510,14 +510,14 @@ sdkApi.openapi(
           // eager async iterable to subscribe to events immediately
           // required for client not to miss any updates to configs
           const events = toEagerAsyncIterable(
-            engine.sdkUseCases.getProjectEvents(context, {
+            proxy.useCases.getProjectEvents(context, {
               projectId,
               environmentId: c.get('environmentId'),
               abortSignal: abortController.signal,
             }),
           );
 
-          const {configs: serverConfigs} = await engine.sdkUseCases.getSdkConfigs(context, {
+          const {configs: serverConfigs} = await proxy.useCases.getSdkConfigs(context, {
             projectId,
             environmentId: c.get('environmentId'),
           });

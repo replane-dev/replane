@@ -5,6 +5,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
+import {createProxy, type Proxy} from '@/engine/proxy';
 import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
@@ -31,6 +32,7 @@ export const TEST_USER_ID = 1;
 export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
+  private _proxy: Proxy | undefined;
   private overrideNow: Date = new Date();
   private _workspaceId: string | undefined;
   private _projectId: string | undefined;
@@ -42,12 +44,21 @@ export class AppFixture {
   async init() {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
 
+    const dbSchema = `test_${Math.random().toString(36).substring(2, 15)}`;
+
     const engine = await createEngine({
       databaseUrl: getDatabaseUrl(),
-      dbSchema: `test_${Math.random().toString(36).substring(2, 15)}`,
+      dbSchema,
       logLevel: this.options.logLevel ?? 'warn',
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
+    });
+
+    const proxy = await createProxy({
+      databaseUrl: getDatabaseUrl(),
+      dbSchema,
+      logLevel: this.options.logLevel ?? 'warn',
+      dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onFatalError: error => {
         this.options.onFatalError?.(error);
       },
@@ -70,6 +81,7 @@ export class AppFixture {
 
     this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
     this._engine = engine;
+    this._proxy = proxy;
 
     // Create test workspace
     const {workspaceId} = await engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
@@ -112,6 +124,13 @@ export class AppFixture {
     return this._engine;
   }
 
+  get proxy(): Proxy {
+    if (!this._proxy) {
+      throw new Error('proxy is not initialized');
+    }
+    return this._proxy;
+  }
+
   get workspaceId(): string {
     if (!this._workspaceId) throw new Error('workspaceId not initialized');
     return this._workspaceId;
@@ -141,7 +160,7 @@ export class AppFixture {
   }
 
   async syncReplica() {
-    await this.engine.testing.replicaService.sync();
+    await this.proxy.testing.replicaService.sync();
   }
 
   /**
@@ -188,8 +207,11 @@ export class AppFixture {
   }
 
   async destroy(ctx: Context) {
+    if (this._proxy) {
+      await this._proxy.stop();
+    }
+
     if (this._engine) {
-      await this._engine.stopServices();
       await this._engine.testing.dropDb(ctx);
       // engine.stop() closes pg connection, so we cant drop db after it
       await this._engine.stop();
@@ -197,6 +219,7 @@ export class AppFixture {
 
     this._trpc = undefined;
     this._engine = undefined;
+    this._proxy = undefined;
   }
 }
 

@@ -1586,8 +1586,9 @@ export const migrations: Migration[] = [
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
   // Acquire an advisory lock to ensure only one migrator runs at a time for this DB session
-  await client.query(/*sql*/ `SELECT pg_advisory_lock(hashtext('migrations_${schema}'));`);
   try {
+    await client.query(/*sql*/ `SELECT pg_advisory_lock(hashtext('migrations_${schema}'));`);
+
     await client.query(/*sql*/ `
       CREATE TABLE IF NOT EXISTS migrations (
         id INT PRIMARY KEY,

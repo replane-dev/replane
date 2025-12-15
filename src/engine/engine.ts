@@ -1,25 +1,19 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 
-import BetterSqlite3 from 'better-sqlite3';
-import {Kysely, PostgresDialect} from 'kysely';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import {Kysely} from 'kysely';
 import {Pool} from 'pg';
 import {ConfigQueryService} from './core/config-query-service';
 import {ConfigService} from './core/config-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
-import {EventHub, EventHubPublisher} from './core/event-hub';
+import {EventHubPublisher} from './core/event-hub';
 import {createSha256HashingService} from './core/hashing-service';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
-import {migrate} from './core/migrations';
 import {PermissionService} from './core/permission-service';
-import {getPgPool} from './core/pg-pool-cache';
+import {prepareDb} from './core/prepare-db';
 import {ProjectQueryService} from './core/project-query-service';
-import {type AppHubEvents, ReplicaService} from './core/replica';
-import {ReplicaEventBus} from './core/replica-event-bus';
-import type {Service} from './core/service';
+import {type AppHubEvents} from './core/replica';
 import {AuditLogStore} from './core/stores/audit-log-store';
 import {ConfigProposalStore} from './core/stores/config-proposal-store';
 import {ConfigStore} from './core/stores/config-store';
@@ -29,7 +23,6 @@ import {ConfigVersionStore} from './core/stores/config-version-store';
 import {ProjectEnvironmentStore} from './core/stores/project-environment-store';
 import {ProjectStore} from './core/stores/project-store';
 import {ProjectUserStore} from './core/stores/project-user-store';
-import {ReplicaStore} from './core/stores/replica-store';
 import {SdkKeyStore} from './core/stores/sdk-key-store';
 import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
 import {WorkspaceStore} from './core/stores/workspace-store';
@@ -57,7 +50,6 @@ import {createGetConfigPageDataUseCase} from './core/use-cases/get-config-page-d
 import {createGetConfigProposalListUseCase} from './core/use-cases/get-config-proposal-list-use-case';
 import {createGetConfigProposalUseCase} from './core/use-cases/get-config-proposal-use-case';
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
-import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
 import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-config-variant-version-list-use-case';
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
@@ -65,12 +57,9 @@ import {createGetNewConfigPageDataUseCase} from './core/use-cases/get-new-config
 import {createGetNewSdkKeyPageDataUseCase} from './core/use-cases/get-new-sdk-key-page-data-use-case';
 import {createGetProjectConfigTypesUseCase} from './core/use-cases/get-project-config-types-use-case';
 import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
-import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
 import {createGetProjectUseCase} from './core/use-cases/get-project-use-case';
 import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-use-case';
-import {createGetSdkConfigUseCase} from './core/use-cases/get-sdk-config-use-case';
-import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-case';
 import {createGetSdkKeyListUseCase} from './core/use-cases/get-sdk-key-list-use-case';
 import {createGetSdkKeyPageDataUseCase} from './core/use-cases/get-sdk-key-page-data-use-case';
 import {createGetSdkKeyUseCase} from './core/use-cases/get-sdk-key-use-case';
@@ -89,7 +78,6 @@ import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/upda
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
-import {createVerifySdkKeyUseCase} from './core/use-cases/verify-sdk-key-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
 import {WorkspaceMemberService} from './core/workspace-member-service';
@@ -101,10 +89,6 @@ export interface EngineOptions {
   dbSchema: string;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
-  onFatalError: (error: unknown) => void;
-  replicaStorage:
-    | {type: 'memory'}
-    | {type: 'file'; path: string; cacheSizeKb?: number; unsynced?: boolean}; // 128MB=131072, 256MB=262144, 512MB=524288
 }
 
 interface ToUseCaseOptions {
@@ -231,34 +215,14 @@ export interface SdkKeyInfo {
 
 export async function createEngine(options: EngineOptions) {
   const logger = createLogger({level: options.logLevel});
+
+  logger.info(GLOBAL_CONTEXT, {msg: 'Creating engine...'});
+
   const {db, pool, freePool} = await prepareDb(GLOBAL_CONTEXT, logger, options);
 
   const dateProvider = options.dateProvider ?? new DefaultDateProvider();
 
   const hasher = createSha256HashingService();
-
-  const replicaEventsBus = new ReplicaEventBus();
-
-  const sqlite = await openSqlite(options.replicaStorage);
-
-  const replicaService = new ReplicaService(
-    db,
-    ReplicaStore.create(sqlite),
-    new EventHub(db, dateProvider),
-    logger,
-    error => {
-      logger.error(GLOBAL_CONTEXT, {msg: 'Replica fatal error', error});
-      options.onFatalError(error);
-    },
-    replicaEventsBus,
-  );
-
-  const services: Service[] = [replicaService];
-
-  for (const service of services) {
-    logger.info(GLOBAL_CONTEXT, {msg: `Starting service: ${service.name}...`});
-    await service.start(GLOBAL_CONTEXT);
-  }
 
   const transactionalUseCases = {
     getConfigList: createGetConfigListUseCase({}),
@@ -328,36 +292,14 @@ export async function createEngine(options: EngineOptions) {
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }
 
-  const stopServices = async () => {
-    for (const service of services) {
-      logger.info(GLOBAL_CONTEXT, {msg: `Stopping service: ${service.name}...`});
-      await service.stop(GLOBAL_CONTEXT);
-    }
-  };
-
   return {
     useCases: {
       ...engineUseCases,
       getHealth: createGetHealthUseCase(),
       getStatus: createGetStatusUseCase({db}),
     },
-    // sdk use cases use replica and shouldn't have PostgreSQL access for performance reasons
-    sdkUseCases: {
-      verifySdkKey: createVerifySdkKeyUseCase({
-        replicaService: replicaService,
-        hasher: hasher,
-      }),
-      getProjectEvents: createGetProjectEventsUseCase({
-        replicaEventsBus: replicaEventsBus,
-        replicaService: replicaService,
-      }),
-      getConfigValue: createGetConfigValueUseCase({configsReplica: replicaService}),
-      getSdkConfig: createGetSdkConfigUseCase({replicaService: replicaService}),
-      getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
-    },
     testing: {
       pool,
-      replicaService,
       dbSchema: options.dbSchema,
       auditLogs: new AuditLogStore(db),
       projects: new ProjectStore(db),
@@ -366,61 +308,10 @@ export async function createEngine(options: EngineOptions) {
       workspaceMembers: new WorkspaceMemberStore(db),
       dropDb: (ctx: Context) => dropDb(ctx, {pool, dbSchema: options.dbSchema, logger}),
     },
-    stopServices,
     stop: async () => {
-      await stopServices();
       freePool();
     },
   };
-}
-
-async function tryUnlink(path: string) {
-  if (await fs.stat(path).catch(() => false)) {
-    await fs.unlink(path);
-  }
-}
-
-async function openSqlite(
-  options: EngineOptions['replicaStorage'],
-): Promise<BetterSqlite3.Database> {
-  if (options.type === 'memory') {
-    return new BetterSqlite3(':memory:');
-  }
-  try {
-    await fs.mkdir(path.dirname(options.path), {recursive: true});
-    const sqlite = new BetterSqlite3(options.path);
-    sqlite.pragma('journal_mode = WAL');
-    if (!options.unsynced) {
-      sqlite.pragma('synchronous = NORMAL'); // NORMAL loses durability on power loss, FULL doesn't
-    } else {
-      sqlite.pragma('synchronous = FULL');
-    }
-
-    if (options.cacheSizeKb) {
-      sqlite.pragma(`cache_size = -${options.cacheSizeKb}`);
-    }
-
-    return sqlite;
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && typeof error.code === 'string') {
-      if (error.code === 'SQLITE_CORRUPT') {
-        // we don't care about corrupted database, we'll recreate it
-
-        // unlink db file, wal and journal files
-        await tryUnlink(options.path);
-        await tryUnlink(options.path + '-wal');
-        await tryUnlink(options.path + '-shm');
-        await tryUnlink(options.path + '-journal');
-
-        return openSqlite(options);
-      }
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Unable to open SQLite database at ${options.path}: ${message}`, {
-      cause: error,
-    });
-  }
 }
 
 async function dropDb(
@@ -455,33 +346,6 @@ function addUseCaseLogging(
       throw error;
     }
   };
-}
-
-async function prepareDb(ctx: Context, logger: Logger, options: EngineOptions) {
-  const [pool, freePool] = getPgPool(options.databaseUrl);
-
-  pool.on('connect', async client => {
-    if (options.dbSchema !== 'public') {
-      await client.query(
-        `CREATE SCHEMA IF NOT EXISTS ${options.dbSchema}; SET search_path TO ${options.dbSchema}`,
-      );
-    }
-  });
-
-  const client = await pool.connect();
-  try {
-    await migrate(ctx, client, logger, options.dbSchema);
-  } finally {
-    client.release();
-  }
-
-  const dialect = new PostgresDialect({
-    pool,
-  });
-
-  const db = new Kysely<DB>({dialect}).withSchema(options.dbSchema);
-
-  return {db, pool, freePool};
 }
 
 export type Engine = Awaited<ReturnType<typeof createEngine>>;

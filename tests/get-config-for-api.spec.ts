@@ -41,9 +41,9 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.testing.replicaService.sync(); // Wait for replica sync
+    await fixture.proxy.testing.replicaService.sync(); // Wait for replica sync
 
-    const result = await fixture.engine.sdkUseCases.getSdkConfig(GLOBAL_CONTEXT, {
+    const result = await fixture.proxy.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -60,7 +60,7 @@ describe('Get Config For API Use Case', () => {
   });
 
   it('should return null for non-existent config', async () => {
-    const result = await fixture.engine.sdkUseCases.getSdkConfig(GLOBAL_CONTEXT, {
+    const result = await fixture.proxy.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: 'non-existent-config',
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -84,7 +84,7 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.testing.replicaService.sync();
+    await fixture.proxy.testing.replicaService.sync();
 
     // Get the production variant
     const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
@@ -128,9 +128,9 @@ describe('Get Config For API Use Case', () => {
       prevVersion: 1,
     });
 
-    await fixture.engine.testing.replicaService.sync();
+    await fixture.proxy.testing.replicaService.sync();
 
-    const result = await fixture.engine.sdkUseCases.getSdkConfig(GLOBAL_CONTEXT, {
+    const result = await fixture.proxy.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
@@ -155,9 +155,9 @@ describe('Get Config For API Use Case', () => {
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.testing.replicaService.sync();
+    await fixture.proxy.testing.replicaService.sync();
 
-    const result = await fixture.engine.sdkUseCases.getSdkConfig(GLOBAL_CONTEXT, {
+    const result = await fixture.proxy.useCases.getSdkConfig(GLOBAL_CONTEXT, {
       name: configName,
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
