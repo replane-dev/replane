@@ -76,9 +76,9 @@ export function createRejectConfigProposalUseCase(
         proposalId: proposal.id,
         configId: proposal.configId,
         rejectedInFavorOfProposalId: undefined,
-        proposedDelete: proposal.proposedDelete || undefined,
-        proposedDescription: proposal.proposedDescription ?? undefined,
-        proposedMembers: proposal.proposedMembers ?? undefined,
+        proposedDelete: proposal.isDelete || undefined,
+        proposedDescription: proposal.description ?? undefined,
+        proposedMembers: proposal.members ?? undefined,
       },
     });
 

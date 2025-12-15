@@ -25,7 +25,7 @@ import {ConfigProposalStore} from './core/stores/config-proposal-store';
 import {ConfigStore} from './core/stores/config-store';
 import {ConfigUserStore} from './core/stores/config-user-store';
 import {ConfigVariantStore} from './core/stores/config-variant-store';
-import {ConfigVariantVersionStore} from './core/stores/config-variant-version-store';
+import {ConfigVersionStore} from './core/stores/config-version-store';
 import {ProjectEnvironmentStore} from './core/stores/project-environment-store';
 import {ProjectStore} from './core/stores/project-store';
 import {ProjectUserStore} from './core/stores/project-user-store';
@@ -139,7 +139,7 @@ function toUseCase<TReq, TRes>(
         const workspaces = new WorkspaceStore(dbTx);
         const workspaceMembers = new WorkspaceMemberStore(dbTx);
         const configVariants = new ConfigVariantStore(dbTx);
-        const configVariantVersions = new ConfigVariantVersionStore(dbTx);
+        const configVersions = new ConfigVersionStore(dbTx);
         const permissionService = new PermissionService(
           configUsers,
           projectUsers,
@@ -157,7 +157,7 @@ function toUseCase<TReq, TRes>(
           options.dateProvider,
           projectEnvironments,
           configVariants,
-          configVariantVersions,
+          configVersions,
         );
         const workspaceMemberService = new WorkspaceMemberService(workspaceMembers, projectUsers);
 
@@ -200,7 +200,7 @@ function toUseCase<TReq, TRes>(
           projects,
           projectEnvironments,
           configVariants,
-          configVariantVersions,
+          configVersions,
           workspaces,
           workspaceMembers,
           workspaceMemberService,

@@ -8,7 +8,7 @@ import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariantStore} from './stores/config-variant-store';
-import type {ConfigVariantVersionStore} from './stores/config-variant-version-store';
+import type {ConfigVersionStore} from './stores/config-version-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
@@ -52,7 +52,7 @@ export interface UseCaseTransaction {
   // New stores for environment support
   projectEnvironments: ProjectEnvironmentStore;
   configVariants: ConfigVariantStore;
-  configVariantVersions: ConfigVariantVersionStore;
+  configVersions: ConfigVersionStore;
   // Workspace stores
   workspaces: WorkspaceStore;
   workspaceMembers: WorkspaceMemberStore;

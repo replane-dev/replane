@@ -20,8 +20,8 @@ export interface GetConfigProposalListResponse {
     id: string;
     configId: string;
     configName: string;
-    proposerId: number | null;
-    proposerEmail: string | null;
+    authorId: number | null;
+    authorEmail: string | null;
     reviewerId: number | null;
     reviewerEmail: string | null;
     createdAt: Date;
@@ -61,8 +61,8 @@ export function createGetConfigProposalListUseCase(): TransactionalUseCase<
         id: r.id,
         configId: r.configId,
         configName: r.configName,
-        proposerId: r.proposerId,
-        proposerEmail: r.proposerEmail,
+        authorId: r.authorId,
+        authorEmail: r.authorEmail,
         reviewerId: r.reviewerId,
         reviewerEmail: r.reviewerEmail,
         createdAt: r.createdAt,

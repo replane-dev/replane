@@ -1,27 +1,17 @@
-import {BadRequestError} from '../errors';
+import assert from 'assert';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
+import type {ConfigSnapshot} from './get-config-proposal-use-case';
 
 export interface GetConfigVariantVersionRequest {
   configId: string;
-  environmentId: string;
   version: number;
   currentUserEmail: NormalizedEmail;
   projectId: string;
 }
 
 export interface GetConfigVariantVersionResponse {
-  version:
-    | {
-        id: string;
-        version: number;
-        createdAt: Date;
-        description: string;
-        value: unknown;
-        schema: unknown;
-        authorEmail: string | null;
-      }
-    | undefined;
+  version: ConfigSnapshot | undefined;
 }
 
 export function createGetConfigVariantVersionUseCase(): TransactionalUseCase<
@@ -44,36 +34,47 @@ export function createGetConfigVariantVersionUseCase(): TransactionalUseCase<
       throw new Error('Config does not belong to the specified project');
     }
 
-    // Get the variant for this config and environment
-    const variant = await tx.configVariants.getByConfigIdAndEnvironmentId({
-      configId: req.configId,
-      environmentId: req.environmentId,
-    });
+    // Get the specific version for this config
+    const configVersion = await tx.configVersions.getByConfigIdAndVersion(
+      req.configId,
+      req.version,
+    );
 
-    if (!variant) {
-      throw new BadRequestError('Config variant not found for the specified environment');
+    if (!configVersion) {
+      return {version: undefined};
     }
 
-    // Get the specific version with author email in a single query
-    const version = await tx.configVariantVersions.getByConfigVariantIdAndVersionWithAuthor({
-      configVariantId: variant.id,
-      version: req.version,
-    });
+    const environments = await tx.projectEnvironments.getByProjectId(config.projectId);
 
-    if (!version) {
-      return {version: undefined};
+    const getEnvironmentName = (environmentId: string) => {
+      const environment = environments.find(e => e.id === environmentId);
+      assert(environment, 'Environment not found');
+      return environment.name;
+    };
+
+    // Get author email if authorId exists
+    let authorEmail: string | null = null;
+    if (configVersion.authorId) {
+      const author = await tx.users.getById(configVersion.authorId);
+      authorEmail = author?.email ?? null;
     }
 
     return {
       version: {
-        id: version.id,
-        version: version.version,
-        createdAt: version.createdAt,
-        description: version.description,
-        value: version.value,
-        schema: version.schema,
-        authorEmail: version.authorEmail,
-      },
+        description: configVersion.description,
+        value: configVersion.value,
+        schema: configVersion.schema,
+        overrides: configVersion.overrides,
+        members: configVersion.members.map(m => ({email: m.email, role: m.role})),
+        variants: configVersion.variants.map(v => ({
+          environmentId: v.environmentId,
+          environmentName: getEnvironmentName(v.environmentId),
+          value: v.value,
+          schema: v.schema,
+          overrides: v.overrides,
+        })),
+        authorEmail,
+      } satisfies ConfigSnapshot,
     };
   };
 }

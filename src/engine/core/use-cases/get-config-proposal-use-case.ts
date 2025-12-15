@@ -11,36 +11,28 @@ export interface GetConfigProposalRequest {
   projectId: string;
 }
 
-export interface ProposedVariantDetails {
-  environmentId: string;
-  environmentName: string;
-  proposedValue: ConfigValue;
-  proposedSchema: ConfigSchema | null;
-  proposedOverrides: Override[];
-  useDefaultSchema: boolean;
-  // Current values for comparison
-  currentValue: ConfigValue;
-  currentSchema: ConfigSchema | null;
-  currentOverrides: Override[];
-  currentUseDefaultSchema: boolean;
-}
-
-export interface ProposedDefaultVariant {
-  proposedValue: ConfigValue;
-  proposedSchema: ConfigSchema | null;
-  proposedOverrides: Override[];
-  // Original values for comparison
-  originalValue: ConfigValue;
-  originalSchema: ConfigSchema | null;
-  originalOverrides: Override[];
+export interface ConfigSnapshot {
+  description: string;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
+  overrides: Override[];
+  members: Array<{email: string; role: 'maintainer' | 'editor'}>;
+  variants: Array<{
+    environmentId: string;
+    environmentName: string;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
+    overrides: Override[];
+  }>;
+  authorEmail: string | null;
 }
 
 export interface ConfigProposalDetails {
   id: string;
   configId: string;
   configName: string;
-  proposerId: number | null;
-  proposerEmail: string | null;
+  authorId: number | null;
+  authorEmail: string | null;
   createdAt: Date;
   rejectedAt: Date | null;
   approvedAt: Date | null;
@@ -50,27 +42,20 @@ export interface ConfigProposalDetails {
   rejectionReason: ConfigProposalRejectionReason | null;
   baseConfigVersion: number;
   proposedDelete: boolean;
-  proposedDescription: string;
-  proposedMembers: Array<{email: string; role: 'maintainer' | 'editor'}>;
-  // Default variant (base config) changes
-  proposedDefaultVariant: ProposedDefaultVariant;
-  // Environment-specific variant changes
-  proposedVariants: ProposedVariantDetails[];
   message: string | null;
   status: 'pending' | 'approved' | 'rejected';
   approverRole: 'maintainers' | 'maintainers_and_editors';
   approverEmails: string[];
   approverReason: string;
-  baseDescription: string;
-  baseMaintainerEmails: string[];
-  baseEditorEmails: string[];
+  base: ConfigSnapshot;
+  proposed: ConfigSnapshot;
 }
 
 export interface GetConfigProposalResponse {
   proposal: ConfigProposalDetails;
   proposalsRejectedByThisApproval: Array<{
     id: string;
-    proposerEmail: string | null;
+    authorEmail: string | null;
   }>;
 }
 
@@ -98,11 +83,19 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const config = await tx.configs.getById(proposal.configId);
     assert(config, 'Config not found');
 
-    // Get proposer details
-    let proposerEmail: string | null = null;
-    if (proposal.proposerId) {
-      const proposer = await tx.users.getById(proposal.proposerId);
-      proposerEmail = proposer?.email ?? null;
+    // Get the base config version to retrieve original values
+    const baseVersion = await tx.configVersions.getByConfigIdAndVersion(
+      proposal.configId,
+      proposal.baseConfigVersion,
+    );
+
+    assert(baseVersion, 'Base version not found');
+
+    // Get author details
+    let authorEmail: string | null = null;
+    if (proposal.authorId) {
+      const author = await tx.users.getById(proposal.authorId);
+      authorEmail = author?.email ?? null;
     }
 
     // Get reviewer details
@@ -118,12 +111,10 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         ? 'rejected'
         : 'pending';
 
-    // Fetch variant changes for approval logic
-    const proposalVariantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
     // Check for schema changes in environment variants or default variant
-    const hasEnvSchemaChanges = proposalVariantChanges.some(vc => vc.proposedSchema !== undefined);
+    const hasEnvSchemaChanges = proposal.variants.some(vc => vc.schema !== undefined);
     const hasDefaultSchemaChange =
-      JSON.stringify(proposal.proposedSchema) !== JSON.stringify(proposal.originalSchema);
+      JSON.stringify(proposal.schema) !== JSON.stringify(baseVersion.schema);
     const hasSchemaChanges = hasEnvSchemaChanges || hasDefaultSchemaChange;
 
     // Determine approval policy and eligible approvers
@@ -131,19 +122,27 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const editorEmails = await tx.permissionService.getConfigEditors(proposal.configId);
 
     // Determine what actually changed by comparing proposed vs original
-    const descriptionChanged =
-      proposal.proposedDescription !== null &&
-      proposal.proposedDescription !== proposal.originalDescription;
+    const descriptionChanged = proposal.description !== baseVersion.description;
+
+    // Get original members from base version or current members
     const membersChanged =
-      proposal.proposedMembers !== null &&
-      JSON.stringify(proposal.proposedMembers) !== JSON.stringify(proposal.originalMembers);
+      JSON.stringify(
+        proposal.members
+          .map(m => ({email: m.email, role: m.role}))
+          .sort((a, b) => a.email.localeCompare(b.email)),
+      ) !==
+      JSON.stringify(
+        baseVersion.members
+          .map(m => ({email: m.email, role: m.role}))
+          .sort((a, b) => a.email.localeCompare(b.email)),
+      );
 
     // Maintainers only: delete, description, members, schema changes, or overrides changes
     const maintainersOnly =
-      proposal.proposedDelete || descriptionChanged || membersChanged || hasSchemaChanges;
+      proposal.isDelete || descriptionChanged || membersChanged || hasSchemaChanges;
 
     let approverReason = '';
-    if (proposal.proposedDelete) {
+    if (proposal.isDelete) {
       approverReason = 'Deletion requests require maintainer approval.';
     } else if (membersChanged) {
       approverReason = 'Membership changes require maintainer approval.';
@@ -151,7 +150,7 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
       approverReason = 'Schema changes require maintainer approval.';
     } else if (descriptionChanged) {
       approverReason = 'Description changes require maintainer approval.';
-    } else if (proposalVariantChanges.length > 0) {
+    } else if (proposal.variants.length > 0) {
       approverReason = 'Value changes can be approved by editors or maintainers.';
     } else {
       approverReason = 'Config changes require approval.';
@@ -162,58 +161,33 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
       : 'maintainers_and_editors';
     const approverEmails = maintainersOnly ? maintainerEmails : editorEmails;
 
-    // Use original description from proposal snapshot
-    const baseDescription = proposal.originalDescription;
-
-    // Get base members from the proposal's originalMembers
-    const baseMaintainerEmails = proposal.originalMembers
-      .filter(m => m.role === 'maintainer')
-      .map(m => m.email);
-    const baseEditorEmails = proposal.originalMembers
-      .filter(m => m.role === 'editor')
-      .map(m => m.email);
-
     // Fetch proposals that were rejected because of this approval
-    let proposalsRejectedByThisApproval: Array<{id: string; proposerEmail: string | null}> = [];
+    let proposalsRejectedByThisApproval: Array<{id: string; authorEmail: string | null}> = [];
     if (status === 'approved') {
       const rejectedProposals = await tx.configProposals.getRejectedByApprovalId({
         approvalId: proposal.id,
       });
       proposalsRejectedByThisApproval = rejectedProposals.map(p => ({
         id: p.id,
-        proposerEmail: p.proposerEmail,
+        authorEmail: p.authorEmail,
       }));
     }
 
-    // Fetch variant changes
-    const variantChanges = await tx.configProposals.getVariantsByProposalId(proposal.id);
-    const proposedVariants: ProposedVariantDetails[] = [];
-    for (const vc of variantChanges) {
-      const currentVariant = await tx.configVariants.getByConfigIdAndEnvironmentId({
-        configId: proposal.configId,
-        environmentId: vc.environmentId,
-      });
-      proposedVariants.push({
-        environmentId: vc.environmentId,
-        environmentName: vc.environmentName,
-        proposedValue: vc.proposedValue,
-        proposedSchema: vc.proposedSchema,
-        proposedOverrides: vc.proposedOverrides,
-        useDefaultSchema: vc.useDefaultSchema,
-        currentValue: currentVariant?.value ?? config.value,
-        currentSchema: currentVariant?.schema ?? null,
-        currentOverrides: currentVariant?.overrides ?? [],
-        currentUseDefaultSchema: currentVariant?.useDefaultSchema ?? true,
-      });
-    }
+    const environments = await tx.projectEnvironments.getByProjectId(req.projectId);
+
+    const getEnvironmentName = (environmentId: string) => {
+      const environment = environments.find(e => e.id === environmentId);
+      assert(environment, 'Environment not found');
+      return environment.name;
+    };
 
     return {
       proposal: {
         id: proposal.id,
         configId: proposal.configId,
         configName: config.name,
-        proposerId: proposal.proposerId,
-        proposerEmail,
+        authorId: proposal.authorId,
+        authorEmail,
         createdAt: proposal.createdAt,
         rejectedAt: proposal.rejectedAt,
         approvedAt: proposal.approvedAt,
@@ -222,26 +196,46 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         rejectedInFavorOfProposalId: proposal.rejectedInFavorOfProposalId,
         rejectionReason: proposal.rejectionReason,
         baseConfigVersion: proposal.baseConfigVersion,
-        proposedDelete: proposal.proposedDelete,
-        proposedDescription: proposal.proposedDescription,
-        proposedMembers: proposal.proposedMembers,
-        proposedDefaultVariant: {
-          proposedValue: proposal.proposedValue,
-          proposedSchema: proposal.proposedSchema,
-          proposedOverrides: proposal.proposedOverrides,
-          originalValue: proposal.originalValue,
-          originalSchema: proposal.originalSchema,
-          originalOverrides: proposal.originalOverrides,
-        },
-        proposedVariants,
+        proposedDelete: proposal.isDelete,
         message: proposal.message,
         status,
         approverRole,
         approverEmails,
         approverReason,
-        baseDescription,
-        baseMaintainerEmails,
-        baseEditorEmails,
+        base: {
+          description: baseVersion.description,
+          value: baseVersion.value,
+          schema: baseVersion.schema,
+          overrides: baseVersion.overrides,
+          members: baseVersion.members.map(m => ({email: m.email, role: m.role})),
+          variants: baseVersion.variants.map(v => ({
+            environmentId: v.environmentId,
+            environmentName: getEnvironmentName(v.environmentId),
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
+          authorEmail: baseVersion.authorId
+            ? ((await tx.users.getById(baseVersion.authorId))?.email ?? null)
+            : null,
+        },
+        proposed: {
+          description: proposal.description,
+          value: proposal.value,
+          schema: proposal.schema,
+          overrides: proposal.overrides,
+          members: proposal.members.map(m => ({email: m.email, role: m.role})),
+          variants: proposal.variants.map(v => ({
+            environmentId: v.environmentId,
+            environmentName: getEnvironmentName(v.environmentId),
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
+          authorEmail: proposal.authorId
+            ? ((await tx.users.getById(proposal.authorId))?.email ?? null)
+            : null,
+        },
       },
       proposalsRejectedByThisApproval,
     };

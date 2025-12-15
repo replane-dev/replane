@@ -1397,6 +1397,191 @@ export const migrations: Migration[] = [
       ALTER TABLE project_environments ALTER COLUMN require_proposals DROP DEFAULT;
     `,
   },
+  {
+    name: 'Add config versioning tables and restructure proposals',
+    sql: /*sql*/ `
+      -- Migration: Add config versioning tables and restructure proposals
+      -- This migration creates a new versioning system where:
+      -- - config_versions stores version metadata + default variant data
+      -- - config_version_variants stores environment-specific variant data
+      -- - config_version_members stores member snapshots for each version
+      -- - config_proposal_members stores proposed members (extracted from proposals)
+      -- - config_proposals and config_proposal_variants columns are renamed
+
+      -- Step 1: Truncate old config_variant_versions (dropping old version history)
+      TRUNCATE TABLE config_variant_versions CASCADE;
+
+      -- Step 2: Drop old config_variant_versions table
+      DROP TABLE config_variant_versions;
+
+      -- Step 3: Create new config_versions table with default variant data
+      CREATE TABLE config_versions (
+        id UUID PRIMARY KEY,
+        config_id UUID NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        version INT NOT NULL,
+        description TEXT NOT NULL,
+        value TEXT NOT NULL,
+        schema TEXT NULL,
+        overrides TEXT NOT NULL,
+        proposal_id UUID NULL REFERENCES config_proposals(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        UNIQUE(config_id, version)
+      );
+
+      CREATE INDEX idx_config_versions_config_id ON config_versions(config_id);
+      CREATE INDEX idx_config_versions_proposal_id ON config_versions(proposal_id);
+
+      -- Step 4: Create config_version_variants table for environment-specific data
+      CREATE TABLE config_version_variants (
+        id UUID PRIMARY KEY,
+        config_version_id UUID NOT NULL REFERENCES config_versions(id) ON DELETE CASCADE,
+        environment_id UUID NOT NULL REFERENCES project_environments(id) ON DELETE CASCADE,
+        value TEXT NOT NULL,
+        schema TEXT NULL,
+        overrides TEXT NOT NULL,
+        use_default_schema BOOLEAN NOT NULL
+      );
+
+      CREATE INDEX idx_config_version_variants_config_version_id ON config_version_variants(config_version_id);
+      CREATE INDEX idx_config_version_variants_environment_id ON config_version_variants(environment_id);
+
+      -- Step 5: Create config_version_members table for member snapshots
+      CREATE TABLE config_version_members (
+        id UUID PRIMARY KEY,
+        config_version_id UUID NOT NULL REFERENCES config_versions(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        role config_user_role NOT NULL
+      );
+
+      CREATE INDEX idx_config_version_members_config_version_id ON config_version_members(config_version_id);
+
+      -- Step 6: Create config_proposal_members table
+      CREATE TABLE config_proposal_members (
+        id UUID PRIMARY KEY,
+        proposal_id UUID NOT NULL REFERENCES config_proposals(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        role config_user_role NOT NULL
+      );
+
+      CREATE INDEX idx_config_proposal_members_proposal_id ON config_proposal_members(proposal_id);
+
+      -- Step 7: Migrate proposed_members JSON to config_proposal_members table
+      INSERT INTO config_proposal_members (id, proposal_id, email, role)
+      SELECT
+        gen_random_uuid(),
+        cp.id,
+        (member->>'email')::TEXT,
+        (member->>'role')::config_user_role
+      FROM config_proposals cp,
+           jsonb_array_elements(cp.proposed_members::jsonb) AS member
+      WHERE cp.proposed_members IS NOT NULL AND cp.proposed_members != '[]';
+
+      -- Step 8: Update config_proposals - remove original_* columns and rename proposed_* columns
+      ALTER TABLE config_proposals DROP COLUMN original_description;
+      ALTER TABLE config_proposals DROP COLUMN original_members;
+      ALTER TABLE config_proposals DROP COLUMN original_overrides;
+      ALTER TABLE config_proposals DROP COLUMN original_value;
+      ALTER TABLE config_proposals DROP COLUMN original_schema;
+      ALTER TABLE config_proposals DROP COLUMN proposed_members;
+
+      ALTER TABLE config_proposals RENAME COLUMN proposed_description TO description;
+      ALTER TABLE config_proposals RENAME COLUMN proposed_overrides TO overrides;
+      ALTER TABLE config_proposals RENAME COLUMN proposed_schema TO schema;
+      ALTER TABLE config_proposals RENAME COLUMN proposed_value TO value;
+      ALTER TABLE config_proposals RENAME COLUMN proposed_delete TO is_delete;
+
+      -- Step 9: Update config_proposal_variants - rename proposed_* columns
+      ALTER TABLE config_proposal_variants RENAME COLUMN proposed_value TO value;
+      ALTER TABLE config_proposal_variants RENAME COLUMN proposed_schema TO schema;
+      ALTER TABLE config_proposal_variants RENAME COLUMN proposed_overrides TO overrides;
+    `,
+  },
+  {
+    name: 'Create initial config versions for existing configs',
+    sql: /*sql*/ `
+      -- Create initial config_versions records for all existing configs
+      -- This ensures existing configs have version history
+
+      -- Step 1: Create config_versions for each existing config (version 1 = initial state)
+      INSERT INTO config_versions (id, config_id, version, description, value, schema, overrides, proposal_id, created_at)
+      SELECT
+        gen_random_uuid(),
+        c.id,
+        c.version,
+        c.description,
+        c.value,
+        c.schema,
+        c.overrides,
+        NULL,
+        c.created_at
+      FROM configs c
+      WHERE NOT EXISTS (
+        SELECT 1 FROM config_versions cv WHERE cv.config_id = c.id AND cv.version = c.version
+      );
+
+      -- Step 2: Create config_version_variants for each existing config variant
+      INSERT INTO config_version_variants (id, config_version_id, environment_id, value, schema, overrides, use_default_schema)
+      SELECT
+        gen_random_uuid(),
+        cv.id,
+        cvr.environment_id,
+        cvr.value,
+        cvr.schema,
+        cvr.overrides,
+        cvr.use_default_schema
+      FROM config_versions cv
+      INNER JOIN config_variants cvr ON cvr.config_id = cv.config_id
+      INNER JOIN configs c ON c.id = cv.config_id AND cv.version = c.version
+      WHERE NOT EXISTS (
+        SELECT 1 FROM config_version_variants cvv
+        WHERE cvv.config_version_id = cv.id AND cvv.environment_id = cvr.environment_id
+      );
+
+      -- Step 3: Create config_version_members for each existing config member
+      INSERT INTO config_version_members (id, config_version_id, email, role)
+      SELECT
+        gen_random_uuid(),
+        cv.id,
+        cu.user_email_normalized,
+        cu.role
+      FROM config_versions cv
+      INNER JOIN config_users cu ON cu.config_id = cv.config_id
+      INNER JOIN configs c ON c.id = cv.config_id AND cv.version = c.version
+      WHERE NOT EXISTS (
+        SELECT 1 FROM config_version_members cvm
+        WHERE cvm.config_version_id = cv.id AND cvm.email = cu.user_email_normalized
+      );
+    `,
+  },
+  {
+    name: 'Add author_id to config_versions and config_proposals',
+    sql: /*sql*/ `
+      -- Add author_id to config_versions with ON DELETE SET NULL
+      ALTER TABLE config_versions
+        ADD COLUMN author_id INT NULL REFERENCES users(id) ON DELETE SET NULL;
+
+      CREATE INDEX idx_config_versions_author_id ON config_versions(author_id);
+
+      -- Add author_id to config_proposals with ON DELETE SET NULL
+      ALTER TABLE config_proposals
+        ADD COLUMN author_id INT NULL REFERENCES users(id) ON DELETE SET NULL;
+
+      CREATE INDEX idx_config_proposals_author_id ON config_proposals(author_id);
+
+      -- Populate author_id in config_proposals from proposer_id (they are the same)
+      UPDATE config_proposals SET author_id = proposer_id WHERE author_id IS NULL;
+    `,
+  },
+  {
+    name: 'Drop proposer_id from config_proposals (replaced by author_id)',
+    sql: /*sql*/ `
+      -- Drop the index first
+      DROP INDEX IF EXISTS idx_config_proposals_proposer_id;
+
+      -- Drop the column
+      ALTER TABLE config_proposals DROP COLUMN IF EXISTS proposer_id;
+    `,
+  },
 ];
 
 export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {

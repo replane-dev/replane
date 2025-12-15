@@ -16,7 +16,7 @@ import Link from 'next/link';
 
 interface PendingProposal {
   id: string;
-  proposerEmail: string | null;
+  authorEmail: string | null;
   createdAt: Date | string;
 }
 
@@ -89,7 +89,7 @@ export function PendingProposalsWarningDialog({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-foreground flex items-center gap-1.5">
-                      <span>By {proposal.proposerEmail ?? 'Unknown'}</span>
+                      <span>By {proposal.authorEmail ?? 'Unknown'}</span>
                       <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">

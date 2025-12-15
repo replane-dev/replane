@@ -8,8 +8,8 @@ import type {NormalizedEmail} from './zod';
 
 export interface PendingConfigProposalSummary {
   id: string;
-  proposerId: number | null;
-  proposerEmail: string | null;
+  authorId: number | null;
+  authorEmail: string | null;
   createdAt: Date;
   baseConfigVersion: number;
 }
@@ -64,11 +64,9 @@ export class ConfigQueryService {
     const variants = await this.configVariants.getByConfigId(config.id);
 
     // Get pending config-level proposals (deletion, members, description)
-    const pendingConfigProposals = await this.configProposals.getPendingProposalsWithProposerEmails(
-      {
-        configId: config.id,
-      },
-    );
+    const pendingConfigProposals = await this.configProposals.getPendingProposalsWithAuthorEmails({
+      configId: config.id,
+    });
 
     return {
       config,

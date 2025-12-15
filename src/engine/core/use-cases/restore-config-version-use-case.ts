@@ -1,7 +1,6 @@
 import assert from 'assert';
 import type {Context} from '../context';
 import {BadRequestError} from '../errors';
-import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
@@ -47,74 +46,41 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       throw new BadRequestError('Config was edited by another user. Please, refresh the page.');
     }
 
-    const currentVariants = await tx.configVariants.getByConfigId(req.configId);
+    // Fetch the version snapshot to restore
+    const versionSnapshot = await tx.configVersions.getByConfigIdAndVersion(
+      req.configId,
+      req.versionToRestore,
+    );
 
-    // Fetch all version snapshots at the specified config version
-    const versionSnapshots: Array<{
-      configVariantId: string;
-      environmentId: string;
-      value: ConfigValue;
-      schema: ConfigSchema | null;
-      overrides: Override[];
-      useDefaultSchema: boolean;
-    }> = [];
-
-    for (const variant of currentVariants) {
-      const snapshot = await tx.configVariantVersions.getByConfigVariantIdAndVersion({
-        configVariantId: variant.id,
-        version: req.versionToRestore,
-      });
-      if (snapshot) {
-        versionSnapshots.push({
-          configVariantId: variant.id,
-          environmentId: variant.environmentId,
-          value: snapshot.value,
-          schema: snapshot.schema,
-          overrides: snapshot.overrides,
-          useDefaultSchema: variant.useDefaultSchema,
-        });
-      }
-    }
-
-    // Find version metadata from any snapshot (they share the same description at the same version)
-    let snapshotDetail = null;
-    if (versionSnapshots.length > 0) {
-      snapshotDetail = await tx.configVariantVersions.getByConfigVariantIdAndVersion({
-        configVariantId: versionSnapshots[0].configVariantId,
-        version: req.versionToRestore,
-      });
-    }
-
-    if (!snapshotDetail) {
+    if (!versionSnapshot) {
       throw new BadRequestError('Version snapshot not found');
     }
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    // Reconstruct environment variants from version snapshots
-    const environmentVariants = versionSnapshots.map(snapshot => ({
-      environmentId: snapshot.environmentId,
-      value: snapshot.value,
-      schema: snapshot.schema,
-      overrides: snapshot.overrides,
-      useDefaultSchema: snapshot.useDefaultSchema,
+    // Reconstruct environment variants from version snapshot
+    const environmentVariants = versionSnapshot.variants.map(variant => ({
+      environmentId: variant.environmentId,
+      value: variant.value as ConfigValue,
+      schema: variant.schema as ConfigSchema | null,
+      overrides: variant.overrides,
+      useDefaultSchema: variant.useDefaultSchema,
     }));
 
-    // Default variant comes from current config (restore doesn't change default variant for now)
-    // TODO: Add version tracking for default variant in configs table
+    // Default variant comes from version snapshot
     const defaultVariant = {
-      value: config.value,
-      schema: config.schema,
-      overrides: config.overrides,
+      value: versionSnapshot.value as ConfigValue,
+      schema: versionSnapshot.schema as ConfigSchema | null,
+      overrides: versionSnapshot.overrides,
     };
 
-    // Get current members (restore doesn't change members)
+    // Get current members for comparison (restore doesn't change current members but uses version members)
     const currentMembers = await tx.configUsers.getByConfigId(req.configId);
-    const editorEmails = currentMembers
+    const currentEditorEmails = currentMembers
       .filter(m => m.role === 'editor')
       .map(m => m.user_email_normalized);
-    const maintainerEmails = currentMembers
+    const currentMaintainerEmails = currentMembers
       .filter(m => m.role === 'maintainer')
       .map(m => m.user_email_normalized);
 
@@ -126,6 +92,9 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     if (!project) {
       throw new BadRequestError('Project not found');
     }
+
+    // Get current variants for approval check
+    const currentVariants = await tx.configVariants.getByConfigId(req.configId);
 
     // Check if approval is required using the new per-environment logic
     if (project.requireProposals) {
@@ -141,14 +110,14 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
         })),
         proposedDefaultVariant: defaultVariant,
         proposedEnvironmentVariants: environmentVariants,
-        // Restore doesn't change members, so pass the same values for current and proposed
         currentMembers: {
-          editorEmails,
-          maintainerEmails,
+          editorEmails: currentEditorEmails,
+          maintainerEmails: currentMaintainerEmails,
         },
+        // config restore doesn't change members, so we use the current members
         proposedMembers: {
-          editorEmails,
-          maintainerEmails,
+          editorEmails: currentEditorEmails,
+          maintainerEmails: currentMaintainerEmails,
         },
       });
 
@@ -162,12 +131,12 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       }
     }
 
-    // Call updateConfig with the reconstructed state
+    // Call updateConfig with the reconstructed state from version snapshot
     await tx.configService.updateConfig(ctx, {
       configId: req.configId,
-      description: snapshotDetail.description,
-      editorEmails,
-      maintainerEmails,
+      description: versionSnapshot.description,
+      editorEmails: currentEditorEmails,
+      maintainerEmails: currentMaintainerEmails,
       defaultVariant,
       environmentVariants,
       currentUser,

@@ -88,8 +88,7 @@ export default function ReviewConfigProposalPage() {
   const sessionUser = session?.user;
 
   const allowSelfApprovals = projectData.project?.allowSelfApprovals ?? false;
-  const isSelfApprovalDisabled =
-    !allowSelfApprovals && proposal.proposerEmail === sessionUser?.email;
+  const isSelfApprovalDisabled = !allowSelfApprovals && proposal.authorEmail === sessionUser?.email;
 
   const [showAllApprovers, setShowAllApprovers] = useState(false);
   const [showApproveWarning, setShowApproveWarning] = useState(false);
@@ -172,8 +171,8 @@ export default function ReviewConfigProposalPage() {
                     <User className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground mb-0.5">Proposer</div>
-                    <div className="text-sm font-medium">{proposal.proposerEmail ?? 'Unknown'}</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Author</div>
+                    <div className="text-sm font-medium">{proposal.authorEmail ?? 'Unknown'}</div>
                   </div>
                 </div>
 
@@ -347,7 +346,7 @@ export default function ReviewConfigProposalPage() {
                   </p>
                   <div className="space-y-2 mb-3">
                     {proposalsRejectedByThisApproval.map(
-                      (rejectedProposal: {id: string; proposerEmail: string | null}) => {
+                      (rejectedProposal: {id: string; authorEmail: string | null}) => {
                         const rejectedShortId = rejectedProposal.id.slice(-8);
                         return (
                           <Link
@@ -359,11 +358,11 @@ export default function ReviewConfigProposalPage() {
                             <span className="text-sm font-medium text-foreground">
                               Proposal {rejectedShortId}
                             </span>
-                            {rejectedProposal.proposerEmail && (
+                            {rejectedProposal.authorEmail && (
                               <>
                                 <span className="text-sm text-muted-foreground">·</span>
                                 <span className="text-sm text-muted-foreground">
-                                  by {rejectedProposal.proposerEmail}
+                                  by {rejectedProposal.authorEmail}
                                 </span>
                               </>
                             )}
@@ -478,16 +477,41 @@ export default function ReviewConfigProposalPage() {
           ) : (
             <ConfigProposalDiff
               current={{
-                description: proposal.baseDescription ?? '',
-                maintainers: proposal.baseMaintainerEmails,
-                editors: proposal.baseEditorEmails,
+                description: proposal.base.description,
+                maintainers: proposal.base.members
+                  .filter(m => m.role === 'maintainer')
+                  .map(m => m.email),
+                editors: proposal.base.members.filter(m => m.role === 'editor').map(m => m.email),
               }}
               proposed={{
-                description: proposal.proposedDescription,
-                members: proposal.proposedMembers,
+                description: proposal.proposed.description,
+                members: proposal.proposed.members,
               }}
-              proposedDefaultVariant={proposal.proposedDefaultVariant}
-              proposedVariants={proposal.proposedVariants}
+              proposedDefaultVariant={{
+                proposedValue: proposal.proposed.value,
+                proposedSchema: proposal.proposed.schema,
+                proposedOverrides: proposal.proposed.overrides,
+                originalValue: proposal.base.value,
+                originalSchema: proposal.base.schema,
+                originalOverrides: proposal.base.overrides,
+              }}
+              proposedVariants={proposal.proposed.variants.map(v => {
+                const baseVariant = proposal.base.variants.find(
+                  bv => bv.environmentId === v.environmentId,
+                );
+                return {
+                  environmentId: v.environmentId,
+                  environmentName: v.environmentName,
+                  proposedValue: v.value,
+                  proposedSchema: v.schema,
+                  proposedOverrides: v.overrides,
+                  useDefaultSchema: false,
+                  currentValue: baseVariant?.value ?? proposal.base.value,
+                  currentSchema: baseVariant?.schema ?? null,
+                  currentOverrides: baseVariant?.overrides ?? [],
+                  currentUseDefaultSchema: false,
+                };
+              })}
             />
           )}
 

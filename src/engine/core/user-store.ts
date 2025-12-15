@@ -16,7 +16,11 @@ export class UserStore {
   constructor(private readonly db: Kysely<DB>) {}
 
   async getById(userId: number): Promise<User | undefined> {
-    const result = await this.db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
+    const result = await this.db
+      .selectFrom('users')
+      .selectAll()
+      .where('id', '=', userId)
+      .executeTakeFirst();
     if (result) {
       return mapUser(result);
     }
@@ -24,8 +28,21 @@ export class UserStore {
     return undefined;
   }
 
+  async getByIds(userIds: number[]): Promise<User[]> {
+    const results = await this.db
+      .selectFrom('users')
+      .selectAll()
+      .where('id', 'in', userIds)
+      .execute();
+    return results.map(mapUser);
+  }
+
   async getByEmail(email: string): Promise<User | undefined> {
-    const result = await this.db.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
+    const result = await this.db
+      .selectFrom('users')
+      .selectAll()
+      .where('email', '=', email)
+      .executeTakeFirst();
     if (result) {
       return mapUser(result);
     }

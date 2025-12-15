@@ -5,9 +5,9 @@ import type {Override} from '../override-evaluator';
 import {createAuditLogId} from '../stores/audit-log-store';
 import {
   createConfigProposalId,
+  createConfigProposalMemberId,
   createConfigProposalVariantId,
   type ConfigProposalId,
-  type ConfigProposalVariant,
 } from '../stores/config-proposal-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
@@ -77,11 +77,10 @@ export function createCreateConfigProposalUseCase(
     const currentMembers = await tx.configUsers.getByConfigId(config.id);
 
     if (req.proposedDelete) {
-      // Deletion proposal
       await tx.configProposals.create({
         id: configProposalId,
         configId: req.configId,
-        proposerId: currentUser.id,
+        authorId: currentUser.id,
         createdAt: deps.dateProvider.now(),
         rejectedAt: null,
         approvedAt: null,
@@ -89,26 +88,25 @@ export function createCreateConfigProposalUseCase(
         rejectionReason: null,
         rejectedInFavorOfProposalId: null,
         baseConfigVersion: config.version,
-        // Original values (snapshot)
-        originalMembers: currentMembers.map(m => ({
-          email: m.user_email_normalized,
-          role: m.role,
-        })),
-        originalDescription: config.description,
-        originalValue: config.value,
-        originalSchema: config.schema,
-        originalOverrides: config.overrides,
-        // For deletion, proposed values are same as original
-        proposedDelete: true,
-        proposedDescription: config.description,
-        proposedMembers: currentMembers.map(m => ({
-          email: m.user_email_normalized,
-          role: m.role,
-        })),
-        proposedValue: config.value,
-        proposedSchema: config.schema,
-        proposedOverrides: config.overrides,
+        isDelete: true,
+        description: config.description,
+        value: config.value,
+        schema: config.schema,
+        overrides: config.overrides,
         message: req.message ?? null,
+        variants: req.environmentVariants.map(x => ({
+          id: createConfigProposalVariantId(),
+          environmentId: x.environmentId,
+          value: x.value,
+          schema: x.schema,
+          overrides: x.overrides,
+          useDefaultSchema: x.useDefaultSchema,
+        })),
+        members: currentMembers.map(m => ({
+          id: createConfigProposalMemberId(),
+          email: m.user_email_normalized,
+          role: m.role,
+        })),
       });
 
       await tx.auditLogs.create({
@@ -137,7 +135,7 @@ export function createCreateConfigProposalUseCase(
       await tx.configProposals.create({
         id: configProposalId,
         configId: req.configId,
-        proposerId: currentUser.id,
+        authorId: currentUser.id,
         createdAt: deps.dateProvider.now(),
         rejectedAt: null,
         approvedAt: null,
@@ -145,46 +143,25 @@ export function createCreateConfigProposalUseCase(
         rejectionReason: null,
         rejectedInFavorOfProposalId: null,
         baseConfigVersion: config.version,
-        // Original values (snapshot)
-        originalMembers: currentMembers.map(m => ({
-          email: m.user_email_normalized,
-          role: m.role,
-        })),
-        originalDescription: config.description,
-        originalValue: config.value,
-        originalSchema: config.schema,
-        originalOverrides: config.overrides,
-        // Proposed values
-        proposedDelete: false,
-        proposedDescription: req.description!,
-        proposedMembers: proposedMembers,
-        proposedValue: req.defaultVariant.value,
-        proposedSchema: req.defaultVariant.schema,
-        proposedOverrides: req.defaultVariant.overrides,
+        isDelete: false,
+        description: req.description!,
+        value: req.defaultVariant.value,
+        schema: req.defaultVariant.schema,
+        overrides: req.defaultVariant.overrides,
         message: req.message ?? null,
-      });
-
-      // Get all current environment variants to map them to config_variant_id
-      // (Default variant is stored in configs table, not config_variants)
-      const currentVariants = await tx.configVariants.getByConfigId(req.configId);
-
-      // Create variant entries for the proposed environment-specific state
-      const proposalVariants: ConfigProposalVariant[] = [];
-
-      // Add environment variants
-      for (const envVariant of req.environmentVariants) {
-        proposalVariants.push({
+        variants: req.environmentVariants.map(v => ({
           id: createConfigProposalVariantId(),
-          proposalId: configProposalId,
-          environmentId: envVariant.environmentId,
-          useDefaultSchema: envVariant.useDefaultSchema ?? false,
-          proposedValue: envVariant.value,
-          proposedSchema: envVariant.schema ?? null,
-          proposedOverrides: envVariant.overrides,
-        });
-      }
-
-      await tx.configProposals.createVariants(proposalVariants);
+          environmentId: v.environmentId,
+          value: v.value,
+          schema: v.schema ?? null,
+          overrides: v.overrides,
+          useDefaultSchema: v.useDefaultSchema ?? false,
+        })),
+        members: proposedMembers.map(m => ({
+          id: createConfigProposalMemberId(),
+          ...m,
+        })),
+      });
 
       await tx.auditLogs.create({
         id: createAuditLogId(),
@@ -199,11 +176,11 @@ export function createCreateConfigProposalUseCase(
           proposedDelete: false,
           proposedDescription: req.description!,
           proposedMembers: proposedMembers,
-          proposedVariants: proposalVariants.map(v => ({
+          proposedVariants: req.environmentVariants.map(v => ({
             environmentId: v.environmentId,
-            proposedValue: v.proposedValue,
-            proposedSchema: v.proposedSchema,
-            proposedOverrides: v.proposedOverrides,
+            proposedValue: v.value,
+            proposedSchema: v.schema,
+            proposedOverrides: v.overrides,
           })),
           message: req.message,
         },

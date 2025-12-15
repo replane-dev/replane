@@ -1,21 +1,13 @@
 import {Kysely, type Selectable} from 'kysely';
-import {z} from 'zod';
-import type {ConfigProposalRejectionReason, ConfigProposals, DB} from '../db';
-import {OverrideSchema} from '../override-condition-schemas';
+import type {ConfigProposalRejectionReason, ConfigProposals, ConfigUserRole, DB} from '../db';
 import type {Override} from '../override-evaluator';
 import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
-import {
-  ConfigMember,
-  ConfigSchema,
-  ConfigValue,
-  Uuid,
-  type ConfigSchema as ConfigSchemaType,
-  type ConfigValue as ConfigValueType,
-} from '../zod';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export type ConfigProposalId = string;
 export type ConfigProposalVariantId = string;
+export type ConfigProposalMemberId = string;
 
 export function createConfigProposalVariantId(): ConfigProposalVariantId {
   return createUuidV7() as ConfigProposalVariantId;
@@ -25,47 +17,54 @@ export function createConfigProposalId() {
   return createUuidV7() as ConfigProposalId;
 }
 
-export function ConfigProposalOverrides() {
-  return z.array(OverrideSchema).max(100);
+export function createConfigProposalMemberId(): ConfigProposalMemberId {
+  return createUuidV7() as ConfigProposalMemberId;
 }
 
-export function ConfigProposal() {
-  return z.object({
-    id: Uuid(),
-    configId: Uuid(),
-    proposerId: z.number().nullable(),
-    createdAt: z.date(),
-    rejectedAt: z.date().nullable(),
-    approvedAt: z.date().nullable(),
-    reviewerId: z.number().nullable(),
-    rejectedInFavorOfProposalId: Uuid().nullable(),
-    rejectionReason: z
-      .enum(['config_edited', 'config_deleted', 'another_proposal_approved', 'rejected_explicitly'])
-      .nullable(),
-    baseConfigVersion: z.number(),
-    // Original values (snapshot at proposal creation time)
-    originalMembers: z.array(ConfigMember()),
-    originalDescription: z.string(),
-    originalValue: ConfigValue(),
-    originalSchema: ConfigSchema().nullable(),
-    originalOverrides: ConfigProposalOverrides(),
-    // Proposed values
-    proposedDelete: z.boolean(),
-    proposedDescription: z.string(),
-    proposedMembers: z.array(ConfigMember()),
-    proposedValue: ConfigValue(),
-    proposedSchema: ConfigSchema().nullable(),
-    proposedOverrides: ConfigProposalOverrides(),
-    message: z.string().nullable(),
-  });
+export interface ConfigProposalVariant {
+  id: string;
+  environmentId: string;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
+  overrides: Override[];
+  useDefaultSchema: boolean;
 }
 
-export interface ConfigProposal extends z.infer<ReturnType<typeof ConfigProposal>> {}
+export interface ConfigProposalMember {
+  id: string;
+  email: string;
+  role: ConfigUserRole;
+}
+
+export interface ConfigProposal {
+  id: string;
+  configId: string;
+  authorId: number | null;
+  createdAt: Date;
+  rejectedAt: Date | null;
+  approvedAt: Date | null;
+  reviewerId: number | null;
+  rejectedInFavorOfProposalId: string | null;
+  rejectionReason: ConfigProposalRejectionReason | null;
+  baseConfigVersion: number;
+  isDelete: boolean;
+  description: string;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
+  overrides: Override[];
+  message: string | null;
+  variants: ConfigProposalVariant[];
+  members: ConfigProposalMember[];
+}
+
+export interface ConfigProposalVariantWithEnvironment extends ConfigProposalVariant {
+  environmentName: string;
+}
 
 export interface ConfigProposalInfo {
   id: string;
   configId: string;
-  proposerId: number | null;
+  authorId: number | null;
   createdAt: Date;
   rejectedAt: Date | null;
   approvedAt: Date | null;
@@ -75,28 +74,12 @@ export interface ConfigProposalInfo {
   status: 'pending' | 'approved' | 'rejected';
 }
 
-export interface PendingProposalWithProposerEmail {
+export interface PendingProposalWithAuthorEmail {
   id: string;
-  proposerId: number | null;
-  proposerEmail: string | null;
+  authorId: number | null;
+  authorEmail: string | null;
   createdAt: Date;
   baseConfigVersion: number;
-}
-
-// Variant change within a proposal (for environment-specific variants only)
-export interface ConfigProposalVariant {
-  id: string;
-  proposalId: string;
-  environmentId: string;
-  // undefined = no change proposed, null = explicitly set to null, value = set to value
-  proposedValue: ConfigValue;
-  proposedSchema: ConfigSchema | null;
-  proposedOverrides: Override[];
-  useDefaultSchema: boolean;
-}
-
-export interface ConfigProposalVariantWithEnvironment extends ConfigProposalVariant {
-  environmentName: string;
 }
 
 export class ConfigProposalStore {
@@ -113,7 +96,7 @@ export class ConfigProposalStore {
     return proposals.map(p => ({
       id: p.id,
       configId: p.config_id,
-      proposerId: p.proposer_id,
+      authorId: p.author_id,
       createdAt: p.created_at,
       rejectedAt: p.rejected_at,
       approvedAt: p.approved_at,
@@ -139,7 +122,7 @@ export class ConfigProposalStore {
     Array<
       ConfigProposalInfo & {
         configName: string;
-        proposerEmail: string | null;
+        authorEmail: string | null;
         reviewerEmail: string | null;
       }
     >
@@ -147,12 +130,12 @@ export class ConfigProposalStore {
     let qb = this.db
       .selectFrom('config_proposals')
       .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
-      .leftJoin('users as proposer', 'proposer.id', 'config_proposals.proposer_id')
+      .leftJoin('users as author', 'author.id', 'config_proposals.author_id')
       .leftJoin('users as reviewer', 'reviewer.id', 'config_proposals.reviewer_id')
       .select(({ref}) => [
         'config_proposals.id',
         'config_proposals.config_id',
-        'config_proposals.proposer_id',
+        'config_proposals.author_id',
         'config_proposals.created_at',
         'config_proposals.rejected_at',
         'config_proposals.approved_at',
@@ -160,7 +143,7 @@ export class ConfigProposalStore {
         'config_proposals.rejected_in_favor_of_proposal_id',
         'config_proposals.base_config_version',
         ref('configs.name').as('config_name'),
-        ref('proposer.email').as('proposer_email'),
+        ref('author.email').as('author_email'),
         ref('reviewer.email').as('reviewer_email'),
       ])
       .where('configs.project_id', '=', params.projectId);
@@ -206,7 +189,7 @@ export class ConfigProposalStore {
     return rows.map(r => ({
       id: r.id,
       configId: r.config_id,
-      proposerId: r.proposer_id,
+      authorId: r.author_id,
       createdAt: r.created_at,
       rejectedAt: r.rejected_at,
       approvedAt: r.approved_at,
@@ -215,7 +198,7 @@ export class ConfigProposalStore {
       baseConfigVersion: r.base_config_version,
       status: r.approved_at ? 'approved' : r.rejected_at ? 'rejected' : ('pending' as const),
       configName: r.config_name!,
-      proposerEmail: r.proposer_email ?? null,
+      authorEmail: r.author_email ?? null,
       reviewerEmail: r.reviewer_email ?? null,
     }));
   }
@@ -229,30 +212,36 @@ export class ConfigProposalStore {
       .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 
-    if (result) {
-      return mapConfigProposal(result);
+    if (!result) {
+      return undefined;
     }
 
-    return undefined;
+    // Fetch variants and members
+    const [variants, members] = await Promise.all([
+      this.getVariantsByProposalId(result.id),
+      this.getMembersByProposalId(result.id),
+    ]);
+
+    return mapConfigProposal(result, variants, members);
   }
 
   async getRejectedByApprovalId(params: {
     approvalId: string;
-  }): Promise<Array<ConfigProposalInfo & {proposerEmail: string | null}>> {
+  }): Promise<Array<ConfigProposalInfo & {authorEmail: string | null}>> {
     const proposals = await this.db
       .selectFrom('config_proposals')
-      .leftJoin('users as proposer', 'proposer.id', 'config_proposals.proposer_id')
+      .leftJoin('users as author', 'author.id', 'config_proposals.author_id')
       .select(({ref}) => [
         'config_proposals.id',
         'config_proposals.config_id',
-        'config_proposals.proposer_id',
+        'config_proposals.author_id',
         'config_proposals.created_at',
         'config_proposals.rejected_at',
         'config_proposals.approved_at',
         'config_proposals.reviewer_id',
         'config_proposals.rejected_in_favor_of_proposal_id',
         'config_proposals.base_config_version',
-        ref('proposer.email').as('proposer_email'),
+        ref('author.email').as('author_email'),
       ])
       .where('config_proposals.rejected_in_favor_of_proposal_id', '=', params.approvalId)
       .orderBy('config_proposals.created_at', 'desc')
@@ -261,7 +250,7 @@ export class ConfigProposalStore {
     return proposals.map(p => ({
       id: p.id,
       configId: p.config_id,
-      proposerId: p.proposer_id,
+      authorId: p.author_id,
       createdAt: p.created_at,
       rejectedAt: p.rejected_at,
       approvedAt: p.approved_at,
@@ -269,7 +258,7 @@ export class ConfigProposalStore {
       rejectedInFavorOfProposalId: p.rejected_in_favor_of_proposal_id,
       baseConfigVersion: p.base_config_version,
       status: p.approved_at ? 'approved' : p.rejected_at ? 'rejected' : ('pending' as const),
-      proposerEmail: p.proposer_email ?? null,
+      authorEmail: p.author_email ?? null,
     }));
   }
 
@@ -286,7 +275,7 @@ export class ConfigProposalStore {
     return proposals.map(p => ({
       id: p.id,
       configId: p.config_id,
-      proposerId: p.proposer_id,
+      authorId: p.author_id,
       createdAt: p.created_at,
       rejectedAt: p.rejected_at,
       approvedAt: p.approved_at,
@@ -297,16 +286,16 @@ export class ConfigProposalStore {
     }));
   }
 
-  async getPendingProposalsWithProposerEmails(params: {
+  async getPendingProposalsWithAuthorEmails(params: {
     configId: string;
-  }): Promise<PendingProposalWithProposerEmail[]> {
+  }): Promise<PendingProposalWithAuthorEmail[]> {
     const proposals = await this.db
       .selectFrom('config_proposals')
-      .leftJoin('users', 'users.id', 'config_proposals.proposer_id')
+      .leftJoin('users', 'users.id', 'config_proposals.author_id')
       .select([
         'config_proposals.id',
-        'config_proposals.proposer_id',
-        'users.email as proposer_email',
+        'config_proposals.author_id',
+        'users.email as author_email',
         'config_proposals.created_at',
         'config_proposals.base_config_version',
       ])
@@ -318,20 +307,21 @@ export class ConfigProposalStore {
 
     return proposals.map(p => ({
       id: p.id,
-      proposerId: p.proposer_id,
-      proposerEmail: p.proposer_email,
+      authorId: p.author_id,
+      authorEmail: p.author_email,
       createdAt: p.created_at,
       baseConfigVersion: p.base_config_version,
     }));
   }
 
-  async create(proposal: ConfigProposal): Promise<void> {
+  async create(proposal: ConfigProposal): Promise<ConfigProposal> {
+    // Insert the proposal row
     await this.db
       .insertInto('config_proposals')
       .values({
         id: proposal.id,
         config_id: proposal.configId,
-        proposer_id: proposal.proposerId,
+        author_id: proposal.authorId,
         created_at: proposal.createdAt,
         rejected_at: proposal.rejectedAt,
         approved_at: proposal.approvedAt,
@@ -339,34 +329,52 @@ export class ConfigProposalStore {
         rejected_in_favor_of_proposal_id: proposal.rejectedInFavorOfProposalId,
         rejection_reason: proposal.rejectionReason,
         base_config_version: proposal.baseConfigVersion,
-        // Original values (snapshot)
-        original_members: serializeJson(proposal.originalMembers),
-        original_description: proposal.originalDescription,
-        original_value: serializeJson(proposal.originalValue),
-        original_schema:
-          proposal.originalSchema !== null ? serializeJson(proposal.originalSchema) : null,
-        original_overrides: serializeJson(proposal.originalOverrides),
-        // Proposed values
-        proposed_delete: proposal.proposedDelete,
-        proposed_description: proposal.proposedDescription,
-        proposed_members: serializeJson(proposal.proposedMembers),
-        proposed_value: serializeJson(proposal.proposedValue),
-        proposed_schema:
-          proposal.proposedSchema !== null ? serializeJson(proposal.proposedSchema) : null,
-        proposed_overrides: serializeJson(proposal.proposedOverrides),
+        is_delete: proposal.isDelete,
+        description: proposal.description,
+        value: serializeJson(proposal.value),
+        schema: proposal.schema !== null ? serializeJson(proposal.schema) : null,
+        overrides: serializeJson(proposal.overrides),
         message: proposal.message,
       })
       .execute();
+
+    // Insert variant rows
+    if (proposal.variants.length > 0) {
+      const variantsToInsert = proposal.variants.map(v => ({
+        id: v.id,
+        proposal_id: proposal.id,
+        environment_id: v.environmentId,
+        value: serializeJson(v.value),
+        schema: v.schema !== null ? serializeJson(v.schema) : null,
+        overrides: serializeJson(v.overrides),
+        use_default_schema: v.useDefaultSchema,
+      }));
+
+      await this.db.insertInto('config_proposal_variants').values(variantsToInsert).execute();
+    }
+
+    // Insert member rows
+    if (proposal.members.length > 0) {
+      const membersToInsert = proposal.members.map(m => ({
+        id: m.id,
+        proposal_id: proposal.id,
+        email: m.email,
+        role: m.role,
+      }));
+
+      await this.db.insertInto('config_proposal_members').values(membersToInsert).execute();
+    }
+
+    return proposal;
   }
 
   async updateById(params: {
     id: string;
-    proposedDescription?: string;
-    proposedMembers?: ConfigMember[];
-    proposedDelete?: boolean;
-    proposedValue?: ConfigValueType;
-    proposedSchema?: ConfigSchemaType | null;
-    proposedOverrides?: Override[];
+    description?: string;
+    isDelete?: boolean;
+    value?: unknown;
+    schema?: unknown | null;
+    overrides?: Override[];
     approvedAt?: Date;
     rejectedAt?: Date;
     reviewerId?: number;
@@ -376,22 +384,16 @@ export class ConfigProposalStore {
     await this.db
       .updateTable('config_proposals')
       .set({
-        proposed_description: params.proposedDescription,
-        proposed_members:
-          params.proposedMembers !== undefined ? serializeJson(params.proposedMembers) : undefined,
-        proposed_delete: params.proposedDelete,
-        proposed_value:
-          params.proposedValue !== undefined ? serializeJson(params.proposedValue) : undefined,
-        proposed_schema:
-          params.proposedSchema !== undefined
-            ? params.proposedSchema !== null
-              ? serializeJson(params.proposedSchema)
+        description: params.description,
+        is_delete: params.isDelete,
+        value: params.value !== undefined ? serializeJson(params.value) : undefined,
+        schema:
+          params.schema !== undefined
+            ? params.schema !== null
+              ? serializeJson(params.schema)
               : null
             : undefined,
-        proposed_overrides:
-          params.proposedOverrides !== undefined
-            ? serializeJson(params.proposedOverrides)
-            : undefined,
+        overrides: params.overrides !== undefined ? serializeJson(params.overrides) : undefined,
         approved_at: params.approvedAt,
         rejected_at: params.rejectedAt,
         reviewer_id: params.reviewerId,
@@ -406,29 +408,7 @@ export class ConfigProposalStore {
     await this.db.deleteFrom('config_proposals').where('id', '=', id).execute();
   }
 
-  // =============== Proposal Variants ===============
-
-  async createVariants(variants: ConfigProposalVariant[]): Promise<void> {
-    if (variants.length === 0) return;
-
-    await this.db
-      .insertInto('config_proposal_variants')
-      .values(
-        variants.map(variant => ({
-          id: variant.id,
-          proposal_id: variant.proposalId,
-          environment_id: variant.environmentId,
-          use_default_schema: variant.useDefaultSchema,
-          proposed_value: serializeJson(variant.proposedValue),
-          proposed_schema:
-            variant.proposedSchema !== undefined ? serializeJson(variant.proposedSchema) : null,
-          proposed_overrides: serializeJson(variant.proposedOverrides),
-        })),
-      )
-      .execute();
-  }
-
-  async getVariantsByProposalId(
+  private async getVariantsByProposalId(
     proposalId: string,
   ): Promise<ConfigProposalVariantWithEnvironment[]> {
     const rows = await this.db
@@ -439,9 +419,9 @@ export class ConfigProposalStore {
         'cpv.proposal_id',
         'cpv.environment_id',
         'cpv.use_default_schema',
-        'cpv.proposed_value',
-        'cpv.proposed_schema',
-        'cpv.proposed_overrides',
+        'cpv.value',
+        'cpv.schema',
+        'cpv.overrides',
         'pe.name as environment_name',
       ])
       .where('cpv.proposal_id', '=', proposalId)
@@ -450,31 +430,43 @@ export class ConfigProposalStore {
     return rows.map(
       (row): ConfigProposalVariantWithEnvironment => ({
         id: row.id,
-        proposalId: row.proposal_id,
         environmentId: row.environment_id,
         useDefaultSchema: row.use_default_schema,
-        proposedValue: deserializeJson<ConfigValue>(row.proposed_value),
-        proposedSchema:
-          row.proposed_schema !== null ? deserializeJson<ConfigSchema>(row.proposed_schema) : null,
-        proposedOverrides: deserializeJson<Override[]>(row.proposed_overrides),
+        value: deserializeJson(row.value) as ConfigProposalVariant['value'],
+        schema:
+          row.schema !== null
+            ? (deserializeJson(row.schema) as ConfigProposalVariant['schema'])
+            : null,
+        overrides: deserializeJson(row.overrides) ?? [],
         environmentName: row.environment_name ?? '',
       }),
     );
   }
 
-  async deleteVariantsByProposalId(proposalId: string): Promise<void> {
-    await this.db
-      .deleteFrom('config_proposal_variants')
+  private async getMembersByProposalId(proposalId: string): Promise<ConfigProposalMember[]> {
+    const rows = await this.db
+      .selectFrom('config_proposal_members')
+      .selectAll()
       .where('proposal_id', '=', proposalId)
       .execute();
+
+    return rows.map(row => ({
+      id: row.id,
+      email: row.email,
+      role: row.role,
+    }));
   }
 }
 
-function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposal {
+function mapConfigProposal(
+  proposal: Selectable<ConfigProposals>,
+  variants: ConfigProposalVariant[],
+  members: ConfigProposalMember[],
+): ConfigProposal {
   return {
     id: proposal.id,
     configId: proposal.config_id,
-    proposerId: proposal.proposer_id,
+    authorId: proposal.author_id,
     createdAt: proposal.created_at,
     rejectedAt: proposal.rejected_at,
     approvedAt: proposal.approved_at,
@@ -482,21 +474,13 @@ function mapConfigProposal(proposal: Selectable<ConfigProposals>): ConfigProposa
     rejectedInFavorOfProposalId: proposal.rejected_in_favor_of_proposal_id,
     rejectionReason: proposal.rejection_reason,
     baseConfigVersion: proposal.base_config_version,
-    // Original values (snapshot)
-    originalMembers: deserializeJson(proposal.original_members) ?? [],
-    originalDescription: proposal.original_description,
-    originalValue: deserializeJson(proposal.original_value),
-    originalSchema:
-      proposal.original_schema !== null ? deserializeJson(proposal.original_schema) : null,
-    originalOverrides: deserializeJson(proposal.original_overrides) ?? [],
-    // Proposed values
-    proposedDelete: proposal.proposed_delete,
-    proposedDescription: proposal.proposed_description,
-    proposedMembers: deserializeJson(proposal.proposed_members),
-    proposedValue: deserializeJson(proposal.proposed_value),
-    proposedSchema:
-      proposal.proposed_schema !== null ? deserializeJson(proposal.proposed_schema) : null,
-    proposedOverrides: deserializeJson(proposal.proposed_overrides) ?? [],
+    isDelete: proposal.is_delete,
+    description: proposal.description,
+    value: deserializeJson(proposal.value),
+    schema: proposal.schema !== null ? deserializeJson(proposal.schema) : null,
+    overrides: deserializeJson(proposal.overrides) ?? [],
     message: proposal.message,
+    variants,
+    members,
   };
 }

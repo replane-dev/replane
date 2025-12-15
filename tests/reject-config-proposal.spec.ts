@@ -891,7 +891,7 @@ describe('rejectConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    // Verify audit message has correct userId (rejector, not proposer)
+    // Verify audit message has correct userId (rejector, not author)
     const auditLogs = await fixture.engine.testing.auditLogs.list({
       lte: fixture.now,
       limit: 100,

@@ -51,39 +51,40 @@ export interface AuditLogs {
   user_id: number | null;
 }
 
+export interface ConfigProposalMembers {
+  email: string;
+  id: string;
+  proposal_id: string;
+  role: ConfigUserRole;
+}
+
 export interface ConfigProposals {
   approved_at: Timestamp | null;
+  author_id: number | null;
   base_config_version: number;
   config_id: string;
   created_at: Timestamp;
+  description: string;
   id: string;
+  is_delete: boolean;
   message: string | null;
-  original_description: string;
-  original_members: string;
-  original_overrides: string;
-  original_schema: string | null;
-  original_value: string;
-  proposed_delete: boolean;
-  proposed_description: string;
-  proposed_members: string;
-  proposed_overrides: string;
-  proposed_schema: string | null;
-  proposed_value: string;
-  proposer_id: number | null;
+  overrides: string;
   rejected_at: Timestamp | null;
   rejected_in_favor_of_proposal_id: string | null;
   rejection_reason: ConfigProposalRejectionReason | null;
   reviewer_id: number | null;
+  schema: string | null;
+  value: string;
 }
 
 export interface ConfigProposalVariants {
   environment_id: string;
   id: string;
+  overrides: string;
   proposal_id: string;
-  proposed_overrides: string;
-  proposed_schema: string | null;
-  proposed_value: string;
+  schema: string | null;
   use_default_schema: boolean;
+  value: string;
 }
 
 export interface Configs {
@@ -119,18 +120,34 @@ export interface ConfigVariants {
   value: string;
 }
 
-export interface ConfigVariantVersions {
+export interface ConfigVersionMembers {
+  config_version_id: string;
+  email: string;
+  id: string;
+  role: ConfigUserRole;
+}
+
+export interface ConfigVersions {
   author_id: number | null;
-  config_variant_id: string;
+  config_id: string;
   created_at: Timestamp;
   description: string;
   id: string;
-  name: string;
   overrides: string;
   proposal_id: string | null;
   schema: string | null;
   value: string;
   version: number;
+}
+
+export interface ConfigVersionVariants {
+  config_version_id: string;
+  environment_id: string;
+  id: string;
+  overrides: string;
+  schema: string | null;
+  use_default_schema: boolean;
+  value: string;
 }
 
 export interface EventConsumers {
@@ -232,11 +249,14 @@ export interface Workspaces {
 export interface DB {
   accounts: Accounts;
   audit_logs: AuditLogs;
+  config_proposal_members: ConfigProposalMembers;
   config_proposal_variants: ConfigProposalVariants;
   config_proposals: ConfigProposals;
   config_users: ConfigUsers;
-  config_variant_versions: ConfigVariantVersions;
   config_variants: ConfigVariants;
+  config_version_members: ConfigVersionMembers;
+  config_version_variants: ConfigVersionVariants;
+  config_versions: ConfigVersions;
   configs: Configs;
   event_consumers: EventConsumers;
   events: Events;

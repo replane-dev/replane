@@ -195,7 +195,7 @@ describe('getConfig', () => {
     expect(config?.pendingConfigProposals).toEqual([]);
   });
 
-  it('should include pending config proposals with proposer information', async () => {
+  it('should include pending config proposals with author information', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'with-proposals-config',
@@ -246,8 +246,8 @@ describe('getConfig', () => {
     expect(config?.pendingConfigProposals).toHaveLength(1);
     expect(config?.pendingConfigProposals[0]).toMatchObject({
       id: configProposalId,
-      proposerId: OTHER_USER_ID,
-      proposerEmail: OTHER_USER_EMAIL,
+      authorId: OTHER_USER_ID,
+      authorEmail: OTHER_USER_EMAIL,
       baseConfigVersion: 1,
     });
     expect(config?.pendingConfigProposals[0].createdAt).toBeDefined();
@@ -338,11 +338,11 @@ describe('getConfig', () => {
 
     expect(config?.pendingConfigProposals).toHaveLength(2);
     expect(
-      config?.pendingConfigProposals.map(x => ({id: x.id, proposerEmail: x.proposerEmail})),
+      config?.pendingConfigProposals.map(x => ({id: x.id, authorEmail: x.authorEmail})),
     ).toEqual(
       expect.arrayContaining([
-        {id: proposal1Id, proposerEmail: OTHER_USER_EMAIL},
-        {id: proposal2Id, proposerEmail: THIRD_USER_EMAIL},
+        {id: proposal1Id, authorEmail: OTHER_USER_EMAIL},
+        {id: proposal2Id, authorEmail: THIRD_USER_EMAIL},
       ]),
     );
   });
@@ -551,13 +551,13 @@ describe('getConfig', () => {
     expect(config?.pendingConfigProposals[0].id).toBe(pendingProposalId);
   });
 
-  it('should handle pending config proposal with null proposerId', async () => {
+  it('should handle pending config proposal with null authorId', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
-      name: 'null-proposer-config',
+      name: 'null-author-config',
       value: {enabled: false},
       schema: null,
-      description: 'Config with null proposer',
+      description: 'Config with null author',
       currentUserEmail: TEST_USER_EMAIL,
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
@@ -594,10 +594,10 @@ describe('getConfig', () => {
       message: null,
     });
 
-    // Manually set proposerId to null (simulating deleted user)
+    // Manually set authorId to null (simulating deleted user)
     const connection = await fixture.engine.testing.pool.connect();
     try {
-      await connection.query('UPDATE config_proposals SET proposer_id = NULL WHERE id = $1', [
+      await connection.query('UPDATE config_proposals SET author_id = NULL WHERE id = $1', [
         configProposalId,
       ]);
     } finally {
@@ -605,15 +605,15 @@ describe('getConfig', () => {
     }
 
     const {config} = await fixture.trpc.getConfig({
-      name: 'null-proposer-config',
+      name: 'null-author-config',
       projectId: fixture.projectId,
     });
 
     expect(config?.pendingConfigProposals).toHaveLength(1);
     expect(config?.pendingConfigProposals[0]).toMatchObject({
       id: configProposalId,
-      proposerId: null,
-      proposerEmail: null,
+      authorId: null,
+      authorEmail: null,
     });
   });
 

@@ -48,8 +48,8 @@ export function createApproveConfigProposalUseCase(
       throw new BadRequestError('Project not found');
     }
 
-    if (!project.allowSelfApprovals && proposal.proposerId === currentUser.id) {
-      throw new ForbiddenError('Proposer cannot approve their own proposal');
+    if (!project.allowSelfApprovals && proposal.authorId === currentUser.id) {
+      throw new ForbiddenError('Author cannot approve their own proposal');
     }
 
     // Check if already approved or rejected
@@ -60,10 +60,8 @@ export function createApproveConfigProposalUseCase(
       throw new BadRequestError('Proposal has already been rejected');
     }
 
-    // proposer id might be null in if the user was deleted
-    const patchAuthor = proposal.proposerId
-      ? await tx.users.getById(proposal.proposerId)
-      : currentUser;
+    // author id might be null if the user was deleted
+    const patchAuthor = proposal.authorId ? await tx.users.getById(proposal.authorId) : currentUser;
     assert(patchAuthor, 'Patch author not found');
 
     assert(
@@ -89,14 +87,14 @@ export function createApproveConfigProposalUseCase(
         type: 'config_proposal_approved',
         proposalId: proposal.id,
         configId: proposal.configId,
-        proposedDelete: proposal.proposedDelete,
-        proposedDescription: proposal.proposedDescription ?? undefined,
-        proposedMembers: proposal.proposedMembers ?? undefined,
+        proposedDelete: proposal.isDelete,
+        proposedDescription: proposal.description ?? undefined,
+        proposedMembers: proposal.members ?? undefined,
       },
     });
 
     // If this is a deletion proposal, delete the config and reject other pending proposals.
-    if (proposal.proposedDelete) {
+    if (proposal.isDelete) {
       await tx.configService.deleteConfig(ctx, {
         configId: proposal.configId,
         deleteAuthor: patchAuthor,
@@ -105,39 +103,24 @@ export function createApproveConfigProposalUseCase(
         originalProposalId: proposal.id,
       });
     } else {
-      // Fetch the full proposed state from the proposal
-      // Environment-specific variants are stored in config_proposal_variants
-      const proposalVariants = await tx.configProposals.getVariantsByProposalId(proposal.id);
-
-      const environmentVariants = proposalVariants.map(v => ({
-        environmentId: v.environmentId,
-        value: v.proposedValue,
-        schema: v.proposedSchema ?? null,
-        overrides: v.proposedOverrides,
-        useDefaultSchema: v.useDefaultSchema,
-      }));
-
-      // Default variant is stored directly in the proposal
-      const defaultVariant = {
-        value: proposal.proposedValue,
-        schema: proposal.proposedSchema,
-        overrides: proposal.proposedOverrides,
-      };
-
-      // Extract members from proposedMembers
+      // Extract members from proposal.members
       const editorEmails =
-        proposal.proposedMembers?.filter(m => m.role === 'editor').map(m => m.email) ?? [];
+        proposal.members?.filter(m => m.role === 'editor').map(m => m.email) ?? [];
       const maintainerEmails =
-        proposal.proposedMembers?.filter(m => m.role === 'maintainer').map(m => m.email) ?? [];
+        proposal.members?.filter(m => m.role === 'maintainer').map(m => m.email) ?? [];
 
       // Apply the full proposed state using updateConfig
       await tx.configService.updateConfig(ctx, {
         configId: proposal.configId,
-        description: proposal.proposedDescription ?? config.description,
+        description: proposal.description ?? config.description,
         editorEmails,
         maintainerEmails,
-        defaultVariant,
-        environmentVariants,
+        defaultVariant: {
+          value: proposal.value,
+          schema: proposal.schema,
+          overrides: proposal.overrides,
+        },
+        environmentVariants: proposal.variants,
         currentUser: patchAuthor,
         reviewer: currentUser,
         prevVersion: proposal.baseConfigVersion,

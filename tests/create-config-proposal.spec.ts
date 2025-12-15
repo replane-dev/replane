@@ -87,8 +87,8 @@ describe('createConfigProposal', () => {
       id: configProposalId,
       projectId: fixture.projectId,
     });
-    expect(proposal?.proposedDescription).toBe('New description');
-    expect(proposal?.proposedDelete).toBe(false);
+    expect(proposal?.description).toBe('New description');
+    expect(proposal?.isDelete).toBe(false);
   });
 
   it('should create a deletion proposal', async () => {
@@ -135,9 +135,11 @@ describe('createConfigProposal', () => {
       projectId: fixture.projectId,
     });
     expect(proposal).toBeDefined();
-    expect(proposal?.proposedDelete).toBe(true);
-    expect(proposal?.proposedDescription).toBe('To be deleted');
-    expect(proposal?.proposedMembers).toEqual([{email: CURRENT_USER_EMAIL, role: 'maintainer'}]);
+    expect(proposal?.isDelete).toBe(true);
+    expect(proposal?.description).toBe('To be deleted');
+    expect(proposal?.members).toEqual([
+      expect.objectContaining({email: CURRENT_USER_EMAIL, role: 'maintainer'}),
+    ]);
   });
 
   it('should create a proposal with member changes', async () => {
@@ -193,7 +195,9 @@ describe('createConfigProposal', () => {
       id: configProposalId,
       projectId: fixture.projectId,
     });
-    expect(proposal?.proposedMembers).toEqual([{email: newMemberEmail, role: 'maintainer'}]);
+    expect(proposal?.members).toEqual([
+      expect.objectContaining({email: newMemberEmail, role: 'maintainer'}),
+    ]);
   });
 
   it('should create a proposal with description and member changes', async () => {
@@ -247,8 +251,10 @@ describe('createConfigProposal', () => {
       id: configProposalId,
       projectId: fixture.projectId,
     });
-    expect(proposal?.proposedDescription).toBe('Updated description');
-    expect(proposal?.proposedMembers).toEqual([{email: newMemberEmail, role: 'editor'}]);
+    expect(proposal?.description).toBe('Updated description');
+    expect(proposal?.members).toEqual([
+      expect.objectContaining({email: newMemberEmail, role: 'editor'}),
+    ]);
   });
 
   it('should create audit message including proposedMembers', async () => {
@@ -389,7 +395,7 @@ describe('createConfigProposal', () => {
       id: configProposalId,
       projectId: fixture.projectId,
     });
-    expect(proposal?.proposedDescription).toBe('Proposed change');
+    expect(proposal?.description).toBe('Proposed change');
   });
 
   it('should create audit message (config_proposal_created)', async () => {
@@ -657,7 +663,7 @@ describe('createConfigProposal', () => {
       id: configProposalId,
       projectId: fixture.projectId,
     });
-    expect(proposal?.proposedDelete).toBe(true);
+    expect(proposal?.isDelete).toBe(true);
   });
 
   it('should create a proposal with variant value changes', async () => {
@@ -713,13 +719,15 @@ describe('createConfigProposal', () => {
     });
 
     expect(configProposalId).toBeDefined();
-    const variantChanges =
-      await fixture.engine.testing.configProposals.getVariantsByProposalId(configProposalId);
-    expect(variantChanges).toHaveLength(2);
-    const prodVariantChange = variantChanges.find(
+    const proposal = await fixture.engine.testing.configProposals.getById({
+      id: configProposalId,
+      projectId: fixture.projectId,
+    });
+    expect(proposal?.variants).toHaveLength(2);
+    const prodVariantChange = proposal?.variants.find(
       vc => vc.environmentId === fixture.productionEnvironmentId,
     );
-    expect(prodVariantChange?.proposedValue).toEqual({enabled: false});
+    expect(prodVariantChange?.value).toEqual({enabled: false});
   });
 
   it('should create a proposal with both config and variant changes', async () => {
@@ -777,14 +785,11 @@ describe('createConfigProposal', () => {
       id: configProposalId,
       projectId: fixture.projectId,
     });
-    expect(proposal?.proposedDescription).toBe('Updated description');
-
-    const variantChanges =
-      await fixture.engine.testing.configProposals.getVariantsByProposalId(configProposalId);
-    expect(variantChanges).toHaveLength(2);
-    const prodVariantChange = variantChanges.find(
+    expect(proposal?.description).toBe('Updated description');
+    expect(proposal?.variants).toHaveLength(2);
+    const prodVariantChange = proposal?.variants.find(
       vc => vc.environmentId === fixture.productionEnvironmentId,
     );
-    expect(prodVariantChange?.proposedValue).toEqual(asConfigValue({count: 20}));
+    expect(prodVariantChange?.value).toEqual(asConfigValue({count: 20}));
   });
 });

@@ -405,7 +405,6 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         configId: Uuid(),
-        environmentId: Uuid(),
         version: z.number(),
         projectId: Uuid(),
       }),
@@ -416,7 +415,6 @@ export const appRouter = createTRPCRouter({
       }
       const result = await opts.ctx.engine.useCases.getConfigVariantVersion(GLOBAL_CONTEXT, {
         configId: opts.input.configId,
-        environmentId: opts.input.environmentId,
         version: opts.input.version,
         currentUserEmail: opts.ctx.currentUserEmail,
         projectId: opts.input.projectId,

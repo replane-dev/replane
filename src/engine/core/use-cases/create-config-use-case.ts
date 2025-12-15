@@ -5,6 +5,11 @@ import type {Override} from '../override-condition-schemas';
 import {createAuditLogId} from '../stores/audit-log-store';
 import {createConfigId, type ConfigId} from '../stores/config-store';
 import type {NewConfigUser} from '../stores/config-user-store';
+import {
+  createConfigVersionId,
+  createConfigVersionMemberId,
+  createConfigVersionVariantId,
+} from '../stores/config-version-store';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import {createUuidV7} from '../uuid';
@@ -178,22 +183,33 @@ export function createCreateConfigUseCase(
       });
 
       configVariantIds.push({variantId, environmentId: envVariant.environmentId});
-
-      // Create version history for this variant
-      await tx.configVariantVersions.create({
-        id: createUuidV7(),
-        configVariantId: variantId,
-        version: 1,
-        name: req.name,
-        description: req.description,
-        value: envVariant.value,
-        schema: envVariant.schema,
-        overrides: envVariant.overrides,
-        authorId: currentUser.id,
-        proposalId: null,
-        createdAt: now,
-      });
     }
+
+    // Create version history - one version record with all variants and members
+    await tx.configVersions.create({
+      id: createConfigVersionId(),
+      configId,
+      version: 1,
+      description: req.description,
+      value: req.defaultVariant.value,
+      schema: req.defaultVariant.schema,
+      overrides: req.defaultVariant.overrides,
+      proposalId: null,
+      authorId: currentUser.id,
+      createdAt: now,
+      variants: environmentVariants.map(v => ({
+        id: createConfigVersionVariantId(),
+        environmentId: v.environmentId,
+        value: v.value,
+        schema: v.useDefaultSchema ? null : v.schema,
+        overrides: v.overrides,
+        useDefaultSchema: v.useDefaultSchema ?? false,
+      })),
+      members: allMembers.map(m => ({
+        id: createConfigVersionMemberId(),
+        ...m,
+      })),
+    });
 
     await tx.configUsers.create(
       req.editorEmails

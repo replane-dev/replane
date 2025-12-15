@@ -108,16 +108,16 @@ describe('getConfigProposal', () => {
       id: configProposalId,
       configId,
       configName: 'get_proposal_description',
-      proposerId: OTHER_USER_ID,
-      proposerEmail: OTHER_USER_EMAIL,
+      authorId: OTHER_USER_ID,
+      authorEmail: OTHER_USER_EMAIL,
       status: 'pending',
-      proposedDescription: 'Updated description',
       proposedDelete: false,
       rejectedAt: null,
       approvedAt: null,
       reviewerId: null,
       reviewerEmail: null,
     });
+    expect(result.proposal.proposed.description).toBe('Updated description');
     expect(result.proposal.createdAt).toBeDefined();
     expect(result.proposal.baseConfigVersion).toBe(1);
   });
@@ -280,9 +280,9 @@ describe('getConfigProposal', () => {
       configId,
       configName: 'get_proposal_member_changes',
       status: 'pending',
-      proposedDescription: 'Original description',
-      proposedMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}],
     });
+    expect(result.proposal.proposed.description).toBe('Original description');
+    expect(result.proposal.proposed.members).toEqual([{email: THIRD_USER_EMAIL, role: 'editor'}]);
   });
 
   it('should get a pending proposal with multiple changes', async () => {
@@ -338,9 +338,9 @@ describe('getConfigProposal', () => {
       configId,
       configName: 'get_proposal_multiple',
       status: 'pending',
-      proposedDescription: 'Updated description',
-      proposedMembers: [{email: THIRD_USER_EMAIL, role: 'editor'}],
     });
+    expect(result.proposal.proposed.description).toBe('Updated description');
+    expect(result.proposal.proposed.members).toEqual([{email: THIRD_USER_EMAIL, role: 'editor'}]);
   });
 
   it('should get an approved proposal', async () => {
@@ -565,10 +565,10 @@ describe('getConfigProposal', () => {
     expect(result.proposal.rejectedInFavorOfProposalId).toBe(proposal2Id);
   });
 
-  it('should include proposer email when proposer exists', async () => {
+  it('should include author email when author exists', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
-      name: 'get_proposal_proposer',
+      name: 'get_proposal_author',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
@@ -613,8 +613,8 @@ describe('getConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    expect(result.proposal.proposerId).toBe(OTHER_USER_ID);
-    expect(result.proposal.proposerEmail).toBe(OTHER_USER_EMAIL);
+    expect(result.proposal.authorId).toBe(OTHER_USER_ID);
+    expect(result.proposal.authorEmail).toBe(OTHER_USER_EMAIL);
   });
 
   it('should include reviewer email when proposal is reviewed', async () => {
@@ -884,10 +884,10 @@ describe('getConfigProposal', () => {
     expect(result.proposal.baseConfigVersion).toBe(2);
   });
 
-  it('should handle proposal with null proposerId', async () => {
+  it('should handle proposal with null authorId', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
-      name: 'get_proposal_null_proposer',
+      name: 'get_proposal_null_author',
       value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
@@ -926,10 +926,10 @@ describe('getConfigProposal', () => {
       message: null,
     });
 
-    // Manually set proposerId to null (simulating deleted user)
+    // Manually set authorId to null (simulating deleted user)
     const connection = await fixture.engine.testing.pool.connect();
     try {
-      await connection.query('UPDATE config_proposals SET proposer_id = NULL WHERE id = $1', [
+      await connection.query('UPDATE config_proposals SET author_id = NULL WHERE id = $1', [
         configProposalId,
       ]);
     } finally {
@@ -942,8 +942,8 @@ describe('getConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    expect(result.proposal.proposerId).toBeNull();
-    expect(result.proposal.proposerEmail).toBeNull();
+    expect(result.proposal.authorId).toBeNull();
+    expect(result.proposal.authorEmail).toBeNull();
   });
 
   it('should return base members from original snapshot', async () => {
@@ -1025,8 +1025,14 @@ describe('getConfigProposal', () => {
     });
 
     // Base members should be from the original snapshot
-    expect(result.proposal.baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
-    expect(result.proposal.baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
+    const baseMaintainerEmails = result.proposal.base.members
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.email);
+    const baseEditorEmails = result.proposal.base.members
+      .filter(m => m.role === 'editor')
+      .map(m => m.email);
+    expect(baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
   });
 
   it('should handle member changes in proposal diff correctly', async () => {
@@ -1080,17 +1086,23 @@ describe('getConfigProposal', () => {
     });
 
     // Verify base members match the original config
-    expect(result.proposal.baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
-    expect(result.proposal.baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
+    const baseMaintainerEmails = result.proposal.base.members
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.email);
+    const baseEditorEmails = result.proposal.base.members
+      .filter(m => m.role === 'editor')
+      .map(m => m.email);
+    expect(baseMaintainerEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(baseEditorEmails).toEqual([OTHER_USER_EMAIL]);
 
     // Verify the proposed members (order doesn't matter)
-    expect(result.proposal.proposedMembers).toEqual(
+    expect(result.proposal.proposed.members).toEqual(
       expect.arrayContaining([
         {email: CURRENT_USER_EMAIL, role: 'maintainer'},
         {email: THIRD_USER_EMAIL, role: 'editor'},
       ]),
     );
-    expect(result.proposal.proposedMembers).toHaveLength(2);
+    expect(result.proposal.proposed.members).toHaveLength(2);
   });
 
   it('should return empty proposalsRejectedByThisApproval for pending proposal', async () => {
@@ -1329,16 +1341,16 @@ describe('getConfigProposal', () => {
     expect(result.proposalsRejectedByThisApproval).toHaveLength(2);
     expect(result.proposalsRejectedByThisApproval).toEqual(
       expect.arrayContaining([
-        {id: proposal1Id, proposerEmail: OTHER_USER_EMAIL},
-        {id: proposal3Id, proposerEmail: CURRENT_USER_EMAIL},
+        {id: proposal1Id, authorEmail: OTHER_USER_EMAIL},
+        {id: proposal3Id, authorEmail: CURRENT_USER_EMAIL},
       ]),
     );
   });
 
-  it('should return proposalsRejectedByThisApproval with null proposerEmail when proposer was deleted', async () => {
+  it('should return proposalsRejectedByThisApproval with null authorEmail when author was deleted', async () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
-      name: 'approved_with_null_proposer',
+      name: 'approved_with_null_author',
       value: {enabled: false},
       schema: null,
       description: 'Original description',
@@ -1413,10 +1425,10 @@ describe('getConfigProposal', () => {
       },
     );
 
-    // Manually set proposal1's proposerId to null (simulating deleted user)
+    // Manually set proposal1's authorId to null (simulating deleted user)
     const connection = await fixture.engine.testing.pool.connect();
     try {
-      await connection.query('UPDATE config_proposals SET proposer_id = NULL WHERE id = $1', [
+      await connection.query('UPDATE config_proposals SET author_id = NULL WHERE id = $1', [
         proposal1Id,
       ]);
     } finally {
@@ -1437,11 +1449,11 @@ describe('getConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    // Should include the rejected proposal with null proposerEmail
+    // Should include the rejected proposal with null authorEmail
     expect(result.proposalsRejectedByThisApproval).toHaveLength(1);
     expect(result.proposalsRejectedByThisApproval[0]).toEqual({
       id: proposal1Id,
-      proposerEmail: null,
+      authorEmail: null,
     });
   });
 
@@ -1559,14 +1571,13 @@ describe('getConfigProposal', () => {
       currentUserEmail: CURRENT_USER_EMAIL,
     });
 
-    expect(result.proposal.proposedVariants).toHaveLength(2);
-    const prodVariant = result.proposal.proposedVariants.find(
-      v => v.environmentName === 'Production',
+    expect(result.proposal.proposed.variants).toHaveLength(2);
+    const prodVariant = result.proposal.proposed.variants.find(
+      (v: {environmentName: string}) => v.environmentName === 'Production',
     );
     expect(prodVariant).toMatchObject({
       environmentName: 'Production',
-      proposedValue: {enabled: false},
-      currentValue: {enabled: true},
+      value: {enabled: false},
     });
   });
 

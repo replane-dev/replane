@@ -160,7 +160,7 @@ export function ConfigDetailView({
                   </div>
                   {config.pendingConfigProposals.length === 1 ? (
                     <div className="text-sm text-foreground/80 dark:text-foreground/70">
-                      <span>By {config.pendingConfigProposals[0]!.proposerEmail ?? 'Unknown'}</span>
+                      <span>By {config.pendingConfigProposals[0]!.authorEmail ?? 'Unknown'}</span>
                       <span className="mx-1">·</span>
                       <span>
                         {formatDistanceToNow(

@@ -217,7 +217,7 @@ describe('getConfigProposalList', () => {
       expect(new Set(proposals.map(p => p.configId))).toEqual(new Set([configAId]));
       // check joined fields
       expect(proposals[0]?.configName).toBe('config_a');
-      expect(proposals[0]?.proposerEmail).toBe(CURRENT_USER_EMAIL);
+      expect(proposals[0]?.authorEmail).toBe(CURRENT_USER_EMAIL);
       // reviewer on approved P2
       const approved = proposals.find(p => p.id === P2);
       expect(approved?.reviewerEmail).toBe(OTHER_USER_EMAIL);

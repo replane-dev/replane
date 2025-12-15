@@ -1,4 +1,3 @@
-import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
 import type {NormalizedEmail} from '../zod';
 
@@ -41,17 +40,15 @@ export function createGetConfigVariantVersionListUseCase(): TransactionalUseCase
       throw new Error('Config does not belong to the specified project');
     }
 
-    // Get the variant for this config and environment
-    const variant = await tx.configVariants.getByConfigIdAndEnvironmentId({
-      configId: req.configId,
-      environmentId: req.environmentId,
-    });
+    const versions = await tx.configVersions.getByConfigId(req.configId);
 
-    if (!variant) {
-      throw new BadRequestError('Config variant not found for the specified environment');
-    }
+    // Get unique author ids and fetch their emails
+    const authorIds = [
+      ...new Set(versions.map(v => v.authorId).filter((id): id is number => id !== null)),
+    ];
+    const authors = await tx.users.getByIds(authorIds);
 
-    const versions = await tx.configVariantVersions.getByConfigVariantIdWithAuthors(variant.id);
+    const authorEmails = new Map(authors.map(a => [a.id, a.email]));
 
     return {
       versions: versions.map(v => ({
@@ -59,7 +56,7 @@ export function createGetConfigVariantVersionListUseCase(): TransactionalUseCase
         version: v.version,
         description: v.description,
         createdAt: v.createdAt,
-        authorEmail: v.authorEmail,
+        authorEmail: v.authorId ? (authorEmails.get(v.authorId) ?? null) : null,
       })),
     };
   };

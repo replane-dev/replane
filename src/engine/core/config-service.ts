@@ -12,7 +12,12 @@ import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariantStore} from './stores/config-variant-store';
-import type {ConfigVariantVersionStore} from './stores/config-variant-version-store';
+import {
+  createConfigVersionId,
+  createConfigVersionMemberId,
+  createConfigVersionVariantId,
+  type ConfigVersionStore,
+} from './stores/config-version-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {Project} from './stores/project-store';
 import type {User} from './user-store';
@@ -64,7 +69,7 @@ export class ConfigService {
     private readonly dateProvider: DateProvider,
     private readonly projectEnvironments: ProjectEnvironmentStore,
     private readonly configVariants: ConfigVariantStore,
-    private readonly configVariantVersions: ConfigVariantVersionStore,
+    private readonly configVersions: ConfigVersionStore,
   ) {}
 
   /**
@@ -505,21 +510,6 @@ export class ConfigService {
         updatedAt: now,
         useDefaultSchema: variant.useDefaultSchema ?? false,
       });
-
-      // Create version history for new variant
-      await this.configVariantVersions.create({
-        id: createUuidV7(),
-        configVariantId: variantId,
-        version: nextVersion,
-        name: existingConfig.name,
-        description: params.description,
-        value: variant.value,
-        schema: variant.useDefaultSchema ? null : variant.schema,
-        overrides: variant.overrides,
-        authorId: currentUser.id ?? null,
-        proposalId: params.originalProposalId ?? null,
-        createdAt: now,
-      });
     }
 
     // Update existing environment variants
@@ -533,21 +523,6 @@ export class ConfigService {
         updatedAt: now,
         useDefaultSchema: variant.useDefaultSchema,
       });
-
-      // Create version history for updated variant
-      await this.configVariantVersions.create({
-        id: createUuidV7(),
-        configVariantId: variant.variantId,
-        version: nextVersion,
-        name: existingConfig.name,
-        description: params.description,
-        value: variant.value,
-        schema: variant.schema,
-        overrides: variant.overrides,
-        authorId: currentUser.id ?? null,
-        proposalId: params.originalProposalId ?? null,
-        createdAt: now,
-      });
     }
 
     // Delete environment variants
@@ -557,6 +532,37 @@ export class ConfigService {
         variantId,
       });
     }
+
+    // Create version history - one version record with all variants and members
+    const newMembers = [
+      ...params.editorEmails.map(email => ({email, role: 'editor' as const})),
+      ...params.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
+    ];
+
+    await this.configVersions.create({
+      id: createConfigVersionId(),
+      configId: params.configId,
+      version: nextVersion,
+      description: params.description,
+      value: params.defaultVariant.value,
+      schema: params.defaultVariant.schema,
+      overrides: params.defaultVariant.overrides,
+      proposalId: params.originalProposalId ?? null,
+      authorId: currentUser.id,
+      createdAt: now,
+      variants: params.environmentVariants.map(v => ({
+        id: createConfigVersionVariantId(),
+        environmentId: v.environmentId,
+        value: v.value,
+        schema: v.useDefaultSchema ? null : v.schema,
+        overrides: v.overrides,
+        useDefaultSchema: v.useDefaultSchema ?? false,
+      })),
+      members: newMembers.map(m => ({
+        id: createConfigVersionMemberId(),
+        ...m,
+      })),
+    });
 
     // Create audit log for config update
     if (descriptionChanged) {
@@ -773,9 +779,9 @@ export class ConfigService {
           proposalId: proposal.id,
           configId: params.configId,
           rejectedInFavorOfProposalId: params.originalProposalId ?? undefined,
-          proposedDelete: proposal.proposedDelete ?? undefined,
-          proposedDescription: proposal.proposedDescription ?? undefined,
-          proposedMembers: proposal.proposedMembers ?? undefined,
+          proposedDelete: proposal.isDelete ?? undefined,
+          proposedDescription: proposal.description ?? undefined,
+          proposedMembers: proposal.members ?? undefined,
         },
       });
     }

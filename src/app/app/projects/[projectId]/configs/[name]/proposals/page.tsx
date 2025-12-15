@@ -93,9 +93,9 @@ export default function ConfigProposalsPage() {
         cell: ({row}) => <div className="font-mono">{String(row.getValue('id')).slice(-8)}</div>,
       },
       {
-        accessorKey: 'proposerEmail',
-        header: 'Proposer',
-        cell: ({row}) => <div>{row.getValue('proposerEmail') || 'Unknown'}</div>,
+        accessorKey: 'authorEmail',
+        header: 'Author',
+        cell: ({row}) => <div>{row.getValue('authorEmail') || 'Unknown'}</div>,
       },
       {
         accessorKey: 'createdAt',
@@ -225,11 +225,9 @@ export default function ConfigProposalsPage() {
               <Badge variant="secondary">{proposals.length}</Badge>
             </div>
             <Input
-              placeholder="Filter by proposer email"
-              value={(table.getColumn('proposerEmail')?.getFilterValue() as string) ?? ''}
-              onChange={event =>
-                table.getColumn('proposerEmail')?.setFilterValue(event.target.value)
-              }
+              placeholder="Filter by author email"
+              value={(table.getColumn('authorEmail')?.getFilterValue() as string) ?? ''}
+              onChange={event => table.getColumn('authorEmail')?.setFilterValue(event.target.value)}
               className="max-w-md"
             />
             <DropdownMenu>
