@@ -41,13 +41,11 @@ export function NewSdkKeyView({projectId, onSuccess, onCancel, onDirtyChange}: N
   });
   const [createdToken, setCreatedToken] = useState<string | null>(null);
 
-  // Track dirty state - form is dirty if name or description has been changed
-  const isDirty = name.trim() !== '' || description.trim() !== '';
+  // Track dirty state - form is dirty if name or description has been changed, but not after creation
+  const isDirty = createdToken ? false : name.trim() !== '' || description.trim() !== '';
   React.useEffect(() => {
-    if (onDirtyChange && !createdToken) {
-      onDirtyChange(isDirty);
-    }
-  }, [onDirtyChange, isDirty, createdToken]);
+    onDirtyChange?.(isDirty);
+  }, [onDirtyChange, isDirty]);
 
   if (environments.length === 0) {
     return (

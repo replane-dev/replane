@@ -485,6 +485,15 @@ sdkApi.openapi(
     const onAbort = () => abortController.abort();
     c.req.raw.signal.addEventListener('abort', onAbort);
 
+    const rawBody = await c.req.json().catch(() => ({}));
+    const parseResult = StartReplicationStreamBody.safeParse(rawBody);
+    if (!parseResult.success) {
+      throw new HTTPException(400, {
+        message: `Invalid request body: ${parseResult.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
+      });
+    }
+    const clientState = parseResult.data;
+
     const stream = new ReadableStream<SseEvent>({
       async start(controller) {
         let errored = false;
@@ -512,7 +521,6 @@ sdkApi.openapi(
             projectId,
             environmentId: c.get('environmentId'),
           });
-          const clientState = c.req.valid('json');
 
           const {rollingState, configs} = createSdkState({
             serverConfigs: serverConfigs,

@@ -456,6 +456,11 @@ export function ConfigForm(props: ConfigFormProps) {
       editorEmails,
     };
 
+    // Reset the form's dirty state before calling callbacks
+    // (callbacks may close the sheet, so we need to clear dirty state first)
+    form.reset(values, {keepValues: true});
+    onDirtyChange?.(false);
+
     // Call the appropriate callback based on action
     const action = submitActionRef.current;
     if (mode === 'new' && onCreate) {
@@ -465,9 +470,6 @@ export function ConfigForm(props: ConfigFormProps) {
     } else if (onSave) {
       await onSave(submitData);
     }
-
-    // Reset the form's dirty state after successful save
-    form.reset(values, {keepValues: true});
 
     // Reset action ref after submission
     submitActionRef.current = null;

@@ -83,14 +83,13 @@ function toSdkRequest(req: IncomingMessage): Request {
     throw new Error('Invalid SDK path');
   }
 
+  const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
   return new Request(url, {
     method: req.method,
     headers: req.headers as any,
-    body:
-      req.method !== 'GET' && req.method !== 'HEAD'
-        ? (req as any) // Node body stream
-        : undefined,
-  });
+    body: hasBody ? (req as any) : undefined, // Node body stream
+    duplex: hasBody ? 'half' : undefined,
+  } as RequestInit);
 }
 
 async function sendResponse(res: ServerResponse, honoRes: Response) {
