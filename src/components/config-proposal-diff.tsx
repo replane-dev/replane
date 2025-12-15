@@ -6,6 +6,7 @@ import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {cn} from '@/lib/utils';
 import {DiffEditor} from '@monaco-editor/react';
 import {ArrowRight, Minus, Plus} from 'lucide-react';
+import {useTheme} from 'next-themes';
 import * as React from 'react';
 
 function stringify(value: unknown): string {
@@ -23,6 +24,8 @@ function DiffRow(props: {
   const {title, before, after, language, height = 280} = props;
   const original = React.useMemo(() => stringify(before), [before]);
   const modified = React.useMemo(() => stringify(after), [after]);
+  const {resolvedTheme} = useTheme();
+  const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -35,6 +38,7 @@ function DiffRow(props: {
           modified={modified}
           language={language}
           height={height}
+          theme={editorTheme}
           options={{
             readOnly: true,
             renderSideBySide: true,
