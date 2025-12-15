@@ -196,11 +196,11 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                     <TooltipTrigger asChild>
                       <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-full cursor-default">
                         <ShieldCheck className="h-3 w-3" />
-                        Requires proposals
+                        Requires review
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Changes to this environment require proposals</p>
+                      <p>Changes to this environment require review</p>
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -346,13 +346,13 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <Label htmlFor="edit-require-proposals" className="cursor-pointer">
-                      Require proposals
+                      Require review
                     </Label>
                     <Help>
                       <p>
                         When enabled, changes to config values in this environment will require
                         approval through a proposal. This only applies when the project has
-                        &quot;Require proposals&quot; enabled.
+                        &quot;Require review&quot; enabled.
                       </p>
                     </Help>
                   </div>

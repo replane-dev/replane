@@ -153,15 +153,15 @@ export default function GeneralSettingsPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="require-proposals" className="text-sm font-medium">
-                          Require Proposals
+                        <Label htmlFor="require-review" className="text-sm font-medium">
+                          Require Review
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           When enabled, all config changes must go through the proposal workflow
                         </p>
                       </div>
                       <Switch
-                        id="require-proposals"
+                        id="require-review"
                         checked={requireProposals}
                         onCheckedChange={setRequireProposals}
                         disabled={!canEditDetails}

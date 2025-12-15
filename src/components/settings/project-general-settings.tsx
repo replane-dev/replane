@@ -120,13 +120,13 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
           <h4 className="text-sm font-semibold">Governance</h4>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="require-proposals">Require proposals</Label>
+              <Label htmlFor="require-review">Require review</Label>
               <p className="text-xs text-muted-foreground">
-                All config changes must go through proposal approval
+                All config changes must go through review
               </p>
             </div>
             <Switch
-              id="require-proposals"
+              id="require-review"
               checked={requireProposals}
               onCheckedChange={setRequireProposals}
               disabled={!canEdit}

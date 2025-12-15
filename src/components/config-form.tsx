@@ -893,6 +893,7 @@ export function ConfigForm(props: ConfigFormProps) {
                           {requireProposals && env.requireProposals && (
                             <ChangesRequireProposalsBadge
                               tooltip={`This environment requires approval for changes. Create a proposal to modify ${env.name}.`}
+                              onClick={() => showSettings('project-general')}
                             />
                           )}
                         </div>
@@ -944,7 +945,10 @@ export function ConfigForm(props: ConfigFormProps) {
             </div>
             <div className="ml-auto flex items-center gap-2">
               {baseConfigAffectsProtectedEnvs && (
-                <ChangesRequireProposalsBadge tooltip="Base configuration changes affect environments that require approval. Create a proposal to modify the base configuration." />
+                <ChangesRequireProposalsBadge
+                  tooltip="Base configuration changes affect environments that require review. Create a proposal to modify the base configuration."
+                  onClick={() => showSettings('project-general')}
+                />
               )}
               <Help className="max-w-sm">
                 <p>
@@ -1165,14 +1169,22 @@ export function ConfigForm(props: ConfigFormProps) {
   );
 }
 
-function ChangesRequireProposalsBadge({tooltip}: {tooltip: string}) {
+function ChangesRequireProposalsBadge({tooltip, onClick}: {tooltip: string; onClick?: () => void}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-1 rounded-full cursor-default">
+        <button
+          type="button"
+          onClick={onClick}
+          className={`flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-1 rounded-full ${
+            onClick
+              ? 'cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-950/70'
+              : 'cursor-default'
+          }`}
+        >
           <ShieldCheck className="h-3 w-3" />
-          Changes require approval
-        </span>
+          Changes require review
+        </button>
       </TooltipTrigger>
       <TooltipContent>
         <p>{tooltip}</p>

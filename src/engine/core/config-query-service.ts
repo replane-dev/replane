@@ -65,7 +65,7 @@ export class ConfigQueryService {
 
     // Get pending config-level proposals (deletion, members, description)
     const pendingConfigProposals = await this.configProposals.getPendingProposalsWithAuthorEmails({
-      configId: config.id,
+        configId: config.id,
     });
 
     return {

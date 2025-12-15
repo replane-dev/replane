@@ -153,7 +153,7 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     } else if (proposal.variants.length > 0) {
       approverReason = 'Value changes can be approved by editors or maintainers.';
     } else {
-      approverReason = 'Config changes require approval.';
+      approverReason = 'Config changes require review.';
     }
 
     const approverRole: 'maintainers' | 'maintainers_and_editors' = maintainersOnly
