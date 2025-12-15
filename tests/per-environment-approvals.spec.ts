@@ -113,7 +113,7 @@ describe('Per-Environment Approvals', () => {
         });
       });
 
-      it('should block direct save when default value changes', async () => {
+      it('should block direct save when default value changes and production has no override', async () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'block_default_change',
@@ -127,6 +127,82 @@ describe('Per-Environment Approvals', () => {
         });
 
         // Try to update the default value - should fail because production requires proposals
+        // and production has no environment override (uses default value)
+        const result = await toSettledResult(
+          fixture.trpc.updateConfig({
+            configId,
+            description: 'Updated description',
+            editorEmails: [],
+            maintainerEmails: [CURRENT_USER_EMAIL],
+            defaultVariant: {
+              value: {x: 999}, // Changed default value
+              schema: null,
+              overrides: [],
+            },
+            // No environment variants - production uses default value
+            environmentVariants: [],
+            prevVersion: 1,
+          }),
+        );
+
+        assert(result.type === 'error', 'result should be an error');
+        assert(result.error instanceof TRPCError, 'error should be a TRPCError');
+        assert(result.error.cause instanceof BadRequestError, 'error should be a BadRequestError');
+      });
+
+      it('should allow direct save when default value changes but production has override', async () => {
+        // Temporarily disable requireProposals on production to set up the test data
+        await fixture.trpc.updateProjectEnvironment({
+          environmentId: fixture.productionEnvironmentId,
+          name: 'Production',
+          projectId: fixture.projectId,
+          requireProposals: false,
+        });
+
+        const {configId} = await fixture.createConfig({
+          overrides: [],
+          name: 'allow_default_change_with_override',
+          value: {x: 1},
+          schema: null,
+          description: 'Test config',
+          currentUserEmail: CURRENT_USER_EMAIL,
+          editorEmails: [],
+          maintainerEmails: [CURRENT_USER_EMAIL],
+          projectId: fixture.projectId,
+        });
+
+        // Add a production environment override with a different value
+        await fixture.trpc.updateConfig({
+          configId,
+          description: 'Test config',
+          editorEmails: [],
+          maintainerEmails: [CURRENT_USER_EMAIL],
+          defaultVariant: {
+            value: {x: 1},
+            schema: null,
+            overrides: [],
+          },
+          environmentVariants: [
+            {
+              environmentId: fixture.productionEnvironmentId,
+              value: {x: 100}, // Production-specific value (different from default)
+              schema: null,
+              overrides: [],
+              useDefaultSchema: false,
+            },
+          ],
+          prevVersion: 1,
+        });
+
+        // Re-enable requireProposals on production
+        await fixture.trpc.updateProjectEnvironment({
+          environmentId: fixture.productionEnvironmentId,
+          name: 'Production',
+          projectId: fixture.projectId,
+          requireProposals: true,
+        });
+
+        // Now try to update the default value - should succeed because production has an override
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
             configId,
@@ -141,26 +217,17 @@ describe('Per-Environment Approvals', () => {
             environmentVariants: [
               {
                 environmentId: fixture.productionEnvironmentId,
-                value: {x: 1}, // Same as before
-                schema: null,
-                overrides: [],
-                useDefaultSchema: false,
-              },
-              {
-                environmentId: fixture.developmentEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: {x: 100}, // Same production value (unchanged)
                 schema: null,
                 overrides: [],
                 useDefaultSchema: false,
               },
             ],
-            prevVersion: 1,
+            prevVersion: 2,
           }),
         );
 
-        assert(result.type === 'error', 'result should be an error');
-        assert(result.error instanceof TRPCError, 'error should be a TRPCError');
-        assert(result.error.cause instanceof BadRequestError, 'error should be a BadRequestError');
+        assert(result.type === 'success', 'result should be a success');
       });
 
       it('should block direct save when production environment value changes', async () => {

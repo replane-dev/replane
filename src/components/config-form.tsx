@@ -23,7 +23,10 @@ import {Separator} from '@/components/ui/separator';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
-import {isProposalRequired} from '@/engine/core/proposal-requirement';
+import {
+  getProtectedEnvironmentsAffectedByBaseConfig,
+  isProposalRequired,
+} from '@/engine/core/proposal-requirement';
 import {ConfigOverrides} from '@/engine/core/stores/config-store';
 import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
@@ -674,6 +677,28 @@ export function ConfigForm(props: ConfigFormProps) {
     watchedMembers,
   ]);
 
+  // Check if base configuration changes affect any protected environments
+  const baseConfigAffectsProtectedEnvs = React.useMemo(() => {
+    if (!requireProposals) {
+      return false;
+    }
+
+    // Get environment IDs that have overrides (enabled variants)
+    const enabledEnvIds = (watchedEnvVariants ?? [])
+      .filter(v => v.enabled)
+      .map(v => v.environmentId);
+
+    const affectedEnvIds = getProtectedEnvironmentsAffectedByBaseConfig({
+      environments: environments.map(e => ({
+        id: e.id,
+        requireProposals: e.requireProposals,
+      })),
+      environmentVariants: enabledEnvIds.map((id: string) => ({environmentId: id})),
+    });
+
+    return affectedEnvIds.length > 0;
+  }, [requireProposals, environments, watchedEnvVariants]);
+
   return (
     <Form {...form}>
       <form id="config-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -850,7 +875,11 @@ export function ConfigForm(props: ConfigFormProps) {
                           </FormLabel>
                         </div>
                         <div className="flex items-center gap-2">
-                          {env.requireProposals && <ChangesRequireProposalsBadge />}
+                          {requireProposals && env.requireProposals && (
+                            <ChangesRequireProposalsBadge
+                              tooltip={`This environment requires approval for changes. Create a proposal to modify ${env.name}.`}
+                            />
+                          )}
                         </div>
                       </FormItem>
                     )}
@@ -900,7 +929,9 @@ export function ConfigForm(props: ConfigFormProps) {
               <p className="text-sm text-muted-foreground">The foundation for all environments</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              {requireProposals && <ChangesRequireProposalsBadge />}
+              {baseConfigAffectsProtectedEnvs && (
+                <ChangesRequireProposalsBadge tooltip="Base configuration changes affect environments that require approval. Create a proposal to modify the base configuration." />
+              )}
               <Help className="max-w-sm">
                 <p>
                   Define the base value, schema, and overrides here. Environments without custom
@@ -1114,14 +1145,18 @@ export function ConfigForm(props: ConfigFormProps) {
   );
 }
 
-function ChangesRequireProposalsBadge() {
+function ChangesRequireProposalsBadge({tooltip}: {tooltip: string}) {
   return (
-    <span
-      className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-1 rounded-full"
-      title="Changes to this environment require approval"
-    >
-      <ShieldCheck className="h-3 w-3" />
-      Changes require approval
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-1 rounded-full cursor-default">
+          <ShieldCheck className="h-3 w-3" />
+          Changes require approval
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

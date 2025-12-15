@@ -49,6 +49,31 @@ export interface ProposalRequirementResult {
 }
 
 /**
+ * Determines which environments that require proposals are affected by base config changes.
+ * An environment is affected if it requires proposals AND doesn't have an environment-specific override.
+ *
+ * @returns Array of environment IDs that would be affected by base config changes
+ */
+export function getProtectedEnvironmentsAffectedByBaseConfig(params: {
+  environments: Array<{id: string; requireProposals: boolean}>;
+  environmentVariants: Array<{environmentId: string}>;
+}): string[] {
+  const {environments, environmentVariants} = params;
+
+  return environments
+    .filter(env => {
+      if (!env.requireProposals) {
+        return false;
+      }
+      // Check if this environment has an override
+      const hasOverride = environmentVariants.some(v => v.environmentId === env.id);
+      // If there's no override, the environment uses the default, so it's affected
+      return !hasOverride;
+    })
+    .map(env => env.id);
+}
+
+/**
  * Pure function to determine if a proposal is required for config changes.
  * Can be used on both server and client side.
  *
@@ -95,11 +120,27 @@ export function isProposalRequired(params: ProposalRequirementParams): ProposalR
       JSON.stringify(current.defaultVariant.overrides);
 
   if (defaultValueChanged) {
-    return {
-      required: true,
-      reason: 'Default value changed',
-      affectedEnvironmentIds: environments.map(e => e.id),
-    };
+    // Base config changes should only require proposals if they affect
+    // an environment that requires proposals AND doesn't have an environment override
+    // We need to check both current and proposed variants - if either has an override, it's not affected
+    const allVariantEnvIds = [
+      ...current.environmentVariants.map(v => v.environmentId),
+      ...proposed.environmentVariants.map(v => v.environmentId),
+    ];
+    const uniqueVariantEnvIds = [...new Set(allVariantEnvIds)];
+
+    const affectedEnvIds = getProtectedEnvironmentsAffectedByBaseConfig({
+      environments,
+      environmentVariants: uniqueVariantEnvIds.map(id => ({environmentId: id})),
+    });
+
+    if (affectedEnvIds.length > 0) {
+      return {
+        required: true,
+        reason: 'Default value changed',
+        affectedEnvironmentIds: affectedEnvIds,
+      };
+    }
   }
 
   // Check which environment variants have changed
