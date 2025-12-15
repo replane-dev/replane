@@ -130,6 +130,7 @@ Configure at least one OAuth provider. You can enable multiple providers simulta
 ### Optional
 
 - `DATABASE_SSL_CA` – custom SSL/TLS certificate authority (CA) for PostgreSQL connections. Use this when connecting to databases that require custom SSL certificates.
+- `DATABASE_MAX_CONNECTIONS` – maximum number of connections in the PostgreSQL connection pool. Defaults to `10`.
 
 ### Error Tracking (Sentry)
 

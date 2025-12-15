@@ -37,7 +37,7 @@ import * as React from 'react';
 import {useForm, useWatch} from 'react-hook-form';
 import {z} from 'zod';
 
-type Mode = 'new' | 'edit';
+type Mode = 'new' | 'edit' | 'view';
 
 export interface Environment {
   id: string;
@@ -144,16 +144,27 @@ export function ConfigForm(props: ConfigFormProps) {
   const projectId = useProjectId();
   const {showSettings} = useSettings();
 
+  // View mode = read-only
+  const isViewMode = mode === 'view';
+
   // Normalize role
   const role: 'viewer' | 'maintainer' | 'editor' = rawRole === 'editor' ? 'editor' : rawRole;
 
-  // Permissions
-  const canEditDescription = mode === 'new' ? true : role === 'maintainer';
-  const canEditValue = mode === 'new' ? true : role === 'maintainer' || role === 'editor';
-  const canEditSchema = mode === 'new' ? true : role === 'maintainer';
-  const canEditOverrides = mode === 'new' ? true : role === 'maintainer' || role === 'editor';
-  const canEditMembers = mode === 'new' ? true : role === 'maintainer';
-  const canSubmit = mode === 'new' ? true : role !== 'viewer';
+  // Permissions - all disabled in view mode
+  const canEditDescription = isViewMode ? false : mode === 'new' ? true : role === 'maintainer';
+  const canEditValue = isViewMode
+    ? false
+    : mode === 'new'
+      ? true
+      : role === 'maintainer' || role === 'editor';
+  const canEditSchema = isViewMode ? false : mode === 'new' ? true : role === 'maintainer';
+  const canEditOverrides = isViewMode
+    ? false
+    : mode === 'new'
+      ? true
+      : role === 'maintainer' || role === 'editor';
+  const canEditMembers = isViewMode ? false : mode === 'new' ? true : role === 'maintainer';
+  const canSubmit = isViewMode ? false : mode === 'new' ? true : role !== 'viewer';
   const showMembers = true;
 
   // Track which action button was clicked
@@ -702,7 +713,7 @@ export function ConfigForm(props: ConfigFormProps) {
   return (
     <Form {...form}>
       <form id="config-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {mode === 'new' ? (
+        {mode === 'new' && (
           <FormField
             control={form.control}
             name="name"
@@ -729,7 +740,9 @@ export function ConfigForm(props: ConfigFormProps) {
               </FormItem>
             )}
           />
-        ) : (
+        )}
+
+        {mode === 'edit' && (
           <ConfigMetadataHeader
             name={defaultName}
             version={currentVersion}
@@ -800,15 +813,17 @@ export function ConfigForm(props: ConfigFormProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={() => showSettings('project-environments')}
-                className="text-xs"
-              >
-                Manage environments
-              </Button>
+              {!isViewMode && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => showSettings('project-environments')}
+                  className="text-xs"
+                >
+                  Manage environments
+                </Button>
+              )}
               <Help className="max-w-sm">
                 <p>
                   Enable an environment to customize its configuration. Disabled environments will
@@ -906,7 +921,6 @@ export function ConfigForm(props: ConfigFormProps) {
                         liveSchema={envLiveSchema}
                         isEnvironmentVariant={true}
                         hasDefaultVariant={true}
-                        defaultSchemaAvailable={watchedDefaultVariant?.schemaEnabled ?? false}
                         defaultSchema={liveSchema}
                         configName={watchedName || currentName}
                       />
@@ -991,15 +1005,17 @@ export function ConfigForm(props: ConfigFormProps) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  onClick={() => showSettings('project-members')}
-                  className="text-xs"
-                >
-                  Manage project members
-                </Button>
+                {!isViewMode && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    onClick={() => showSettings('project-members')}
+                    className="text-xs"
+                  >
+                    Manage project members
+                  </Button>
+                )}
                 <Help>
                   <p>
                     Config-level members who can approve proposals. Project admins and maintainers
@@ -1034,113 +1050,117 @@ export function ConfigForm(props: ConfigFormProps) {
         )}
 
         {/* Spacer to prevent content from being hidden behind sticky buttons */}
-        <div className="h-20" />
+        {!isViewMode && <div className="h-20" />}
       </form>
 
-      {/* Sticky button panel */}
-      <div className="sticky bottom-0 z-5 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-3">
-        <div className="flex gap-2">
-          {mode === 'new' && onCreate && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    type="submit"
-                    form="config-form"
-                    disabled={!!submitting || !canSubmit || !hasChanges}
-                    onClick={() => {
-                      submitActionRef.current = 'save';
-                    }}
-                  >
-                    {submitting ? 'Creating…' : 'Create config'}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!hasChanges && !submitting && canSubmit && (
-                <TooltipContent>
-                  <p>Fill in the required fields to create a config.</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          )}
-          {mode === 'edit' && !proposalRequiredResult.required && onSave && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    type="submit"
-                    form="config-form"
-                    disabled={!!submitting || !canSubmit || !hasChanges}
-                    onClick={() => {
-                      submitActionRef.current = 'save';
-                    }}
-                  >
-                    {submitting ? 'Saving…' : 'Save changes'}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!hasChanges && !submitting && canSubmit && (
-                <TooltipContent>
-                  <p>No changes have been made to save.</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          )}
-          {mode === 'edit' && proposalRequiredResult.required && onPropose && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    type="submit"
-                    form="config-form"
-                    disabled={!!submitting || !canSubmit || !hasChanges}
-                    onClick={() => {
-                      submitActionRef.current = 'propose';
-                    }}
-                  >
-                    {submitting ? 'Proposing…' : 'Propose changes'}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!hasChanges && !submitting && canSubmit && (
-                <TooltipContent>
-                  <p>No changes have been made to propose.</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          )}
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
-          {onTestOverrides &&
-            watchedDefaultVariant?.overrides &&
-            (watchedDefaultVariant.overrides as any[])?.length > 0 && (
-              <Button type="button" variant="outline" onClick={() => onTestOverrides()}>
-                Test overrides
+      {/* Sticky button panel - hidden in view mode */}
+      {!isViewMode && (
+        <div className="sticky bottom-0 z-5 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-3">
+          <div className="flex gap-2">
+            {mode === 'new' && onCreate && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      type="submit"
+                      form="config-form"
+                      disabled={!!submitting || !canSubmit || !hasChanges}
+                      onClick={() => {
+                        submitActionRef.current = 'save';
+                      }}
+                    >
+                      {submitting ? 'Creating…' : 'Create config'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!hasChanges && !submitting && canSubmit && (
+                  <TooltipContent>
+                    <p>Fill in the required fields to create a config.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            )}
+            {mode === 'edit' && !proposalRequiredResult.required && onSave && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      type="submit"
+                      form="config-form"
+                      disabled={!!submitting || !canSubmit || !hasChanges}
+                      onClick={() => {
+                        submitActionRef.current = 'save';
+                      }}
+                    >
+                      {submitting ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!hasChanges && !submitting && canSubmit && (
+                  <TooltipContent>
+                    <p>No changes have been made to save.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            )}
+            {mode === 'edit' && proposalRequiredResult.required && onPropose && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      type="submit"
+                      form="config-form"
+                      disabled={!!submitting || !canSubmit || !hasChanges}
+                      onClick={() => {
+                        submitActionRef.current = 'propose';
+                      }}
+                    >
+                      {submitting ? 'Proposing…' : 'Propose changes'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!hasChanges && !submitting && canSubmit && (
+                  <TooltipContent>
+                    <p>No changes have been made to propose.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            )}
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
               </Button>
             )}
-          {onDelete && role === 'maintainer' && (
-            <div className="ml-auto">
-              <Button
-                variant="outline"
-                className="text-destructive hover:text-destructive"
-                onClick={e => {
-                  e.preventDefault();
-                  if (
-                    !confirm('Are you sure you want to delete this config? This cannot be undone.')
-                  )
-                    return;
-                  onDelete();
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          )}
+            {onTestOverrides &&
+              watchedDefaultVariant?.overrides &&
+              (watchedDefaultVariant.overrides as any[])?.length > 0 && (
+                <Button type="button" variant="outline" onClick={() => onTestOverrides()}>
+                  Test overrides
+                </Button>
+              )}
+            {onDelete && role === 'maintainer' && (
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={e => {
+                    e.preventDefault();
+                    if (
+                      !confirm(
+                        'Are you sure you want to delete this config? This cannot be undone.',
+                      )
+                    )
+                      return;
+                    onDelete();
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </Form>
   );
 }

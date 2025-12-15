@@ -16,13 +16,28 @@ export function getPgPool(databaseUrl: string) {
       };
     }
 
+    let maxConnections = 10;
+    if (process.env.DATABASE_MAX_CONNECTIONS) {
+      maxConnections = parseInt(process.env.DATABASE_MAX_CONNECTIONS);
+      if (Number.isNaN(maxConnections)) {
+        throw new Error('DATABASE_MAX_CONNECTIONS must be a number');
+      }
+      if (maxConnections < 1) {
+        throw new Error('DATABASE_MAX_CONNECTIONS must be greater than 0');
+      }
+    }
+
     poolCache.set(
       databaseUrl,
       new Pool({
         connectionString: databaseUrl,
-        max: 50,
+        max: maxConnections,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
+        statement_timeout: 30000, // 30 seconds
+        lock_timeout: 30000, // 30 seconds
+        query_timeout: 60000, // 60 seconds
+        idle_in_transaction_session_timeout: 60000, // 60 seconds
         ssl,
       }),
     );

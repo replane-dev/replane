@@ -43,7 +43,7 @@ interface ConfigVariantFieldsProps {
   environmentId: string;
   environmentName: string;
   editorIdPrefix?: string;
-  mode: 'new' | 'edit' | 'proposal';
+  mode: 'new' | 'edit' | 'view';
   projectId: string;
   canEditValue: boolean;
   canEditSchema: boolean;
@@ -54,7 +54,6 @@ interface ConfigVariantFieldsProps {
   // For schema inheritance
   isEnvironmentVariant?: boolean;
   hasDefaultVariant?: boolean; // Whether a default variant exists at all
-  defaultSchemaAvailable?: boolean; // Whether default variant has a schema enabled
   defaultSchema?: any; // The actual default schema for validation
   configName?: string; // The config name to display in editor titles
 }
@@ -78,7 +77,6 @@ export function ConfigVariantFields({
   liveSchema,
   isEnvironmentVariant = false,
   hasDefaultVariant = true,
-  defaultSchemaAvailable = false,
   configName,
   defaultSchema,
 }: ConfigVariantFieldsProps) {
