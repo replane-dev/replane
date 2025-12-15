@@ -1,14 +1,16 @@
 'use client';
 
 import {Button} from '@/components/ui/button';
+import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Separator} from '@/components/ui/separator';
 import {Switch} from '@/components/ui/switch';
 import {Textarea} from '@/components/ui/textarea';
+import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {Trash2} from 'lucide-react';
+import {Globe, Trash2} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {toast} from 'sonner';
@@ -18,7 +20,11 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
   const router = useRouter();
 
   const {data: projectData} = useSuspenseQuery(trpc.getProject.queryOptions({id: projectId}));
+  const {data: environmentsData} = useSuspenseQuery(
+    trpc.getProjectEnvironments.queryOptions({projectId}),
+  );
   const project = projectData.project!;
+  const environments = environmentsData.environments;
 
   const [name, setName] = React.useState(project.name);
   const [description, setDescription] = React.useState(project.description);
@@ -34,7 +40,29 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
 
   const patchProject = useMutation(trpc.patchProject.mutationOptions());
   const deleteProject = useMutation(trpc.deleteProject.mutationOptions());
+  const updateEnvironment = useMutation(trpc.updateProjectEnvironment.mutationOptions());
   const [saving, setSaving] = React.useState(false);
+  const [updatingEnvId, setUpdatingEnvId] = React.useState<string | null>(null);
+
+  const handleEnvironmentRequireProposalsChange = async (
+    envId: string,
+    envName: string,
+    newValue: boolean,
+  ) => {
+    setUpdatingEnvId(envId);
+    try {
+      await updateEnvironment.mutateAsync({
+        environmentId: envId,
+        name: envName,
+        projectId,
+        requireProposals: newValue,
+      });
+      toast.success(`${envName} updated`);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed to update environment');
+    }
+    setUpdatingEnvId(null);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +81,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
 
   const myRole = project.myRole ?? 'viewer';
   const canEdit = myRole === 'admin' || myRole === 'maintainer';
-  const canDelete = myRole === 'admin' && !requireProposals;
+  const isAdmin = myRole === 'admin';
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -104,6 +132,39 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
               disabled={!canEdit}
             />
           </div>
+
+          {/* Per-environment proposal settings */}
+          {requireProposals && environments.length > 0 && (
+            <div className="ml-6 pl-4 border-l-2 border-muted space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Per-environment settings
+                </span>
+                <Help>
+                  <p>
+                    Control which environments require proposal approval. Environments with this
+                    enabled will block direct config changes.
+                  </p>
+                </Help>
+              </div>
+              {environments.map(env => (
+                <div key={env.id} className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm">{env.name}</span>
+                  </div>
+                  <Switch
+                    checked={env.requireProposals}
+                    onCheckedChange={value =>
+                      handleEnvironmentRequireProposalsChange(env.id, env.name, value)
+                    }
+                    disabled={!canEdit || updatingEnvId === env.id}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="allow-self-approvals">Allow self-approvals</Label>
@@ -123,34 +184,44 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
         </Button>
       </form>
 
-      {canDelete && (
-        <div className="pt-6 border-t">
-          <div className="space-y-3">
-            <div>
-              <h4 className="text-sm font-semibold mb-1">Danger Zone</h4>
-              <p className="text-sm text-muted-foreground mb-3">Permanently delete this project</p>
-            </div>
-            <Button
-              variant="outline"
-              className="text-destructive"
-              onClick={async () => {
-                const confirmName = prompt(`Type "${project.name}" to confirm deletion:`);
-                if (confirmName !== project.name) return;
-                // Redirect optimistically before deletion to avoid errors
-                router.push('/app');
-                try {
-                  await deleteProject.mutateAsync({id: projectId, confirmName});
-                } catch (e: any) {
-                  // User has already navigated away, but log the error
-                  console.error('Failed to delete project:', e);
-                }
-              }}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete project
-            </Button>
+      <div className="pt-6 border-t">
+        <div className="space-y-3">
+          <div>
+            <h4 className="text-sm font-semibold mb-1">Danger Zone</h4>
+            <p className="text-sm text-muted-foreground mb-3">Permanently delete this project</p>
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-block">
+                <Button
+                  variant="outline"
+                  className="text-destructive"
+                  disabled={!isAdmin}
+                  onClick={async () => {
+                    const confirmName = prompt(`Type "${project.name}" to confirm deletion:`);
+                    if (confirmName !== project.name) return;
+                    // Redirect optimistically before deletion to avoid errors
+                    router.push('/app');
+                    try {
+                      await deleteProject.mutateAsync({id: projectId, confirmName});
+                    } catch (e: any) {
+                      // User has already navigated away, but log the error
+                      console.error('Failed to delete project:', e);
+                    }
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete project
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!isAdmin && (
+              <TooltipContent>
+                <p>Only project admins can delete this project</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
-      )}
+      </div>
 
       <div className="pt-6 border-t">
         <div className="space-y-2">
