@@ -154,18 +154,6 @@ export class Replica {
     return this.replicaStore.getConfigValue(params);
   }
 
-  public async getConfig(params: {
-    projectId: string;
-    configName: string;
-    environmentId: string;
-  }): Promise<RenderedConfig | undefined> {
-    const config = this.replicaStore.getEnvironmentalConfig(params);
-    if (!config) {
-      return undefined;
-    }
-    return await this.renderConfig(config);
-  }
-
   async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {
     return {
       name: config.name,
@@ -334,18 +322,6 @@ export class ReplicaService implements Service {
     }
 
     return this.replica.getSdkKey(keyId);
-  }
-
-  async getConfig(params: {
-    projectId: string;
-    configName: string;
-    environmentId: string;
-  }): Promise<RenderedConfig | undefined> {
-    if (!this.replica) {
-      throw new Error('Replica not started');
-    }
-
-    return this.replica.getConfig(params);
   }
 
   async getProjectConfigs(params: {

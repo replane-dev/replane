@@ -5,7 +5,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
-import {createProxy, type Proxy} from '@/engine/proxy';
+import {createEdge, type Edge} from '@/engine/edge';
 import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
@@ -32,7 +32,7 @@ export const TEST_USER_ID = 1;
 export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
-  private _proxy: Proxy | undefined;
+  private _edge: Edge | undefined;
   private overrideNow: Date = new Date();
   private _workspaceId: string | undefined;
   private _projectId: string | undefined;
@@ -54,7 +54,7 @@ export class AppFixture {
       onConflictRetriesCount: this.options.onConflictRetriesCount,
     });
 
-    const proxy = await createProxy({
+    const edge = await createEdge({
       databaseUrl: getDatabaseUrl(),
       dbSchema,
       logLevel: this.options.logLevel ?? 'warn',
@@ -81,7 +81,7 @@ export class AppFixture {
 
     this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
     this._engine = engine;
-    this._proxy = proxy;
+    this._edge = edge;
 
     // Create test workspace
     const {workspaceId} = await engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
@@ -124,11 +124,11 @@ export class AppFixture {
     return this._engine;
   }
 
-  get proxy(): Proxy {
-    if (!this._proxy) {
-      throw new Error('proxy is not initialized');
+  get edge(): Edge {
+    if (!this._edge) {
+      throw new Error('edge is not initialized');
     }
-    return this._proxy;
+    return this._edge;
   }
 
   get workspaceId(): string {
@@ -160,7 +160,7 @@ export class AppFixture {
   }
 
   async syncReplica() {
-    await this.proxy.testing.replicaService.sync();
+    await this.edge.testing.replicaService.sync();
   }
 
   /**
@@ -207,8 +207,8 @@ export class AppFixture {
   }
 
   async destroy(ctx: Context) {
-    if (this._proxy) {
-      await this._proxy.stop();
+    if (this._edge) {
+      await this._edge.stop();
     }
 
     if (this._engine) {
@@ -219,7 +219,7 @@ export class AppFixture {
 
     this._trpc = undefined;
     this._engine = undefined;
-    this._proxy = undefined;
+    this._edge = undefined;
   }
 }
 

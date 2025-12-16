@@ -5,11 +5,11 @@ import {GLOBAL_CONTEXT} from './core/context';
 import {createLogger} from './core/logger';
 import {stopAllPools} from './core/pg-pool-cache';
 import {ensureDefined, wait} from './core/utils';
+import {createEdge, type Edge} from './edge';
 import {getDatabaseUrl} from './engine-singleton';
-import {createProxy, type Proxy} from './proxy';
 
-// Shared singleton for SDK/proxy operations.
-export const proxyLazy = new Lazy(async () => {
+// Shared singleton for SDK/edge operations.
+export const edgeLazy = new Lazy(async () => {
   const logger = createLogger({level: 'info'});
 
   const replicaStorageCacheSizeKbString = process.env.REPLICA_STORAGE_CACHE_SIZE_KB;
@@ -27,7 +27,7 @@ export const proxyLazy = new Lazy(async () => {
     'REPLICA_STORAGE_PATH is not defined',
   );
 
-  const proxy = await createProxy({
+  const edge = await createEdge({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
@@ -39,14 +39,14 @@ export const proxyLazy = new Lazy(async () => {
     },
     onFatalError: async error => {
       Sentry.captureException(error);
-      logger.error(GLOBAL_CONTEXT, {msg: 'Proxy fatal error', error});
+      logger.error(GLOBAL_CONTEXT, {msg: 'Edge fatal error', error});
       await Promise.race([
         (async () => {
-          await proxy.stop();
+          await edge.stop();
           await stopAllPools();
         })(),
         wait(ENGINE_STOP_TIMEOUT_MS).then(() => {
-          logger.error(GLOBAL_CONTEXT, {msg: 'Proxy stop timeout after fatal error'});
+          logger.error(GLOBAL_CONTEXT, {msg: 'Edge stop timeout after fatal error'});
           process.exit(1);
         }),
       ]);
@@ -55,11 +55,10 @@ export const proxyLazy = new Lazy(async () => {
     },
   });
 
-  return proxy;
+  return edge;
 });
 
-export async function getProxySingleton(): Promise<Proxy> {
-  return proxyLazy.get();
+export async function getEdgeSingleton(): Promise<Edge> {
+  return edgeLazy.get();
 }
-
 

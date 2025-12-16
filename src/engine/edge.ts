@@ -11,13 +11,11 @@ import {ReplicaService} from './core/replica';
 import {ReplicaEventBus} from './core/replica-event-bus';
 import type {Service} from './core/service';
 import {ReplicaStore} from './core/stores/replica-store';
-import {createGetConfigValueUseCase} from './core/use-cases/get-config-value-use-case';
 import {createGetProjectEventsUseCase} from './core/use-cases/get-project-events-use-case';
-import {createGetSdkConfigUseCase} from './core/use-cases/get-sdk-config-use-case';
 import {createGetSdkConfigsUseCase} from './core/use-cases/get-sdk-configs-use-case';
 import {createVerifySdkKeyUseCase} from './core/use-cases/verify-sdk-key-use-case';
 
-export interface ProxyOptions {
+export interface EdgeOptions {
   logLevel: LogLevel;
   databaseUrl: string;
   dbSchema: string;
@@ -28,10 +26,10 @@ export interface ProxyOptions {
     | {type: 'file'; path: string; cacheSizeKb?: number; unsynced?: boolean}; // 128MB=131072, 256MB=262144, 512MB=524288
 }
 
-export async function createProxy(options: ProxyOptions) {
+export async function createEdge(options: EdgeOptions) {
   const logger = createLogger({level: options.logLevel});
 
-  logger.info(GLOBAL_CONTEXT, {msg: 'Creating proxy...'});
+  logger.info(GLOBAL_CONTEXT, {msg: 'Creating edge...'});
 
   const {db, freePool} = await prepareDb(GLOBAL_CONTEXT, logger, options);
 
@@ -80,8 +78,6 @@ export async function createProxy(options: ProxyOptions) {
         replicaEventsBus: replicaEventsBus,
         replicaService: replicaService,
       }),
-      getConfigValue: createGetConfigValueUseCase({configsReplica: replicaService}),
-      getSdkConfig: createGetSdkConfigUseCase({replicaService: replicaService}),
       getSdkConfigs: createGetSdkConfigsUseCase({configsReplica: replicaService}),
     },
     testing: {
@@ -101,9 +97,7 @@ async function tryUnlink(path: string) {
   }
 }
 
-async function openSqlite(
-  options: ProxyOptions['replicaStorage'],
-): Promise<BetterSqlite3.Database> {
+async function openSqlite(options: EdgeOptions['replicaStorage']): Promise<BetterSqlite3.Database> {
   if (options.type === 'memory') {
     return new BetterSqlite3(':memory:');
   }
@@ -144,4 +138,4 @@ async function openSqlite(
   }
 }
 
-export type Proxy = Awaited<ReturnType<typeof createProxy>>;
+export type Edge = Awaited<ReturnType<typeof createEdge>>;

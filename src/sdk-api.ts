@@ -3,7 +3,7 @@ import {type Context} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {ConfigName} from '@/engine/core/stores/config-store';
 import {createUuidV4} from '@/engine/core/uuid';
-import {getProxySingleton} from '@/engine/proxy-singleton';
+import {getEdgeSingleton} from '@/engine/edge-singleton';
 import {OpenAPIHono} from '@hono/zod-openapi';
 import * as Sentry from '@sentry/nextjs';
 import {cors} from 'hono/cors';
@@ -13,8 +13,8 @@ import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
 import {assertNever, toEagerAsyncIterable} from './engine/core/utils';
 import {createSdkState} from './sdk-state';
 
-async function getProxy() {
-  return getProxySingleton();
+async function getEdge() {
+  return getEdgeSingleton();
 }
 
 interface HonoEnv {
@@ -26,33 +26,6 @@ interface HonoEnv {
 }
 
 export const sdkApi = new OpenAPIHono<HonoEnv>();
-
-const ConfigValueResponse = z
-  .object({
-    name: ConfigName(),
-    value: z.unknown(),
-  })
-  .openapi('ConfigValueResponse');
-
-const ConfigDto = z
-  .object({
-    name: ConfigName(),
-    value: z.unknown(),
-    renderedOverrides: z.array(RenderedOverrideSchema),
-    overrides: z.array(RenderedOverrideSchema),
-    version: z.number(),
-  })
-  .openapi('ConfigResponse');
-
-export type ConfigDto = z.infer<typeof ConfigDto>;
-
-const ConfigsResponse = z
-  .object({
-    items: z.array(ConfigDto),
-  })
-  .openapi('ConfigsResponse');
-
-type ConfigsResponse = z.infer<typeof ConfigsResponse>;
 
 // Global error handler
 sdkApi.onError((err, c) => {
@@ -102,9 +75,9 @@ sdkApi.use('*', async (c, next) => {
   const token = bearer;
   if (!token) return c.json({msg: 'Missing SDK key'}, 401);
   try {
-    const proxy = await getProxy();
+    const edge = await getEdge();
     const ctx = c.get('context');
-    const verified = await proxy.useCases.verifySdkKey(ctx, {key: token});
+    const verified = await edge.useCases.verifySdkKey(ctx, {key: token});
     if (!verified) return c.json({msg: 'Invalid SDK key'}, 401);
     c.set('projectId', verified.projectId);
     c.set('environmentId', verified.environmentId);
@@ -122,294 +95,17 @@ sdkApi.use('*', async (c, next) => {
   }
 });
 
-sdkApi.openapi(
-  {
-    method: 'get',
-    path: '/configs/{name}/value',
-    operationId: 'getConfigValue',
-    request: {
-      params: z.object({name: ConfigName()}).openapi({
-        description:
-          'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
-      }),
-      query: z.object({
-        context: z
-          .string()
-          .optional()
-          .openapi({description: 'A JSON string of context (like userEmail, tier, etc.)'}),
-      }),
-    },
-    responses: {
-      200: {
-        description: 'Config value (if found)',
-        content: {
-          'application/json': {
-            schema: ConfigValueResponse,
-          },
-        },
-      },
-      404: {description: 'Config not found'},
-      400: {description: 'Bad request'},
-      403: {description: 'Forbidden'},
-    },
-  },
-  async c => {
-    const {name} = c.req.valid('param');
-    const {context: contextStr} = c.req.valid('query');
-
-    const proxy = await getProxy();
-
-    // Parse context if provided
-    let context: Record<string, unknown> | undefined;
-    if (contextStr) {
-      try {
-        context = JSON.parse(contextStr);
-        if (typeof context !== 'object' || context === null) {
-          throw new HTTPException(400, {message: 'context must be a JSON object'});
-        }
-      } catch (e) {
-        if (e instanceof HTTPException) throw e;
-        throw new HTTPException(400, {message: 'Invalid JSON in context parameter'});
-      }
-    }
-
-    const result = await proxy.useCases.getConfigValue(c.get('context'), {
-      name,
-      projectId: c.get('projectId'),
-      environmentId: c.get('environmentId'),
-      context,
-    });
-
-    if (typeof result.value === 'undefined') {
-      throw new HTTPException(404, {message: 'Not found'});
-    }
-
-    return c.json(result.value, 200);
-  },
-);
-
-sdkApi.openapi(
-  {
-    method: 'get',
-    path: '/configs',
-    operationId: 'getConfigs',
-    responses: {
-      200: {
-        description: 'Configs',
-        content: {
-          'application/json': {
-            schema: ConfigsResponse,
-          },
-        },
-      },
-    },
-  },
-  async c => {
-    const proxy = await getProxy();
-    const {configs} = await proxy.useCases.getSdkConfigs(c.get('context'), {
-      projectId: c.get('projectId'),
-      environmentId: c.get('environmentId'),
-    });
-    return c.json({items: configs}, 200);
-  },
-);
-
-sdkApi.openapi(
-  {
-    method: 'get',
-    path: '/configs/{name}',
-    operationId: 'getConfig',
-    request: {
-      params: z.object({name: ConfigName()}).openapi({
-        description:
-          'A config name consisting of letters (A-Z, a-z), digits, underscores or hyphens, 1-100 characters long',
-      }),
-    },
-    responses: {
-      200: {
-        description: 'Config details',
-        content: {
-          'application/json': {
-            schema: ConfigDto,
-          },
-        },
-      },
-      404: {description: 'Config not found'},
-      400: {description: 'Bad request'},
-      403: {description: 'Forbidden'},
-    },
-  },
-  async c => {
-    const {name} = c.req.valid('param');
-
-    const proxy = await getProxy();
-
-    const result = await proxy.useCases.getSdkConfig(c.get('context'), {
-      name,
-      projectId: c.get('projectId'),
-      environmentId: c.get('environmentId'),
-    });
-
-    if (!result) {
-      throw new HTTPException(404, {message: 'Not found'});
-    }
-
-    return c.json(result, 200);
-  },
-);
-
-const ConfigCreatedEventResponse = z
+const ConfigDto = z
   .object({
-    type: z.literal('config_created'),
-    configName: ConfigName(),
+    name: ConfigName(),
+    value: z.unknown(),
+    renderedOverrides: z.array(RenderedOverrideSchema),
     overrides: z.array(RenderedOverrideSchema),
     version: z.number(),
-    value: z.unknown(),
   })
-  .openapi('ConfigCreatedEventResponse');
+  .openapi('ConfigResponse');
 
-const ConfigUpdatedEventResponse = z
-  .object({
-    type: z.literal('config_updated'),
-    configName: ConfigName(),
-    overrides: z.array(RenderedOverrideSchema),
-    version: z.number(),
-    value: z.unknown(),
-  })
-  .openapi('ConfigUpdatedEventResponse');
-
-const ConfigDeletedEventResponse = z
-  .object({
-    type: z.literal('config_deleted'),
-    configName: ConfigName(),
-    version: z.number(),
-  })
-  .openapi('ConfigDeletedEventResponse');
-
-const ConfigListEventResponse = z
-  .object({
-    type: z.literal('config_list'),
-    configs: z.array(ConfigDto),
-  })
-  .openapi('ConfigListEventResponse');
-
-type ConfigListEventResponse = z.infer<typeof ConfigListEventResponse>;
-
-const ProjectEventsResponse = z
-  .discriminatedUnion('type', [
-    ConfigCreatedEventResponse,
-    ConfigUpdatedEventResponse,
-    ConfigDeletedEventResponse,
-    ConfigListEventResponse,
-  ])
-  .openapi('ProjectEventResponse', {
-    description: 'Server-sent events stream for project updates',
-  });
-
-type ProjectEventsResponse = z.infer<typeof ProjectEventsResponse>;
-
-// this endpoint exists only for backward compatibility, will be removed before v1.0.0
-sdkApi.openapi(
-  {
-    method: 'get',
-    path: '/events',
-    operationId: 'getProjectEvents',
-    responses: {
-      200: {
-        description: 'Server-sent events stream for project updates',
-        content: {
-          'text/event-stream': {
-            schema: ProjectEventsResponse,
-          },
-        },
-      },
-    },
-  },
-
-  async c => {
-    const projectId = c.get('projectId');
-    const context = c.get('context');
-    const proxy = await getProxy();
-
-    const headers = {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    };
-
-    const abortController = new AbortController();
-    const onAbort = () => abortController.abort();
-    c.req.raw.signal.addEventListener('abort', onAbort);
-
-    const stream = new ReadableStream<SseEvent>({
-      async start(controller) {
-        let errored = false;
-        // heartbeat to keep proxies from closing the connection due to inactivity
-        const heartbeat = setInterval(() => {
-          try {
-            controller.enqueue({type: 'ping'});
-          } catch {}
-        }, 15_000);
-
-        try {
-          controller.enqueue({type: 'connected'});
-
-          // eager async iterable to subscribe to events immediately
-          // required for client not to miss any updates to configs
-          const events = toEagerAsyncIterable(
-            proxy.useCases.getProjectEvents(context, {
-              projectId,
-              environmentId: c.get('environmentId'),
-              abortSignal: abortController.signal,
-            }),
-          );
-
-          const {configs} = await proxy.useCases.getSdkConfigs(context, {
-            projectId,
-            environmentId: c.get('environmentId'),
-          });
-          const data = JSON.stringify({
-            type: 'config_list',
-            configs,
-          } satisfies ConfigListEventResponse);
-          controller.enqueue({type: 'data', data});
-
-          for await (const event of events) {
-            const data = JSON.stringify(event satisfies ProjectEventsResponse);
-            controller.enqueue({type: 'data', data});
-          }
-        } catch (err) {
-          errored = true;
-          Sentry.captureException(err, {
-            extra: {
-              endpoint: '/events',
-              projectId,
-            },
-          });
-          console.error('SSE stream error:', err);
-          controller.error(err);
-        } finally {
-          clearInterval(heartbeat);
-          c.req.raw.signal.removeEventListener('abort', onAbort);
-          if (!errored) {
-            try {
-              controller.close();
-            } catch {
-              // ignore
-            }
-          }
-        }
-      },
-      async cancel() {
-        abortController.abort();
-        c.req.raw.signal.removeEventListener('abort', onAbort);
-      },
-    }).pipeThrough(new SseEncoderStream());
-
-    return new Response(stream, {headers});
-  },
-);
+export type ConfigDto = z.infer<typeof ConfigDto>;
 
 const ReplicationStreamConfigChangeRecord = z
   .object({
@@ -472,7 +168,7 @@ sdkApi.openapi(
   async c => {
     const projectId = c.get('projectId');
     const context = c.get('context');
-    const proxy = await getProxy();
+    const edge = await getEdge();
 
     const headers = {
       'Content-Type': 'text/event-stream',
@@ -510,14 +206,14 @@ sdkApi.openapi(
           // eager async iterable to subscribe to events immediately
           // required for client not to miss any updates to configs
           const events = toEagerAsyncIterable(
-            proxy.useCases.getProjectEvents(context, {
+            edge.useCases.getProjectEvents(context, {
               projectId,
               environmentId: c.get('environmentId'),
               abortSignal: abortController.signal,
             }),
           );
 
-          const {configs: serverConfigs} = await proxy.useCases.getSdkConfigs(context, {
+          const {configs: serverConfigs} = await edge.useCases.getSdkConfigs(context, {
             projectId,
             environmentId: c.get('environmentId'),
           });
