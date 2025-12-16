@@ -2,10 +2,13 @@
 
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
+import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
 import {SiGithub, SiGitlab, SiGoogle, SiOkta} from '@icons-pack/react-simple-icons';
-import {AlertCircle, Check, Copy, ExternalLink} from 'lucide-react';
+import {AlertCircle, Check, Copy, ExternalLink, Mail} from 'lucide-react';
 import {signIn} from 'next-auth/react';
 import {useState} from 'react';
+import {toast} from 'sonner';
 
 interface Provider {
   id: string;
@@ -189,6 +192,27 @@ function NoProvidersConfigured() {
 
 export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}: SignInFormProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailDomainError, setEmailDomainError] = useState<string | null>(null);
+
+  const hasEmailProvider = providers.some(p => p.id === 'email');
+  const oauthProviders = providers.filter(p => p.id !== 'email');
+
+  // Check if email domain is allowed
+  const isEmailDomainAllowed = (email: string): boolean => {
+    if (!allowedEmailDomains || allowedEmailDomains.length === 0) {
+      return true; // No restrictions
+    }
+
+    const emailParts = email.split('@');
+    if (emailParts.length !== 2) {
+      return false; // Invalid email format
+    }
+
+    const domain = emailParts[1].toLowerCase();
+    return allowedEmailDomains.some(allowed => allowed.toLowerCase() === domain);
+  };
 
   const handleSignIn = async (providerId: string) => {
     setLoadingProvider(providerId);
@@ -196,6 +220,59 @@ export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}:
       await signIn(providerId, {callbackUrl});
     } catch (error) {
       console.error('Sign in error:', error);
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleEmailChange = (newEmail: string) => {
+    setEmail(newEmail);
+    setEmailDomainError(null);
+
+    // Validate domain if there are restrictions and email has @ symbol
+    if (allowedEmailDomains && allowedEmailDomains.length > 0 && newEmail.includes('@')) {
+      if (!isEmailDomainAllowed(newEmail)) {
+        const domain = newEmail.split('@')[1];
+        setEmailDomainError(
+          `Email domain "@${domain}" is not allowed. Please use an email from: ${allowedEmailDomains.map(d => `@${d}`).join(', ')}`,
+        );
+      }
+    }
+  };
+
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    // Validate domain before submitting
+    if (!isEmailDomainAllowed(email)) {
+      setEmailDomainError(
+        `This email domain is not allowed. Please use an email from: ${allowedEmailDomains?.map(d => `@${d}`).join(', ')}`,
+      );
+      return;
+    }
+
+    setLoadingProvider('email');
+    try {
+      const result = await signIn('email', {
+        email: email.trim(),
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        toast.error('Failed to send magic link', {
+          description: 'Please try again or contact support.',
+        });
+      } else {
+        setEmailSent(true);
+        toast.success('Check your email', {
+          description: 'We sent you a magic link to sign in.',
+        });
+      }
+    } catch (error) {
+      console.error('Email sign in error:', error);
+      toast.error('Failed to send magic link');
+    } finally {
       setLoadingProvider(null);
     }
   };
@@ -209,7 +286,7 @@ export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}:
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -238,36 +315,113 @@ export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}:
           {providers.length === 0 ? (
             <NoProvidersConfigured />
           ) : (
-            <div className="flex flex-col gap-2">
-              {providers.map(provider => {
-                const isLoading = loadingProvider === provider.id;
+            <div className="flex flex-col gap-4">
+              {/* OAuth providers */}
+              {oauthProviders.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {oauthProviders.map(provider => {
+                    const isLoading = loadingProvider === provider.id;
 
-                // Map provider IDs to icons and labels
-                const providerConfig: Record<string, {icon: typeof SiGithub; label: string}> = {
-                  github: {icon: SiGithub, label: 'Continue with GitHub'},
-                  gitlab: {icon: SiGitlab, label: 'Continue with GitLab'},
-                  google: {icon: SiGoogle, label: 'Continue with Google'},
-                  okta: {icon: SiOkta, label: 'Continue with Okta'},
-                };
+                    // Map provider IDs to icons and labels
+                    const providerConfig: Record<string, {icon: typeof SiGithub; label: string}> = {
+                      github: {icon: SiGithub, label: 'Continue with GitHub'},
+                      gitlab: {icon: SiGitlab, label: 'Continue with GitLab'},
+                      google: {icon: SiGoogle, label: 'Continue with Google'},
+                      okta: {icon: SiOkta, label: 'Continue with Okta'},
+                    };
 
-                const config = providerConfig[provider.id];
-                const Icon = config?.icon;
-                const label = config?.label || `Continue with ${provider.name}`;
+                    const config = providerConfig[provider.id];
+                    const Icon = config?.icon;
+                    const label = config?.label || `Continue with ${provider.name}`;
 
-                return (
-                  <Button
-                    key={provider.id}
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleSignIn(provider.id)}
-                    disabled={loadingProvider !== null}
-                    className="w-full"
-                  >
-                    {Icon && <Icon className={isLoading ? 'animate-pulse' : ''} />}
-                    {isLoading ? 'Signing in...' : label}
-                  </Button>
-                );
-              })}
+                    return (
+                      <Button
+                        key={provider.id}
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSignIn(provider.id)}
+                        disabled={loadingProvider !== null}
+                        className="w-full"
+                      >
+                        {Icon && <Icon className={isLoading ? 'animate-pulse' : ''} />}
+                        {isLoading ? 'Signing in...' : label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Email magic link sign in */}
+              {hasEmailProvider && (
+                <div className="flex flex-col gap-4">
+                  {oauthProviders.length > 0 && (
+                    <div className="relative my-2">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                      </div>
+                    </div>
+                  )}
+                  {emailSent ? (
+                    <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-center">
+                      <Mail className="mx-auto mb-2 h-8 w-8 text-green-600 dark:text-green-400" />
+                      <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">
+                        Check your email
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        We sent a magic link to <strong>{email}</strong>
+                      </p>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          setEmailSent(false);
+                          setEmail('');
+                        }}
+                        className="mt-2"
+                      >
+                        Use a different email
+                      </Button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleEmailSignIn} className="space-y-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="your.email@example.com"
+                          value={email}
+                          onChange={e => handleEmailChange(e.target.value)}
+                          disabled={loadingProvider !== null}
+                          required
+                          className={emailDomainError ? 'border-destructive' : ''}
+                        />
+                        {emailDomainError && (
+                          <p className="text-xs text-destructive">{emailDomainError}</p>
+                        )}
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loadingProvider !== null || !email.trim() || !!emailDomainError}
+                      >
+                        {loadingProvider === 'email' ? (
+                          <>Sending magic link...</>
+                        ) : (
+                          <>
+                            <Mail />
+                            Continue with Email
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -12,3 +12,5 @@ export const REPLICA_CONFIGS_DUMP_BATCH_SIZE = 1000;
 
 export const ENGINE_STOP_TIMEOUT_MS = 10 * 1000;
 export const MAX_CONFIG_VERSION = 1_000_000_007;
+
+export const MAGIC_LINK_MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours

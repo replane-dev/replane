@@ -7,6 +7,7 @@ import {ConfigService} from './core/config-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
+import {type EmailService} from './core/email-service';
 import {EventHubPublisher} from './core/event-hub';
 import {createSha256HashingService} from './core/hashing-service';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
@@ -89,6 +90,7 @@ export interface EngineOptions {
   dbSchema: string;
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
+  emailService?: EmailService;
 }
 
 interface ToUseCaseOptions {
@@ -298,6 +300,7 @@ export async function createEngine(options: EngineOptions) {
       getHealth: createGetHealthUseCase(),
       getStatus: createGetStatusUseCase({db}),
     },
+    mail: options.emailService,
     testing: {
       pool,
       dbSchema: options.dbSchema,

@@ -72,6 +72,17 @@ services:
       # OKTA_CLIENT_ID: your-okta-client-id
       # OKTA_CLIENT_SECRET: your-okta-client-secret
       # OKTA_ISSUER: https://your-domain.okta.com
+      # Optional: Magic link authentication via email
+      # MAGIC_LINK_ENABLED: true  # Required to enable magic link sign-in
+      # Connection string format (recommended):
+      # EMAIL_SERVER: smtp://username:password@sandbox.smtp.mailtrap.io:2525
+      # EMAIL_FROM: noreply@your-domain.com
+      # Or individual variables format:
+      # EMAIL_SERVER_HOST: sandbox.smtp.mailtrap.io
+      # EMAIL_SERVER_PORT: 2525
+      # EMAIL_FROM: noreply@your-domain.com
+      # EMAIL_SERVER_USER: smtp-user
+      # EMAIL_SERVER_PASSWORD: smtp-user-password
       # Optional: restrict registration to specific email domains
       # ALLOWED_EMAIL_DOMAINS: gmail.com,my-company.com
     ports:
@@ -98,7 +109,92 @@ Notes
 
 ### Authentication Providers
 
-Configure at least one OAuth provider. You can enable multiple providers simultaneously:
+Configure at least one authentication provider. You can enable multiple providers simultaneously:
+
+**Email (Magic Link)**
+
+The email provider sends passwordless magic links to users for authentication. When enabled, an email input field appears on the sign-in page.
+
+**Required:**
+
+- `MAGIC_LINK_ENABLED=true` – Explicitly enables magic link authentication
+
+**Configuration Format 1: Connection String** (recommended)
+
+- `EMAIL_SERVER` – SMTP connection string (e.g., `smtp://username:password@smtp.gmail.com:587`)
+- `EMAIL_FROM` – Email address to send magic links from (e.g., `noreply@your-domain.com`)
+
+**Configuration Format 2: Individual Variables**
+
+- `EMAIL_SERVER_HOST` – SMTP server hostname (e.g., `smtp.gmail.com`)
+- `EMAIL_SERVER_PORT` – SMTP server port (e.g., `587` for TLS, `465` for SSL)
+- `EMAIL_FROM` – Email address to send magic links from (e.g., `noreply@your-domain.com`)
+- `EMAIL_SERVER_USER` – (Optional) SMTP username for authentication
+- `EMAIL_SERVER_PASSWORD` – (Optional) SMTP password for authentication
+
+**Note:** Email server configuration can be used for other purposes (notifications, alerts, etc.) without enabling magic link authentication. Set `MAGIC_LINK_ENABLED=true` only if you want to allow users to sign in via magic links.
+
+**SMTP Setup Examples:**
+
+_Gmail (recommended for local testing):_
+
+1. Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
+2. Sign in and create a new app password for "Mail" / "Other (Replane Dev)"
+3. Copy the 16-character password
+4. Configuration (choose one format):
+
+```yaml
+# Connection string format
+EMAIL_SERVER: smtp://your-email@gmail.com:your-16-char-app-password@smtp.gmail.com:587
+EMAIL_FROM: your-email@gmail.com
+
+# Or individual variables format
+EMAIL_SERVER_HOST: smtp.gmail.com
+EMAIL_SERVER_PORT: 587
+EMAIL_FROM: your-email@gmail.com
+EMAIL_SERVER_USER: your-email@gmail.com
+EMAIL_SERVER_PASSWORD: your-16-char-app-password
+```
+
+_Mailtrap (testing only - emails don't actually send):_
+
+1. Sign up at [mailtrap.io](https://mailtrap.io) (free tier available)
+2. Go to Email Testing → Inboxes → SMTP Settings
+3. Configuration (choose one format):
+
+```yaml
+# Connection string format
+EMAIL_SERVER: smtp://your-mailtrap-username:your-mailtrap-password@sandbox.smtp.mailtrap.io:2525
+EMAIL_FROM: noreply@example.com
+
+# Or individual variables format
+EMAIL_SERVER_HOST: sandbox.smtp.mailtrap.io
+EMAIL_SERVER_PORT: 2525
+EMAIL_FROM: noreply@example.com
+EMAIL_SERVER_USER: your-mailtrap-username
+EMAIL_SERVER_PASSWORD: your-mailtrap-password
+```
+
+_SendGrid (production-ready, free tier: 100 emails/day):_
+
+1. Sign up at [sendgrid.com](https://sendgrid.com)
+2. Go to Settings → API Keys → Create API Key
+3. Configuration (choose one format):
+
+```yaml
+# Connection string format
+EMAIL_SERVER: smtp://apikey:your-sendgrid-api-key@smtp.sendgrid.net:587
+EMAIL_FROM: verified-sender@your-domain.com
+
+# Or individual variables format
+EMAIL_SERVER_HOST: smtp.sendgrid.net
+EMAIL_SERVER_PORT: 587
+EMAIL_FROM: verified-sender@your-domain.com
+EMAIL_SERVER_USER: apikey
+EMAIL_SERVER_PASSWORD: your-sendgrid-api-key
+```
+
+**Note:** It's recommended to configure at least one OAuth provider alongside email for better security and user experience.
 
 **GitHub**
 

@@ -1,3 +1,4 @@
+import {MAGIC_LINK_MAX_AGE_SECONDS} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {DefaultDateProvider} from '@/engine/core/date-provider';
 import type {DB} from '@/engine/core/db';
@@ -15,12 +16,14 @@ import {WorkspaceStore} from '@/engine/core/stores/workspace-store';
 import {createWorkspace} from '@/engine/core/use-cases/create-workspace-use-case';
 import {UserStore} from '@/engine/core/user-store';
 import {ensureDefined, normalizeEmail, runTransactional} from '@/engine/core/utils';
-import {getDatabaseUrl} from '@/engine/engine-singleton';
+import {getDatabaseUrl, getEngineSingleton} from '@/engine/engine-singleton';
 import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
+import {getEmailServerConfig, isMagicLinkAuthEnabled} from '@/lib/email-server-config';
 import PostgresAdapter from '@auth/pg-adapter';
 import * as Sentry from '@sentry/nextjs';
 import {Kysely, PostgresDialect} from 'kysely';
 import {type AuthOptions, type User} from 'next-auth';
+import EmailProvider from 'next-auth/providers/email';
 import GithubProvider from 'next-auth/providers/github';
 import GitlabProvider from 'next-auth/providers/gitlab';
 import GoogleProvider, {type GoogleProfile} from 'next-auth/providers/google';
@@ -48,7 +51,7 @@ export function getAuthOptions(): AuthOptions {
     // Important: use JWT session strategy so middleware can authorize via getToken
     session: {strategy: 'jwt'},
     jwt: {
-      maxAge: 24 * 60 * 60, // 24 hours
+      maxAge: MAGIC_LINK_MAX_AGE_SECONDS,
     },
     // Provide a stable secret so both middleware (edge) and server can verify tokens
     secret: ensureDefined(process.env.NEXTAUTH_SECRET, 'NEXTAUTH_SECRET is not defined'),
@@ -59,6 +62,47 @@ export function getAuthOptions(): AuthOptions {
       error: '/auth/error',
     },
     providers: [
+      // Email provider (magic link) - requires MAGIC_LINK_ENABLED=true and email server configuration
+      (() => {
+        if (!isMagicLinkAuthEnabled()) {
+          return [];
+        }
+        const emailConfig = getEmailServerConfig();
+        if (!emailConfig) {
+          return [];
+        }
+        return [
+          EmailProvider({
+            server: {
+              host: emailConfig.host,
+              port: emailConfig.port,
+              auth:
+                emailConfig.user && emailConfig.password
+                  ? {
+                      user: emailConfig.user,
+                      pass: emailConfig.password,
+                    }
+                  : undefined,
+            },
+            maxAge: 24 * 60 * 60, // 24 hours
+            from: emailConfig.from,
+            sendVerificationRequest: async ({identifier, url}) => {
+              const {host} = new URL(url);
+
+              const engine = await getEngineSingleton();
+              if (!engine.mail) {
+                throw new Error('Email service is not configured');
+              }
+
+              await engine.mail.sendMagicLink({
+                to: identifier,
+                url,
+                host,
+              });
+            },
+          }),
+        ];
+      })(),
       process.env.GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_SECRET
         ? [
             GithubProvider({

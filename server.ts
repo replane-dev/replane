@@ -1,3 +1,4 @@
+import {getEmailServerConfig} from '@/lib/email-server-config';
 import './sentry.server.config';
 
 import {sdkApi} from '@/sdk-api';
@@ -12,6 +13,15 @@ if (!process.env.BASE_URL) {
 }
 if (!process.env.SECRET_KEY_BASE) {
   throw new Error('SECRET_KEY_BASE is not defined');
+}
+
+if (process.env.MAGIC_LINK_ENABLED === 'true') {
+  const emailServerConfig = getEmailServerConfig();
+  if (!emailServerConfig) {
+    throw new Error(
+      'email server configuration is not defined, see https://github.com/replane-dev/replane/blob/main/README.md',
+    );
+  }
 }
 
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;

@@ -1,4 +1,7 @@
 import {Lazy} from '@/engine/core/lazy';
+import {getEmailServerConfig} from '@/lib/email-server-config';
+import {createTransport} from 'nodemailer';
+import {NodemailerEmailService, type EmailService} from './core/email-service';
 import {ensureDefined, joinUndefined} from './core/utils';
 import {createEngine, type Engine} from './engine';
 
@@ -22,10 +25,29 @@ export const getDatabaseUrl = () =>
 
 // Shared singleton so TRPC and other services reuse the same engine instance per process.
 export const engineLazy = new Lazy(async () => {
+  // Create email service if configured
+  let emailService: EmailService | undefined = undefined;
+  const emailConfig = getEmailServerConfig();
+  if (emailConfig) {
+    const transport = createTransport({
+      host: emailConfig.host,
+      port: emailConfig.port,
+      auth:
+        emailConfig.user && emailConfig.password
+          ? {
+              user: emailConfig.user,
+              pass: emailConfig.password,
+            }
+          : undefined,
+    });
+    emailService = new NodemailerEmailService(transport, emailConfig.from);
+  }
+
   const engine = await createEngine({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
+    emailService,
   });
 
   return engine;
