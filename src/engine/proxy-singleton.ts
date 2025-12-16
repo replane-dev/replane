@@ -62,3 +62,4 @@ export async function getProxySingleton(): Promise<Proxy> {
   return proxyLazy.get();
 }
 
+
