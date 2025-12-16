@@ -43,6 +43,11 @@ if (config?.dsn) {
         maskAllText: true,
         blockAllMedia: true,
       }),
+      Sentry.feedbackIntegration({
+        // Configure feedback integration
+        colorScheme: 'system',
+        autoInject: false, // We'll use our custom dialog instead of the default widget
+      }),
     ],
   });
 }

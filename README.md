@@ -152,6 +152,8 @@ environment:
   SENTRY_TRACES_SAMPLE_RATE: '0.1'
 ```
 
+**User Feedback:** When Sentry is enabled, a "Send Feedback" option appears in the application sidebar. Users can submit feedback, report issues, or suggest features directly through the UI. All feedback is captured in your Sentry.
+
 ## JavaScript SDK
 
 Install:
