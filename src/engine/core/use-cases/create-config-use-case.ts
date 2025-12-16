@@ -2,17 +2,9 @@ import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
 import type {Override} from '../override-condition-schemas';
-import {createAuditLogId} from '../stores/audit-log-store';
 import {createConfigId, type ConfigId} from '../stores/config-store';
-import type {NewConfigUser} from '../stores/config-user-store';
-import {
-  createConfigVersionId,
-  createConfigVersionMemberId,
-  createConfigVersionVariantId,
-} from '../stores/config-version-store';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
-import {createUuidV7} from '../uuid';
 import {validateOverrideReferences} from '../validate-override-references';
 import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
@@ -150,126 +142,22 @@ export function createCreateConfigUseCase(
     assert(currentUser, 'Current user not found');
 
     const configId = createConfigId();
-    const now = deps.dateProvider.now();
 
-    await tx.configs.create(ctx, {
+    // Use the config service to create the config with all related records
+    const {variantIds} = await tx.configService.createConfig(ctx, {
       id: configId,
       name: req.name,
       projectId: req.projectId,
       description: req.description,
-      value: req.defaultVariant.value,
-      schema: req.defaultVariant.schema,
-      overrides: req.defaultVariant.overrides,
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-    });
-
-    const configVariantIds: Array<{variantId: string; environmentId: string}> = [];
-
-    // Create environment-specific variants
-    for (const envVariant of environmentVariants) {
-      const variantId = createUuidV7();
-      await tx.configVariants.create({
-        id: variantId,
-        configId,
-        environmentId: envVariant.environmentId,
-        value: envVariant.value,
-        schema: envVariant.useDefaultSchema ? null : envVariant.schema, // null when using default schema
-        overrides: envVariant.overrides,
-        createdAt: now,
-        updatedAt: now,
-        useDefaultSchema: envVariant.useDefaultSchema ?? false,
-      });
-
-      configVariantIds.push({variantId, environmentId: envVariant.environmentId});
-    }
-
-    // Create version history - one version record with all variants and members
-    await tx.configVersions.create({
-      id: createConfigVersionId(),
-      configId,
-      version: 1,
-      description: req.description,
-      value: req.defaultVariant.value,
-      schema: req.defaultVariant.schema,
-      overrides: req.defaultVariant.overrides,
-      proposalId: null,
+      defaultVariant: req.defaultVariant,
+      environmentVariants,
+      members: allMembers,
       authorId: currentUser.id,
-      createdAt: now,
-      variants: environmentVariants.map(v => ({
-        id: createConfigVersionVariantId(),
-        environmentId: v.environmentId,
-        value: v.value,
-        schema: v.useDefaultSchema ? null : v.schema,
-        overrides: v.overrides,
-        useDefaultSchema: v.useDefaultSchema ?? false,
-      })),
-      members: allMembers.map(m => ({
-        id: createConfigVersionMemberId(),
-        ...m,
-      })),
-    });
-
-    await tx.configUsers.create(
-      req.editorEmails
-        .map(
-          (email): NewConfigUser => ({
-            email,
-            role: 'editor',
-            configId,
-            createdAt: now,
-            updatedAt: now,
-          }),
-        )
-        .concat(
-          req.maintainerEmails.map(
-            (email): NewConfigUser => ({
-              email,
-              role: 'maintainer',
-              configId,
-              createdAt: now,
-              updatedAt: now,
-            }),
-          ),
-        ),
-    );
-
-    const fullConfig = await tx.configs.getById(configId);
-    assert(fullConfig, 'Just created config not found');
-
-    // One audit log for config creation
-    await tx.auditLogs.create({
-      id: createAuditLogId(),
-      createdAt: now,
-      projectId: fullConfig.projectId,
-      userId: currentUser.id,
-      configId: fullConfig.id,
-      payload: {
-        type: 'config_created',
-        config: {
-          id: fullConfig.id,
-          projectId: fullConfig.projectId,
-          name: fullConfig.name,
-          description: fullConfig.description,
-          createdAt: fullConfig.createdAt,
-          version: fullConfig.version,
-          value: fullConfig.value,
-          schema: fullConfig.schema,
-          overrides: fullConfig.overrides,
-          environmentVariants: environmentVariants.map(v => ({
-            environmentId: v.environmentId,
-            value: v.value,
-            schema: v.schema,
-            overrides: v.overrides,
-          })),
-        },
-      },
     });
 
     return {
       configId,
-      configVariantIds,
+      configVariantIds: variantIds,
     };
   };
 }

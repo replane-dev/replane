@@ -14,8 +14,9 @@ export function createGetWorkspaceListUseCase(): TransactionalUseCase<
   GetWorkspaceListRequest,
   GetWorkspaceListResponse
 > {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
     const workspaces = await tx.workspaceQueryService.getOrCreateUserWorkspaces({
+      ctx,
       currentUserEmail: req.currentUserEmail,
     });
 

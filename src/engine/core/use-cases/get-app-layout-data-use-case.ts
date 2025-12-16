@@ -16,9 +16,10 @@ export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
   GetAppLayoutDataRequest,
   GetAppLayoutDataResponse
 > {
-  return async (_ctx, tx, req) => {
+  return async (ctx, tx, req) => {
     // query first to ensure user has at least one workspace
     const workspaces = await tx.workspaceQueryService.getOrCreateUserWorkspaces({
+      ctx,
       currentUserEmail: req.currentUserEmail,
     });
     const projects = await tx.projectQueryService.getProjectList({

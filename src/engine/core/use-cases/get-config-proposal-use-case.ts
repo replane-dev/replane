@@ -118,7 +118,7 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     const hasSchemaChanges = hasEnvSchemaChanges || hasDefaultSchemaChange;
 
     // Determine approval policy and eligible approvers
-    const maintainerEmails = await tx.permissionService.getConfigOwners(proposal.configId);
+    const maintainerEmails = await tx.permissionService.getConfigMaintainers(proposal.configId);
     const editorEmails = await tx.permissionService.getConfigEditors(proposal.configId);
 
     // Determine what actually changed by comparing proposed vs original

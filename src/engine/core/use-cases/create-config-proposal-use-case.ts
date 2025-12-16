@@ -9,7 +9,7 @@ import {
   createConfigProposalVariantId,
   type ConfigProposalId,
 } from '../stores/config-proposal-store';
-import type {TransactionalUseCase} from '../use-case';
+import type {TransactionalUseCase, UseCaseTransaction} from '../use-case';
 import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
 
 export interface CreateConfigProposalRequest {
@@ -39,6 +39,7 @@ export interface CreateConfigProposalResponse {
 
 export interface CreateConfigProposalUseCaseDeps {
   dateProvider: DateProvider;
+  baseUrl?: string;
 }
 
 export function createCreateConfigProposalUseCase(
@@ -187,8 +188,95 @@ export function createCreateConfigProposalUseCase(
       });
     }
 
+    // Send email notifications to approvers
+    await scheduleProposalCreatedNotification({
+      tx,
+      deps,
+      config,
+      currentUser,
+      configProposalId,
+      req,
+    });
+
     return {
       configProposalId,
     };
   };
+}
+
+async function scheduleProposalCreatedNotification(params: {
+  tx: UseCaseTransaction;
+  deps: CreateConfigProposalUseCaseDeps;
+  config: {id: string; name: string; description: string};
+  currentUser: {name: string | null; email: string | null};
+  configProposalId: ConfigProposalId;
+  req: CreateConfigProposalRequest;
+}): Promise<void> {
+  const {tx, deps, config, currentUser, configProposalId, req} = params;
+
+  if (!tx.emailService || !deps.baseUrl) {
+    return;
+  }
+
+  const project = await tx.projects.getById({
+    id: req.projectId,
+    currentUserEmail: req.currentUserEmail,
+  });
+  if (!project) {
+    return;
+  }
+
+  // Get potential approvers (maintainers for most cases, editors + maintainers for value-only changes)
+  const maintainerEmails = await tx.permissionService.getConfigMaintainers(config.id);
+  const editorEmails = await tx.permissionService.getConfigEditors(config.id);
+
+  // Determine who should be notified based on what changed
+  let approverEmails: string[] = [];
+  if (req.proposedDelete) {
+    approverEmails = maintainerEmails;
+  } else {
+    // For simple value changes, both editors and maintainers can approve
+    // For schema/member/description changes, only maintainers can approve
+    const currentMembers = await tx.configUsers.getByConfigId(config.id);
+    const membersChanged =
+      JSON.stringify(
+        [
+          ...req.editorEmails.map(e => ({email: e, role: 'editor'})),
+          ...req.maintainerEmails.map(e => ({email: e, role: 'maintainer'})),
+        ].sort((a, b) => a.email.localeCompare(b.email)),
+      ) !==
+      JSON.stringify(
+        currentMembers
+          .map((m: any) => ({email: m.user_email_normalized, role: m.role}))
+          .sort((a: any, b: any) => a.email.localeCompare(b.email)),
+      );
+    const descriptionChanged = req.description !== config.description;
+
+    if (membersChanged || descriptionChanged) {
+      approverEmails = maintainerEmails;
+    } else {
+      approverEmails = [...maintainerEmails, ...editorEmails];
+    }
+  }
+
+  // Remove the author from the approver list
+  approverEmails = approverEmails.filter(email => email !== req.currentUserEmail);
+
+  if (approverEmails.length > 0) {
+    const proposalUrl = `${deps.baseUrl}/app/projects/${project.id}/configs/${config.name}/proposals/${configProposalId}`;
+    const configName = config.name;
+    const projectName = project.name;
+    const authorName = currentUser.name ?? (currentUser.email || 'Unknown');
+    const emailService = tx.emailService;
+
+    tx.scheduleOptimisticEffect(async () => {
+      await emailService.sendProposalWaitingForReview({
+        to: approverEmails,
+        proposalUrl,
+        configName,
+        projectName,
+        authorName,
+      });
+    });
+  }
 }

@@ -1,8 +1,13 @@
+import type {Kysely} from 'kysely';
 import type {ConfigQueryService} from './config-query-service';
 import type {ConfigService} from './config-service';
 import type {Context} from './context';
+import type {DateProvider} from './date-provider';
+import type {DB} from './db';
+import type {EmailService} from './email-service';
 import type {PermissionService} from './permission-service';
 import type {ProjectQueryService} from './project-query-service';
+import type {ProposalService} from './proposal-service';
 import type {AuditLogStore} from './stores/audit-log-store';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {ConfigStore} from './stores/config-store';
@@ -58,10 +63,13 @@ export interface UseCaseTransaction {
   workspaceMembers: WorkspaceMemberStore;
   // Services
   workspaceMemberService: WorkspaceMemberService;
+  proposalService: ProposalService;
+  emailService?: EmailService;
+  dateProvider: DateProvider;
   // Query services
   configQueryService: ConfigQueryService;
   projectQueryService: ProjectQueryService;
   workspaceQueryService: WorkspaceQueryService;
   // Needed for permission checks
-  db: any;
+  db: Kysely<DB>;
 }

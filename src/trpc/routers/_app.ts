@@ -3,7 +3,6 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
-import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
 import {
   ConfigSchema,
   ConfigValue,
@@ -12,6 +11,7 @@ import {
   MaintainerArray,
   Uuid,
 } from '@/engine/core/zod';
+import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
@@ -420,6 +420,24 @@ export const appRouter = createTRPCRouter({
       const result = await opts.ctx.engine.useCases.getConfigVariantVersion(GLOBAL_CONTEXT, {
         configId: opts.input.configId,
         version: opts.input.version,
+        currentUserEmail: opts.ctx.currentUserEmail,
+        projectId: opts.input.projectId,
+      });
+      return result;
+    }),
+  getConfigVersionList: baseProcedure
+    .input(
+      z.object({
+        configId: Uuid(),
+        projectId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      const result = await opts.ctx.engine.useCases.getConfigVersionList(GLOBAL_CONTEXT, {
+        configId: opts.input.configId,
         currentUserEmail: opts.ctx.currentUserEmail,
         projectId: opts.input.projectId,
       });

@@ -1,8 +1,8 @@
 import assert from 'assert';
-import {DefaultDateProvider} from '../date-provider';
+import {ConfigService} from '../config-service';
+import {type Context} from '../context';
 import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
 import {ConfigStore} from '../stores/config-store';
-import type {ConfigVariantStore} from '../stores/config-variant-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import {createProjectId, Project, ProjectStore} from '../stores/project-store';
 import type {ProjectUserStore} from '../stores/project-user-store';
@@ -35,6 +35,7 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
     assert(user, 'Current user not found');
 
     const {workspace, project} = await createWorkspace({
+      ctx,
       currentUserEmail: req.currentUserEmail,
       name: {type: 'custom', name: req.name},
       workspaceStore: tx.workspaces,
@@ -43,7 +44,7 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
       projectUserStore: tx.projectUsers,
       projectEnvironmentStore: tx.projectEnvironments,
       configs: tx.configs,
-      configVariants: tx.configVariants,
+      configService: tx.configService,
       users: tx.users,
       auditLogs: tx.auditLogs,
       now,
@@ -54,6 +55,7 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
 }
 
 export async function createWorkspace(params: {
+  ctx: Context;
   currentUserEmail: NormalizedEmail;
   name: {type: 'personal'} | {type: 'custom'; name: string};
   workspaceStore: WorkspaceStore;
@@ -64,11 +66,12 @@ export async function createWorkspace(params: {
   users: UserStore;
   auditLogs: AuditLogStore;
   configs: ConfigStore;
-  configVariants: ConfigVariantStore;
+  configService: ConfigService;
   now: Date;
   exampleProject: boolean;
 }) {
   const {
+    ctx,
     currentUserEmail,
     name,
     workspaceStore,
@@ -78,7 +81,7 @@ export async function createWorkspace(params: {
     projectEnvironmentStore,
     auditLogs,
     configs,
-    configVariants,
+    configService,
     now,
     users,
     exampleProject,
@@ -171,12 +174,11 @@ export async function createWorkspace(params: {
 
   if (exampleProject) {
     await createExampleConfigs({
+      ctx,
       projectId: project.id,
       configs: configs,
-      configVariants: configVariants,
+      configService: configService,
       projectEnvironments: projectEnvironmentStore,
-      dateProvider: new DefaultDateProvider(),
-      users: users,
       currentUser: currentUser,
     });
   }

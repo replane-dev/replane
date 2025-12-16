@@ -14,6 +14,7 @@ import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {PermissionService} from './core/permission-service';
 import {prepareDb} from './core/prepare-db';
 import {ProjectQueryService} from './core/project-query-service';
+import {ProposalService} from './core/proposal-service';
 import {type AppHubEvents} from './core/replica';
 import {AuditLogStore} from './core/stores/audit-log-store';
 import {ConfigProposalStore} from './core/stores/config-proposal-store';
@@ -53,6 +54,7 @@ import {createGetConfigProposalUseCase} from './core/use-cases/get-config-propos
 import {createGetConfigUseCase} from './core/use-cases/get-config-use-case';
 import {createGetConfigVariantVersionListUseCase} from './core/use-cases/get-config-variant-version-list-use-case';
 import {createGetConfigVariantVersionUseCase} from './core/use-cases/get-config-variant-version-use-case';
+import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-version-list-use-case';
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createGetNewConfigPageDataUseCase} from './core/use-cases/get-new-config-page-data-use-case';
 import {createGetNewSdkKeyPageDataUseCase} from './core/use-cases/get-new-sdk-key-page-data-use-case';
@@ -68,6 +70,7 @@ import {createGetStatusUseCase} from './core/use-cases/get-status-use-case';
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
+import {createInitUserUseCase} from './core/use-cases/init-user-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
@@ -91,12 +94,15 @@ export interface EngineOptions {
   dateProvider?: DateProvider;
   onConflictRetriesCount?: number;
   emailService?: EmailService;
+  baseUrl: string;
 }
 
 interface ToUseCaseOptions {
   onConflictRetriesCount: number;
   dateProvider: DateProvider;
   useCaseName: string;
+  emailService?: EmailService;
+  baseUrl: string;
 }
 
 function toUseCase<TReq, TRes>(
@@ -134,6 +140,17 @@ function toUseCase<TReq, TRes>(
           workspaceMembers,
           logger,
         );
+        const proposalService = new ProposalService({
+          configProposals,
+          configs,
+          projects,
+          users,
+          auditLogs,
+          dateProvider: options.dateProvider,
+          scheduleOptimisticEffect,
+          emailService: options.emailService,
+          baseUrl: options.baseUrl,
+        });
         const configService = new ConfigService(
           configs,
           configProposals,
@@ -144,6 +161,7 @@ function toUseCase<TReq, TRes>(
           projectEnvironments,
           configVariants,
           configVersions,
+          proposalService,
         );
         const workspaceMemberService = new WorkspaceMemberService(workspaceMembers, projectUsers);
 
@@ -167,7 +185,7 @@ function toUseCase<TReq, TRes>(
           projectUsers,
           projectEnvironments,
           configs,
-          configVariants,
+          configService,
           users,
           auditLogs,
         );
@@ -190,6 +208,9 @@ function toUseCase<TReq, TRes>(
           workspaces,
           workspaceMembers,
           workspaceMemberService,
+          proposalService,
+          emailService: options.emailService,
+          dateProvider: options.dateProvider,
           configQueryService,
           projectQueryService,
           workspaceQueryService,
@@ -231,12 +252,16 @@ export async function createEngine(options: EngineOptions) {
     getAuditLog: createGetAuditLogUseCase(),
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),
-    createConfigProposal: createCreateConfigProposalUseCase({dateProvider}),
+    createConfigProposal: createCreateConfigProposalUseCase({
+      dateProvider,
+      baseUrl: options.baseUrl,
+    }),
     approveConfigProposal: createApproveConfigProposalUseCase({
       dateProvider,
+      baseUrl: options.baseUrl,
     }),
-    rejectConfigProposal: createRejectConfigProposalUseCase({dateProvider}),
-    rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase({}),
+    rejectConfigProposal: createRejectConfigProposalUseCase(),
+    rejectAllPendingConfigProposals: createRejectAllPendingConfigProposalsUseCase(),
     getConfigProposal: createGetConfigProposalUseCase({}),
     getConfigProposalList: createGetConfigProposalListUseCase(),
     updateConfig: createUpdateConfigUseCase(),
@@ -244,6 +269,7 @@ export async function createEngine(options: EngineOptions) {
     deleteConfig: createDeleteConfigUseCase({}),
     getConfigVariantVersionList: createGetConfigVariantVersionListUseCase(),
     getConfigVariantVersion: createGetConfigVariantVersionUseCase(),
+    getConfigVersionList: createGetConfigVersionListUseCase(),
     getSdkKeyList: createGetSdkKeyListUseCase(),
     getSdkKey: createGetSdkKeyUseCase(),
     deleteSdkKey: createDeleteSdkKeyUseCase(),
@@ -278,8 +304,9 @@ export async function createEngine(options: EngineOptions) {
     addWorkspaceMember: createAddWorkspaceMemberUseCase(),
     removeWorkspaceMember: createRemoveWorkspaceMemberUseCase(),
     updateWorkspaceMemberRole: createUpdateWorkspaceMemberRoleUseCase(),
-    addExampleConfigs: createAddExampleConfigsUseCase({dateProvider}),
+    addExampleConfigs: createAddExampleConfigsUseCase(),
     // User account use cases
+    initUser: createInitUserUseCase(),
     deleteUserAccount: createDeleteUserAccountUseCase(),
   } satisfies UseCaseMap;
 
@@ -290,6 +317,8 @@ export async function createEngine(options: EngineOptions) {
       onConflictRetriesCount: options.onConflictRetriesCount ?? 16,
       dateProvider,
       useCaseName: name,
+      emailService: options.emailService,
+      baseUrl: options.baseUrl,
     });
     engineUseCases[name] = addUseCaseLogging(engineUseCases[name], name, logger);
   }

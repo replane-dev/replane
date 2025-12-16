@@ -3,9 +3,9 @@ import {MockDateProvider} from '@/engine/core/date-provider';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {createEdge, type Edge} from '@/engine/edge';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
-import {createEdge, type Edge} from '@/engine/edge';
 import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
@@ -52,6 +52,7 @@ export class AppFixture {
       logLevel: this.options.logLevel ?? 'warn',
       dateProvider: new MockDateProvider(() => new Date(this.overrideNow)),
       onConflictRetriesCount: this.options.onConflictRetriesCount,
+      baseUrl: 'http://localhost:3000',
     });
 
     const edge = await createEdge({

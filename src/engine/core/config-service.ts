@@ -1,12 +1,12 @@
 import assert from 'assert';
 import type {Context} from './context';
 import type {DateProvider} from './date-provider';
-import type {ConfigProposalRejectionReason} from './db';
 import {BadRequestError} from './errors';
 import {diffMembers} from './member-diff';
 import type {Override} from './override-condition-schemas';
 import type {PermissionService} from './permission-service';
 import {isProposalRequired} from './proposal-requirement';
+import type {ProposalService} from './proposal-service';
 import {createAuditLogId, type AuditLogStore} from './stores/audit-log-store';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './stores/config-store';
@@ -70,6 +70,7 @@ export class ConfigService {
     private readonly projectEnvironments: ProjectEnvironmentStore,
     private readonly configVariants: ConfigVariantStore,
     private readonly configVersions: ConfigVersionStore,
+    private readonly proposalService: ProposalService,
   ) {}
 
   /**
@@ -615,7 +616,7 @@ export class ConfigService {
     // Reject pending proposals
     if (params.originalProposalId) {
       // Reject all proposals EXCEPT the one with originalProposalId
-      await this.rejectConfigProposalsInternal({
+      await this.proposalService.rejectConfigProposalsInternal({
         configId: existingConfig.id,
         originalProposalId: params.originalProposalId,
         existingConfig,
@@ -624,7 +625,7 @@ export class ConfigService {
       });
     } else {
       // Reject all proposals
-      await this.rejectConfigProposalsInternal({
+      await this.proposalService.rejectConfigProposalsInternal({
         configId: existingConfig.id,
         originalProposalId: undefined,
         existingConfig,
@@ -652,7 +653,7 @@ export class ConfigService {
     });
 
     // Reject all pending CONFIG proposals
-    await this.rejectConfigProposalsInternal({
+    await this.proposalService.rejectConfigProposalsInternal({
       configId: existingConfig.id,
       originalProposalId: params.originalProposalId,
       existingConfig,
@@ -704,86 +705,140 @@ export class ConfigService {
    * This is a public method that can be called directly from use cases.
    */
   async rejectAllPendingProposals(params: {configId: string; reviewer: User}): Promise<void> {
-    const config = await this.configs.getById(params.configId);
-    if (!config) {
-      throw new BadRequestError('Config not found');
-    }
-
-    await this.rejectConfigProposalsInternal({
-      configId: params.configId,
-      reviewer: params.reviewer,
-      existingConfig: config,
-      originalProposalId: undefined,
-      rejectionReason: 'rejected_explicitly',
-    });
+    await this.proposalService.rejectAllPendingProposals(params);
   }
 
-  private async rejectConfigProposalsInternal(params: {
-    configId: string;
-    originalProposalId?: string;
-    existingConfig: Config;
-    reviewer: User;
-    rejectionReason: ConfigProposalRejectionReason;
-  }): Promise<void> {
-    const {reviewer, existingConfig} = params;
+  /**
+   * Creates a new config with all related records (variants, version history, members, audit log).
+   * This is the core method for config creation used by both regular and example config creation.
+   */
+  async createConfig(
+    ctx: Context,
+    params: {
+      id: ConfigId;
+      name: string;
+      projectId: string;
+      description: string;
+      defaultVariant: {
+        value: ConfigValue;
+        schema: ConfigSchema | null;
+        overrides: Override[];
+      };
+      environmentVariants: Array<{
+        environmentId: string;
+        value: ConfigValue;
+        schema: ConfigSchema | null;
+        overrides: Override[];
+        useDefaultSchema: boolean;
+      }>;
+      members?: Array<{email: string; role: 'editor' | 'maintainer'}>;
+      authorId: number | null;
+    },
+  ): Promise<{variantIds: Array<{variantId: string; environmentId: string}>}> {
+    const now = this.dateProvider.now();
 
-    if (params.originalProposalId) {
-      const proposal = await this.configProposals.getById({
-        id: params.originalProposalId,
-        projectId: existingConfig.projectId,
-      });
-
-      assert(proposal, 'Proposal to reject in favor of not found');
-      assert(proposal.configId === params.configId, 'Config ID must match the proposal config ID');
-      assert(proposal.reviewerId === reviewer.id, 'Reviewer must match the proposal reviewer');
-      assert(proposal.rejectedAt === null, 'Proposal to reject in favor of is already rejected');
-      assert(proposal.approvedAt !== null, 'Proposal to reject in favor of is not approved yet');
-    }
-
-    // Get all pending config proposals for this config
-    const pendingProposals = await this.configProposals.getPendingProposals({
-      configId: params.configId,
+    // Create the config record
+    await this.configs.create(ctx, {
+      id: params.id,
+      name: params.name,
+      projectId: params.projectId,
+      description: params.description,
+      value: params.defaultVariant.value,
+      schema: params.defaultVariant.schema,
+      overrides: params.defaultVariant.overrides,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
     });
 
-    // Reject all pending config proposals
-    for (const proposalInfo of pendingProposals) {
-      assert(
-        !proposalInfo.approvedAt && !proposalInfo.rejectedAt,
-        'Proposal should not be approved or rejected',
-      );
+    const variantIds: Array<{variantId: string; environmentId: string}> = [];
 
-      // Fetch full proposal details for audit message
-      const proposal = await this.configProposals.getById({
-        id: proposalInfo.id,
-        projectId: existingConfig.projectId,
-      });
-      assert(proposal, 'Proposal must exist');
-
-      await this.configProposals.updateById({
-        id: proposal.id,
-        rejectedAt: this.dateProvider.now(),
-        reviewerId: reviewer.id,
-        rejectedInFavorOfProposalId: params.originalProposalId ?? null,
-        rejectionReason: params.rejectionReason,
+    // Create environment-specific variants
+    for (const envVariant of params.environmentVariants) {
+      const variantId = createUuidV7();
+      await this.configVariants.create({
+        id: variantId,
+        configId: params.id,
+        environmentId: envVariant.environmentId,
+        value: envVariant.value,
+        schema: envVariant.useDefaultSchema ? null : envVariant.schema,
+        overrides: envVariant.overrides,
+        createdAt: now,
+        updatedAt: now,
+        useDefaultSchema: envVariant.useDefaultSchema ?? false,
       });
 
-      // Create audit log for the rejection
-      await this.auditLogs.create({
-        id: createAuditLogId(),
-        createdAt: this.dateProvider.now(),
-        userId: reviewer.id,
-        projectId: existingConfig.projectId,
-        configId: params.configId,
-        payload: {
-          type: 'config_proposal_rejected',
-          proposalId: proposal.id,
-          configId: params.configId,
-          rejectedInFavorOfProposalId: params.originalProposalId ?? undefined,
-          proposedDelete: proposal.isDelete ?? undefined,
-          proposedDescription: proposal.description ?? undefined,
-          proposedMembers: proposal.members ?? undefined,
-        },
-      });
+      variantIds.push({variantId, environmentId: envVariant.environmentId});
     }
+
+    // Create version history
+    await this.configVersions.create({
+      id: createConfigVersionId(),
+      configId: params.id,
+      version: 1,
+      description: params.description,
+      value: params.defaultVariant.value,
+      schema: params.defaultVariant.schema,
+      overrides: params.defaultVariant.overrides,
+      proposalId: null,
+      authorId: params.authorId,
+      createdAt: now,
+      variants: params.environmentVariants.map(v => ({
+        id: createConfigVersionVariantId(),
+        environmentId: v.environmentId,
+        value: v.value,
+        schema: v.useDefaultSchema ? null : v.schema,
+        overrides: v.overrides,
+        useDefaultSchema: v.useDefaultSchema ?? false,
+      })),
+      members: (params.members ?? []).map(m => ({
+        id: createConfigVersionMemberId(),
+        ...m,
+      })),
+    });
+
+    // Create config users (members) if provided
+    if (params.members && params.members.length > 0) {
+      await this.configUsers.create(
+        params.members.map(m => ({
+          email: m.email,
+          role: m.role,
+          configId: params.id,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      );
+    }
+
+    // Create audit log
+    await this.auditLogs.create({
+      id: createAuditLogId(),
+      createdAt: now,
+      projectId: params.projectId,
+      userId: params.authorId,
+      configId: params.id,
+      payload: {
+        type: 'config_created',
+        config: {
+          id: params.id,
+          projectId: params.projectId,
+          name: params.name,
+          description: params.description,
+          createdAt: now,
+          version: 1,
+          value: params.defaultVariant.value,
+          schema: params.defaultVariant.schema,
+          overrides: params.defaultVariant.overrides,
+          environmentVariants: params.environmentVariants.map(v => ({
+            environmentId: v.environmentId,
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
+        },
+      },
+    });
+
+    return {variantIds};
   }
 }

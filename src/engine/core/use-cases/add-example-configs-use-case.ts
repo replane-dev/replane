@@ -1,13 +1,11 @@
 import assert from 'assert';
-import {GLOBAL_CONTEXT} from '../context';
-import type {DateProvider} from '../date-provider';
+import type {ConfigService} from '../config-service';
+import type {Context} from '../context';
 import type {Override} from '../override-condition-schemas';
 import {ConfigStore, createConfigId} from '../stores/config-store';
-import type {ConfigVariantStore} from '../stores/config-variant-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {User, UserStore} from '../user-store';
-import {createUuidV7} from '../uuid';
+import type {User} from '../user-store';
 import {asConfigSchema, asConfigValue, type ConfigValue, type NormalizedEmail} from '../zod';
 
 export interface AddExampleConfigsRequest {
@@ -19,13 +17,10 @@ export interface AddExampleConfigsResponse {
   addedConfigsCount: number;
 }
 
-export interface AddExampleConfigsUseCaseDeps {
-  dateProvider: DateProvider;
-}
-
-export function createAddExampleConfigsUseCase(
-  deps: AddExampleConfigsUseCaseDeps,
-): TransactionalUseCase<AddExampleConfigsRequest, AddExampleConfigsResponse> {
+export function createAddExampleConfigsUseCase(): TransactionalUseCase<
+  AddExampleConfigsRequest,
+  AddExampleConfigsResponse
+> {
   return async (ctx, tx, req) => {
     // Verify permission to create configs in this project
     await tx.permissionService.ensureCanCreateConfig(ctx, {
@@ -37,12 +32,11 @@ export function createAddExampleConfigsUseCase(
     assert(currentUser, 'Current user not found');
 
     const {addedConfigsCount} = await createExampleConfigs({
+      ctx,
       projectId: req.projectId,
       configs: tx.configs,
-      configVariants: tx.configVariants,
+      configService: tx.configService,
       projectEnvironments: tx.projectEnvironments,
-      dateProvider: deps.dateProvider,
-      users: tx.users,
       currentUser: currentUser,
     });
 
@@ -51,24 +45,14 @@ export function createAddExampleConfigsUseCase(
 }
 
 export async function createExampleConfigs(params: {
+  ctx: Context;
   projectId: string;
   configs: ConfigStore;
-  configVariants: ConfigVariantStore;
+  configService: ConfigService;
   projectEnvironments: ProjectEnvironmentStore;
-  dateProvider: DateProvider;
-  users: UserStore;
   currentUser: User;
 }) {
-  const {
-    projectId,
-    configs,
-    configVariants,
-    projectEnvironments,
-    dateProvider,
-    users,
-    currentUser,
-  } = params;
-  const now = dateProvider.now();
+  const {ctx, projectId, configs, configService, projectEnvironments, currentUser} = params;
 
   // Get project environments
   const environments = await projectEnvironments.getByProjectId(projectId);
@@ -97,34 +81,27 @@ export async function createExampleConfigs(params: {
 
     const configId = createConfigId();
 
-    // Create config with default variant data included directly
-    await configs.create(GLOBAL_CONTEXT, {
+    // Use the config service to create the config with all related records
+    await configService.createConfig(ctx, {
       id: configId,
       name: config.name,
       projectId: projectId,
       description: config.description,
-      value: config.value,
-      schema: asConfigSchema(config.schema),
-      overrides: config.overrides,
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
+      defaultVariant: {
+        value: config.value,
+        schema: asConfigSchema(config.schema),
+        overrides: config.overrides,
+      },
+      environmentVariants: config.variants.map(v => ({
+        environmentId: v.environmentId,
+        value: v.value,
+        schema: asConfigSchema(v.schema),
+        overrides: v.overrides,
+        useDefaultSchema: v.useDefaultSchema,
+      })),
+      members: undefined, // Example configs don't have members
+      authorId: currentUser.id,
     });
-
-    // Create environment-specific variants
-    for (const variant of config.variants) {
-      await configVariants.create({
-        id: createUuidV7(),
-        configId: configId,
-        environmentId: variant.environmentId,
-        value: variant.value,
-        schema: asConfigSchema(variant.schema),
-        createdAt: now,
-        updatedAt: now,
-        useDefaultSchema: variant.useDefaultSchema,
-        overrides: variant.overrides,
-      });
-    }
 
     addedCount++;
   }

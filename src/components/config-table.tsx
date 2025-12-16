@@ -272,6 +272,7 @@ function ConfigTableImpl({
     [deleteOrPropose, onConfigClick, projectId, router, trpc.getConfig],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: configs,
     columns,

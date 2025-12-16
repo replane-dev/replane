@@ -1,7 +1,5 @@
 import assert from 'assert';
-import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
-import {createAuditLogId} from '../stores/audit-log-store';
 import type {ConfigProposalId} from '../stores/config-proposal-store';
 import type {ProjectId} from '../stores/project-store';
 import type {TransactionalUseCase} from '../use-case';
@@ -15,13 +13,10 @@ export interface RejectConfigProposalRequest {
 
 export interface RejectConfigProposalResponse {}
 
-export interface RejectConfigProposalUseCaseDeps {
-  dateProvider: DateProvider;
-}
-
-export function createRejectConfigProposalUseCase(
-  deps: RejectConfigProposalUseCaseDeps,
-): TransactionalUseCase<RejectConfigProposalRequest, RejectConfigProposalResponse> {
+export function createRejectConfigProposalUseCase(): TransactionalUseCase<
+  RejectConfigProposalRequest,
+  RejectConfigProposalResponse
+> {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
@@ -38,48 +33,14 @@ export function createRejectConfigProposalUseCase(
     }
 
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-
     assert(currentUser, 'Current user not found');
 
-    // Check if already approved or rejected
-    if (proposal.approvedAt) {
-      throw new BadRequestError('Proposal has already been approved');
-    }
-    if (proposal.rejectedAt) {
-      throw new BadRequestError('Proposal has already been rejected');
-    }
-
-    // Get the config to check it exists
-    const config = await tx.configs.getById(proposal.configId);
-    if (!config) {
-      throw new BadRequestError('Config not found');
-    }
-
-    // Mark the proposal as rejected
-    await tx.configProposals.updateById({
-      id: proposal.id,
-      rejectedAt: deps.dateProvider.now(),
-      reviewerId: currentUser.id,
-      rejectedInFavorOfProposalId: null,
-      rejectionReason: 'rejected_explicitly',
-    });
-
-    // Create audit message for the rejection
-    await tx.auditLogs.create({
-      id: createAuditLogId(),
-      createdAt: deps.dateProvider.now(),
-      userId: currentUser.id,
-      projectId: config.projectId,
-      configId: proposal.configId,
-      payload: {
-        type: 'config_proposal_rejected',
-        proposalId: proposal.id,
-        configId: proposal.configId,
-        rejectedInFavorOfProposalId: undefined,
-        proposedDelete: proposal.isDelete || undefined,
-        proposedDescription: proposal.description ?? undefined,
-        proposedMembers: proposal.members ?? undefined,
-      },
+    // Use proposalService to reject the proposal
+    await tx.proposalService.rejectProposal({
+      proposalId: req.proposalId,
+      projectId: req.projectId,
+      reviewer: currentUser,
+      currentUserEmail: req.currentUserEmail,
     });
 
     return {};

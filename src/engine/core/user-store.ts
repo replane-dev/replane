@@ -29,6 +29,10 @@ export class UserStore {
   }
 
   async getByIds(userIds: number[]): Promise<User[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+
     const results = await this.db
       .selectFrom('users')
       .selectAll()

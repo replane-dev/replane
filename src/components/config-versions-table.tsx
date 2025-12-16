@@ -53,12 +53,10 @@ function humanizeId(id: string): string {
 export function ConfigVersionsTable({
   name,
   configId,
-  environmentId,
   currentVersion,
 }: {
   name: string;
   configId: string;
-  environmentId: string;
   currentVersion: number;
 }) {
   const router = useRouter();
@@ -67,14 +65,11 @@ export function ConfigVersionsTable({
   const {
     data: {versions},
   } = useSuspenseQuery(
-    trpc.getConfigVariantVersionList.queryOptions({
+    trpc.getConfigVersionList.queryOptions({
       configId,
-      environmentId,
       projectId,
     }),
   );
-  const {data: configData} = useSuspenseQuery(trpc.getConfig.queryOptions({name, projectId}));
-  const variant = configData.config?.variants.find(v => v.environmentId === environmentId);
   const currentConfigVersion = currentVersion;
   // Note: Restore functionality removed since we now use config-level versioning instead of variant-level versioning
   const tableData = React.useMemo(
@@ -211,9 +206,10 @@ export function ConfigVersionsTable({
         },
       },
     ],
-    [name, router, currentConfigVersion, variant, configId, environmentId, projectId],
+    [name, router, projectId],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: tableData,
     columns,

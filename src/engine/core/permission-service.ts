@@ -19,24 +19,24 @@ export class PermissionService {
     private readonly logger: Logger,
   ) {}
 
-  async getConfigOwners(configId: string): Promise<string[]> {
+  async getConfigMaintainers(configId: string): Promise<string[]> {
     const config = await this.configStore.getById(configId);
     if (!config) return [];
 
     const configUsers = await this.configUserStore.getByConfigId(configId);
     const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
 
-    const configOwnerEmails = configUsers
+    const configMaintainerEmails = configUsers
       .filter(cu => cu.role === 'maintainer')
       .map(cu => cu.user_email_normalized)
       .filter(Boolean) as string[];
 
-    const projectOwnerEmails = projectUsers
+    const projectMaintainerEmails = projectUsers
       .filter(pu => pu.role === 'admin' || pu.role === 'maintainer')
       .map(pu => pu.user_email_normalized)
       .filter(Boolean) as string[];
 
-    return unique([...configOwnerEmails, ...projectOwnerEmails]);
+    return unique([...configMaintainerEmails, ...projectMaintainerEmails]);
   }
 
   async getConfigEditors(configId: string): Promise<string[]> {

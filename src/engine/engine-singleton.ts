@@ -40,14 +40,24 @@ export const engineLazy = new Lazy(async () => {
             }
           : undefined,
     });
+    const transportVerified = await transport.verify();
+    if (!transportVerified) {
+      // helpful user friendly error message
+      throw new Error(
+        'Failed to verify email transport. Please check your email server configuration.',
+      );
+    }
     emailService = new NodemailerEmailService(transport, emailConfig.from);
   }
+
+  const baseUrl = ensureDefined(process.env.BASE_URL, 'BASE_URL is not defined');
 
   const engine = await createEngine({
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
     emailService,
+    baseUrl,
   });
 
   return engine;

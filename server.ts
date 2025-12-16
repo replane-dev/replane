@@ -27,6 +27,11 @@ if (process.env.MAGIC_LINK_ENABLED === 'true') {
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;
 
+import {getEngineSingleton} from '@/engine/engine-singleton';
+
+// ensure that engine can be created (verifies mail / postgres info)
+await getEngineSingleton();
+
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({dev});

@@ -9,9 +9,7 @@ export interface RejectAllPendingConfigProposalsRequest {
 
 export interface RejectAllPendingConfigProposalsResponse {}
 
-export interface RejectAllPendingConfigProposalsUseCaseDeps {}
-
-export function createRejectAllPendingConfigProposalsUseCase({}: RejectAllPendingConfigProposalsUseCaseDeps): TransactionalUseCase<
+export function createRejectAllPendingConfigProposalsUseCase(): TransactionalUseCase<
   RejectAllPendingConfigProposalsRequest,
   RejectAllPendingConfigProposalsResponse
 > {
@@ -19,7 +17,7 @@ export function createRejectAllPendingConfigProposalsUseCase({}: RejectAllPendin
     const currentUser = await tx.users.getByEmail(req.currentUserEmail);
     assert(currentUser, 'Current user not found');
 
-    await tx.configService.rejectAllPendingProposals({
+    await tx.proposalService.rejectAllPendingProposals({
       configId: req.configId,
       reviewer: currentUser,
     });

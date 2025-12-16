@@ -501,6 +501,7 @@ export function JsonEditor(props: JsonEditorProps) {
         id={normalId}
         editorName={props.editorName}
         onFullScreen={handleFullScreenOpen}
+        emitOnChange
       />
       <Dialog
         open={isFullScreen}
@@ -535,6 +536,7 @@ export function JsonEditor(props: JsonEditorProps) {
                 id={fullscreenId}
                 editorName={props.editorName}
                 onFullScreen={undefined}
+                emitOnChange
               />
             </div>
           </div>

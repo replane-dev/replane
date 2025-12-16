@@ -16,6 +16,7 @@ export interface ApproveConfigProposalResponse {}
 
 export interface ApproveConfigProposalUseCaseDeps {
   dateProvider: DateProvider;
+  baseUrl: string;
 }
 
 export function createApproveConfigProposalUseCase(
@@ -125,6 +126,26 @@ export function createApproveConfigProposalUseCase(
         reviewer: currentUser,
         prevVersion: proposal.baseConfigVersion,
         originalProposalId: proposal.id,
+      });
+    }
+
+    // Send email notification to the proposal author
+    const patchAuthorEmail = patchAuthor.email;
+    if (tx.emailService && patchAuthorEmail) {
+      const proposalUrl = `${deps.baseUrl}/app/projects/${project.id}/configs/${config.name}/proposals/${proposal.id}`;
+      const configName = config.name;
+      const projectName = project.name;
+      const reviewerName = currentUser.name ?? (currentUser.email || 'Unknown');
+      const emailService = tx.emailService;
+
+      tx.scheduleOptimisticEffect(async () => {
+        await emailService.sendProposalApproved({
+          to: patchAuthorEmail,
+          proposalUrl,
+          configName,
+          projectName,
+          reviewerName,
+        });
       });
     }
 

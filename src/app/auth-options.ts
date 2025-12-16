@@ -1,28 +1,14 @@
 import {MAGIC_LINK_MAX_AGE_SECONDS} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {DefaultDateProvider} from '@/engine/core/date-provider';
-import type {DB} from '@/engine/core/db';
-import {EventHubPublisher} from '@/engine/core/event-hub';
-import {createLogger, type Logger} from '@/engine/core/logger';
+import {createLogger} from '@/engine/core/logger';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
-import {AuditLogStore} from '@/engine/core/stores/audit-log-store';
-import {ConfigStore} from '@/engine/core/stores/config-store';
-import {ConfigVariantStore} from '@/engine/core/stores/config-variant-store';
-import {ProjectEnvironmentStore} from '@/engine/core/stores/project-environment-store';
-import {ProjectStore} from '@/engine/core/stores/project-store';
-import {ProjectUserStore} from '@/engine/core/stores/project-user-store';
-import {WorkspaceMemberStore} from '@/engine/core/stores/workspace-member-store';
-import {WorkspaceStore} from '@/engine/core/stores/workspace-store';
-import {createWorkspace} from '@/engine/core/use-cases/create-workspace-use-case';
-import {UserStore} from '@/engine/core/user-store';
-import {ensureDefined, normalizeEmail, runTransactional} from '@/engine/core/utils';
+import {ensureDefined, normalizeEmail} from '@/engine/core/utils';
 import {getDatabaseUrl, getEngineSingleton} from '@/engine/engine-singleton';
 import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
 import {getEmailServerConfig, isMagicLinkAuthEnabled} from '@/lib/email-server-config';
 import PostgresAdapter from '@auth/pg-adapter';
 import * as Sentry from '@sentry/nextjs';
-import {Kysely, PostgresDialect} from 'kysely';
-import {type AuthOptions, type User} from 'next-auth';
+import {type AuthOptions} from 'next-auth';
 import EmailProvider from 'next-auth/providers/email';
 import GithubProvider from 'next-auth/providers/github';
 import GitlabProvider from 'next-auth/providers/gitlab';
@@ -42,10 +28,6 @@ export function getAuthOptions(): AuthOptions {
   (['SIGINT', 'SIGTERM'] as const).forEach(signal => {
     process.on(signal, freePool);
   });
-
-  const dbSchema = process.env.DB_SCHEMA || 'public';
-  const dialect = new PostgresDialect({pool});
-  const db = new Kysely<DB>({dialect}).withSchema(dbSchema);
 
   cached = {
     // Important: use JWT session strategy so middleware can authorize via getToken
@@ -114,6 +96,7 @@ export function getAuthOptions(): AuthOptions {
                 process.env.GITHUB_CLIENT_SECRET,
                 'GITHUB_CLIENT_SECRET is not defined',
               ),
+              allowDangerousEmailAccountLinking: true,
             }),
           ]
         : [],
@@ -128,6 +111,7 @@ export function getAuthOptions(): AuthOptions {
                 process.env.GITLAB_CLIENT_SECRET,
                 'GITLAB_CLIENT_SECRET is not defined',
               ),
+              allowDangerousEmailAccountLinking: true,
             }),
           ]
         : [],
@@ -142,6 +126,7 @@ export function getAuthOptions(): AuthOptions {
                 process.env.GOOGLE_CLIENT_SECRET,
                 'GOOGLE_CLIENT_SECRET is not defined',
               ),
+              allowDangerousEmailAccountLinking: true,
             }),
           ]
         : [],
@@ -154,6 +139,7 @@ export function getAuthOptions(): AuthOptions {
                 'OKTA_CLIENT_SECRET is not defined',
               ),
               issuer: ensureDefined(process.env.OKTA_ISSUER, 'OKTA_ISSUER is not defined'),
+              allowDangerousEmailAccountLinking: true,
             }),
           ]
         : [],
@@ -190,7 +176,12 @@ export function getAuthOptions(): AuthOptions {
       async createUser({user}) {
         try {
           // TODO: don't create user if initUser fails
-          await initUser(db, user, logger);
+          const userEmail = normalizeEmail(user.email ?? 'unknown@replane.dev');
+          const engine = await getEngineSingleton();
+          await engine.useCases.initUser(GLOBAL_CONTEXT, {
+            userEmail,
+            exampleProject: true,
+          });
         } catch (error) {
           Sentry.captureException(error, {
             extra: {event: 'createUser'},
@@ -202,76 +193,4 @@ export function getAuthOptions(): AuthOptions {
   } satisfies AuthOptions;
 
   return cached;
-}
-
-async function initUser(db: Kysely<DB>, user: User, logger: Logger) {
-  await runTransactional({
-    ctx: GLOBAL_CONTEXT,
-    db,
-    logger,
-    onConflictRetriesCount: 16,
-    fn: async (_ctx, tx) => {
-      const workspaceStore = new WorkspaceStore(tx);
-      const workspaceMemberStore = new WorkspaceMemberStore(tx);
-      const projectStore = new ProjectStore(tx);
-      const projectUserStore = new ProjectUserStore(tx);
-      const projectEnvironmentStore = new ProjectEnvironmentStore(tx);
-      const configs = new ConfigStore(
-        tx,
-        new EventHubPublisher(tx, logger, new DefaultDateProvider()),
-      );
-      const configVariants = new ConfigVariantStore(tx);
-      await createWorkspace({
-        currentUserEmail: normalizeEmail(user.email ?? 'unknown@replane.dev'),
-        name: {type: 'personal'},
-        workspaceStore,
-        workspaceMemberStore,
-        projectStore,
-        projectUserStore,
-        projectEnvironmentStore,
-        users: new UserStore(tx),
-        auditLogs: new AuditLogStore(tx),
-        now: new Date(),
-        configs,
-        configVariants,
-        exampleProject: true,
-      });
-
-      // Auto-add new users to workspaces that have auto_add_new_users enabled
-      if (!user.email) {
-        return;
-      }
-
-      // Get workspaces that auto-add new users
-      const workspaces = await tx
-        .selectFrom('workspaces')
-        .selectAll()
-        .where('auto_add_new_users', '=', true)
-        .execute();
-
-      // Add user as member to those workspaces
-      const now = new Date();
-      const normalizedEmail = normalizeEmail(user.email);
-
-      for (const org of workspaces) {
-        // Check if already a member
-        const existingMember = await workspaceMemberStore.getByWorkspaceIdAndEmail({
-          workspaceId: org.id,
-          userEmail: normalizedEmail,
-        });
-
-        if (!existingMember) {
-          await workspaceMemberStore.create([
-            {
-              workspaceId: org.id,
-              email: user.email,
-              role: 'member',
-              createdAt: now,
-              updatedAt: now,
-            },
-          ]);
-        }
-      }
-    },
-  });
 }
