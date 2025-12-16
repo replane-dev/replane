@@ -58,6 +58,7 @@ export function SdkIntegrationGuide({
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId,
+      origin: window.location.origin,
     }),
   );
 

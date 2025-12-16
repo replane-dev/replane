@@ -2,12 +2,14 @@ import assert from 'assert';
 import {InputData, JSONSchemaInput, quicktype} from 'quicktype-core';
 import {BadRequestError} from '../errors';
 import type {TransactionalUseCase} from '../use-case';
+import {trimEnd} from '../utils';
 import type {NormalizedEmail} from '../zod';
 
 export interface GetProjectConfigTypesRequest {
   projectId: string;
   environmentId: string;
   currentUserEmail: NormalizedEmail;
+  origin: string;
 }
 
 export interface GetProjectConfigTypesResponse {
@@ -102,17 +104,38 @@ export function createGetProjectConfigTypesUseCase(): TransactionalUseCase<
       },
     });
 
+    const projectEnvironment = await tx.projectEnvironments.getById({
+      environmentId: req.environmentId,
+      projectId: req.projectId,
+    });
+
+    if (!projectEnvironment) {
+      throw new BadRequestError('Project environment not found');
+    }
+
+    const codegenUrl = `${trimEnd(req.origin, '/')}/app/projects/${project.id}/configs?codegen`;
+
+    const workspace = await tx.workspaces.getById({
+      id: project.workspaceId,
+      currentUserEmail: req.currentUserEmail,
+    });
+
+    if (!workspace) {
+      throw new BadRequestError('Workspace not found');
+    }
+
     return {
       types: `/**
- * Auto-generated TypeScript types for Replane configs
+ * Auto-generated types for Replane configuration
  *
- * Project: ${project.name}
+ * Workspace:   ${workspace.name}
+ * Project:     ${project.name}
+ * Environment: ${projectEnvironment.name}
  *
- * These types are generated from your config schemas and provide
- * full type safety when using the Replane SDK in your application.
+ * These types are automatically generated from your config schemas.
+ * Regenerate them whenever you update your schema definitions.
  *
- * @generated This file is auto-generated. Do not edit manually.
- * Regenerate by updating your config schemas in the Replane dashboard.
+ * @link ${codegenUrl}
  */
 
 ${result.lines.join('\n').trim()}`,

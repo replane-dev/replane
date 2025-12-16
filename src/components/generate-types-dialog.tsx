@@ -74,6 +74,7 @@ function GenerateTypesContent() {
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId: selectedEnvironmentId,
+      origin: window.location.origin,
     }),
   );
 
