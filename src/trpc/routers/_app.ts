@@ -3,6 +3,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
+import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
 import {
   ConfigSchema,
   ConfigValue,
@@ -156,6 +157,7 @@ export const appRouter = createTRPCRouter({
         id: p.id,
         name: p.name,
       })),
+      allowedEmailDomains: getAllowedEmailDomains(),
     };
   }),
   hello: baseProcedure

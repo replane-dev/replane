@@ -16,6 +16,7 @@ import {createWorkspace} from '@/engine/core/use-cases/create-workspace-use-case
 import {UserStore} from '@/engine/core/user-store';
 import {ensureDefined, normalizeEmail, runTransactional} from '@/engine/core/utils';
 import {getDatabaseUrl} from '@/engine/engine-singleton';
+import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
 import PostgresAdapter from '@auth/pg-adapter';
 import * as Sentry from '@sentry/nextjs';
 import {Kysely, PostgresDialect} from 'kysely';
@@ -114,8 +115,21 @@ export function getAuthOptions(): AuthOptions {
         : [],
     ].flat(),
     callbacks: {
-      async signIn({account, profile}) {
+      async signIn({account, profile, user}) {
         try {
+          // Check email domain restrictions
+          const email = user?.email || (profile as any)?.email;
+          if (!isEmailDomainAllowed(email)) {
+            logger.warn(GLOBAL_CONTEXT, {
+              msg: 'Sign-in blocked: email domain not allowed',
+              email,
+              provider: account?.provider,
+            });
+            // Return a redirect to the error page with AccessDenied error
+            return '/auth/error?error=AccessDenied';
+          }
+
+          // Provider-specific validations
           if (account?.provider === 'google') {
             return !!(profile as GoogleProfile | undefined)?.email_verified;
           }

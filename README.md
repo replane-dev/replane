@@ -72,6 +72,8 @@ services:
       # OKTA_CLIENT_ID: your-okta-client-id
       # OKTA_CLIENT_SECRET: your-okta-client-secret
       # OKTA_ISSUER: https://your-domain.okta.com
+      # Optional: restrict registration to specific email domains
+      # ALLOWED_EMAIL_DOMAINS: gmail.com,my-company.com
     ports:
       - '8080:8080'
 
@@ -131,6 +133,7 @@ Configure at least one OAuth provider. You can enable multiple providers simulta
 
 - `DATABASE_SSL_CA` – custom SSL/TLS certificate authority (CA) for PostgreSQL connections. Use this when connecting to databases that require custom SSL certificates.
 - `DATABASE_MAX_CONNECTIONS` – maximum number of connections in the PostgreSQL connection pool. Defaults to `10`.
+- `ALLOWED_EMAIL_DOMAINS` – comma-separated list of email domains allowed for user registration (e.g., `gmail.com,my-company.com`). If not set, all email domains are allowed. Users with email addresses from other domains will be blocked from signing up.
 
 ### Error Tracking (Sentry)
 

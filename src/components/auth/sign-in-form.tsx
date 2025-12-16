@@ -16,6 +16,7 @@ interface SignInFormProps {
   providers: Provider[];
   callbackUrl: string;
   error?: string | null;
+  allowedEmailDomains?: string[] | null;
 }
 
 const providerConfigs = [
@@ -186,7 +187,7 @@ function NoProvidersConfigured() {
   );
 }
 
-export function SignInForm({providers, callbackUrl, error}: SignInFormProps) {
+export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}: SignInFormProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   const handleSignIn = async (providerId: string) => {
@@ -212,6 +213,25 @@ export function SignInForm({providers, callbackUrl, error}: SignInFormProps) {
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
+            </div>
+          )}
+
+          {allowedEmailDomains && allowedEmailDomains.length > 0 && (
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+              <p className="text-sm font-medium text-foreground mb-1">Email domain restrictions</p>
+              <p className="text-sm text-muted-foreground">
+                Only emails from the following domains are allowed:
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {allowedEmailDomains.map(domain => (
+                  <code
+                    key={domain}
+                    className="inline-flex items-center rounded bg-blue-500/20 px-2 py-0.5 text-xs font-mono text-foreground"
+                  >
+                    @{domain}
+                  </code>
+                ))}
+              </div>
             </div>
           )}
 

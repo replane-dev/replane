@@ -28,6 +28,7 @@ export default function SignInPage({searchParams}: SignInPageProps) {
   }
 
   const providers = data.providers;
+  const allowedEmailDomains = data.allowedEmailDomains;
 
   const errorMessages: Record<string, string> = {
     OAuthSignin: 'Error constructing authorization URL.',
@@ -62,6 +63,7 @@ export default function SignInPage({searchParams}: SignInPageProps) {
           providers={providers}
           callbackUrl={params.callbackUrl || '/app'}
           error={errorMessage}
+          allowedEmailDomains={allowedEmailDomains}
         />
         <div className="text-muted-foreground text-balance text-center text-xs">
           By clicking continue, you agree to our{' '}

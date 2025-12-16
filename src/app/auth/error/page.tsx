@@ -1,6 +1,7 @@
 import {ReplaneIcon} from '@/components/replane-icon';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
+import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
 import {AlertCircle} from 'lucide-react';
 import Link from 'next/link';
 
@@ -14,6 +15,7 @@ interface ErrorPageProps {
 
 export default async function AuthErrorPage({searchParams}: ErrorPageProps) {
   const params = await searchParams;
+  const allowedDomains = getAllowedEmailDomains();
 
   const errorMessages: Record<string, {title: string; description: string}> = {
     Configuration: {
@@ -23,7 +25,9 @@ export default async function AuthErrorPage({searchParams}: ErrorPageProps) {
     },
     AccessDenied: {
       title: 'Access Denied',
-      description: 'You do not have permission to sign in.',
+      description: allowedDomains
+        ? 'Your email domain is not allowed to sign in to this instance.'
+        : 'You do not have permission to sign in.',
     },
     Verification: {
       title: 'Verification Failed',
@@ -95,6 +99,25 @@ export default async function AuthErrorPage({searchParams}: ErrorPageProps) {
             <CardDescription className="text-balance">{errorInfo.description}</CardDescription>
           </CardHeader>
           <CardContent>
+            {error === 'AccessDenied' && allowedDomains && allowedDomains.length > 0 && (
+              <div className="mb-4 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+                <p className="text-sm font-medium text-foreground mb-2">Allowed email domains:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {allowedDomains.map(domain => (
+                    <code
+                      key={domain}
+                      className="inline-flex items-center rounded bg-blue-500/20 px-2 py-1 text-xs font-mono text-foreground"
+                    >
+                      @{domain}
+                    </code>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Please use an email address from one of these domains to sign in.
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               <Button asChild>
                 <Link href="/auth/signin">Try Again</Link>
