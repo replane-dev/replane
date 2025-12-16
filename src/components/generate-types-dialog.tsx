@@ -70,7 +70,7 @@ function GenerateTypesContent() {
   // Fetch generated types for selected environment
   // Using useQuery instead of useSuspenseQuery to prevent unmounting the Monaco editor
   // when the environment changes (which would dispose the editor and cause errors)
-  const {data, isLoading, isFetching} = useQuery(
+  const {data, isLoading, isFetching, error} = useQuery(
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId: selectedEnvironmentId,
@@ -136,12 +136,19 @@ function GenerateTypesContent() {
             size="sm"
             onClick={handleCopy}
             className="h-7 text-xs"
-            disabled={isLoading || !data}
+            disabled={isLoading || !data || !!error}
           >
             Copy
           </Button>
         </div>
-        {isLoading || !data ? (
+        {error ? (
+          <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+            <p className="text-sm font-medium text-destructive">Failed to generate types</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error instanceof Error ? error.message : 'An unknown error occurred'}
+            </p>
+          </div>
+        ) : isLoading || !data ? (
           <Skeleton className="h-48 w-full rounded-lg" />
         ) : (
           <CodeSnippet code={data.types} language="typescript" />
