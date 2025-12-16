@@ -8,10 +8,6 @@ export interface Migration {
   sql: string;
 }
 
-const EXAMPLE_PROJECT_ID = '32234b32-b7d9-4401-91e2-745a0cfb092a';
-const EXAMPLE_USER_ID = 123456789;
-const DEFAULT_WORKSPACE_ID = '32234b32-b7d9-4401-91e2-745a0cfb092b';
-
 export const migrations: Migration[] = [
   {
     name: 'Create auth tables (users, accounts, sessions, verification_token)',
@@ -139,7 +135,7 @@ export const migrations: Migration[] = [
     `,
   },
   {
-    name: 'Add projects table and example configs',
+    name: 'Add projects table',
     sql: /*sql*/ `
       CREATE TABLE projects (
         id UUID PRIMARY KEY,
@@ -149,9 +145,6 @@ export const migrations: Migration[] = [
         created_at TIMESTAMPTZ(3) NOT NULL,
         updated_at TIMESTAMPTZ(3) NOT NULL
       );
-
-      INSERT INTO projects (id, name, description, is_example, created_at, updated_at)
-      SELECT '${EXAMPLE_PROJECT_ID}', 'Example project', 'This is an example project.', TRUE, NOW(), NOW();
 
       ALTER TABLE configs
       ADD COLUMN project_id UUID NULL REFERENCES projects(id) ON DELETE CASCADE;
@@ -215,38 +208,6 @@ export const migrations: Migration[] = [
       ALTER TABLE config_users ADD COLUMN updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW();
       ALTER TABLE config_users ALTER COLUMN created_at DROP DEFAULT;
       ALTER TABLE config_users ALTER COLUMN updated_at DROP DEFAULT;
-
-      -- example configs
-
-      INSERT INTO users (id, name, email, "emailVerified")
-      VALUES (${EXAMPLE_USER_ID}, 'Example User', 'example-user@replane.dev', NOW());
-
-      INSERT INTO configs (id, name, value, description, schema, creator_id, created_at, updated_at, version, project_id)
-      VALUES
-      (
-        gen_random_uuid(),
-        'example_config',
-        '{ "value": {"key":"value"} }'::JSONB,
-        'This is an example config demonstrating JSON Schema support.',
-        '{"value":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}'::JSONB,
-        ${EXAMPLE_USER_ID},
-        NOW(),
-        NOW(),
-        1,
-        '${EXAMPLE_PROJECT_ID}'
-      ),
-      (
-        gen_random_uuid(),
-        'example_feature_enabled',
-        '{ "value": true }'::JSONB,
-        'This is a feature flag config. Supports all JSON Schema versions (draft-04, draft-06, draft-07, 2019-09, 2020-12).',
-        '{"value":{"$schema":"http://json-schema.org/draft-07/schema#","type":"boolean"}}'::JSONB,
-        ${EXAMPLE_USER_ID},
-        NOW(),
-        NOW(),
-        1,
-        '${EXAMPLE_PROJECT_ID}'
-      );
     `,
   },
   {
@@ -830,22 +791,6 @@ export const migrations: Migration[] = [
       ALTER TABLE projects
       ADD COLUMN organization_id UUID NULL REFERENCES organizations(id) ON DELETE CASCADE;
 
-      -- Create a default organization for existing projects
-      INSERT INTO organizations (id, name, require_proposals, allow_self_approvals, created_at, updated_at)
-      SELECT
-        '${DEFAULT_WORKSPACE_ID}',
-        'Default Workspace',
-        FALSE,
-        FALSE,
-        NOW(),
-        NOW()
-      WHERE EXISTS (SELECT 1 FROM projects);
-
-      -- Assign all existing projects to the default organization
-      UPDATE projects
-      SET organization_id = (SELECT id FROM organizations ORDER BY created_at ASC LIMIT 1)
-      WHERE organization_id IS NULL;
-
       -- Make organization_id required
       ALTER TABLE projects
       ALTER COLUMN organization_id SET NOT NULL;
@@ -960,79 +905,12 @@ export const migrations: Migration[] = [
       UPDATE organizations
       SET auto_add_new_users = false
       WHERE personal_org_user_id IS NOT NULL;
-
-      -- for self-hosted workspaces auto add new users
-      UPDATE organizations
-      SET auto_add_new_users = true
-      WHERE id = '${DEFAULT_WORKSPACE_ID}';
     `,
   },
   {
     name: 'Create default projects for personal organizations',
     sql: /*sql*/ `
-      -- Create default projects for personal organizations and rename them
-
-      -- Step 1: Create a default project for each personal organization
-      INSERT INTO projects (id, name, description, is_example, organization_id, require_proposals, allow_self_approvals, created_at, updated_at)
-      SELECT
-        gen_random_uuid(),
-        'Default Project',
-        'Your first project',
-        FALSE,
-        o.id,
-        FALSE,
-        TRUE,
-        NOW(),
-        NOW()
-      FROM organizations o
-      WHERE o.personal_org_user_id IS NOT NULL;
-
-      -- Step 2: Create Production and Development environments for each new project
-      INSERT INTO project_environments (id, project_id, name, "order", created_at, updated_at)
-      SELECT
-        gen_random_uuid(),
-        p.id,
-        'Production',
-        1,
-        NOW(),
-        NOW()
-      FROM projects p
-      INNER JOIN organizations o ON p.organization_id = o.id
-      WHERE o.personal_org_user_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM project_environments pe
-        WHERE pe.project_id = p.id AND pe.name = 'Production'
-      );
-
-      INSERT INTO project_environments (id, project_id, name, "order", created_at, updated_at)
-      SELECT
-        gen_random_uuid(),
-        p.id,
-        'Development',
-        2,
-        NOW(),
-        NOW()
-      FROM projects p
-      INNER JOIN organizations o ON p.organization_id = o.id
-      WHERE o.personal_org_user_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM project_environments pe
-        WHERE pe.project_id = p.id AND pe.name = 'Development'
-      );
-
-      -- Step 3: Add users as project owners for their personal organization projects
-      INSERT INTO project_users (project_id, user_email_normalized, role, created_at, updated_at)
-      SELECT
-        p.id,
-        LOWER(TRIM(u.email)),
-        'admin',
-        NOW(),
-        NOW()
-      FROM projects p
-      INNER JOIN organizations o ON p.organization_id = o.id
-      INNER JOIN users u ON o.personal_org_user_id = u.id
-      WHERE o.personal_org_user_id IS NOT NULL
-      ON CONFLICT (project_id, user_email_normalized) DO NOTHING;
+      -- removed, we no longer create default projects for personal organizations
     `,
   },
   {

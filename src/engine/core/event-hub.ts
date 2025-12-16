@@ -96,6 +96,10 @@ export class EventHubPublisher<T extends object> {
       .where('topic', '=', topic)
       .execute();
 
+    if (consumerIds.length === 0) {
+      return;
+    }
+
     await this.db
       .insertInto('events')
       .values(
