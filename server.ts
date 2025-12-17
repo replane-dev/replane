@@ -29,9 +29,6 @@ process.env.NEXTAUTH_URL = process.env.BASE_URL;
 
 import {getEngineSingleton} from '@/engine/engine-singleton';
 
-// ensure that engine can be created (verifies mail / postgres info)
-await getEngineSingleton();
-
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({dev});
@@ -197,74 +194,83 @@ async function handleSentryTunnel(req: IncomingMessage, res: ServerResponse): Pr
   }
 }
 
-app.prepare().then(() => {
-  createServer(async (req, res) => {
-    const startedAt = Date.now();
-    logRequestStart(req);
-    res.on('finish', () => logRequestEnd(req, res, startedAt));
-    const parsedUrl = parse(req.url!, true);
+app
+  .prepare()
+  .then(async () => {
+    // ensure that engine can be created (verifies mail / postgres info)
+    await getEngineSingleton();
 
-    try {
-      // Sentry tunnel route - forward browser events to Sentry (bypasses ad-blockers)
-      if (parsedUrl.pathname === SENTRY_TUNNEL_PATH) {
-        await handleSentryTunnel(req, res);
-        return;
-      }
+    createServer(async (req, res) => {
+      const startedAt = Date.now();
+      logRequestStart(req);
+      res.on('finish', () => logRequestEnd(req, res, startedAt));
+      const parsedUrl = parse(req.url!, true);
 
-      if (parsedUrl.pathname && SDK_PATH_REGEX.some(regex => regex.test(parsedUrl.pathname!))) {
-        const honoReq = toSdkRequest(req);
-        const honoRes = await sdkApi.fetch(honoReq);
-        await sendResponse(res, honoRes);
-        return;
-      }
+      try {
+        // Sentry tunnel route - forward browser events to Sentry (bypasses ad-blockers)
+        if (parsedUrl.pathname === SENTRY_TUNNEL_PATH) {
+          await handleSentryTunnel(req, res);
+          return;
+        }
 
-      if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
-        const nextHealth = await Promise.all([
-          healthcheckAwareSelfFetch('/health')
-            .then(res => ({healthy: !res || res.status === 200}))
-            .catch(() => ({healthy: false})),
-          healthcheckAwareSelfFetch('/api/internal/health')
-            .then(res => ({healthy: !res || res.status === 200}))
-            .catch(() => ({healthy: false})),
-        ]).then(([nextHealth, internalHealth]) => {
-          return {
-            healthy: nextHealth.healthy && internalHealth.healthy,
-          };
+        if (parsedUrl.pathname && SDK_PATH_REGEX.some(regex => regex.test(parsedUrl.pathname!))) {
+          const honoReq = toSdkRequest(req);
+          const honoRes = await sdkApi.fetch(honoReq);
+          await sendResponse(res, honoRes);
+          return;
+        }
+
+        if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
+          const nextHealth = await Promise.all([
+            healthcheckAwareSelfFetch('/health')
+              .then(res => ({healthy: !res || res.status === 200}))
+              .catch(() => ({healthy: false})),
+            healthcheckAwareSelfFetch('/api/internal/health')
+              .then(res => ({healthy: !res || res.status === 200}))
+              .catch(() => ({healthy: false})),
+          ]).then(([nextHealth, internalHealth]) => {
+            return {
+              healthy: nextHealth.healthy && internalHealth.healthy,
+            };
+          });
+
+          res.statusCode = nextHealth.healthy ? 200 : 500;
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({}));
+          return;
+        }
+
+        handle(req, res, parsedUrl);
+      } catch (error) {
+        // Report error to Sentry if enabled
+        Sentry.captureException(error, {
+          extra: {
+            method: req.method,
+            url: req.url,
+            pathname: parsedUrl.pathname,
+          },
         });
 
-        res.statusCode = nextHealth.healthy ? 200 : 500;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({}));
-        return;
+        console.error('Server error:', error);
+
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({msg: 'Internal server error'}));
+        }
       }
+    }).listen(PORT);
 
-      handle(req, res, parsedUrl);
-    } catch (error) {
-      // Report error to Sentry if enabled
-      Sentry.captureException(error, {
-        extra: {
-          method: req.method,
-          url: req.url,
-          pathname: parsedUrl.pathname,
-        },
-      });
-
-      console.error('Server error:', error);
-
-      if (!res.headersSent) {
-        res.statusCode = 500;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({msg: 'Internal server error'}));
-      }
-    }
-  }).listen(PORT);
-
-  console.log(
-    `> Server listening at http://localhost:${PORT} as ${
-      dev ? 'development' : process.env.NODE_ENV
-    }`,
-  );
-});
+    console.log(
+      `> Server listening at http://localhost:${PORT} as ${
+        dev ? 'development' : process.env.NODE_ENV
+      }`,
+    );
+  })
+  .catch(error => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  });
 
 function healthcheckAwareSelfFetch(path: string): Promise<Response | undefined> {
   if (HEALTHCHECK_PATH && path === HEALTHCHECK_PATH) {
