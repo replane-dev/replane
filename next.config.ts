@@ -34,8 +34,9 @@ export default withSentryConfig(nextConfig, {
   // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,
 
-  // Disable source map upload - we ship them publicly so Sentry can fetch them
   sourcemaps: {
-    disable: true,
+    disable: false,
   },
+
+  widenClientFileUpload: true,
 });
