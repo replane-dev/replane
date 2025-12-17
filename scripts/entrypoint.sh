@@ -83,7 +83,7 @@ term_handler() {
     log "Stopping app (PID $APP_PID)..."
     kill "$APP_PID" || true
     wait "$APP_PID" || true
-    sleep 1 # give the app a moment to exit
+    sleep 3 # give the app a moment to exit
     log "App stopped"
   fi
 

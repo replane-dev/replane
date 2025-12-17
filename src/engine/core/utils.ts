@@ -46,6 +46,13 @@ export function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+export function waitSync(ms: number): void {
+  const start = performance.now();
+  while (performance.now() - start < ms) {
+    // spin wait
+  }
+}
+
 export function assertNever(value: never, message: string): never {
   throw new Error(`${message}: ${JSON.stringify(value)}`);
 }

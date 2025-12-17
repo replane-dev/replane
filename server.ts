@@ -6,6 +6,10 @@ import {createServer, IncomingMessage, ServerResponse} from 'http';
 import next from 'next';
 import type {TLSSocket} from 'tls';
 import {parse} from 'url';
+import {waitSync} from './src/engine/core/utils';
+
+// Sentry test
+waitSync(1000);
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';

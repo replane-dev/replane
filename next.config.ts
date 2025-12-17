@@ -19,24 +19,20 @@ const nextConfig: NextConfig = {
     },
   ],
   turbopack: {},
-  serverExternalPackages: ['pino', 'pino-pretty', 'thread-stream'],
+  serverExternalPackages: ['pino', 'pino-pretty', 'thread-stream', '@sentry/node-native'],
 };
 
 export default withSentryConfig(nextConfig, {
-  // Automatically annotate React components to show their full name in breadcrumbs and session replay
-  reactComponentAnnotation: {
-    enabled: true,
-  },
-
   // Route browser requests to Sentry through our custom server to circumvent ad-blockers
   tunnelRoute: '/api/internal/monitoring',
 
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
+  telemetry: false,
 
   sourcemaps: {
     disable: false,
   },
 
   widenClientFileUpload: true,
+
+  authToken: process.env.SENTRY_AUTH_TOKEN,
 });
