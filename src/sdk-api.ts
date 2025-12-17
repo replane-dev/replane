@@ -99,7 +99,6 @@ const ConfigDto = z
   .object({
     name: ConfigName(),
     value: z.unknown(),
-    renderedOverrides: z.array(RenderedOverrideSchema),
     overrides: z.array(RenderedOverrideSchema),
     version: z.number(),
   })

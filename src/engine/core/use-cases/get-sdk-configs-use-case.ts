@@ -11,7 +11,6 @@ export interface GetSdkConfigsResponse {
   configs: Array<{
     name: string;
     value: unknown;
-    renderedOverrides: RenderedOverride[];
     overrides: RenderedOverride[];
     version: number;
   }>;
@@ -34,7 +33,6 @@ export function createGetSdkConfigsUseCase(
       configs: configs.map(config => ({
         name: config.name,
         value: config.value,
-        renderedOverrides: config.overrides,
         overrides: config.overrides,
         version: config.version,
       })),
