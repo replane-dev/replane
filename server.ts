@@ -6,10 +6,6 @@ import {createServer, IncomingMessage, ServerResponse} from 'http';
 import next from 'next';
 import type {TLSSocket} from 'tls';
 import {parse} from 'url';
-import {waitSync} from './src/engine/core/utils';
-
-// Sentry test
-waitSync(1000);
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';
@@ -28,10 +24,20 @@ function isSensitivePath(pathname: string): boolean {
   return pathname.startsWith('/api/auth/') || pathname.startsWith('/api/v1/auth/');
 }
 
+function parseRequestUrl(req: IncomingMessage): {pathname: string; search: string} {
+  try {
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const pathname = url.pathname;
+    const search = isSensitivePath(pathname) ? '<REDACTED>' : url.search;
+    return {pathname, search};
+  } catch {
+    // Fallback if URL parsing fails (e.g., malformed host header or URL)
+    return {pathname: req.url || '<malformed_url>', search: ''};
+  }
+}
+
 function logRequestStart(req: IncomingMessage) {
-  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  const pathname = url.pathname;
-  const search = isSensitivePath(pathname) ? '<REDACTED>' : url.search;
+  const {pathname, search} = parseRequestUrl(req);
   const ua = (req.headers['user-agent'] as string) || '';
   const ip = getClientIp(req);
   console.info(
@@ -48,9 +54,7 @@ function logRequestStart(req: IncomingMessage) {
 }
 
 function logRequestEnd(req: IncomingMessage, res: ServerResponse, startedAt: number) {
-  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  const pathname = url.pathname;
-  const search = isSensitivePath(pathname) ? '<REDACTED>' : url.search;
+  const {pathname, search} = parseRequestUrl(req);
   const durationMs = Date.now() - startedAt;
   console.info(
     JSON.stringify({
