@@ -1,6 +1,6 @@
 export const CONFIGS_REPLICA_PULL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-export const REPLICA_STEP_INTERVAL_MS = process.env.NODE_ENV === 'development' ? 500 : 100;
+export const REPLICA_STEP_INTERVAL_MS = 100;
 export const REPLICA_CLEANUP_FREQUENCY = 128; // every Nth push of events we cleanup old consumers
 export const REPLICA_LAST_USED_AT_CUTOFF_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REPLICA_LAST_USED_AT_REPORT_INTERVAL_MS = 30 * 1000; // 30 seconds
