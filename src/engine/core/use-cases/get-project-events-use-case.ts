@@ -49,12 +49,12 @@ export function createGetProjectEventsUseCase(
     const configValue =
       config.variants.find(variant => variant.environmentId === environmentId)?.value ??
       config.value;
-    assert(configValue, 'Config value not found');
+    assert(configValue !== undefined, 'Config value not found');
 
     const rawConfigOverrides =
       config.variants.find(variant => variant.environmentId === environmentId)?.overrides ??
       config.overrides;
-    assert(rawConfigOverrides, 'Config overrides not found');
+    assert(rawConfigOverrides !== undefined, 'Config overrides not found');
 
     return await deps.replicaService.renderConfig({
       environmentId: environmentId,
