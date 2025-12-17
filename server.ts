@@ -1,6 +1,8 @@
 import {getEmailServerConfig} from '@/lib/email-server-config';
 import './sentry.server.config';
 
+import {getEdgeSingleton} from '@/engine/edge-singleton';
+import {getEngineSingleton} from '@/engine/engine-singleton';
 import {sdkApi} from '@/sdk-api';
 import * as Sentry from '@sentry/nextjs';
 import {createServer, IncomingMessage, ServerResponse} from 'http';
@@ -26,8 +28,6 @@ if (process.env.MAGIC_LINK_ENABLED === 'true') {
 
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;
-
-import {getEngineSingleton} from '@/engine/engine-singleton';
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';
@@ -199,6 +199,9 @@ app
   .then(async () => {
     // ensure that engine can be created (verifies mail / postgres info)
     await getEngineSingleton();
+
+    // ensure that edge can be created (verifies postgres info)
+    await getEdgeSingleton();
 
     createServer(async (req, res) => {
       const startedAt = Date.now();
