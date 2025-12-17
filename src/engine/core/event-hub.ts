@@ -50,7 +50,7 @@ export class EventHubTopic<T> implements Topic<T> {
       .returning(['id'])
       .executeTakeFirstOrThrow();
 
-    return new EventHubConsumer<T>(this.dbForConsumer, this.dateProvider, consumer.id);
+    return new EventHubConsumer<T>(this.dbForConsumer, this.dateProvider, consumer.id, this.topic);
   }
 
   async tryRestoreConsumer(consumerId: string): Promise<TopicConsumer<T> | undefined> {
@@ -67,7 +67,7 @@ export class EventHubTopic<T> implements Topic<T> {
       return undefined;
     }
 
-    return new EventHubConsumer<T>(this.dbForConsumer, this.dateProvider, consumerId);
+    return new EventHubConsumer<T>(this.dbForConsumer, this.dateProvider, consumerId, this.topic);
   }
 }
 
@@ -140,6 +140,7 @@ export class EventHubConsumer<T> implements TopicConsumer<T> {
     private readonly db: Kysely<DB>,
     private readonly dateProvider: DateProvider,
     public readonly consumerId: string,
+    public readonly topic: string,
   ) {}
 
   async isAlive(): Promise<boolean> {

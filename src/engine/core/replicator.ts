@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import {
   REPLICA_CONFIGS_DUMP_BATCH_SIZE as REPLICATOR_CONFIGS_DUMP_BATCH_SIZE,
   REPLICA_STEP_EVENTS_COUNT as REPLICATOR_STEP_EVENTS_COUNT,
@@ -160,6 +161,12 @@ export class Replicator<TSource, TTarget> {
         status = await this.step().then(s => s.status);
       } catch (error) {
         this.logger.error(GLOBAL_CONTEXT, {msg: 'Replicator step error', error});
+        Sentry.captureException(error, {
+          extra: {
+            consumerId: this.consumer.consumerId,
+            topic: this.consumer.topic,
+          },
+        });
 
         if (error instanceof ConsumerDestroyedError) {
           this._isStopped = true;

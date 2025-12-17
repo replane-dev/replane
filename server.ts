@@ -1,5 +1,4 @@
-import {getEmailServerConfig} from '@/lib/email-server-config';
-import './sentry.server.config';
+import './src/init-node-environment';
 
 import {sdkApi} from '@/sdk-api';
 import * as Sentry from '@sentry/nextjs';
@@ -7,25 +6,6 @@ import {createServer, IncomingMessage, ServerResponse} from 'http';
 import next from 'next';
 import type {TLSSocket} from 'tls';
 import {parse} from 'url';
-
-if (!process.env.BASE_URL) {
-  throw new Error('BASE_URL is not defined');
-}
-if (!process.env.SECRET_KEY_BASE) {
-  throw new Error('SECRET_KEY_BASE is not defined');
-}
-
-if (process.env.MAGIC_LINK_ENABLED === 'true') {
-  const emailServerConfig = getEmailServerConfig();
-  if (!emailServerConfig) {
-    throw new Error(
-      'email server configuration is not defined, see https://github.com/replane-dev/replane/blob/main/README.md',
-    );
-  }
-}
-
-process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
-process.env.NEXTAUTH_URL = process.env.BASE_URL;
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const dev = process.env.NODE_ENV !== 'production';

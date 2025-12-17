@@ -60,7 +60,12 @@ const t = initTRPC.context<TrpcContext>().create({
     return shape;
   },
 });
+
+const sentryMiddleware = Sentry.trpcMiddleware({
+  attachRpcInput: true,
+});
+
 // Base router and procedure helpers
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
-export const baseProcedure = t.procedure;
+export const baseProcedure = t.procedure.use(sentryMiddleware);

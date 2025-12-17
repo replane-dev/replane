@@ -1,5 +1,6 @@
 export interface TopicConsumer<T> {
   readonly consumerId: string;
+  readonly topic: string;
   isAlive(): Promise<boolean>;
   pullEvents(count: number): Promise<{id: string; data: T}[]>;
   ackEvents(eventIds: string[]): Promise<void>;
@@ -19,6 +20,10 @@ export class MappedTopicConsumer<TSource, TTarget> implements TopicConsumer<TTar
 
   get consumerId(): string {
     return this.consumer.consumerId;
+  }
+
+  get topic(): string {
+    return this.consumer.topic;
   }
 
   async isAlive(): Promise<boolean> {
