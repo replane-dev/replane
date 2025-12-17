@@ -73,12 +73,10 @@ function toSdkRequest(req: IncomingMessage): Request {
   const isEncrypted = (req.socket as TLSSocket).encrypted;
   const proto = isEncrypted ? 'https' : 'http';
   const url = new URL(req.url!, `${proto}://${req.headers.host}`);
-  if (url.pathname.startsWith('/api/v1')) {
-    url.pathname = url.pathname.slice('/api/v1'.length); // Remove /api/v1 prefix
-  } else if (url.pathname.startsWith('/api/sdk/v1')) {
-    url.pathname = url.pathname.slice('/api/sdk/v1'.length); // Remove /api/sdk/v1 prefix
+  if (url.pathname.startsWith(SDK_API_PREFIX)) {
+    url.pathname = url.pathname.slice(SDK_API_PREFIX.length); // Remove SDK API prefix
   } else {
-    throw new Error('Invalid SDK path');
+    throw new Error('Invalid SDK path: ' + url.pathname);
   }
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
@@ -100,7 +98,7 @@ async function sendResponse(res: ServerResponse, honoRes: Response) {
   res.end();
 }
 
-const SDK_PATH_REGEX = [/^\/api\/v\d+\/.*$/, /^\/api\/sdk\/v\d+\/.*$/];
+const SDK_API_PREFIX = '/api/sdk/v1';
 const SENTRY_TUNNEL_PATH = '/api/internal/monitoring';
 const HEALTHCHECK_PATH = (() => {
   const path = process.env.HEALTHCHECK_PATH;
@@ -196,7 +194,7 @@ app
           return;
         }
 
-        if (parsedUrl.pathname && SDK_PATH_REGEX.some(regex => regex.test(parsedUrl.pathname!))) {
+        if (parsedUrl.pathname && parsedUrl.pathname.startsWith(SDK_API_PREFIX)) {
           const honoReq = toSdkRequest(req);
           const honoRes = await sdkApi.fetch(honoReq);
           await sendResponse(res, honoRes);
