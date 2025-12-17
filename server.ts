@@ -1,8 +1,6 @@
 import {getEmailServerConfig} from '@/lib/email-server-config';
 import './sentry.server.config';
 
-import {getEdgeSingleton} from '@/engine/edge-singleton';
-import {getEngineSingleton} from '@/engine/engine-singleton';
 import {sdkApi} from '@/sdk-api';
 import * as Sentry from '@sentry/nextjs';
 import {createServer, IncomingMessage, ServerResponse} from 'http';
@@ -197,12 +195,6 @@ async function handleSentryTunnel(req: IncomingMessage, res: ServerResponse): Pr
 app
   .prepare()
   .then(async () => {
-    // ensure that engine can be created (verifies mail / postgres info)
-    await getEngineSingleton();
-
-    // ensure that edge can be created (verifies postgres info)
-    await getEdgeSingleton();
-
     createServer(async (req, res) => {
       const startedAt = Date.now();
       logRequestStart(req);
