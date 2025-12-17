@@ -1462,11 +1462,26 @@ export const migrations: Migration[] = [
   },
 ];
 
-export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
-  // Acquire an advisory lock to ensure only one migrator runs at a time for this DB session
-  try {
-    await client.query(/*sql*/ `SELECT pg_advisory_lock(hashtext('migrations_${schema}'));`);
+export type MigrateStepResult = 'lagging' | 'ready';
 
+/**
+ * Runs a single pending migration within a transaction.
+ * Uses transaction-level advisory lock to ensure only one migrator runs at a time.
+ *
+ * @returns 'lagging' if there are more pending migrations, 'ready' if all migrations are complete
+ */
+export async function migrateStep(
+  ctx: Context,
+  client: ClientBase,
+  logger: Logger,
+  schema: string,
+): Promise<MigrateStepResult> {
+  try {
+    // Begin transaction and acquire transaction-level advisory lock
+    await client.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+    await client.query(/*sql*/ `SELECT pg_advisory_xact_lock(hashtext('migrations_${schema}'));`);
+
+    // Ensure migrations table exists
     await client.query(/*sql*/ `
       CREATE TABLE IF NOT EXISTS migrations (
         id INT PRIMARY KEY,
@@ -1477,48 +1492,72 @@ export async function migrate(ctx: Context, client: ClientBase, logger: Logger, 
       ALTER TABLE migrations DROP CONSTRAINT IF EXISTS migrations_sql_key;
     `);
 
-    const {rows: runMigrations} = await client.query<{id: number; sql: string}>(/*sql*/ `
-      SELECT id, sql FROM migrations ORDER BY id ASC
+    // Get count of already run migrations
+    const {rows: runMigrations} = await client.query<{id: number}>(/*sql*/ `
+      SELECT id FROM migrations ORDER BY id ASC
     `);
 
-    logger.info(ctx, {msg: 'Run migrations count: ' + runMigrations.length});
+    const runCount = runMigrations.length;
 
     assert(
-      runMigrations.length <= migrations.length,
-      `Unexpected number of run migrations: ${runMigrations.length} > ${migrations.length}`,
+      runCount <= migrations.length,
+      `Unexpected number of run migrations: ${runCount} > ${migrations.length}`,
     );
 
-    logger.info(ctx, {
-      msg: 'Not run migrations count: ' + (migrations.length - runMigrations.length),
-    });
-
-    for (let i = runMigrations.length; i < migrations.length; i++) {
-      const migration = migrations[i];
-      logger.info(ctx, {msg: `Running migration ${i + 1}: ${migration.name}`});
-      try {
-        // Run each migration in its own SERIALIZABLE transaction
-        await client.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
-        const {rows: newMigration} = await client.query<{id: number}>(
-          /*sql*/ `
-            INSERT INTO migrations (id, sql, runAt)
-            VALUES ($1, $2, $3)
-            RETURNING id;
-          `,
-          [i + 1, migration.sql, new Date()],
-        );
-        await client.query(migration.sql);
-
-        assert(newMigration.length === 1, `Failed to insert migration ${i + 1}: ${migration.name}`);
-        await client.query('COMMIT');
-        logger.info(ctx, {msg: `Completed migration ${i + 1}: ${migration.name}`});
-      } catch (error) {
-        console.error(`Error running migration ${i + 1} (${migration.name}):`, error);
-        await client.query('ROLLBACK');
-        throw new Error(`Failed to run migration ${i + 1}: ${migration.name}`, {cause: error});
-      }
+    // Check if all migrations are complete
+    if (runCount >= migrations.length) {
+      await client.query('COMMIT');
+      return 'ready';
     }
-  } finally {
-    // Always release the advisory lock even if an error occurs
-    await client.query(/*sql*/ `SELECT pg_advisory_unlock(hashtext('migrations_${schema}'));`);
+
+    // Run the next pending migration
+    const migrationIndex = runCount;
+    const migration = migrations[migrationIndex];
+    logger.info(ctx, {msg: `Running migration ${migrationIndex + 1}: ${migration.name}`});
+
+    const {rows: newMigration} = await client.query<{id: number}>(
+      /*sql*/ `
+        INSERT INTO migrations (id, sql, runAt)
+        VALUES ($1, $2, $3)
+        RETURNING id;
+      `,
+      [migrationIndex + 1, migration.sql, new Date()],
+    );
+    await client.query(migration.sql);
+
+    assert(
+      newMigration.length === 1,
+      `Failed to insert migration ${migrationIndex + 1}: ${migration.name}`,
+    );
+    await client.query('COMMIT');
+    logger.info(ctx, {msg: `Completed migration ${migrationIndex + 1}: ${migration.name}`});
+
+    // Return whether there are more migrations pending
+    return migrationIndex + 1 < migrations.length ? 'lagging' : 'ready';
+  } catch (error) {
+    await client.query('ROLLBACK');
+    const runCount = (
+      await client.query<{count: string}>(/*sql*/ `SELECT COUNT(*) as count FROM migrations`)
+    ).rows[0]?.count;
+    const migrationIndex = runCount ? parseInt(runCount, 10) : 0;
+    const migration = migrations[migrationIndex];
+    console.error(`Error running migration ${migrationIndex + 1} (${migration?.name}):`, error);
+    throw new Error(`Failed to run migration ${migrationIndex + 1}: ${migration?.name}`, {
+      cause: error,
+    });
   }
+}
+
+/**
+ * Runs all pending migrations by calling migrateStep in a loop until all migrations are complete.
+ */
+export async function migrate(ctx: Context, client: ClientBase, logger: Logger, schema: string) {
+  logger.info(ctx, {msg: `Starting migrations (total: ${migrations.length})`});
+
+  let result: MigrateStepResult;
+  do {
+    result = await migrateStep(ctx, client, logger, schema);
+  } while (result === 'lagging');
+
+  logger.info(ctx, {msg: 'All migrations complete'});
 }
