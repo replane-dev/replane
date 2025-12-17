@@ -3,6 +3,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
+import {waitSync} from '@/engine/core/utils';
 import {
   ConfigSchema,
   ConfigValue,
@@ -487,6 +488,7 @@ export const appRouter = createTRPCRouter({
     if (!opts.ctx.currentUserEmail) {
       throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
     }
+    waitSync(800);
     return await opts.ctx.engine.useCases.getAppLayoutData(GLOBAL_CONTEXT, {
       currentUserEmail: opts.ctx.currentUserEmail,
     });
