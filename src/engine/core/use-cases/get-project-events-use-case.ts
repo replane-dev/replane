@@ -1,4 +1,3 @@
-import assert from 'assert';
 import {Channel} from 'async-channel';
 import type {Context} from '../context';
 import type {RenderedOverride} from '../override-condition-schemas';
@@ -46,15 +45,10 @@ export function createGetProjectEventsUseCase(
   deps: GetProjectEventsUseCaseDeps,
 ): (ctx: Context, request: GetProjectEventsRequest) => AsyncIterable<ProjectEvent> {
   const renderConfig = async (config: ConfigReplica, environmentId: string) => {
-    const configValue =
-      config.variants.find(variant => variant.environmentId === environmentId)?.value ??
-      config.value;
-    assert(configValue !== undefined, 'Config value not found');
+    const variant = config.variants.find(variant => variant.environmentId === environmentId);
+    const configValue = variant === undefined ? config.value : variant.value;
 
-    const rawConfigOverrides =
-      config.variants.find(variant => variant.environmentId === environmentId)?.overrides ??
-      config.overrides;
-    assert(rawConfigOverrides !== undefined, 'Config overrides not found');
+    const rawConfigOverrides = variant === undefined ? config.overrides : variant.overrides;
 
     return await deps.replicaService.renderConfig({
       environmentId: environmentId,
