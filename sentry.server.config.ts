@@ -20,6 +20,9 @@ if (SENTRY_DSN) {
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
 
-    integrations: [eventLoopBlockIntegration({threshold: 500, maxEventsPerHour: 10})],
+    integrations: [
+      eventLoopBlockIntegration({threshold: 500, maxEventsPerHour: 10}),
+      Sentry.zodErrorsIntegration(),
+    ],
   });
 }
