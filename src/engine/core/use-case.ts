@@ -18,6 +18,7 @@ import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
 import type {SdkKeyStore} from './stores/sdk-key-store';
+import type {UserNotificationPreferencesStore} from './stores/user-notification-preferences-store';
 import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {WorkspaceStore} from './stores/workspace-store';
 import type {UserStore} from './user-store';
@@ -61,6 +62,8 @@ export interface UseCaseTransaction {
   // Workspace stores
   workspaces: WorkspaceStore;
   workspaceMembers: WorkspaceMemberStore;
+  // User preferences
+  userNotificationPreferences: UserNotificationPreferencesStore;
   // Services
   workspaceMemberService: WorkspaceMemberService;
   proposalService: ProposalService;

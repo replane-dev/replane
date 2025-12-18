@@ -755,3 +755,144 @@ Powered by Replane
     });
   }
 }
+
+/**
+ * Interface for looking up users by email (subset of UserStore)
+ */
+export interface EmailUserLookup {
+  getByEmail(email: string): Promise<{id: number; email: string | null} | undefined>;
+}
+
+/**
+ * Interface for getting user notification preferences (subset of UserNotificationPreferencesStore)
+ */
+export interface EmailPreferencesLookup {
+  getByUserIdWithDefaults(userId: number): Promise<{
+    proposalWaitingForReview: boolean;
+    proposalApproved: boolean;
+    proposalRejected: boolean;
+  }>;
+  getByUserIds(userIds: number[]): Promise<
+    Map<
+      number,
+      {
+        proposalWaitingForReview: boolean;
+        proposalApproved: boolean;
+        proposalRejected: boolean;
+      }
+    >
+  >;
+}
+
+/**
+ * Email service decorator that respects user notification preferences.
+ * Wraps an EmailService and filters/blocks emails based on user preferences.
+ *
+ * - Magic link emails are always sent (authentication, not notification)
+ * - Proposal notifications are filtered based on user preferences
+ */
+export class PreferencesAwareEmailService implements EmailService {
+  constructor(
+    private readonly wrapped: EmailService,
+    private readonly users: EmailUserLookup,
+    private readonly preferences: EmailPreferencesLookup,
+  ) {}
+
+  /**
+   * Magic link emails are always sent (required for authentication)
+   */
+  async sendMagicLink(params: {to: string; url: string; host: string}): Promise<void> {
+    return this.wrapped.sendMagicLink(params);
+  }
+
+  /**
+   * Filters recipients based on their proposalWaitingForReview preference
+   */
+  async sendProposalWaitingForReview(params: {
+    to: string[];
+    proposalUrl: string;
+    configName: string;
+    projectName: string;
+    authorName: string;
+  }): Promise<void> {
+    if (params.to.length === 0) return;
+
+    // Look up users for all recipients
+    const userLookups = await Promise.all(params.to.map(email => this.users.getByEmail(email)));
+
+    // Get user IDs for users that exist
+    const userIdToEmail = new Map<number, string>();
+    const unknownEmails: string[] = [];
+
+    for (let i = 0; i < params.to.length; i++) {
+      const user = userLookups[i];
+      if (user) {
+        userIdToEmail.set(user.id, params.to[i]);
+      } else {
+        // Unknown users get emails by default
+        unknownEmails.push(params.to[i]);
+      }
+    }
+
+    // Batch fetch preferences for all known users
+    const preferencesMap = await this.preferences.getByUserIds(Array.from(userIdToEmail.keys()));
+
+    // Filter to only users who want this notification
+    const filteredEmails: string[] = [...unknownEmails];
+    for (const [userId, email] of userIdToEmail) {
+      const prefs = preferencesMap.get(userId);
+      if (prefs?.proposalWaitingForReview ?? true) {
+        filteredEmails.push(email);
+      }
+    }
+
+    if (filteredEmails.length === 0) return;
+
+    return this.wrapped.sendProposalWaitingForReview({
+      ...params,
+      to: filteredEmails,
+    });
+  }
+
+  /**
+   * Checks recipient's proposalApproved preference before sending
+   */
+  async sendProposalApproved(params: {
+    to: string;
+    proposalUrl: string;
+    configName: string;
+    projectName: string;
+    reviewerName: string;
+  }): Promise<void> {
+    const user = await this.users.getByEmail(params.to);
+    if (user) {
+      const prefs = await this.preferences.getByUserIdWithDefaults(user.id);
+      if (!prefs.proposalApproved) {
+        return; // User has disabled this notification
+      }
+    }
+
+    return this.wrapped.sendProposalApproved(params);
+  }
+
+  /**
+   * Checks recipient's proposalRejected preference before sending
+   */
+  async sendProposalRejected(params: {
+    to: string;
+    proposalUrl: string;
+    configName: string;
+    projectName: string;
+    reviewerName: string;
+  }): Promise<void> {
+    const user = await this.users.getByEmail(params.to);
+    if (user) {
+      const prefs = await this.preferences.getByUserIdWithDefaults(user.id);
+      if (!prefs.proposalRejected) {
+        return; // User has disabled this notification
+      }
+    }
+
+    return this.wrapped.sendProposalRejected(params);
+  }
+}

@@ -246,6 +246,15 @@ export interface Workspaces {
   updated_at: Timestamp;
 }
 
+export interface UserNotificationPreferences {
+  user_id: number;
+  proposal_waiting_for_review: boolean;
+  proposal_approved: boolean;
+  proposal_rejected: boolean;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface DB {
   accounts: Accounts;
   audit_logs: AuditLogs;
@@ -266,6 +275,7 @@ export interface DB {
   projects: Projects;
   sdk_keys: SdkKeys;
   sessions: Sessions;
+  user_notification_preferences: UserNotificationPreferences;
   users: Users;
   verification_token: VerificationToken;
   workspace_members: WorkspaceMembers;

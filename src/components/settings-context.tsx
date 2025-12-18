@@ -6,7 +6,8 @@ import {SettingsDialog} from './settings-dialog';
 
 export type SettingsSection =
   | 'account-general'
-  | 'account-preferences'
+  | 'account-appearance'
+  | 'account-email-preferences'
   | 'org-general'
   | 'org-members'
   | 'project-general'

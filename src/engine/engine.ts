@@ -7,7 +7,7 @@ import {ConfigService} from './core/config-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
-import {type EmailService} from './core/email-service';
+import {PreferencesAwareEmailService, type EmailService} from './core/email-service';
 import {EventHubPublisher} from './core/event-hub';
 import {createSha256HashingService} from './core/hashing-service';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
@@ -26,6 +26,7 @@ import {ProjectEnvironmentStore} from './core/stores/project-environment-store';
 import {ProjectStore} from './core/stores/project-store';
 import {ProjectUserStore} from './core/stores/project-user-store';
 import {SdkKeyStore} from './core/stores/sdk-key-store';
+import {UserNotificationPreferencesStore} from './core/stores/user-notification-preferences-store';
 import {WorkspaceMemberStore} from './core/stores/workspace-member-store';
 import {WorkspaceStore} from './core/stores/workspace-store';
 import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use-case';
@@ -58,6 +59,7 @@ import {createGetConfigVersionListUseCase} from './core/use-cases/get-config-ver
 import {createGetHealthUseCase} from './core/use-cases/get-health-use-case';
 import {createGetNewConfigPageDataUseCase} from './core/use-cases/get-new-config-page-data-use-case';
 import {createGetNewSdkKeyPageDataUseCase} from './core/use-cases/get-new-sdk-key-page-data-use-case';
+import {createGetNotificationPreferencesUseCase} from './core/use-cases/get-notification-preferences-use-case';
 import {createGetProjectConfigTypesUseCase} from './core/use-cases/get-project-config-types-use-case';
 import {createGetProjectEnvironmentsUseCase} from './core/use-cases/get-project-environments-use-case';
 import {createGetProjectListUseCase} from './core/use-cases/get-project-list-use-case';
@@ -77,6 +79,7 @@ import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-
 import {createRemoveWorkspaceMemberUseCase} from './core/use-cases/remove-workspace-member-use-case';
 import {createRestoreConfigVersionUseCase} from './core/use-cases/restore-config-version-use-case';
 import {createUpdateConfigUseCase} from './core/use-cases/update-config-use-case';
+import {createUpdateNotificationPreferencesUseCase} from './core/use-cases/update-notification-preferences-use-case';
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
@@ -130,6 +133,7 @@ function toUseCase<TReq, TRes>(
         const projectEnvironments = new ProjectEnvironmentStore(dbTx);
         const workspaces = new WorkspaceStore(dbTx);
         const workspaceMembers = new WorkspaceMemberStore(dbTx);
+        const userNotificationPreferences = new UserNotificationPreferencesStore(dbTx);
         const configVariants = new ConfigVariantStore(dbTx);
         const configVersions = new ConfigVersionStore(dbTx);
         const permissionService = new PermissionService(
@@ -140,6 +144,15 @@ function toUseCase<TReq, TRes>(
           workspaceMembers,
           logger,
         );
+        // Wrap email service with preferences-aware decorator
+        const preferencesAwareEmailService = options.emailService
+          ? new PreferencesAwareEmailService(
+              options.emailService,
+              users,
+              userNotificationPreferences,
+            )
+          : undefined;
+
         const proposalService = new ProposalService({
           configProposals,
           configs,
@@ -148,7 +161,7 @@ function toUseCase<TReq, TRes>(
           auditLogs,
           dateProvider: options.dateProvider,
           scheduleOptimisticEffect,
-          emailService: options.emailService,
+          emailService: preferencesAwareEmailService,
           baseUrl: options.baseUrl,
         });
         const configService = new ConfigService(
@@ -207,9 +220,10 @@ function toUseCase<TReq, TRes>(
           configVersions,
           workspaces,
           workspaceMembers,
+          userNotificationPreferences,
           workspaceMemberService,
           proposalService,
-          emailService: options.emailService,
+          emailService: preferencesAwareEmailService,
           dateProvider: options.dateProvider,
           configQueryService,
           projectQueryService,
@@ -308,6 +322,9 @@ export async function createEngine(options: EngineOptions) {
     // User account use cases
     initUser: createInitUserUseCase(),
     deleteUserAccount: createDeleteUserAccountUseCase(),
+    // Notification preferences use cases
+    getNotificationPreferences: createGetNotificationPreferencesUseCase(),
+    updateNotificationPreferences: createUpdateNotificationPreferencesUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;

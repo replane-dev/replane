@@ -989,6 +989,35 @@ export const appRouter = createTRPCRouter({
       });
       return result;
     }),
+  getNotificationPreferences: baseProcedure.query(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.getNotificationPreferences(GLOBAL_CONTEXT, {
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
+  }),
+  updateNotificationPreferences: baseProcedure
+    .input(
+      z.object({
+        proposalWaitingForReview: z.boolean().optional(),
+        proposalApproved: z.boolean().optional(),
+        proposalRejected: z.boolean().optional(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.updateNotificationPreferences(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        preferences: {
+          proposalWaitingForReview: opts.input.proposalWaitingForReview,
+          proposalApproved: opts.input.proposalApproved,
+          proposalRejected: opts.input.proposalRejected,
+        },
+      });
+    }),
 });
 
 export type AppRouter = typeof appRouter;

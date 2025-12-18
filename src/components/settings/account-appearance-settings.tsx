@@ -10,14 +10,14 @@ import {
 } from '@/components/ui/select';
 import {useTheme} from 'next-themes';
 
-export function AccountPreferencesSettings() {
+export function AccountAppearanceSettings() {
   const {theme, setTheme} = useTheme();
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h3 className="text-lg font-semibold">Account preferences</h3>
-        <p className="text-sm text-muted-foreground">Customize your experience</p>
+        <h3 className="text-lg font-semibold">Appearance</h3>
+        <p className="text-sm text-muted-foreground">Customize how Replane looks</p>
       </div>
 
       <div className="space-y-4">

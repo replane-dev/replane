@@ -1460,6 +1460,22 @@ export const migrations: Migration[] = [
       ALTER TABLE config_proposals DROP COLUMN IF EXISTS proposer_id;
     `,
   },
+  {
+    name: 'Create user_notification_preferences table',
+    sql: /*sql*/ `
+      -- Create user_notification_preferences table for email notification settings
+      CREATE TABLE user_notification_preferences (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        proposal_waiting_for_review BOOLEAN NOT NULL DEFAULT TRUE,
+        proposal_approved BOOLEAN NOT NULL DEFAULT TRUE,
+        proposal_rejected BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ(3) NOT NULL,
+        updated_at TIMESTAMPTZ(3) NOT NULL
+      );
+
+      CREATE INDEX idx_user_notification_preferences_user_id ON user_notification_preferences(user_id);
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';
