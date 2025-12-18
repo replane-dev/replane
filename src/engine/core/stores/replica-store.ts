@@ -1,6 +1,8 @@
 import {type Database, type Statement} from 'better-sqlite3';
+import {v4 as uuidV4} from 'uuid';
 import type {Override} from '../override-condition-schemas';
-import {isDeepEqual} from '../utils';
+import {isDeepEqual, uniqueBy} from '../utils';
+import {extractOverrideReferences} from '../validate-override-references';
 import type {ConfigValue} from '../zod';
 
 export interface SdkKeyReplica {
@@ -36,6 +38,12 @@ export interface EnvironmentalConfigReplica {
   environmentId: string;
   value: ConfigValue;
   overrides: Override[];
+}
+
+export interface ConfigReferenceReplica {
+  configId: string;
+  referenceProjectId: string;
+  referenceConfigName: string;
 }
 
 const CONFIGS_CONSUMER_ID_KEY = 'configs_consumer_id';
@@ -85,11 +93,38 @@ export class ReplicaStore {
         key_hash TEXT NOT NULL
       );
     `);
+    db.exec(/*sql*/ `
+      CREATE TABLE IF NOT EXISTS config_references (
+        id TEXT PRIMARY KEY,
+        config_id TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        reference_project_id TEXT NOT NULL,
+        reference_config_name TEXT NOT NULL
+      );
+    `);
+    db.exec(/*sql*/ `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_config_references_config_id_reference_project_id_reference_config_name ON config_references(config_id, reference_project_id, reference_config_name);
+    `);
+    db.exec(/*sql*/ `
+      CREATE INDEX IF NOT EXISTS idx_config_references_project_id_config_name ON config_references(reference_project_id, reference_config_name);
+    `);
+    db.exec(/*sql*/ `
+      CREATE INDEX IF NOT EXISTS idx_config_references_reference_project_id_reference_config_name ON config_references(reference_project_id, reference_config_name);
+    `);
 
     const store = new ReplicaStore(db);
 
     return store;
   }
+
+  private insertConfigReferenceStmt: Statement<
+    {id: string; configId: string; referenceProjectId: string; referenceConfigName: string},
+    void
+  >;
+
+  private getConfigReferencesStmt: Statement<
+    {projectId: string; configName: string},
+    {id: string; config_id: string; reference_project_id: string; reference_config_name: string}
+  >;
 
   private insertSdkKeyStmt: Statement<
     {id: string; projectId: string; environmentId: string; name: string; keyHash: string},
@@ -134,7 +169,7 @@ export class ReplicaStore {
   private getEnvironmentalConfigStmt: Statement<
     {projectId: string; environmentId: string; configName: string},
     {
-      projectId: string;
+      project_id: string;
       name: string;
       version: number;
       value: string;
@@ -144,7 +179,14 @@ export class ReplicaStore {
 
   private getConfigByIdStmt: Statement<
     {configId: string},
-    {id: string; projectId: string; name: string; version: number; value: string; overrides: string}
+    {
+      id: string;
+      project_id: string;
+      name: string;
+      version: number;
+      value: string;
+      overrides: string;
+    }
   >;
 
   private getConfigValueStmt: Statement<
@@ -170,6 +212,24 @@ export class ReplicaStore {
 
   private constructor(db: Database) {
     this.db = db;
+
+    this.insertConfigReferenceStmt = db.prepare<
+      {id: string; configId: string; referenceProjectId: string; referenceConfigName: string},
+      void
+    >(/*sql*/ `
+      INSERT INTO config_references (id, config_id, reference_project_id, reference_config_name)
+      VALUES (@id, @configId, @referenceProjectId, @referenceConfigName)
+    `);
+
+    this.getConfigReferencesStmt = db.prepare<
+      {projectId: string; configName: string},
+      {id: string; config_id: string; reference_project_id: string; reference_config_name: string}
+    >(/*sql*/ `
+      SELECT id, config_id, reference_project_id, reference_config_name
+      FROM config_references
+      WHERE reference_project_id = @projectId
+        AND reference_config_name = @configName
+    `);
 
     this.clearSdkKeysStmt = db.prepare<{}, void>(/*sql*/ `
       DELETE FROM sdk_keys
@@ -256,7 +316,7 @@ export class ReplicaStore {
     this.getEnvironmentalConfigStmt = db.prepare<
       {projectId: string; environmentId: string; configName: string},
       {
-        projectId: string;
+        project_id: string;
         name: string;
         version: number;
         value: string;
@@ -264,7 +324,6 @@ export class ReplicaStore {
       }
     >(/*sql*/ `
       SELECT
-        c.id as config_id,
         c.project_id,
         c.name,
         c.version,
@@ -279,7 +338,7 @@ export class ReplicaStore {
       {configId: string},
       {
         id: string;
-        projectId: string;
+        project_id: string;
         name: string;
         version: number;
         value: string;
@@ -427,11 +486,36 @@ export class ReplicaStore {
 
     return {
       id: config.id,
-      projectId: config.projectId,
+      projectId: config.project_id,
       name: config.name,
       version: config.version,
       value: JSON.parse(config.value) as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
+    };
+  }
+
+  getConfigReplicaById(configId: string): ConfigReplica | undefined {
+    const config = this.getConfigByIdStmt.get({configId});
+    if (!config) {
+      return undefined;
+    }
+
+    const variants = this.getConfigVariantsByConfigIdStmt.all({configId});
+
+    return {
+      id: config.id,
+      projectId: config.project_id,
+      name: config.name,
+      version: config.version,
+      value: JSON.parse(config.value) as ConfigValue,
+      overrides: JSON.parse(config.overrides) as Override[],
+      variants: variants.map(variant => ({
+        id: variant.id,
+        configId: configId,
+        environmentId: variant.environmentId,
+        value: JSON.parse(variant.value) as ConfigValue,
+        overrides: JSON.parse(variant.overrides) as Override[],
+      })),
     };
   }
 
@@ -455,7 +539,7 @@ export class ReplicaStore {
       environmentId: params.environmentId,
       value: JSON.parse(config.value) as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
-      projectId: config.projectId,
+      projectId: config.project_id,
     };
   }
 
@@ -566,6 +650,15 @@ export class ReplicaStore {
     this.deleteKvStmt.run({key: SDK_KEYS_CONSUMER_ID_KEY});
   }
 
+  getConfigReferences(params: {projectId: string; configName: string}): ConfigReferenceReplica[] {
+    const references = this.getConfigReferencesStmt.all(params);
+    return references.map(reference => ({
+      configId: reference.config_id,
+      referenceProjectId: reference.reference_project_id,
+      referenceConfigName: reference.reference_config_name,
+    }));
+  }
+
   upsertConfigs(configs: ConfigReplica[]) {
     return this.transaction(() => {
       return configs.map(config => this.upsertConfigUnsafe(config));
@@ -602,6 +695,26 @@ export class ReplicaStore {
         environmentId: variant.environmentId,
         value: JSON.stringify(variant.value),
         overrides: JSON.stringify(variant.overrides),
+      });
+    }
+
+    const references = uniqueBy(
+      config.overrides
+        .flatMap(override => extractOverrideReferences(override))
+        .concat(
+          config.variants.flatMap(variant =>
+            variant.overrides.flatMap(override => extractOverrideReferences(override)),
+          ),
+        ),
+      reference => `${reference.projectId}-${reference.configName}`,
+    );
+
+    for (const reference of references) {
+      this.insertConfigReferenceStmt.run({
+        id: uuidV4(),
+        configId: config.id,
+        referenceProjectId: reference.projectId,
+        referenceConfigName: reference.configName,
       });
     }
 

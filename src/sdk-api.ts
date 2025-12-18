@@ -1,4 +1,3 @@
-import {MAX_CONFIG_VERSION} from '@/engine/core/constants';
 import {type Context} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {ConfigName} from '@/engine/core/stores/config-store';
@@ -11,7 +10,6 @@ import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
 import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
 import {assertNever, toEagerAsyncIterable} from './engine/core/utils';
-import {createSdkState} from './sdk-state';
 
 async function getEdge() {
   return getEdgeSingleton();
@@ -215,7 +213,7 @@ sdkApi.openapi(
             environmentId: c.get('environmentId'),
           });
 
-          const {rollingState, configs} = createSdkState({
+          const configs = createSdkState({
             serverConfigs: serverConfigs,
             currentConfigs: clientState.currentConfigs,
             requiredConfigs: clientState.requiredConfigs,
@@ -229,42 +227,17 @@ sdkApi.openapi(
           });
 
           for await (const event of events) {
-            if (event.type === 'config_deleted') {
-              // freeze this config to prevent this client from receiving any more
-              // updates in case if another config with the same name is created
-              //
-              // it's still possible for a client to receive an update for this config
-              // if the client disconnect before receiving the update and reconnect later
-              rollingState.upsert(event.configName, MAX_CONFIG_VERSION);
+            if (event.type === 'config_deleted') continue;
 
-              controller.enqueue({
-                type: 'data',
-                data: JSON.stringify({
-                  type: 'config_change',
-                  name: event.configName,
-                  overrides: event.overrides,
-                  value: event.value,
-                } satisfies ReplicationStreamRecord),
-              });
-              continue;
-            }
-
-            const stateChange = rollingState.upsert(event.configName, event.version);
-            if (stateChange === 'upserted') {
-              controller.enqueue({
-                type: 'data',
-                data: JSON.stringify({
-                  type: 'config_change',
-                  name: event.configName,
-                  overrides: event.overrides,
-                  value: event.value,
-                } satisfies ReplicationStreamRecord),
-              });
-            } else if (stateChange === 'ignored') {
-              // do nothing
-            } else {
-              assertNever(stateChange, 'Unknown client state change');
-            }
+            controller.enqueue({
+              type: 'data',
+              data: JSON.stringify({
+                type: 'config_change',
+                name: event.configName,
+                overrides: event.overrides,
+                value: event.value,
+              } satisfies ReplicationStreamRecord),
+            });
           }
         } catch (err) {
           errored = true;
@@ -328,4 +301,29 @@ class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
       },
     });
   }
+}
+
+export function createSdkState(
+  options: StartReplicationStreamBody & {serverConfigs: ConfigDto[]},
+): ConfigDto[] {
+  const configs = new Map<string, ConfigDto>();
+  for (const config of options.currentConfigs) {
+    configs.set(config.name, config);
+  }
+
+  for (const config of options.serverConfigs) {
+    configs.set(config.name, config);
+  }
+
+  const missingConfigs = new Set<string>();
+  for (const configName of options.requiredConfigs) {
+    if (!configs.has(configName)) {
+      missingConfigs.add(configName);
+    }
+  }
+  if (missingConfigs.size > 0) {
+    throw new Error(`Required configs not found: ${Array.from(missingConfigs).join(', ')}`);
+  }
+
+  return Array.from(configs.values());
 }

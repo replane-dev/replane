@@ -2,11 +2,24 @@ import {BadRequestError} from './errors';
 import type {Condition, Override} from './override-condition-schemas';
 import {assertNever} from './utils';
 
+export interface ConfigReference {
+  projectId: string;
+  configName: string;
+  path: (string | number)[];
+}
+
 /**
- * Recursively extracts all reference projectIds from conditions
+ * Extracts all config references from overrides
  */
-function extractReferenceProjectIds(condition: Condition): string[] {
-  const projectIds: string[] = [];
+export function extractOverrideReferences(override: Override): ConfigReference[] {
+  return override.conditions.flatMap(condition => extractConditionReferences(condition));
+}
+
+/**
+ * Recursively extracts all config references from conditions
+ */
+export function extractConditionReferences(condition: Condition): ConfigReference[] {
+  const references: ConfigReference[] = [];
 
   const operator = condition.operator;
 
@@ -20,25 +33,29 @@ function extractReferenceProjectIds(condition: Condition): string[] {
     operator === 'greater_than_or_equal'
   ) {
     if (condition.value.type === 'reference') {
-      projectIds.push(condition.value.projectId);
+      references.push({
+        projectId: condition.value.projectId,
+        configName: condition.value.configName,
+        path: condition.value.path,
+      });
     }
   } else if (operator === 'segmentation') {
     // Segmentation conditions don't have values that can reference other configs
   } else if (operator === 'and') {
     for (const subCondition of condition.conditions) {
-      projectIds.push(...extractReferenceProjectIds(subCondition));
+      references.push(...extractConditionReferences(subCondition));
     }
   } else if (operator === 'or') {
     for (const subCondition of condition.conditions) {
-      projectIds.push(...extractReferenceProjectIds(subCondition));
+      references.push(...extractConditionReferences(subCondition));
     }
   } else if (operator === 'not') {
-    projectIds.push(...extractReferenceProjectIds(condition.condition));
+    references.push(...extractConditionReferences(condition.condition));
   } else {
-    assertNever(operator, 'Unexpected operator in extractReferenceProjectIds');
+    assertNever(operator, 'Unexpected operator in extractReferences');
   }
 
-  return projectIds;
+  return references;
 }
 
 /**
@@ -54,17 +71,17 @@ export function validateOverrideReferences(params: {
 
   const invalidReferences: Array<{
     overrideName: string;
-    referencedProjectId: string;
+    reference: ConfigReference;
   }> = [];
 
   for (const override of params.overrides) {
     for (const condition of override.conditions) {
-      const projectIds = extractReferenceProjectIds(condition);
-      for (const projectId of projectIds) {
-        if (projectId !== params.configProjectId) {
+      const references = extractConditionReferences(condition);
+      for (const reference of references) {
+        if (reference.projectId !== params.configProjectId) {
           invalidReferences.push({
             overrideName: override.name,
-            referencedProjectId: projectId,
+            reference,
           });
         }
       }
@@ -73,7 +90,7 @@ export function validateOverrideReferences(params: {
 
   if (invalidReferences.length > 0) {
     const details = invalidReferences
-      .map(ref => `Override "${ref.overrideName}" references project ${ref.referencedProjectId}`)
+      .map(ref => `Override "${ref.overrideName}" references project ${ref.reference.projectId}`)
       .join('; ');
     throw new BadRequestError(
       `Override references must use the same project ID as the config. ${details}`,

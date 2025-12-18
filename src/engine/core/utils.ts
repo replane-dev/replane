@@ -54,6 +54,33 @@ export function unique<T>(array: T[]): T[] {
   return Array.from(new Set(array));
 }
 
+/**
+ * Returns an array with duplicates removed based on a key function.
+ * Keeps the first occurrence of each unique key.
+ *
+ * @param array - The input array
+ * @param toKey - Function to extract a key from each item (key is compared using strict equality)
+ * @returns Array with duplicates removed
+ *
+ * @example
+ * uniqueBy([{id: 1, name: 'a'}, {id: 2, name: 'b'}, {id: 1, name: 'c'}], x => x.id)
+ * // => [{id: 1, name: 'a'}, {id: 2, name: 'b'}]
+ */
+export function uniqueBy<T, K>(array: T[], toKey: (item: T) => K): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  for (const item of array) {
+    const key = toStableJson(toKey(item));
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(item);
+    }
+  }
+
+  return result;
+}
+
 export function trimEnd(source: string, str: string): string {
   assert(str.length > 0, 'trimEnd string must not be empty');
 

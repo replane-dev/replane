@@ -17,6 +17,7 @@ import {
 import type {Service} from './service';
 import {
   ReplicaStore,
+  type ConfigReferenceReplica,
   type ConfigReplica,
   type ConfigVariantReplica,
   type EnvironmentalConfigReplica,
@@ -144,6 +145,17 @@ export class Replica {
 
   async sync() {
     await Promise.all([this.configsReplicator.sync(), this.sdkKeysReplicator.sync()]);
+  }
+
+  async getConfigReplicaById(configId: string): Promise<ConfigReplica | undefined> {
+    return this.replicaStore.getConfigReplicaById(configId);
+  }
+
+  async getConfigReferences(params: {
+    projectId: string;
+    configName: string;
+  }): Promise<ConfigReferenceReplica[]> {
+    return this.replicaStore.getConfigReferences(params);
   }
 
   private getConfigValueWithoutOverrides(params: {
@@ -324,6 +336,13 @@ export class ReplicaService implements Service {
     return this.replica.getSdkKey(keyId);
   }
 
+  async getConfigReplicaById(configId: string): Promise<ConfigReplica | undefined> {
+    if (!this.replica) {
+      throw new Error('Replica not started');
+    }
+    return this.replica.getConfigReplicaById(configId);
+  }
+
   async getProjectConfigs(params: {
     projectId: string;
     environmentId: string;
@@ -333,6 +352,17 @@ export class ReplicaService implements Service {
     }
 
     return await this.replica.getProjectConfigs(params);
+  }
+
+  async getConfigReferences(params: {
+    projectId: string;
+    configName: string;
+  }): Promise<ConfigReferenceReplica[]> {
+    if (!this.replica) {
+      throw new Error('Replica not started');
+    }
+
+    return await this.replica.getConfigReferences(params);
   }
 
   async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {

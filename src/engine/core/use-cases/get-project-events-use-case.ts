@@ -66,15 +66,38 @@ export function createGetProjectEventsUseCase(
     const channel = new Channel<ReplicaEvent>();
 
     const unsubscribe = deps.replicaEventsBus.subscribe(request.projectId, {
-      next: (event: ReplicaEvent) => {
-        channel.push(event);
+      next: async (event: ReplicaEvent) => {
+        try {
+          await channel.push(event);
+
+          // emit change events for all configs affected by this config change
+          const affectedConfigs = await deps.replicaService.getConfigReferences({
+            projectId: request.projectId,
+            configName: event.entity.name,
+          });
+
+          for (const {configId: affectedConfigId} of affectedConfigs) {
+            const affectedConfig = await deps.replicaService.getConfigReplicaById(affectedConfigId);
+
+            if (!affectedConfig) {
+              continue;
+            }
+
+            if (affectedConfig.projectId !== request.projectId) {
+              continue;
+            }
+
+            await channel.push({
+              type: 'updated',
+              entity: affectedConfig,
+            });
+          }
+        } catch (error) {
+          await channel.throw(error);
+        }
       },
-      error: (err: unknown) => {
-        channel.throw(err);
-      },
-      complete: () => {
-        cleanUp();
-      },
+      error: (err: unknown) => channel.throw(err),
+      complete: () => cleanUp(),
     });
 
     let isCleanedUp = false;
