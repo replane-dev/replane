@@ -21,7 +21,7 @@ if (SENTRY_DSN) {
     debug: false,
 
     integrations: [
-      eventLoopBlockIntegration({threshold: 500, maxEventsPerHour: 10}),
+      eventLoopBlockIntegration({threshold: 500, maxEventsPerHour: 1}),
       Sentry.zodErrorsIntegration(),
     ],
   });
