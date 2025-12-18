@@ -41,7 +41,7 @@ export function makeQueryClient() {
     if (event.type === 'updated' && event.mutation.state.status === 'error') {
       if (typeof window !== 'undefined') {
         const msg = normalizeErrorMessage(event.mutation.state.error);
-        toast.error(msg, {description: 'Something went wrong. Please try again.'});
+        toast.error(msg, {description: 'Please try again or contact support if the issue persists.'});
       }
     }
   });
@@ -50,7 +50,7 @@ export function makeQueryClient() {
     if (event.type === 'updated' && event.query.state.status === 'error') {
       if (typeof window !== 'undefined') {
         const msg = normalizeErrorMessage(event.query.state.error);
-        toast.error(msg, {description: "We couldn't load the data. Please retry."});
+        toast.error(msg, {description: 'Please refresh the page or try again later.'});
       }
     }
   });
@@ -81,35 +81,35 @@ function normalizeErrorMessage(error: unknown): string {
     lower.includes('forbidden') ||
     lower.includes('permission')
   ) {
-    return "You don't have permission for that.";
+    return "You don't have permission to perform this action";
   }
   if (lower.includes('unauthorized') || lower.includes('not authenticated')) {
-    return 'Please sign in to continue.';
+    return 'Your session has expired — please sign in again';
   }
   if (
     lower.includes('failed to fetch') ||
     lower.includes('network') ||
     lower.includes('fetch error')
   ) {
-    return 'Network error. Check your connection and try again.';
+    return 'Connection issue — please check your internet and try again';
   }
   if (lower.includes('timeout')) {
-    return 'The request timed out. Try again.';
+    return 'The request took too long — please try again';
   }
   if (lower.includes('duplicate key') || lower.includes('unique constraint')) {
-    return 'Resource already exists.';
+    return 'This item already exists';
   }
   if (lower.includes('does not exist') || lower.includes('not found')) {
-    return 'The requested resource was not found.';
+    return 'The requested item could not be found';
   }
   if (lower.includes('validation') || lower.includes('invalid') || lower.includes('schema')) {
-    return 'Input is invalid. Please review and try again.';
+    return 'Please check your input and try again';
   }
   if (lower.includes('rate limit')) {
-    return 'Too many requests. Please slow down.';
+    return 'Too many requests — please wait a moment and try again';
   }
   if (lower.includes('serialization failure')) {
-    return 'Concurrent update conflict. Please retry.';
+    return 'A conflict occurred — please refresh and try again';
   }
 
   // Default: trim and simplify long technical messages

@@ -58,7 +58,7 @@ export function CreateProjectDialog({
       setName('');
       setDescription('');
     } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to create project');
+      toast.error(err?.message ?? 'Unable to create project — please try again');
     } finally {
       setSubmitting(false);
     }

@@ -100,7 +100,6 @@ const ConfigDto = z
     name: ConfigName(),
     value: z.unknown(),
     overrides: z.array(RenderedOverrideSchema),
-    version: z.number(),
   })
   .openapi('ConfigResponse');
 
@@ -111,7 +110,6 @@ const ReplicationStreamConfigChangeRecord = z
     type: z.literal('config_change'),
     name: ConfigName(),
     overrides: z.array(RenderedOverrideSchema),
-    version: z.number(),
     value: z.unknown(),
   })
   .openapi('ReplicationStreamConfigChangeRecord');
@@ -245,7 +243,6 @@ sdkApi.openapi(
                   type: 'config_change',
                   name: event.configName,
                   overrides: event.overrides,
-                  version: MAX_CONFIG_VERSION,
                   value: event.value,
                 } satisfies ReplicationStreamRecord),
               });
@@ -260,7 +257,6 @@ sdkApi.openapi(
                   type: 'config_change',
                   name: event.configName,
                   overrides: event.overrides,
-                  version: event.version,
                   value: event.value,
                 } satisfies ReplicationStreamRecord),
               });

@@ -150,7 +150,7 @@ function CreateWorkspaceForm({onCreated}: {onCreated: (orgId: string) => void}) 
       onCreated(workspaceId);
       setName('');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to create workspace');
+      toast.error(e?.message ?? 'Unable to create workspace — please try again');
     } finally {
       setSubmitting(false);
     }

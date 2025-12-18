@@ -117,8 +117,8 @@ export function ConfigVariantFields({
         description: 'The schema has been inferred from the value and set in the schema field.',
       });
     } catch (error) {
-      toast.error('Cannot infer schema from invalid JSON', {
-        description: error instanceof Error ? error.message : String(error),
+      toast.error('Unable to infer schema — the value contains invalid JSON', {
+        description: 'Please fix the JSON syntax errors first, then try again.',
       });
       // If value is not valid JSON, do nothing or show error
       console.error('Cannot infer schema from invalid JSON', error);
@@ -202,7 +202,7 @@ export function ConfigVariantFields({
       <FormField
         control={control}
         name={getFieldName('value')}
-        render={({field}) => (
+        render={({field, fieldState}) => (
           <FormItem>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -260,6 +260,7 @@ export function ConfigVariantFields({
                 aria-label={`Config JSON for ${environmentName}`}
                 schema={effectiveSchema}
                 readOnly={!canEditValue}
+                error={!!fieldState.error}
               />
             </FormControl>
             {!canEditValue && (
@@ -390,7 +391,7 @@ export function ConfigVariantFields({
           <FormField
             control={control}
             name={getFieldName('schema')}
-            render={({field}) => (
+            render={({field, fieldState}) => (
               <FormItem>
                 <FormControl>
                   <JsonEditor
@@ -407,6 +408,7 @@ export function ConfigVariantFields({
                     onChange={field.onChange}
                     aria-label={`JSON Schema for ${environmentName}`}
                     readOnly={!canEditSchema}
+                    error={!!fieldState.error}
                   />
                 </FormControl>
                 {!canEditSchema && (

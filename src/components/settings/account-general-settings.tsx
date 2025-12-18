@@ -31,7 +31,9 @@ export function AccountGeneralSettings() {
 
   const handleDeleteAccount = async () => {
     if (confirmEmail.toLowerCase() !== userEmail.toLowerCase()) {
-      toast.error('Email does not match');
+      toast.error('Email addresses don\'t match', {
+      description: 'Please enter your email exactly as shown above to confirm deletion.',
+    });
       return;
     }
 
@@ -42,7 +44,7 @@ export function AccountGeneralSettings() {
       // Sign out and redirect to home
       await signOut({callbackUrl: '/'});
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete account');
+      toast.error(e?.message ?? 'Unable to delete account — please try again');
       setIsDeleting(false);
     }
   };

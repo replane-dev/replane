@@ -34,7 +34,8 @@ import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {Layers, ShieldCheck} from 'lucide-react';
 import * as React from 'react';
-import {useForm, useWatch} from 'react-hook-form';
+import {useForm, useWatch, type FieldErrors} from 'react-hook-form';
+import {toast} from 'sonner';
 import {z} from 'zod';
 
 type Mode = 'new' | 'edit' | 'view';
@@ -176,7 +177,7 @@ export function ConfigForm(props: ConfigFormProps) {
     enabled: z.boolean().default(false),
     value: z
       .string()
-      .min(1, 'Value is required')
+      .min(1, 'Please enter a configuration value')
       .refine(val => {
         try {
           JSON.parse(val);
@@ -184,7 +185,7 @@ export function ConfigForm(props: ConfigFormProps) {
         } catch {
           return false;
         }
-      }, 'Must be valid JSON'),
+      }, 'Invalid JSON — check for missing quotes, brackets, or commas'),
     useDefaultSchema: z.boolean(), // Inherit schema from default variant
     schemaEnabled: z.boolean().default(false),
     schema: z
@@ -198,13 +199,19 @@ export function ConfigForm(props: ConfigFormProps) {
         // Skip validation if using default schema
         if (useDefaultSchema || !enabled) return;
         if (!val) {
-          ctx.addIssue({code: 'custom', message: 'Schema is required when enabled'});
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Please provide a JSON Schema or disable schema validation',
+          });
           return;
         }
         try {
           JSON.parse(val);
         } catch {
-          ctx.addIssue({code: 'custom', message: 'Schema must be valid JSON'});
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Invalid JSON Schema — check for missing quotes, brackets, or commas',
+          });
         }
       }),
     overrides: ConfigOverrides(),
@@ -216,7 +223,7 @@ export function ConfigForm(props: ConfigFormProps) {
     defaultVariant: z.object({
       value: z
         .string()
-        .min(1, 'Default value is required')
+        .min(1, 'Please enter a base configuration value')
         .refine(val => {
           try {
             JSON.parse(val);
@@ -224,7 +231,7 @@ export function ConfigForm(props: ConfigFormProps) {
           } catch {
             return false;
           }
-        }, 'Must be valid JSON'),
+        }, 'Invalid JSON — check for missing quotes, brackets, or commas'),
       schemaEnabled: z.boolean().default(false),
       schema: z
         .string()
@@ -234,13 +241,19 @@ export function ConfigForm(props: ConfigFormProps) {
           const enabled = (ctx as any).parent?.schemaEnabled ?? false;
           if (!enabled) return;
           if (!val) {
-            ctx.addIssue({code: 'custom', message: 'Schema is required when enabled'});
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Please provide a JSON Schema or disable schema validation',
+            });
             return;
           }
           try {
             JSON.parse(val);
           } catch {
-            ctx.addIssue({code: 'custom', message: 'Schema must be valid JSON'});
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Invalid JSON Schema — check for missing quotes, brackets, or commas',
+            });
           }
         }),
       overrides: ConfigOverrides(),
@@ -250,7 +263,7 @@ export function ConfigForm(props: ConfigFormProps) {
     members: z
       .array(
         z.object({
-          email: z.string().min(1, 'Email is required'),
+          email: z.string().min(1, 'Please enter an email address'),
           role: z.enum(['maintainer', 'editor']),
         }),
       )
@@ -263,7 +276,7 @@ export function ConfigForm(props: ConfigFormProps) {
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())) {
             ctx.addIssue({
               code: 'custom',
-              message: `Invalid email: ${member.email}`,
+              message: 'Please enter a valid email address',
               path: [i, 'email'],
             });
           }
@@ -277,7 +290,7 @@ export function ConfigForm(props: ConfigFormProps) {
           if (emailSet.has(email)) {
             ctx.addIssue({
               code: 'custom',
-              message: `Duplicate email: ${email}`,
+              message: 'This email has already been added',
               path: [i, 'email'],
             });
           }
@@ -291,7 +304,10 @@ export function ConfigForm(props: ConfigFormProps) {
       ? z.object({
           name: z
             .string()
-            .regex(/^[A-Za-z0-9_-]{1,100}$/i, 'Use 1-100 letters, numbers, underscores or hyphens'),
+            .regex(
+              /^[A-Za-z0-9_-]{1,100}$/i,
+              'Name must be 1–100 characters using only letters, numbers, underscores, or hyphens',
+            ),
           ...baseSchema,
         })
       : z.object({...baseSchema});
@@ -341,13 +357,17 @@ export function ConfigForm(props: ConfigFormProps) {
       try {
         defaultParsedSchema = JSON.parse(values.defaultVariant.schema || '');
       } catch {
-        form.setError('defaultVariant.schema', {message: 'Schema must be valid JSON'});
+        form.setError('defaultVariant.schema', {
+          message: 'Invalid JSON Schema — check for missing quotes, brackets, or commas',
+        });
         return;
       }
 
       // Validate that the schema itself is a valid JSON Schema
       if (!isValidJsonSchema(defaultParsedSchema)) {
-        form.setError('defaultVariant.schema', {message: 'Invalid JSON Schema'});
+        form.setError('defaultVariant.schema', {
+          message: 'This is not a valid JSON Schema — please check the structure',
+        });
         return;
       }
 
@@ -356,7 +376,7 @@ export function ConfigForm(props: ConfigFormProps) {
       if (!validationResult.ok) {
         const errors = validationResult.errors.join('; ');
         form.setError('defaultVariant.value', {
-          message: `Does not match schema: ${errors || 'Invalid value'}`,
+          message: `Value doesn't match the schema: ${errors || 'please check the value'}`,
         });
         return;
       }
@@ -396,7 +416,7 @@ export function ConfigForm(props: ConfigFormProps) {
           if (!validationResult.ok) {
             const errors = validationResult.errors.join('; ');
             form.setError(`environmentVariants.${i}.value`, {
-              message: `Does not match default schema: ${errors || 'Invalid value'}`,
+              message: `Value doesn't match the base schema: ${errors || 'please check the value'}`,
             });
             return;
           }
@@ -407,13 +427,17 @@ export function ConfigForm(props: ConfigFormProps) {
         try {
           parsedSchema = JSON.parse(variant.schema || '');
         } catch {
-          form.setError(`environmentVariants.${i}.schema`, {message: 'Schema must be valid JSON'});
+          form.setError(`environmentVariants.${i}.schema`, {
+            message: 'Invalid JSON Schema — check for missing quotes, brackets, or commas',
+          });
           return;
         }
 
         // Validate that the schema itself is a valid JSON Schema
         if (!isValidJsonSchema(parsedSchema)) {
-          form.setError(`environmentVariants.${i}.schema`, {message: 'Invalid JSON Schema'});
+          form.setError(`environmentVariants.${i}.schema`, {
+            message: 'This is not a valid JSON Schema — please check the structure',
+          });
           return;
         }
 
@@ -422,7 +446,7 @@ export function ConfigForm(props: ConfigFormProps) {
         if (!validationResult.ok) {
           const errors = validationResult.errors.join('; ');
           form.setError(`environmentVariants.${i}.value`, {
-            message: `Does not match schema: ${errors || 'Invalid value'}`,
+            message: `Value doesn't match the schema: ${errors || 'please check the value'}`,
           });
           return;
         }
@@ -473,6 +497,59 @@ export function ConfigForm(props: ConfigFormProps) {
 
     // Reset action ref after submission
     submitActionRef.current = null;
+  }
+
+  function handleInvalidSubmit(errors: FieldErrors<FormValues>) {
+    // Count total errors
+    let errorCount = 0;
+    const errorMessages: string[] = [];
+
+    // Check for name error
+    if (errors.name) {
+      errorCount++;
+      errorMessages.push('Name');
+    }
+
+    // Check for default variant errors
+    if (errors.defaultVariant) {
+      if ((errors.defaultVariant as any).value) {
+        errorCount++;
+        errorMessages.push('Base value');
+      }
+      if ((errors.defaultVariant as any).schema) {
+        errorCount++;
+        errorMessages.push('Base schema');
+      }
+    }
+
+    // Check for environment variant errors
+    if (errors.environmentVariants && Array.isArray(errors.environmentVariants)) {
+      errors.environmentVariants.forEach((variantError: any, index: number) => {
+        if (variantError?.value) {
+          errorCount++;
+          const envName = environments[index]?.name || `Environment ${index + 1}`;
+          errorMessages.push(`${envName} value`);
+        }
+        if (variantError?.schema) {
+          errorCount++;
+          const envName = environments[index]?.name || `Environment ${index + 1}`;
+          errorMessages.push(`${envName} schema`);
+        }
+      });
+    }
+
+    // Check for member errors
+    if (errors.members) {
+      errorCount++;
+      errorMessages.push('Access control');
+    }
+
+    toast.error('Unable to save — please fix the highlighted errors', {
+      description:
+        errorMessages.length > 0
+          ? `Check: ${errorMessages.slice(0, 3).join(', ')}${errorMessages.length > 3 ? ` (+${errorMessages.length - 3} more)` : ''}`
+          : undefined,
+    });
   }
 
   // Track all form values to detect changes
@@ -714,7 +791,11 @@ export function ConfigForm(props: ConfigFormProps) {
 
   return (
     <Form {...form}>
-      <form id="config-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form
+        id="config-form"
+        onSubmit={form.handleSubmit(handleSubmit, handleInvalidSubmit)}
+        className="space-y-6"
+      >
         {mode === 'new' && (
           <FormField
             control={form.control}
@@ -1087,50 +1168,28 @@ export function ConfigForm(props: ConfigFormProps) {
               </Tooltip>
             )}
             {mode === 'edit' && !proposalRequiredResult.required && onSave && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      type="submit"
-                      form="config-form"
-                      disabled={!!submitting || !canSubmit || !hasChanges}
-                      onClick={() => {
-                        submitActionRef.current = 'save';
-                      }}
-                    >
-                      {submitting ? 'Saving…' : 'Save changes'}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!hasChanges && !submitting && canSubmit && (
-                  <TooltipContent>
-                    <p>No changes have been made to save.</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
+              <Button
+                type="submit"
+                form="config-form"
+                disabled={!!submitting || !canSubmit}
+                onClick={() => {
+                  submitActionRef.current = 'save';
+                }}
+              >
+                {submitting ? 'Saving…' : 'Save changes'}
+              </Button>
             )}
             {mode === 'edit' && proposalRequiredResult.required && onPropose && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      type="submit"
-                      form="config-form"
-                      disabled={!!submitting || !canSubmit || !hasChanges}
-                      onClick={() => {
-                        submitActionRef.current = 'propose';
-                      }}
-                    >
-                      {submitting ? 'Proposing…' : 'Propose changes'}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!hasChanges && !submitting && canSubmit && (
-                  <TooltipContent>
-                    <p>No changes have been made to propose.</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
+              <Button
+                type="submit"
+                form="config-form"
+                disabled={!!submitting || !canSubmit}
+                onClick={() => {
+                  submitActionRef.current = 'propose';
+                }}
+              >
+                {submitting ? 'Proposing…' : 'Propose changes'}
+              </Button>
             )}
             {onCancel && (
               <Button type="button" variant="outline" onClick={onCancel}>

@@ -37,7 +37,7 @@ export default function SignInPage({searchParams}: SignInPageProps) {
     EmailCreateAccount: 'Could not create email provider account.',
     Callback: 'Error in callback handler.',
     OAuthAccountNotLinked: 'This account is not linked. Please sign in with the original account.',
-    EmailSignin: 'Failed to send sign in email.',
+    EmailSignin: 'Unable to send sign-in email. Please check your email address and try again.',
     CredentialsSignin: 'Sign in failed. Check the details you provided are correct.',
     SessionRequired: 'Please sign in to access this page.',
     default: 'Unable to sign in.',

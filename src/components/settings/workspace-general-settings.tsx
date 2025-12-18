@@ -32,7 +32,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
       await updateWorkspace.mutateAsync({workspaceId, name});
       toast.success('Workspace settings saved');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save');
+      toast.error(e?.message ?? 'Unable to save workspace settings — please try again');
     }
     setSaving(false);
   };

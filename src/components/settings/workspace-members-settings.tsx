@@ -56,7 +56,7 @@ export function WorkspaceMembersSettings({workspaceId}: {workspaceId: string}) {
       toast.success('Member removed');
       setMembers(prev => prev.filter((_, i) => i !== idx));
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to remove member');
+      toast.error(e?.message ?? 'Unable to remove member — please try again');
     }
   };
 
@@ -94,7 +94,7 @@ export function WorkspaceMembersSettings({workspaceId}: {workspaceId: string}) {
 
       toast.success('Members updated');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save members');
+      toast.error(e?.message ?? 'Unable to save members — please try again');
     } finally {
       setSavingMembers(false);
     }

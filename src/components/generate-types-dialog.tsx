@@ -93,7 +93,9 @@ function GenerateTypesContent() {
     } catch (e) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : String(e);
-      toast.error(`Failed to copy code: ${errorMessage}`);
+      toast.error('Unable to copy to clipboard', {
+        description: 'Please try selecting and copying the code manually.',
+      });
     }
   };
 
@@ -143,7 +145,7 @@ function GenerateTypesContent() {
         </div>
         {error ? (
           <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
-            <p className="text-sm font-medium text-destructive">Failed to generate types</p>
+            <p className="text-sm font-medium text-destructive">Unable to generate types — please try again</p>
             <p className="text-sm text-muted-foreground mt-1">
               {error instanceof Error ? error.message : 'An unknown error occurred'}
             </p>

@@ -260,8 +260,8 @@ export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}:
       });
 
       if (result?.error) {
-        toast.error('Failed to send magic link', {
-          description: 'Please try again or contact support.',
+        toast.error('Unable to send sign-in link', {
+          description: 'Please check your email address and try again.',
         });
       } else {
         setEmailSent(true);
@@ -271,7 +271,9 @@ export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}:
       }
     } catch (error) {
       console.error('Email sign in error:', error);
-      toast.error('Failed to send magic link');
+      toast.error('Unable to send sign-in link', {
+        description: 'Please check your connection and try again.',
+      });
     } finally {
       setLoadingProvider(null);
     }

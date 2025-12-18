@@ -135,7 +135,7 @@ export function FeedbackDialog({open, onOpenChange}: FeedbackDialogProps) {
 
             {submitStatus === 'error' && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                Failed to submit feedback. Please try again or contact support.
+                We couldn't send your feedback. Please try again or email us directly.
               </div>
             )}
           </div>

@@ -81,7 +81,7 @@ export default function GeneralSettingsPage() {
       });
       toast.success('Project settings saved');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save settings');
+      toast.error(e?.message ?? 'Unable to save settings — please try again');
     }
     setSavingDetails(false);
   };
@@ -291,7 +291,7 @@ function DeleteProjectForm({
       await deleteProject.mutateAsync({id: projectId, confirmName: confirm.trim()});
       onDeleted();
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete project');
+      toast.error(e?.message ?? 'Unable to delete project — please try again');
     } finally {
       setSubmitting(false);
     }

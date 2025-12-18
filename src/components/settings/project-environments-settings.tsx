@@ -60,7 +60,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
 
   const handleCreateEnvironment = async () => {
     if (!copyFromEnvironmentId) {
-      toast.error('Please select an environment to copy from');
+      toast.error('Please select a source environment to copy configurations from');
       return;
     }
 
@@ -75,7 +75,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
       setNewEnvironmentName('');
       setCopyFromEnvironmentId('');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to create environment');
+      toast.error(e?.message ?? 'Unable to create environment — please try again');
     }
   };
 
@@ -94,7 +94,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
       setEditEnvironmentName('');
       setEditRequireProposals(false);
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to update environment');
+      toast.error(e?.message ?? 'Unable to update environment — please try again');
     }
   };
 
@@ -109,7 +109,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
       setShowDeleteDialog(false);
       setSelectedEnvironment(null);
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete environment');
+      toast.error(e?.message ?? 'Unable to delete environment — please try again');
     }
   };
 
@@ -125,7 +125,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
     try {
       await updateEnvironmentsOrder.mutateAsync({projectId, environmentOrders: newOrder});
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to reorder environments');
+      toast.error(e?.message ?? 'Unable to reorder environments — please try again');
     }
   };
 
@@ -142,7 +142,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
     try {
       await updateEnvironmentsOrder.mutateAsync({projectId, environmentOrders: newOrder});
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to reorder environments');
+      toast.error(e?.message ?? 'Unable to reorder environments — please try again');
     }
   };
 

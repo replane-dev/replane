@@ -57,7 +57,7 @@ export default function WorkspaceGeneralSettingsPage() {
       });
       toast.success('Workspace settings saved');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save settings');
+      toast.error(e?.message ?? 'Unable to save settings — please try again');
     }
     setSavingSettings(false);
   };
@@ -205,7 +205,7 @@ function DeleteWorkspaceForm({
       await deleteWorkspace.mutateAsync({workspaceId});
       onDeleted();
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete workspace');
+      toast.error(e?.message ?? 'Unable to delete workspace — please try again');
     } finally {
       setSubmitting(false);
     }

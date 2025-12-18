@@ -117,7 +117,7 @@ function ConfigTableImpl({
         }
       },
       onError: error => {
-        toast.error('Failed to add example configs', {description: error.message});
+        toast.error('Unable to add example configs', {description: 'Please try again or contact support if the issue persists.'});
       },
     }),
   );

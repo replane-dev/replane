@@ -59,7 +59,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
       });
       toast.success(`${envName} updated`);
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to update environment');
+      toast.error(e?.message ?? 'Unable to update environment — please try again');
     }
     setUpdatingEnvId(null);
   };
@@ -74,7 +74,7 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
       });
       toast.success('Project settings saved');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save');
+      toast.error(e?.message ?? 'Unable to save changes — please try again');
     }
     setSaving(false);
   };

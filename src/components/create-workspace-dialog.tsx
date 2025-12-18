@@ -45,7 +45,7 @@ export function CreateWorkspaceDialog({open, onOpenChange}: CreateWorkspaceDialo
       onOpenChange(false);
       setName('');
     } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to create workspace');
+      toast.error(err?.message ?? 'Unable to create workspace — please try again');
     } finally {
       setSubmitting(false);
     }

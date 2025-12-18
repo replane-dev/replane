@@ -59,7 +59,7 @@ export default async function AuthErrorPage({searchParams}: ErrorPageProps) {
     },
     EmailSignin: {
       title: 'Email Sign In Failed',
-      description: 'Failed to send sign in email. Please try again.',
+      description: 'Unable to send sign-in email. Please check your email address and try again.',
     },
     CredentialsSignin: {
       title: 'Sign In Failed',

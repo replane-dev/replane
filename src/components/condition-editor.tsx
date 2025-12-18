@@ -189,7 +189,7 @@ export function ConditionEditor({
           setReferenceValidation({
             valid: false,
             checking: false,
-            error: 'Failed to fetch config',
+            error: 'Unable to load config — please try again',
           });
         }
       };
@@ -281,7 +281,7 @@ export function ConditionEditor({
     } catch (error) {
       setPreviewValue({
         loading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch config',
+        error: error instanceof Error ? error.message : 'Unable to load config — please try again',
       });
     }
   };

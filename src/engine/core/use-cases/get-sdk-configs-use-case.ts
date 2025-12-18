@@ -12,7 +12,6 @@ export interface GetSdkConfigsResponse {
     name: string;
     value: unknown;
     overrides: RenderedOverride[];
-    version: number;
   }>;
 }
 
@@ -34,7 +33,6 @@ export function createGetSdkConfigsUseCase(
         name: config.name,
         value: config.value,
         overrides: config.overrides,
-        version: config.version,
       })),
     };
   };

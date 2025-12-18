@@ -23,10 +23,10 @@ export function ConfigSchema() {
       return JSON.stringify(val).length < 131072; // 128KB
     })
     .refine(val => val === null || typeof val === 'boolean' || typeof val === 'object', {
-      message: 'Schema must be an object or a boolean',
+      message: 'Schema must be a valid JSON object or boolean',
     })
     .refine(val => isValidJsonSchema(val), {
-      message: 'Invalid JSON Schema',
+      message: 'This is not a valid JSON Schema — please check the structure',
     })
     .transform(val => val as ConfigSchema);
 }

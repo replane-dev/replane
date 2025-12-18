@@ -232,6 +232,10 @@ export type JsonEditorProps = {
   readOnly?: boolean;
   'aria-label'?: string;
   /**
+   * When true, displays a red border to indicate validation error.
+   */
+  error?: boolean;
+  /**
    * Optional JSON Schema for validation and intellisense.
    * Supports all JSON Schema versions:
    * - draft-04: http://json-schema.org/draft-04/schema#
@@ -278,6 +282,7 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
       id,
       onFullScreen,
       emitOnChange,
+      error,
       ...rest
     },
     ref,
@@ -390,7 +395,9 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
     }, [schema, path, id, reactId, schemaUri]);
 
     return (
-      <div className="border rounded-md relative h-full">
+      <div
+        className={`border rounded-md overflow-hidden relative h-full ${error ? 'border-destructive' : ''}`}
+      >
         <Editor
           {...rest}
           language="json"
@@ -502,6 +509,7 @@ export function JsonEditor(props: JsonEditorProps) {
         editorName={props.editorName}
         onFullScreen={handleFullScreenOpen}
         emitOnChange
+        error={props.error}
       />
       <Dialog
         open={isFullScreen}

@@ -78,7 +78,9 @@ export function SdkIntegrationGuide({
       setTimeout(() => setCopiedSnippet(null), 2000);
     } catch (e) {
       console.error(e);
-      toast.error('Failed to copy code snippet');
+      toast.error('Unable to copy to clipboard', {
+        description: 'Please try selecting and copying the code manually.',
+      });
     }
   };
 

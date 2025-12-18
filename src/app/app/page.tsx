@@ -20,7 +20,9 @@ export default function AppPage() {
       // should not happen, backend guarantees at least one project
       // show error
 
-      toast.error('Something went wrong (no projects found), please contact support');
+      toast.error('Unable to load your projects', {
+      description: 'Please refresh the page or contact support if the issue persists.',
+    });
       return;
     }
 

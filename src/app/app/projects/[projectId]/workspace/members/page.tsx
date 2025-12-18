@@ -196,7 +196,7 @@ function AddMemberForm({workspaceId, onAdded}: {workspaceId: string; onAdded: ()
       setEmail('');
       setRole('member');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to add member');
+      toast.error(e?.message ?? 'Unable to add member — please try again');
     } finally {
       setSubmitting(false);
     }
@@ -271,7 +271,7 @@ function MemberActionsMenu({
       toast.success('Member removed');
       onSuccess();
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to remove member');
+      toast.error(e?.message ?? 'Unable to remove member — please try again');
     }
   };
 
@@ -286,7 +286,7 @@ function MemberActionsMenu({
       toast.success('Role updated');
       onSuccess();
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to update role');
+      toast.error(e?.message ?? 'Unable to update role — please try again');
     }
   };
 

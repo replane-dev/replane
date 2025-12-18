@@ -80,7 +80,7 @@ export default function EnvironmentsSettingsPage() {
 
   const handleCreateEnvironment = async () => {
     if (!copyFromEnvironmentId) {
-      toast.error('Please select an environment to copy from');
+      toast.error('Please select a source environment to copy configurations from');
       return;
     }
 
@@ -95,7 +95,7 @@ export default function EnvironmentsSettingsPage() {
       setNewEnvironmentName('');
       setCopyFromEnvironmentId('');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to create environment');
+      toast.error(e?.message ?? 'Unable to create environment — please try again');
     }
   };
 
@@ -113,7 +113,7 @@ export default function EnvironmentsSettingsPage() {
       setSelectedEnvironment(null);
       setEditEnvironmentName('');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to update environment');
+      toast.error(e?.message ?? 'Unable to update environment — please try again');
     }
   };
 
@@ -128,7 +128,7 @@ export default function EnvironmentsSettingsPage() {
       setShowDeleteDialog(false);
       setSelectedEnvironment(null);
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to delete environment');
+      toast.error(e?.message ?? 'Unable to delete environment — please try again');
     }
   };
 
@@ -147,7 +147,7 @@ export default function EnvironmentsSettingsPage() {
         environmentOrders: newOrder,
       });
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to reorder environments');
+      toast.error(e?.message ?? 'Unable to reorder environments — please try again');
     }
   };
 
@@ -167,7 +167,7 @@ export default function EnvironmentsSettingsPage() {
         environmentOrders: newOrder,
       });
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to reorder environments');
+      toast.error(e?.message ?? 'Unable to reorder environments — please try again');
     }
   };
 

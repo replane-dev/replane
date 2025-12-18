@@ -144,7 +144,7 @@ export function SdkKeyDetailView({id, projectId, onDelete, onDirtyChange}: SdkKe
                         }
                       } catch (e) {
                         console.error(e);
-                        toast.error('Failed to delete');
+                        toast.error('Unable to delete SDK key — please try again');
                       }
                     }}
                   >

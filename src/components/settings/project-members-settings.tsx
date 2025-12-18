@@ -54,7 +54,7 @@ export function ProjectMembersSettings({projectId}: {projectId: string}) {
       await patchProject.mutateAsync({id: projectId, members: {users: merged}});
       toast.success('Project members saved');
     } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save members');
+      toast.error(e?.message ?? 'Unable to save members — please try again');
     } finally {
       setSavingUsers(false);
     }
