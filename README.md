@@ -8,7 +8,7 @@
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./public/replane-window-screenshot-dark-v1.png">
     <source media="(prefers-color-scheme: light)" srcset="./public/replane-window-screenshot-light-v1.png">
-    <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-v1.png">
+    <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-v1.png" style="border: 1px solid #30363d; border-radius: 6px;">
 </picture>
 
 ## What it does
