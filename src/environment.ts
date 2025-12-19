@@ -233,3 +233,34 @@ export function isEmailDomainAllowed(email: string | null | undefined): boolean 
 export function hasEmailDomainRestrictions(): boolean {
   return getAllowedEmailDomains() !== null;
 }
+
+/**
+ * Gets the healthcheck path from environment variables.
+ *
+ * @returns the healthcheck path, or undefined if not configured
+ */
+export function getHealthcheckPath(): string | undefined {
+  const path = process.env.HEALTHCHECK_PATH;
+  if (!path) {
+    return '/api/health';
+  }
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+/**
+ * Gets the port from environment variables.
+ *
+ * @returns the port, or 8080 if not configured
+ */
+export function getPort(): number {
+  return parseInt(process.env.PORT || '8080', 10);
+}
+
+/**
+ * Checks if the environment is development.
+ *
+ * @returns true if the environment is development, false otherwise
+ */
+export function isDevelopment(): boolean {
+  return process.env.NODE_ENV !== 'production';
+}

@@ -64,7 +64,7 @@ services:
     ports:
       - '8080:8080'
     environment:
-      # External database (optional, Replane can start without an external database, mount /data to persist data)
+      # Replane can start without an external database, mount /data to persist data
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
       BASE_URL: http://localhost:8080
       SECRET_KEY: change-me-to-a-long-random-string

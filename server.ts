@@ -1,3 +1,4 @@
+import {getHealthcheckPath, getPort, isDevelopment} from '@/environment';
 import './src/init-node-environment';
 
 import {sdkApi} from '@/sdk-api';
@@ -7,8 +8,8 @@ import next from 'next';
 import type {TLSSocket} from 'tls';
 import {parse} from 'url';
 
-const PORT = parseInt(process.env.PORT || '8080', 10);
-const dev = process.env.NODE_ENV !== 'production';
+const PORT = getPort();
+const dev = isDevelopment();
 const app = next({dev});
 const handle = app.getRequestHandler();
 
@@ -100,13 +101,7 @@ async function sendResponse(res: ServerResponse, honoRes: Response) {
 
 const SDK_API_PREFIX = '/api/sdk/v1';
 const SENTRY_TUNNEL_PATH = '/api/internal/monitoring';
-const HEALTHCHECK_PATH = (() => {
-  const path = process.env.HEALTHCHECK_PATH;
-  if (!path) {
-    return undefined;
-  }
-  return path.startsWith('/') ? path : `/${path}`;
-})();
+const HEALTHCHECK_PATH = getHealthcheckPath();
 
 async function handleSentryTunnel(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== 'POST') {
@@ -202,22 +197,9 @@ app
         }
 
         if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
-          const nextHealth = await Promise.all([
-            healthcheckAwareSelfFetch('/health')
-              .then(res => ({healthy: !res || res.status === 200}))
-              .catch(() => ({healthy: false})),
-            healthcheckAwareSelfFetch('/api/internal/health')
-              .then(res => ({healthy: !res || res.status === 200}))
-              .catch(() => ({healthy: false})),
-          ]).then(([nextHealth, internalHealth]) => {
-            return {
-              healthy: nextHealth.healthy && internalHealth.healthy,
-            };
-          });
-
-          res.statusCode = nextHealth.healthy ? 200 : 500;
+          res.statusCode = 200;
           res.setHeader('content-type', 'application/json');
-          res.end(JSON.stringify({}));
+          res.end(JSON.stringify({status: 'ok'}));
           return;
         }
 
@@ -242,11 +224,7 @@ app
       }
     }).listen(PORT);
 
-    console.log(
-      `> Server listening at http://localhost:${PORT} as ${
-        dev ? 'development' : process.env.NODE_ENV
-      }`,
-    );
+    console.log(`> Server listening at http://localhost:${PORT}`);
   })
   .catch(error => {
     console.error('Failed to start server:', error);

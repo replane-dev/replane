@@ -68,7 +68,6 @@ import {createGetProjectUsersUseCase} from './core/use-cases/get-project-users-u
 import {createGetSdkKeyListUseCase} from './core/use-cases/get-sdk-key-list-use-case';
 import {createGetSdkKeyPageDataUseCase} from './core/use-cases/get-sdk-key-page-data-use-case';
 import {createGetSdkKeyUseCase} from './core/use-cases/get-sdk-key-use-case';
-import {createGetStatusUseCase} from './core/use-cases/get-status-use-case';
 import {createGetUserProfileUseCase} from './core/use-cases/get-user-profile-use-case';
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
@@ -361,7 +360,6 @@ export async function createEngine(options: EngineOptions) {
     useCases: {
       ...engineUseCases,
       getHealth: createGetHealthUseCase(),
-      getStatus: createGetStatusUseCase({db}),
     },
     mail: options.emailService,
     testing: {
