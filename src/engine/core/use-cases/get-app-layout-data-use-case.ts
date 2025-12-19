@@ -1,3 +1,5 @@
+import {isEmailServerConfigured} from '@/lib/email-server-config';
+
 import type {ProjectListItem} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 import type {WorkspaceListItem} from '../workspace-query-service';
@@ -10,6 +12,7 @@ export interface GetAppLayoutDataRequest {
 export interface GetAppLayoutDataResponse {
   projects: ProjectListItem[];
   workspaces: WorkspaceListItem[];
+  isEmailServerConfigured: boolean;
 }
 
 export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
@@ -26,6 +29,10 @@ export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
       currentUserEmail: req.currentUserEmail,
     });
 
-    return {projects, workspaces};
+    return {
+      projects,
+      workspaces,
+      isEmailServerConfigured: isEmailServerConfigured(),
+    };
   };
 }

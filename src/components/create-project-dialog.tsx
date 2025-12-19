@@ -12,7 +12,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Textarea} from '@/components/ui/textarea';
-import {useProjects} from '@/contexts/project-context';
+import {useAppContext} from '@/contexts/app-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
@@ -38,7 +38,7 @@ export function CreateProjectDialog({
   const [description, setDescription] = React.useState('');
   const [isSubmitting, setSubmitting] = React.useState(false);
 
-  const {refresh: refreshProjects} = useProjects();
+  const {refresh: refreshProjects} = useAppContext();
 
   const createProject = useMutation(trpc.createProject.mutationOptions());
 

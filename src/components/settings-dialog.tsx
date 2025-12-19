@@ -13,6 +13,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar';
 import {Skeleton} from '@/components/ui/skeleton';
+import {useAppContext} from '@/contexts/app-context';
 import {Globe, Mail, Palette, Settings as SettingsIcon, Users} from 'lucide-react';
 import * as React from 'react';
 import {Suspense} from 'react';
@@ -51,6 +52,7 @@ export function SettingsDialog({
   initialSection = 'project-general',
 }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSection>(initialSection);
+  const {isEmailServerConfigured} = useAppContext();
 
   // Update active section when initialSection changes and dialog opens
   React.useEffect(() => {
@@ -59,35 +61,42 @@ export function SettingsDialog({
     }
   }, [open, initialSection]);
 
-  const navSections = [
-    {
-      label: 'Account',
-      items: [
-        {name: 'General', icon: SettingsIcon, section: 'account-general' as SettingsSection},
-        {name: 'Appearance', icon: Palette, section: 'account-appearance' as SettingsSection},
-        {
-          name: 'Email Preferences',
-          icon: Mail,
-          section: 'account-email-preferences' as SettingsSection,
-        },
-      ],
-    },
-    {
-      label: 'Workspace',
-      items: [
-        {name: 'General', icon: SettingsIcon, section: 'org-general' as SettingsSection},
-        {name: 'Members', icon: Users, section: 'org-members' as SettingsSection},
-      ],
-    },
-    {
-      label: 'Project',
-      items: [
-        {name: 'General', icon: SettingsIcon, section: 'project-general' as SettingsSection},
-        {name: 'Environments', icon: Globe, section: 'project-environments' as SettingsSection},
-        {name: 'Members', icon: Users, section: 'project-members' as SettingsSection},
-      ],
-    },
-  ];
+  const navSections = React.useMemo(
+    () => [
+      {
+        label: 'Account',
+        items: [
+          {name: 'General', icon: SettingsIcon, section: 'account-general' as SettingsSection},
+          {name: 'Appearance', icon: Palette, section: 'account-appearance' as SettingsSection},
+          ...(isEmailServerConfigured
+            ? [
+                {
+                  name: 'Email Preferences',
+                  icon: Mail,
+                  section: 'account-email-preferences' as SettingsSection,
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        label: 'Workspace',
+        items: [
+          {name: 'General', icon: SettingsIcon, section: 'org-general' as SettingsSection},
+          {name: 'Members', icon: Users, section: 'org-members' as SettingsSection},
+        ],
+      },
+      {
+        label: 'Project',
+        items: [
+          {name: 'General', icon: SettingsIcon, section: 'project-general' as SettingsSection},
+          {name: 'Environments', icon: Globe, section: 'project-environments' as SettingsSection},
+          {name: 'Members', icon: Users, section: 'project-members' as SettingsSection},
+        ],
+      },
+    ],
+    [isEmailServerConfigured],
+  );
 
   const getSectionTitle = (section: SettingsSection): {title: string; breadcrumb: string[]} => {
     const map: Record<SettingsSection, {title: string; breadcrumb: string[]}> = {
@@ -108,8 +117,6 @@ export function SettingsDialog({
     };
     return map[section];
   };
-
-  const sectionInfo = getSectionTitle(activeSection);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,7 +153,7 @@ export function SettingsDialog({
               <Suspense fallback={<SettingsLoadingFallback />}>
                 {activeSection === 'account-general' && <AccountGeneralSettings />}
                 {activeSection === 'account-appearance' && <AccountAppearanceSettings />}
-                {activeSection === 'account-email-preferences' && (
+                {activeSection === 'account-email-preferences' && isEmailServerConfigured && (
                   <AccountEmailPreferencesSettings />
                 )}
                 {activeSection === 'org-general' && (

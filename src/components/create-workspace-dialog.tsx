@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
-import {useProjects} from '@/contexts/project-context';
+import {useAppContext} from '@/contexts/app-context';
 import {useTRPC} from '@/trpc/client';
 import {useMutation} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
@@ -31,7 +31,7 @@ export function CreateWorkspaceDialog({open, onOpenChange}: CreateWorkspaceDialo
 
   const createWorkspace = useMutation(trpc.createWorkspace.mutationOptions());
 
-  const {refresh: refreshAppLayout} = useProjects();
+  const {refresh: refreshAppLayout} = useAppContext();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,4 +87,3 @@ export function CreateWorkspaceDialog({open, onOpenChange}: CreateWorkspaceDialo
     </Dialog>
   );
 }
-

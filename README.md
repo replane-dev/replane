@@ -2,7 +2,7 @@
 
 # Replane
 
-Dynamic configuration manager for your apps and services. Self‑hosted.
+Dynamic configuration for apps and services. Self‑hosted.
 
 </div>
 

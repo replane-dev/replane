@@ -37,7 +37,7 @@ export default function SignUpPage() {
             Replane
           </Link>
           <p className="text-muted-foreground text-sm">
-            Dynamic configuration for your apps and services
+            Dynamic configuration for apps and services
           </p>
         </div>
         <SignUpForm callbackUrl={callbackUrl} allowedEmailDomains={allowedEmailDomains} />

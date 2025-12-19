@@ -15,13 +15,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem} from '@/components/ui/sidebar';
-import {useProjects} from '@/contexts/project-context';
+import {useAppContext} from '@/contexts/app-context';
 import {useMemo, useState} from 'react';
 
 export function OrgSwitcher() {
   const projectId = useProjectId();
   const workspace = useWorkspace();
-  const {workspaces, projects} = useProjects();
+  const {workspaces, projects} = useAppContext();
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
 
   // For each workspace, find the first project to navigate to

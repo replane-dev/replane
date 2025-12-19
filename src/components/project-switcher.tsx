@@ -14,12 +14,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem} from '@/components/ui/sidebar';
-import {useProjects} from '@/contexts/project-context';
+import {useAppContext} from '@/contexts/app-context';
 import {useMemo, useState} from 'react';
 
 export function ProjectSwitcher() {
   const projectId = useProjectId();
-  const {projects: allProjects} = useProjects();
+  const {projects: allProjects} = useAppContext();
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
 
   const workspace = useWorkspace();

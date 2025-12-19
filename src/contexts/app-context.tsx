@@ -19,16 +19,17 @@ export interface WorkspaceSummary {
   myRole: 'admin' | 'member' | undefined;
 }
 
-interface ProjectContextValue {
+interface AppContextValue {
   workspaces: WorkspaceSummary[];
   projects: ProjectSummary[];
+  isEmailServerConfigured: boolean;
   // refreshes project and workspace lists
   refresh: () => Promise<void>;
 }
 
-const ProjectContext = React.createContext<ProjectContextValue | undefined>(undefined);
+const AppContext = React.createContext<AppContextValue | undefined>(undefined);
 
-export function ProjectProvider({children}: {children: React.ReactNode}) {
+export function AppProvider({children}: {children: React.ReactNode}) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const appLayoutQuery = trpc.getAppLayoutData.queryOptions();
@@ -64,18 +65,23 @@ export function ProjectProvider({children}: {children: React.ReactNode}) {
     await queryClient.refetchQueries({queryKey: appLayoutQuery.queryKey});
   }, [queryClient, appLayoutQuery.queryKey]);
 
-  const value = React.useMemo<ProjectContextValue>(
-    () => ({projects, workspaces, refresh}),
-    [projects, workspaces, refresh],
+  const value = React.useMemo<AppContextValue>(
+    () => ({
+      projects,
+      workspaces,
+      isEmailServerConfigured: appLayoutData.isEmailServerConfigured,
+      refresh,
+    }),
+    [projects, workspaces, appLayoutData.isEmailServerConfigured, refresh],
   );
 
-  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-export function useProjects(): ProjectContextValue {
-  const ctx = React.useContext(ProjectContext);
+export function useAppContext(): AppContextValue {
+  const ctx = React.useContext(AppContext);
   if (!ctx) {
-    throw new Error('useProjects must be used within a ProjectProvider');
+    throw new Error('useAppContext must be used within an AppProvider');
   }
   return ctx;
 }

@@ -1,4 +1,4 @@
-import {useProjects} from '@/contexts/project-context';
+import {useAppContext} from '@/contexts/app-context';
 import {isValidUuid} from '@/engine/core/utils';
 import {notFound, redirect, useParams} from 'next/navigation';
 import {useMemo} from 'react';
@@ -19,7 +19,7 @@ export function useProjectId() {
 
 export function useProject() {
   const projectId = useProjectId();
-  const {projects} = useProjects();
+  const {projects} = useAppContext();
   const project = useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
   if (!project) {
     // redirect to /app
@@ -31,7 +31,7 @@ export function useProject() {
 
 export function useWorkspace() {
   const project = useProject();
-  const {workspaces} = useProjects();
+  const {workspaces} = useAppContext();
   const workspace = useMemo(
     () => workspaces.find(w => w.id === project.workspaceId),
     [workspaces, project.workspaceId],
