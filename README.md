@@ -20,7 +20,6 @@ Replane is a small web app for managing JSON configs with:
 - Realtime updates via Server-Sent Events (SSE)
 - Audit log for who changed what and when
 - JSON Schema validation
-- [JavaScript SDK](#javascript-sdk)
 
 If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focused, auditable UI.
 
@@ -33,6 +32,13 @@ If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focuse
 - Shared platform/internal tool settings across multiple services
 
 Non‑engineering teammates (product, operations, support) can safely change values in the UI when a JSON Schema is attached—invalid or out‑of‑range inputs are blocked before save.
+
+## SDKs
+
+- [JavaScript SDK](https://github.com/replane-dev/replane-javascript)
+- React SDK (coming soon)
+- Next.js SDK (coming soon)
+- Python SDK (coming soon)
 
 ## Self‑hosting with Docker
 
