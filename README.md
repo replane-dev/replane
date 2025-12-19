@@ -34,9 +34,10 @@ Non‑engineering teammates (product, operations, support) can safely change val
 
 ## Requirements
 
-- PostgreSQL (tested with 17; 14+ should work)
 - Node.js 22+ and pnpm (for running from source)
 - At least one authentication method: password auth, magic link (email), or OAuth (GitHub, GitLab, Google, Okta)
+
+Optional: PostgreSQL database (14+).
 
 ## Self‑hosting with Docker
 
@@ -58,6 +59,7 @@ services:
     depends_on:
       - db
     environment:
+      # Optional, Replane can start without an external database
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
       BASE_URL: http://localhost:8080
       SECRET_KEY_BASE: change-me-to-a-long-random-string
@@ -98,16 +100,24 @@ Open your browser at http://localhost:8080.
 
 Notes
 
-- The container entrypoint runs DB migrations automatically before starting.
+- Replane includes an integrated database. No external database required.
+- If using an integrated database, data is stored in `/data` inside the container. Mount a volume to persist data.
 - Health check: GET /api/health → `{ "status": "ok" }`.
 
 ## Environment variables
 
 ### Required
 
-- `DATABASE_URL` – Postgres connection string
 - `BASE_URL` – e.g. http://localhost:8080 or your external URL
 - `SECRET_KEY_BASE` – long random string (used to sign sessions)
+
+### PostgreSQL Database
+
+By default, Replane uses an integrated database. To use an external database instead:
+
+- `DATABASE_URL` – Postgres connection string (e.g., `postgresql://user:pass@host:5432/replane`).
+- `DATABASE_SSL_CA` – Custom SSL/TLS certificate authority (CA) for external PostgreSQL connections.
+- `DATABASE_MAX_CONNECTIONS` – Maximum connections in the pool. Defaults to `10`.
 
 ### Authentication Providers
 
@@ -175,8 +185,6 @@ The email provider sends passwordless magic links to users for authentication. W
 
 ### Optional
 
-- `DATABASE_SSL_CA` – custom SSL/TLS certificate authority (CA) for PostgreSQL connections. Use this when connecting to databases that require custom SSL certificates.
-- `DATABASE_MAX_CONNECTIONS` – maximum number of connections in the PostgreSQL connection pool. Defaults to `10`.
 - `ALLOWED_EMAIL_DOMAINS` – comma-separated list of email domains allowed for user registration (e.g., `gmail.com,my-company.com`). If not set, all email domains are allowed. Users with email addresses from other domains will be blocked from signing up.
 
 ### Error Tracking (Sentry)
@@ -271,7 +279,7 @@ Notes
 
 ## Backups
 
-All state is in Postgres. Use your standard backup/restore process for the database (e.g. `pg_dump`/`pg_restore`).
+All state is stored in PostgreSQL when `DATABASE_URL` is not set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
 
 ## Security
 

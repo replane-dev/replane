@@ -1,6 +1,5 @@
 import type {TransactionalUseCase} from '../use-case';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface HasUsersRequest {}
 
 export interface HasUsersResponse {
@@ -15,4 +14,3 @@ export function createHasUsersUseCase(): TransactionalUseCase<HasUsersRequest, H
     };
   };
 }
-

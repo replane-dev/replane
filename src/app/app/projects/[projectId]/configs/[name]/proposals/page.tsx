@@ -164,6 +164,7 @@ export default function ConfigProposalsPage() {
     [name, project.id, router],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: proposals as Row[],
     columns,

@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 // This is intended for local development only to cleanup database schemas used for testing
 
 import {Client} from 'pg';

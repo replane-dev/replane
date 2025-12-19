@@ -199,9 +199,10 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
         },
       },
     ],
-    [router, deleteMutation],
+    [deleteMutation, onSdkKeyClick, router, projectId],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: sdkKeys as SdkKeyRow[],
     columns,
