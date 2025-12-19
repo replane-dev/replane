@@ -1,12 +1,15 @@
-<div align="center">
+  <h1 align="center">
+      Replane
+  </h1>
+  <p align="center">
+    Dynamic configuration for apps and services.
+  </p>
 
-# Replane
-
-Dynamic configuration for apps and services. Self‑hosted.
-
-</div>
-
-Status: early but usable. Expect changes to schemas and endpoints before v1.0.
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./public/replane-window-screenshot-dark-v1.png">
+    <source media="(prefers-color-scheme: light)" srcset="./public/replane-window-screenshot-light-v1.png">
+    <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-v1.png">
+</picture>
 
 ## What it does
 
