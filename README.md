@@ -105,6 +105,9 @@ services:
       # Set the port to listen on (defaults to 8080)
       # PORT: 12345
 
+      # Custom health check path (defaults to /api/health)
+      # HEALTHCHECK_PATH: /api/health
+
 volumes:
   replane-db:
 ```
@@ -199,6 +202,7 @@ Email server configuration is required for magic link authentication. It can be 
 ### Optional
 
 - `ALLOWED_EMAIL_DOMAINS` – comma-separated list of email domains allowed for user registration (e.g., `gmail.com,my-company.com`). If not set, all email domains are allowed. Users with email addresses from other domains will be blocked from signing up.
+- `HEALTHCHECK_PATH` – custom path for the health check endpoint. Defaults to `/api/health`.
 
 ### Error Tracking (Sentry)
 
