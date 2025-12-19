@@ -34,7 +34,8 @@ export interface ConfigVersionMember {
 
 export interface ConfigVersion {
   id: string;
-  configId: string;
+  configId: string | null;
+  configName: string;
   version: number;
   description: string;
   // Default variant data stored directly on version
@@ -60,6 +61,7 @@ export class ConfigVersionStore {
       .values({
         id: configVersion.id,
         config_id: configVersion.configId,
+        config_name: configVersion.configName,
         version: configVersion.version,
         description: configVersion.description,
         value: serializeJson(configVersion.value),
@@ -153,7 +155,8 @@ export class ConfigVersionStore {
 
   private async fetchOneVersionWithRelations(versionRow: {
     id: string;
-    config_id: string;
+    config_id: string | null;
+    config_name: string;
     version: number;
     description: string;
     value: string;
@@ -171,7 +174,8 @@ export class ConfigVersionStore {
   private async fetchVersionsWithRelations(
     versionRows: Array<{
       id: string;
-      config_id: string;
+      config_id: string | null;
+      config_name: string;
       version: number;
       description: string;
       value: string;
@@ -218,6 +222,7 @@ export class ConfigVersionStore {
     return versionRows.map(versionRow => ({
       id: versionRow.id,
       configId: versionRow.config_id,
+      configName: versionRow.config_name,
       version: versionRow.version,
       description: versionRow.description,
       value: deserializeJson(versionRow.value),

@@ -543,6 +543,7 @@ export class ConfigService {
     await this.configVersions.create({
       id: createConfigVersionId(),
       configId: params.configId,
+      configName: existingConfig.name,
       version: nextVersion,
       description: params.description,
       value: params.defaultVariant.value,
@@ -775,6 +776,7 @@ export class ConfigService {
     await this.configVersions.create({
       id: createConfigVersionId(),
       configId: params.id,
+      configName: params.name,
       version: 1,
       description: params.description,
       value: params.defaultVariant.value,

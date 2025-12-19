@@ -67,7 +67,7 @@ services:
       - replane-db:/var/lib/postgresql/data
 
   replane:
-    image: ghcr.io/replane-dev/replane:latest
+    image: replane/replane:latest
     depends_on:
       - db
     ports:

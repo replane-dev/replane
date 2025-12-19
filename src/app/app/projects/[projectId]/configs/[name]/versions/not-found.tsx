@@ -79,7 +79,7 @@ export default function ConfigVersionNotFound() {
           <p>
             Version history shows all changes made to a config.{' '}
             <Link
-              href="https://replane.dev/docs/guides/version-history"
+              href="https://replane.dev/docs/concepts/overview#versions"
               target="_blank"
               className="text-primary hover:underline"
             >

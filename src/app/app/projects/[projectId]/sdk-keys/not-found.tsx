@@ -54,7 +54,7 @@ export default function SdkKeyNotFound() {
           <p>
             Need help?{' '}
             <Link
-              href="https://replane.dev/docs/guides/api-keys"
+              href="https://replane.dev/docs/concepts/overview#sdk-keys"
               target="_blank"
               className="text-primary hover:underline"
             >

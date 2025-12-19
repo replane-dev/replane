@@ -54,7 +54,7 @@ export default function AuditLogNotFound() {
           <p>
             Learn more about{' '}
             <Link
-              href="https://replane.dev/docs/guides/audit-log"
+              href="https://replane.dev/docs/concepts/overview#versions"
               target="_blank"
               className="text-primary hover:underline"
             >

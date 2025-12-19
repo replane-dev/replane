@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: replane
+    volumes:
+      - replane-data:/var/lib/postgresql/data
+
+  replane:
+    image: replane/replane:latest
+    depends_on:
+      - postgres
+    ports:
+      - '8080:8080'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/replane
+      BASE_URL: http://localhost:8080
+      SECRET_KEY: your-secret-key-here
+      PASSWORD_AUTH_ENABLED: true
+
+volumes:
+  replane-data:

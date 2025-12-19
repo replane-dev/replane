@@ -1499,6 +1499,28 @@ export const migrations: Migration[] = [
       ALTER TABLE workspaces ADD COLUMN logo TEXT NULL;
     `,
   },
+  {
+    name: 'Add config_name to config_versions and preserve versions on config delete',
+    sql: /*sql*/ `
+      -- Add config_name column to config_versions to preserve the name after config deletion
+      ALTER TABLE config_versions ADD COLUMN config_name TEXT NULL;
+
+      -- Populate config_name from existing configs
+      UPDATE config_versions cv
+      SET config_name = (SELECT c.name FROM configs c WHERE c.id = cv.config_id);
+
+      -- Make config_name NOT NULL after population
+      ALTER TABLE config_versions ALTER COLUMN config_name SET NOT NULL;
+
+      -- Make config_id nullable to preserve versions when config is deleted
+      ALTER TABLE config_versions ALTER COLUMN config_id DROP NOT NULL;
+
+      -- Drop the old CASCADE constraint and add SET NULL
+      ALTER TABLE config_versions DROP CONSTRAINT config_versions_config_id_fkey;
+      ALTER TABLE config_versions ADD CONSTRAINT config_versions_config_id_fkey
+        FOREIGN KEY (config_id) REFERENCES configs(id) ON DELETE SET NULL;
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';
