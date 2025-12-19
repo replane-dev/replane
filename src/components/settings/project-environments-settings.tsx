@@ -191,7 +191,7 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm font-medium">{env.name}</span>
-                {env.requireProposals && (
+                {env.requireProposals && projectData.project?.requireProposals && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-full cursor-default">
