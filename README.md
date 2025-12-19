@@ -20,7 +20,7 @@ Replane is a small web app for managing JSON configs with:
 - Realtime updates via Server-Sent Events (SSE)
 - Audit log for who changed what and when
 - JSON Schema validation
-- [JavaScript SDK](https://github.com/replane-dev/replane-javascript)
+- [JavaScript SDK](#javascript-sdk)
 
 If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focused, auditable UI.
 
@@ -36,11 +36,13 @@ Non‑engineering teammates (product, operations, support) can safely change val
 
 ## Self‑hosting with Docker
 
-One line to get started:
+You can launch a Replane container for trying it out with:
 
 ```sh
 docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=xxx replane/replane
 ```
+
+Replane will now be reachable at http://localhost:8080/.
 
 Example docker‑compose.yml:
 
@@ -136,21 +138,23 @@ Configure at least one authentication provider. You can enable multiple provider
 
 **Password Authentication**
 
-Traditional email/password sign-in. This does not verify email addresses, use with caution.
+Traditional email/password sign-in. This does not verify email addresses, use with caution. Enabled by default if no other authentication providers are configured.
 
 - `PASSWORD_AUTH_ENABLED=true` – Enables password-based registration and sign-in
 
 When enabled, users can create accounts with email and password, and sign in using their credentials. Passwords must be at least 8 characters.
 
-**Email (Magic Link)**
+**Email Magic Link**
 
 The email provider sends passwordless magic links to users for authentication. When enabled, an email input field appears on the sign-in page.
 
-**Required:**
-
 - `MAGIC_LINK_ENABLED=true` – Explicitly enables magic link authentication
 
-**Configuration Format 1: Connection String** (recommended)
+**Email Server Configuration**
+
+Email server configuration is required for magic link authentication. It can be used for other purposes (notifications, alerts, etc.) without enabling magic link authentication.
+
+**Configuration Format 1: Connection String**
 
 - `EMAIL_SERVER` – SMTP connection string (e.g., `smtp://username:password@smtp.gmail.com:587`)
 - `EMAIL_FROM` – Email address to send magic links from (e.g., `noreply@your-domain.com`)
@@ -158,12 +162,10 @@ The email provider sends passwordless magic links to users for authentication. W
 **Configuration Format 2: Individual Variables**
 
 - `EMAIL_SERVER_HOST` – SMTP server hostname (e.g., `smtp.gmail.com`)
-- `EMAIL_SERVER_PORT` – SMTP server port (e.g., `587` for TLS, `465` for SSL)
+- `EMAIL_SERVER_PORT` – SMTP server port (e.g., `587`)
 - `EMAIL_FROM` – Email address to send magic links from (e.g., `noreply@your-domain.com`)
-- `EMAIL_SERVER_USER` – (Optional) SMTP username for authentication
-- `EMAIL_SERVER_PASSWORD` – (Optional) SMTP password for authentication
-
-**Note:** Email server configuration can be used for other purposes (notifications, alerts, etc.) without enabling magic link authentication. Set `MAGIC_LINK_ENABLED=true` only if you want to allow users to sign in via magic links.
+- `EMAIL_SERVER_USER` – SMTP username for authentication
+- `EMAIL_SERVER_PASSWORD` – SMTP password for authentication
 
 **GitHub**
 
@@ -253,13 +255,8 @@ const replane = await createReplaneClient<Configs>({
 });
 
 // Get config value (receives realtime updates via SSE in background)
-try {
-  const featureFlag = replane.get('new-onboarding'); // TypeScript knows: boolean
-  console.log('Feature flag:', featureFlag);
-} catch (error) {
-  // Handle error (e.g., config not found)
-  console.log('Feature flag not found, using default: false');
-}
+const featureFlag = replane.get('new-onboarding'); // TypeScript knows: boolean
+console.log('Feature flag:', featureFlag);
 
 // Typed config - no need to specify type again
 const passwordRequirements = replane.get('password-requirements');
@@ -291,6 +288,53 @@ Notes
 ## Backups
 
 All state is stored in PostgreSQL when `DATABASE_URL` is not set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
+
+## Building from source
+
+To build Replane from source code, you need:
+
+- **Node.js**: Version 22.0.0 or greater (specified in `package.json` engines)
+- **pnpm**: Version 10.7.0 or greater (check with `pnpm --version`)
+
+Start by cloning the repository:
+
+```sh
+git clone https://github.com/replane-dev/replane.git
+cd replane
+```
+
+Install dependencies:
+
+```sh
+pnpm install
+```
+
+### Environment setup
+
+Before running the app, configure the required environment variables. Create a `.env` (see `.env.example`) file in the project root:
+
+```sh
+BASE_URL=http://localhost:3000
+SECRET_KEY=your-development-secret-key
+DATABASE_URL=postgresql://user:pass@host:5432/replane
+```
+
+### Production build
+
+Build the application for production:
+
+```sh
+pnpm build
+```
+
+Run migrations and start the server:
+
+```sh
+pnpm migrate
+pnpm start
+```
+
+See [Environment variables](#environment-variables) below for all available options.
 
 ## Security
 

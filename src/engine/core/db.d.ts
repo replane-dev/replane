@@ -216,6 +216,22 @@ export interface Sessions {
   userId: number;
 }
 
+export interface UserCredentials {
+  created_at: Generated<Timestamp>;
+  email: string;
+  password_hash: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface UserNotificationPreferences {
+  created_at: Timestamp;
+  proposal_approved: Generated<boolean>;
+  proposal_rejected: Generated<boolean>;
+  proposal_waiting_for_review: Generated<boolean>;
+  updated_at: Timestamp;
+  user_id: number;
+}
+
 export interface Users {
   email: string | null;
   emailVerified: Timestamp | null;
@@ -244,22 +260,6 @@ export interface Workspaces {
   id: string;
   logo: string | null;
   name: string;
-  updated_at: Timestamp;
-}
-
-export interface UserNotificationPreferences {
-  user_id: number;
-  proposal_waiting_for_review: boolean;
-  proposal_approved: boolean;
-  proposal_rejected: boolean;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-export interface UserCredentials {
-  email: string;
-  password_hash: string;
-  created_at: Timestamp;
   updated_at: Timestamp;
 }
 
