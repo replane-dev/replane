@@ -13,28 +13,28 @@
     <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-with-border-v2.jpg">
 </picture>
 
-Replane is a lightweight, self-hosted configuration management system. It provides a web UI for managing JSON configs across your apps and services, with version control, change proposals, and realtime updates.
+Changing application config shouldn't require a deploy. Replane gives you a single place to manage dynamic configuration—with version history, change approvals, and instant sync to your running services.
 
 ## Features
 
-- **Version history with instant rollback** – every change creates a snapshot; restore any previous state with one click
-- **Change proposals** – optionally require review and approval before changes go live; configurable per project or environment
-- **Realtime updates** – SDKs receive config changes instantly via Server-Sent Events (SSE)
-- **Audit log** – track who changed what, when, and why across all configs and projects
-- **JSON Schema validation** – define schemas to prevent invalid configs from being saved; generate TypeScript types automatically
-- **Environments** – maintain different config values for production, staging, development, etc.
-- **Overrides** – return different values based on context (user ID, plan, region, or any custom attribute)
-- **Role-based access control** – workspace admins, project maintainers, and config editors with granular permissions
-- **Email notifications** – notify approvers when proposals are created, and authors when approved or rejected
+- **Version history** – every change creates a snapshot; restore any previous state
+- **Change proposals** – require review before changes go live; per-project or per-environment
+- **Realtime updates** – SDKs receive changes instantly via Server-Sent Events
+- **Audit log** – track who changed what, when, and why
+- **JSON Schema validation** – prevent invalid configs; auto-generate TypeScript types
+- **Environments** – different values for production, staging, development
+- **Overrides** – return different values based on context (user ID, plan, region)
+- **Role-based access** – workspace admins, project maintainers, config editors
+- **Email notifications** – notify approvers and authors on proposal events
 
 ## Use cases
 
-- **Feature flags** – toggle features on/off, run A/B tests, or gradually roll out to user segments using overrides
-- **Operational tuning** – adjust cache TTLs, rate limits, batch sizes, and timeouts without redeploying
-- **Per-environment settings** – maintain separate values for production, staging, and development
-- **Incident response** – instantly revert to a known-good config version when something breaks
-- **Cross-service configuration** – share settings across multiple services with realtime sync
-- **Non-engineer access** – let product, ops, and support teams safely edit configs with schema validation
+- **Feature flags** – toggle features, run A/B tests, roll out to user segments
+- **Operational tuning** – adjust limits, TTLs, and timeouts without redeploying
+- **Per-environment settings** – different values for production, staging, dev
+- **Incident response** – instantly revert to a known-good version
+- **Cross-service configuration** – share settings with realtime sync
+- **Non-engineer access** – safe editing with schema validation
 
 ## Official SDKs
 
