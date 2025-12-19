@@ -74,7 +74,6 @@ function GenerateTypesContent() {
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId: selectedEnvironmentId,
-      origin: window.location.origin,
     }),
   );
 
@@ -145,7 +144,9 @@ function GenerateTypesContent() {
         </div>
         {error ? (
           <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
-            <p className="text-sm font-medium text-destructive">Unable to generate types — please try again</p>
+            <p className="text-sm font-medium text-destructive">
+              Unable to generate types — please try again
+            </p>
             <p className="text-sm text-muted-foreground mt-1">
               {error instanceof Error ? error.message : 'An unknown error occurred'}
             </p>

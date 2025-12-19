@@ -311,7 +311,7 @@ export async function createEngine(options: EngineOptions) {
     getNewConfigPageData: createGetNewConfigPageDataUseCase(),
     getSdkKeyPageData: createGetSdkKeyPageDataUseCase(),
     getNewSdkKeyPageData: createGetNewSdkKeyPageDataUseCase(),
-    getProjectConfigTypes: createGetProjectConfigTypesUseCase(),
+    getProjectConfigTypes: createGetProjectConfigTypesUseCase({baseUrl: options.baseUrl}),
     getAppLayoutData: createGetAppLayoutDataUseCase(),
     // Workspace use cases
     createWorkspace: createCreateWorkspaceUseCase(),

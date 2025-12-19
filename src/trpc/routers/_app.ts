@@ -451,7 +451,6 @@ export const appRouter = createTRPCRouter({
       z.object({
         projectId: Uuid(),
         environmentId: Uuid(),
-        origin: z.string(),
       }),
     )
     .query(async opts => {
@@ -463,7 +462,6 @@ export const appRouter = createTRPCRouter({
         projectId: opts.input.projectId,
         environmentId: opts.input.environmentId,
         currentUserEmail: opts.ctx.currentUserEmail,
-        origin: opts.input.origin,
       });
     }),
   getConfigVariantVersionList: baseProcedure

@@ -1,4 +1,4 @@
-import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
+import {isEmailDomainAllowed} from '@/environment';
 import {BadRequestError, ForbiddenError} from '../errors';
 import type {Logger} from '../logger';
 import {hashPassword, validatePassword} from '../password-utils';

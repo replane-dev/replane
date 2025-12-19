@@ -1,4 +1,4 @@
-import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
+import {isEmailDomainAllowed} from '@/environment';
 import crypto from 'crypto';
 import {ForbiddenError} from '../errors';
 import {Lazy} from '../lazy';

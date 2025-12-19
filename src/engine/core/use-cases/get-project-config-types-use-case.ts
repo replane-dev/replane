@@ -9,7 +9,6 @@ export interface GetProjectConfigTypesRequest {
   projectId: string;
   environmentId: string;
   currentUserEmail: NormalizedEmail;
-  origin: string;
 }
 
 export interface GetProjectConfigTypesResponse {
@@ -136,10 +135,13 @@ function generateTypesHeader(params: {
  */`;
 }
 
-export function createGetProjectConfigTypesUseCase(): TransactionalUseCase<
-  GetProjectConfigTypesRequest,
-  GetProjectConfigTypesResponse
-> {
+export interface GetProjectConfigTypesUseCaseOptions {
+  baseUrl: string;
+}
+
+export function createGetProjectConfigTypesUseCase(
+  options: GetProjectConfigTypesUseCaseOptions,
+): TransactionalUseCase<GetProjectConfigTypesRequest, GetProjectConfigTypesResponse> {
   return async (ctx, tx, req) => {
     // Ensure user has access to the project
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
@@ -225,7 +227,7 @@ export function createGetProjectConfigTypesUseCase(): TransactionalUseCase<
       throw new BadRequestError('Workspace not found');
     }
 
-    const codegenUrl = `${trimEnd(req.origin, '/')}/app/projects/${project.id}/configs?codegen`;
+    const codegenUrl = `${trimEnd(options.baseUrl, '/')}/app/projects/${project.id}/configs?codegen`;
 
     const header = generateTypesHeader({
       workspaceName: workspace.name,

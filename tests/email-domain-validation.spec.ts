@@ -2,8 +2,8 @@ import {
   getAllowedEmailDomains,
   hasEmailDomainRestrictions,
   isEmailDomainAllowed,
-} from '@/lib/email-domain-validator';
-import {describe, expect, it, beforeEach, afterEach} from 'vitest';
+} from '@/environment';
+import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 
 describe('Email Domain Validation', () => {
   let originalEnv: string | undefined;
@@ -99,4 +99,3 @@ describe('Email Domain Validation', () => {
     });
   });
 });
-

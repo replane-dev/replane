@@ -1,7 +1,7 @@
 import {ReplaneIcon} from '@/components/replane-icon';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
+import {getAllowedEmailDomains} from '@/environment';
 import {AlertCircle} from 'lucide-react';
 import Link from 'next/link';
 
