@@ -93,8 +93,6 @@ export class UserStore {
       .returning(['id', 'email', 'name', 'emailVerified', 'image'])
       .executeTakeFirst();
 
-    console.log('result', result);
-
     return result ? mapUser(result) : undefined;
   }
 }

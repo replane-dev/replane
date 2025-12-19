@@ -542,7 +542,7 @@ export function SignInForm({
                     variant="signin"
                     onSignIn={handleOAuthSignIn}
                     loadingProvider={loadingProvider}
-                  />
+                        />
 
                   {/* Password option button */}
                   {hasCredentialsProvider && hasOtherProviders && (

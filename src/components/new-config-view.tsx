@@ -1,10 +1,10 @@
 'use client';
 
 import {ConfigForm, type ConfigFormSubmitData} from '@/components/config-form';
+import {useUser} from '@/contexts/user-context';
 import type {Override} from '@/engine/core/override-evaluator';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {useSession} from 'next-auth/react';
 import {useRouter} from 'next/navigation';
 
 export interface NewConfigViewProps {
@@ -18,7 +18,7 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
   const router = useRouter();
   const trpc = useTRPC();
   const createConfig = useMutation(trpc.createConfig.mutationOptions());
-  const {data: session, status} = useSession();
+  const {user, isLoading} = useUser();
 
   // Fetch project environments and users
   const {data: pageData} = useSuspenseQuery(trpc.getNewConfigPageData.queryOptions({projectId}));
@@ -27,11 +27,11 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
   const projectUsers = pageData.projectUsers;
 
   // While session is loading, avoid asserting (email would be undefined briefly)
-  if (status === 'loading') {
+  if (isLoading) {
     return null; // Could render a spinner / skeleton if desired
   }
 
-  const userEmail = session?.user?.email;
+  const userEmail = user.email;
   if (!userEmail) throw new Error('User email is required');
 
   async function handleCreate(data: ConfigFormSubmitData) {

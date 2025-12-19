@@ -229,6 +229,21 @@ export function getAuthOptions(): AuthOptions {
           throw error;
         }
       },
+      async jwt({token, user}) {
+        if (user) {
+          token.id = user.id;
+          token.email = user.email;
+          token.name = user.name;
+        }
+        return token;
+      },
+      async session({session, token}) {
+        if (token && session.user) {
+          (session.user as any).id = token.id;
+          session.user.name = token.name as string | null | undefined;
+        }
+        return session;
+      },
     },
     events: {
       async createUser({user}) {

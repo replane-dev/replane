@@ -103,6 +103,14 @@ export const appRouter = createTRPCRouter({
         confirmEmail: opts.input.confirmEmail,
       });
     }),
+  getUserProfile: baseProcedure.query(async opts => {
+    if (!opts.ctx.currentUserEmail) {
+      throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+    }
+    return await opts.ctx.engine.useCases.getUserProfile(GLOBAL_CONTEXT, {
+      currentUserEmail: opts.ctx.currentUserEmail,
+    });
+  }),
   updateUserProfile: baseProcedure
     .input(
       z.object({

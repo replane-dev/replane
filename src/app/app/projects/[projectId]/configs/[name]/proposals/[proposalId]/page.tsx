@@ -14,6 +14,7 @@ import {Button} from '@/components/ui/button';
 import {Separator} from '@/components/ui/separator';
 import {SidebarTrigger} from '@/components/ui/sidebar';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
+import {useUser} from '@/contexts/user-context';
 import {assertNever, isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
@@ -31,7 +32,6 @@ import {
   User,
   XCircle,
 } from 'lucide-react';
-import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {notFound, useParams, useRouter} from 'next/navigation';
 import {Fragment, useState} from 'react';
@@ -84,11 +84,10 @@ export default function ReviewConfigProposalPage() {
 
   const shortId = proposal.id.slice(-8);
 
-  const {data: session} = useSession();
-  const sessionUser = session?.user;
+  const {user} = useUser();
 
   const allowSelfApprovals = projectData.project?.allowSelfApprovals ?? false;
-  const isSelfApprovalDisabled = !allowSelfApprovals && proposal.authorEmail === sessionUser?.email;
+  const isSelfApprovalDisabled = !allowSelfApprovals && proposal.authorEmail === user.email;
 
   const [showAllApprovers, setShowAllApprovers] = useState(false);
   const [showApproveWarning, setShowApproveWarning] = useState(false);

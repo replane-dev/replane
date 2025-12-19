@@ -11,35 +11,48 @@ import {
 } from '@/components/ui/dialog';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
+import {useUser} from '@/contexts/user-context';
 import {ACCEPTED_IMAGE_TYPES, MAX_IMAGE_UPLOAD_SIZE} from '@/engine/core/constants';
 import {useTRPC} from '@/trpc/client';
-import {useMutation} from '@tanstack/react-query';
+import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {AlertTriangle, ImagePlus, Trash2, X} from 'lucide-react';
-import {signOut, useSession} from 'next-auth/react';
+import {signOut} from 'next-auth/react';
 import * as React from 'react';
 import {toast} from 'sonner';
 
 export function AccountGeneralSettings() {
-  const {data: session, update: updateSession} = useSession();
-  const userEmail = session?.user?.email ?? '';
-  const currentImage = session?.user?.image ?? null;
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const {invalidateUserImage} = useUser();
+
+  // Fetch user profile from TRPC
+  const {data: userProfile} = useSuspenseQuery(trpc.getUserProfile.queryOptions());
+
+  const userEmail = userProfile?.email ?? '';
+  const currentImage = userProfile?.image ?? null;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [confirmEmail, setConfirmEmail] = React.useState('');
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const [imagePreview, setImagePreview] = React.useState<string | null>(currentImage);
+  // imagePreview can be: the current image, a data URL (pending upload), or null (pending removal)
+  const [imagePreview, setImagePreview] = React.useState<string | null | undefined>(undefined);
   const [imageToUpload, setImageToUpload] = React.useState<string | null | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Sync preview when session changes
+  // Reset preview when user profile changes (e.g., after refetch)
   React.useEffect(() => {
-    setImagePreview(currentImage);
+    setImagePreview(undefined);
     setImageToUpload(undefined);
   }, [currentImage]);
 
-  const trpc = useTRPC();
+  // The actual image to display
+  const currentImageSrc = React.useMemo(() => {
+    if (imagePreview !== undefined) return imagePreview;
+    return currentImage;
+  }, [imagePreview, currentImage]);
+
   const deleteAccount = useMutation(trpc.deleteUserAccount.mutationOptions());
   const updateProfile = useMutation(trpc.updateUserProfile.mutationOptions());
 
@@ -83,9 +96,9 @@ export function AccountGeneralSettings() {
     setIsSaving(true);
     try {
       await updateProfile.mutateAsync({image: imageToUpload});
-      // Update session to reflect new image
-      await updateSession();
+      // Clear pending changes and refetch user profile
       setImageToUpload(undefined);
+      invalidateUserImage(); // Update nav-user avatar as well
       toast.success('Profile image updated');
     } catch (e: any) {
       toast.error(e?.message ?? 'Unable to update profile image — please try again');
@@ -130,11 +143,11 @@ export function AccountGeneralSettings() {
         </p>
         <div className="flex items-center gap-4">
           <div className="relative">
-            {imagePreview ? (
+            {currentImageSrc ? (
               <div className="relative group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={imagePreview}
+                  src={currentImageSrc}
                   alt="Profile image"
                   className="h-16 w-16 rounded-full object-cover border bg-muted"
                 />
@@ -167,7 +180,7 @@ export function AccountGeneralSettings() {
               size="sm"
               onClick={() => fileInputRef.current?.click()}
             >
-              {imagePreview ? 'Change image' : 'Upload image'}
+              {currentImageSrc ? 'Change image' : 'Upload image'}
             </Button>
             {hasImageChanges && (
               <Button type="button" size="sm" onClick={handleSaveImage} disabled={isSaving}>

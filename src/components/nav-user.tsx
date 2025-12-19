@@ -1,7 +1,7 @@
 'use client';
 
 import {ChevronsUpDown, History, LogOut, Monitor, Moon, Sun} from 'lucide-react';
-import {signOut, useSession} from 'next-auth/react';
+import {signOut} from 'next-auth/react';
 import {useTheme} from 'next-themes';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
@@ -19,18 +19,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
+import {useUser} from '@/contexts/user-context';
 import Link from 'next/link';
 
 export function NavUser() {
   const {isMobile} = useSidebar();
-  const {data: session} = useSession();
+  const {user: currentUser, userImageUrl} = useUser();
   const {theme, setTheme} = useTheme();
-  const sessionUser = session?.user;
   const projectId = useProjectId();
   const user = {
-    name: sessionUser?.name || '—',
-    email: sessionUser?.email || '—',
-    avatar: sessionUser?.image ?? undefined,
+    name: currentUser.name || '—',
+    email: currentUser.email || '—',
+    avatar: userImageUrl,
   };
 
   const avatarFallback = user.name

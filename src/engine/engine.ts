@@ -69,6 +69,7 @@ import {createGetSdkKeyListUseCase} from './core/use-cases/get-sdk-key-list-use-
 import {createGetSdkKeyPageDataUseCase} from './core/use-cases/get-sdk-key-page-data-use-case';
 import {createGetSdkKeyUseCase} from './core/use-cases/get-sdk-key-use-case';
 import {createGetStatusUseCase} from './core/use-cases/get-status-use-case';
+import {createGetUserProfileUseCase} from './core/use-cases/get-user-profile-use-case';
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
@@ -327,6 +328,7 @@ export async function createEngine(options: EngineOptions) {
     // User account use cases
     initUser: createInitUserUseCase(),
     deleteUserAccount: createDeleteUserAccountUseCase(),
+    getUserProfile: createGetUserProfileUseCase(),
     updateUserProfile: createUpdateUserProfileUseCase(),
     registerWithPassword: createRegisterWithPasswordUseCase({
       passwordAuthEnabled: options.passwordAuthEnabled ?? false,
