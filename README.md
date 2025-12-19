@@ -15,6 +15,15 @@
 
 Replane is a dynamic configuration manager. Store feature flags, app settings, and operational config in one place—with version history, optional approvals, and realtime sync to your services. No redeploys needed.
 
+## Use cases
+
+- **Feature flags** – toggle features, run A/B tests, roll out to user segments
+- **Operational tuning** – adjust limits, TTLs, and timeouts without redeploying
+- **Per-environment settings** – different values for production, staging, dev
+- **Incident response** – instantly revert to a known-good version
+- **Cross-service configuration** – share settings with realtime sync
+- **Non-engineer access** – safe editing with schema validation
+
 ## Features
 
 - **Version history** – every change creates a snapshot; restore any previous state
@@ -26,15 +35,6 @@ Replane is a dynamic configuration manager. Store feature flags, app settings, a
 - **Overrides** – return different values based on context (user ID, plan, region)
 - **Role-based access** – workspace admins, project maintainers, config editors
 - **Email notifications** – notify approvers and authors on proposal events
-
-## Use cases
-
-- **Feature flags** – toggle features, run A/B tests, roll out to user segments
-- **Operational tuning** – adjust limits, TTLs, and timeouts without redeploying
-- **Per-environment settings** – different values for production, staging, dev
-- **Incident response** – instantly revert to a known-good version
-- **Cross-service configuration** – share settings with realtime sync
-- **Non-engineer access** – safe editing with schema validation
 
 ## Official SDKs
 
