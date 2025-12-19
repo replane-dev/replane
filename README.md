@@ -1,9 +1,11 @@
-  <h1 align="center">
-      Replane
-  </h1>
-  <p align="center">
-    Dynamic configuration for apps and services.
-  </p>
+<h1 align="center">Replane</h1>
+<p align="center">Dynamic configuration for apps and services.</p>
+
+<p align="center">
+  <a href="https://github.com/replane-dev/replane/actions"><img src="https://github.com/replane-dev/replane/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/replane-dev/replane/pkgs/container/replane"><img src="https://img.shields.io/badge/ghcr.io-replane-blue" alt="Docker"></a>
+  <a href="https://github.com/replane-dev/replane/blob/main/LICENSE"><img src="https://img.shields.io/github/license/replane-dev/replane" alt="License"></a>
+</p>
 
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./public/replane-window-screenshot-dark-v1.png">
@@ -11,34 +13,35 @@
     <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-with-border-v2.jpg">
 </picture>
 
-## What it does
+Replane is a lightweight, self-hosted configuration management system. It provides a web UI for managing JSON configs across your apps and services, with version control, change proposals, and realtime updates.
 
-Replane is a small web app for managing JSON configs with:
+## Features
 
-- Version history and instant rollback (append‑only snapshots)
-- Proposals (review/approve changes before applying)
-- Realtime updates via Server-Sent Events (SSE)
-- Audit log for who changed what and when
-- JSON Schema validation
+- **Version history with instant rollback** – every change creates a snapshot; restore any previous state with one click
+- **Change proposals** – optionally require review and approval before changes go live; configurable per project or environment
+- **Realtime updates** – SDKs receive config changes instantly via Server-Sent Events (SSE)
+- **Audit log** – track who changed what, when, and why across all configs and projects
+- **JSON Schema validation** – define schemas to prevent invalid configs from being saved; generate TypeScript types automatically
+- **Environments** – maintain different config values for production, staging, development, etc.
+- **Overrides** – return different values based on context (user ID, plan, region, or any custom attribute)
+- **Role-based access control** – workspace admins, project maintainers, and config editors with granular permissions
+- **Email notifications** – notify approvers when proposals are created, and authors when approved or rejected
 
-If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focused, auditable UI.
+## Use cases
 
-## Typical use cases
+- **Feature flags** – toggle features on/off, run A/B tests, or gradually roll out to user segments using overrides
+- **Operational tuning** – adjust cache TTLs, rate limits, batch sizes, and timeouts without redeploying
+- **Per-environment settings** – maintain separate values for production, staging, and development
+- **Incident response** – instantly revert to a known-good config version when something breaks
+- **Cross-service configuration** – share settings across multiple services with realtime sync
+- **Non-engineer access** – let product, ops, and support teams safely edit configs with schema validation
 
-- Feature toggles and parameterized settings (limits, thresholds)
-- Operational tuning without redeploys (cache TTLs, batch sizes)
-- Gradual rollouts (percentages or cohorts stored as config)
-- Incident mitigation (revert to a known‑good version quickly)
-- Shared platform/internal tool settings across multiple services
+## Official SDKs
 
-Non‑engineering teammates (product, operations, support) can safely change values in the UI when a JSON Schema is attached—invalid or out‑of‑range inputs are blocked before save.
-
-## SDKs
-
-- [JavaScript SDK](https://github.com/replane-dev/replane-javascript)
-- React SDK (coming soon)
-- Next.js SDK (coming soon)
-- Python SDK (coming soon)
+- [JavaScript](https://github.com/replane-dev/replane-javascript)
+- React (coming soon)
+- Next.js (coming soon)
+- Python (coming soon)
 
 ## Self‑hosting with Docker
 
