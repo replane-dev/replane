@@ -19,6 +19,7 @@ export function Workspace() {
     id: z.string(),
     name: WorkspaceName(),
     autoAddNewUsers: z.boolean(),
+    logo: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
   });
@@ -26,12 +27,14 @@ export function Workspace() {
 
 export interface Workspace extends z.infer<ReturnType<typeof Workspace>> {
   autoAddNewUsers: boolean;
+  logo: string | null;
 }
 
 export interface WorkspaceInfo {
   id: string;
   name: string;
   autoAddNewUsers: boolean;
+  logo: string | null;
   createdAt: Date;
   updatedAt: Date;
   myRole: 'admin' | 'member';
@@ -58,6 +61,7 @@ export class WorkspaceStore {
         'workspaces.id',
         'workspaces.name',
         'workspaces.auto_add_new_users',
+        'workspaces.logo',
         'workspaces.created_at',
         'workspaces.updated_at',
         'workspace_members.role as myRole',
@@ -69,6 +73,7 @@ export class WorkspaceStore {
       id: w.id,
       name: w.name,
       autoAddNewUsers: w.auto_add_new_users,
+      logo: w.logo,
       createdAt: w.created_at,
       updatedAt: w.updated_at,
       myRole: w.myRole,
@@ -93,6 +98,7 @@ export class WorkspaceStore {
         'workspaces.id',
         'workspaces.name',
         'workspaces.auto_add_new_users',
+        'workspaces.logo',
         'workspaces.created_at',
         'workspaces.updated_at',
         'workspace_members.role as myRole',
@@ -137,11 +143,17 @@ export class WorkspaceStore {
       .execute();
   }
 
-  async updateById(params: {id: string; name: string; updatedAt: Date}): Promise<void> {
+  async updateById(params: {
+    id: string;
+    name: string;
+    logo?: string | null;
+    updatedAt: Date;
+  }): Promise<void> {
     await this.db
       .updateTable('workspaces')
       .set({
         name: params.name,
+        ...(params.logo !== undefined ? {logo: params.logo} : {}),
         updated_at: params.updatedAt,
       })
       .where('id', '=', params.id)
@@ -167,6 +179,7 @@ function mapWorkspace(workspace: Selectable<Workspaces>): Workspace {
     id: workspace.id,
     name: workspace.name,
     autoAddNewUsers: workspace.auto_add_new_users,
+    logo: workspace.logo,
     createdAt: workspace.created_at,
     updatedAt: workspace.updated_at,
   };

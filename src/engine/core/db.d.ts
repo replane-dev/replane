@@ -242,6 +242,7 @@ export interface Workspaces {
   auto_add_new_users: Generated<boolean>;
   created_at: Timestamp;
   id: string;
+  logo: string | null;
   name: string;
   updated_at: Timestamp;
 }

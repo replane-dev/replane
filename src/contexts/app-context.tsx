@@ -16,6 +16,7 @@ export interface ProjectSummary {
 export interface WorkspaceSummary {
   id: string;
   name: string;
+  logo: string | null;
   myRole: 'admin' | 'member' | undefined;
 }
 
@@ -51,6 +52,7 @@ export function AppProvider({children}: {children: React.ReactNode}) {
       appLayoutData.workspaces.map(w => ({
         id: w.id,
         name: w.name,
+        logo: w.logo,
         myRole: w.myRole,
       })),
     [appLayoutData.workspaces],

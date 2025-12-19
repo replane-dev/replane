@@ -263,9 +263,11 @@ export interface WorkspaceUpdatedAuditLogPayload extends BaseAuditLogPayload<'wo
   };
   before: {
     name: string;
+    hasLogo?: boolean;
   };
   after: {
     name: string;
+    hasLogo?: boolean;
   };
 }
 

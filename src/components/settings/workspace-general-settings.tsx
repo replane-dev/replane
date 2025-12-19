@@ -3,9 +3,11 @@
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
+import {useAppContext} from '@/contexts/app-context';
+import {ACCEPTED_IMAGE_TYPES, MAX_IMAGE_UPLOAD_SIZE} from '@/engine/core/constants';
 import {useTRPC} from '@/trpc/client';
-import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {Trash2} from 'lucide-react';
+import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import {ImagePlus, Trash2, X} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {toast} from 'sonner';
@@ -13,23 +15,68 @@ import {toast} from 'sonner';
 export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
   const trpc = useTRPC();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const {refresh: refreshAppContext} = useAppContext();
 
   const {data: org} = useSuspenseQuery(trpc.getWorkspace.queryOptions({workspaceId}));
   const [name, setName] = React.useState(org.name);
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(org.logo);
+  const [logoToUpload, setLogoToUpload] = React.useState<string | null | undefined>(undefined);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     setName(org.name);
-  }, [org.name]);
+    setLogoPreview(org.logo);
+    setLogoToUpload(undefined);
+  }, [org.name, org.logo]);
 
   const updateWorkspace = useMutation(trpc.updateWorkspace.mutationOptions());
   const deleteWorkspace = useMutation(trpc.deleteWorkspace.mutationOptions());
   const [saving, setSaving] = React.useState(false);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      toast.error('Please upload a PNG, JPEG, WebP, or GIF image.');
+      return;
+    }
+
+    // Validate file size
+    if (file.size > MAX_IMAGE_UPLOAD_SIZE) {
+      toast.error('Image is too large. Maximum size is 2MB.');
+      return;
+    }
+
+    // Convert to base64 data URL
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setLogoPreview(dataUrl);
+      setLogoToUpload(dataUrl);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview(null);
+    setLogoToUpload(null);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateWorkspace.mutateAsync({workspaceId, name});
+      await updateWorkspace.mutateAsync({workspaceId, name, logo: logoToUpload});
+      // Refresh the app context to update sidebar logo
+      await queryClient.invalidateQueries({queryKey: trpc.getWorkspace.queryKey({workspaceId})});
+      await refreshAppContext();
+      setLogoToUpload(undefined);
       toast.success('Workspace settings saved');
     } catch (e: any) {
       toast.error(e?.message ?? 'Unable to save workspace settings — please try again');
@@ -38,6 +85,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
   };
 
   const canEdit = org.myRole === 'admin';
+  const hasChanges = name !== org.name || logoToUpload !== undefined;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -47,6 +95,62 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
       </div>
 
       <form onSubmit={handleSave} className="space-y-4">
+        {/* Logo Upload */}
+        <div>
+          <Label>Logo</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Upload a logo for your workspace. It will be displayed in the sidebar.
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              {logoPreview ? (
+                <div className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoPreview}
+                    alt="Workspace logo"
+                    className="h-16 w-16 rounded-lg object-contain border bg-muted"
+                  />
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-secondary border border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      title="Remove logo"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="h-16 w-16 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/50">
+                  <ImagePlus className="h-6 w-6 text-muted-foreground/50" />
+                </div>
+              )}
+            </div>
+            {canEdit && (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {logoPreview ? 'Change logo' : 'Upload logo'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Name */}
         <div>
           <Label htmlFor="org-name">Name</Label>
           <Input
@@ -58,7 +162,7 @@ export function WorkspaceGeneralSettings({workspaceId}: {workspaceId: string}) {
             maxLength={100}
           />
         </div>
-        <Button type="submit" disabled={saving || !canEdit || name.trim() === ''}>
+        <Button type="submit" disabled={saving || !canEdit || name.trim() === '' || !hasChanges}>
           {saving ? 'Saving…' : 'Save changes'}
         </Button>
       </form>

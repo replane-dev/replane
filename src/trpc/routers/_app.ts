@@ -1,5 +1,9 @@
 import {getAuthOptions} from '@/app/auth-options';
-import {MIN_PASSWORD_LENGTH} from '@/engine/core/constants';
+import {
+  ACCEPTED_IMAGE_TYPES_REGEX,
+  MAX_IMAGE_UPLOAD_SIZE,
+  MIN_PASSWORD_LENGTH,
+} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
@@ -57,6 +61,15 @@ export const appRouter = createTRPCRouter({
       z.object({
         workspaceId: Uuid(),
         name: WorkspaceName(),
+        /** Base64 data URL for new logo, null to remove, undefined to keep unchanged */
+        logo: z
+          .string()
+          .max(Math.ceil(MAX_IMAGE_UPLOAD_SIZE * 1.4)) // base64 encoding overhead (~37%)
+          .regex(ACCEPTED_IMAGE_TYPES_REGEX, {
+            message: 'Invalid image format. Please upload a PNG, JPEG, WebP, or GIF image.',
+          })
+          .nullable()
+          .optional(),
       }),
     )
     .mutation(async opts => {
@@ -67,6 +80,7 @@ export const appRouter = createTRPCRouter({
         workspaceId: opts.input.workspaceId,
         currentUserEmail: opts.ctx.currentUserEmail,
         name: opts.input.name,
+        logo: opts.input.logo,
       });
     }),
   deleteWorkspace: baseProcedure.input(z.object({workspaceId: Uuid()})).mutation(async opts => {

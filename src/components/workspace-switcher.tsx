@@ -15,14 +15,49 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem} from '@/components/ui/sidebar';
-import {useAppContext} from '@/contexts/app-context';
+import {useAppContext, type WorkspaceSummary} from '@/contexts/app-context';
 import {useMemo, useState} from 'react';
+
+function WorkspaceLogo({
+  workspace,
+  size = 'md',
+}: {
+  workspace: WorkspaceSummary;
+  size?: 'sm' | 'md';
+}) {
+  const sizeClasses = size === 'sm' ? 'size-5' : 'size-8';
+  const iconSize = size === 'sm' ? 'size-3' : 'size-5';
+
+  if (workspace.logo) {
+    return (
+      <img
+        src={workspace.logo}
+        alt={`${workspace.name} logo`}
+        className={`${sizeClasses} rounded-lg object-contain`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`bg-primary text-primary-foreground flex aspect-square ${sizeClasses} items-center justify-center rounded-lg`}
+    >
+      <ReplaneIcon className={iconSize} />
+    </div>
+  );
+}
 
 export function OrgSwitcher() {
   const projectId = useProjectId();
   const workspace = useWorkspace();
   const {workspaces, projects} = useAppContext();
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
+
+  // Get the current workspace with logo from the context
+  const currentWorkspace = useMemo(
+    () => workspaces.find(ws => ws.id === workspace.id) ?? workspace,
+    [workspaces, workspace],
+  );
 
   // For each workspace, find the first project to navigate to
   const workspaceLinks = useMemo(() => {
@@ -47,9 +82,7 @@ export function OrgSwitcher() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <ReplaneIcon className="size-5" />
-              </div>
+              <WorkspaceLogo workspace={currentWorkspace} />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{workspace.name}</span>
                 <span className="truncate text-xs text-muted-foreground">Workspace</span>
@@ -67,13 +100,15 @@ export function OrgSwitcher() {
             </DropdownMenuLabel>
             {workspaceLinks.map(({workspace: ws, href}) => (
               <DropdownMenuItem asChild key={ws.id} className="gap-2 p-2">
-                <Link href={href}>{ws.name}</Link>
+                <Link href={href}>
+                  <span>{ws.name}</span>
+                </Link>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem className="gap-2 p-2" onSelect={() => setCreateWorkspaceOpen(true)}>
-              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <Plus className="size-4" />
+              <div className="flex size-5 items-center justify-center rounded-md border bg-transparent">
+                <Plus className="size-3" />
               </div>
               <div className="text-muted-foreground font-medium">New workspace</div>
             </DropdownMenuItem>

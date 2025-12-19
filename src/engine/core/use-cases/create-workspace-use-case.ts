@@ -99,6 +99,7 @@ export async function createWorkspace(params: {
     id: createWorkspaceId(),
     name: workspaceName,
     autoAddNewUsers: false,
+    logo: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

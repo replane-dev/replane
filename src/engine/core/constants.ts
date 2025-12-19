@@ -19,3 +19,14 @@ export const MIN_PASSWORD_LENGTH = 8;
 
 export const AUTH_MAX_REQUESTS_PER_WINDOW = 10;
 export const AUTH_MAX_REQUESTS_WINDOW_MS = 60 * 1000;
+
+// Image upload constants
+export const MAX_IMAGE_UPLOAD_SIZE = 2 * 1024 * 1024; // 2MB
+export const ACCEPTED_IMAGE_TYPES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+];
+export const ACCEPTED_IMAGE_TYPES_REGEX = /^data:image\/(png|jpeg|jpg|webp|gif);base64,.+$/i;
+export const LOGO_SIZE = 128; // pixels

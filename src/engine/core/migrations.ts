@@ -1491,6 +1491,14 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_user_credentials_email ON user_credentials(email);
     `,
   },
+  {
+    name: 'Add logo column to workspaces',
+    sql: /*sql*/ `
+      -- Add logo column to workspaces table for custom workspace logos
+      -- Stored as base64 data URL (resized to 128x128 PNG on server)
+      ALTER TABLE workspaces ADD COLUMN logo TEXT NULL;
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';
