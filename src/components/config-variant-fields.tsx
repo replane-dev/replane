@@ -166,6 +166,10 @@ export function ConfigVariantFields({
                       Return different values based on runtime context like user attributes, feature
                       flags, or request properties.
                     </p>
+                    <p className="text-sm">
+                      <span className="font-medium">First match wins:</span> overrides are evaluated
+                      from top to bottom, and the first one whose conditions match is used.
+                    </p>
                     <div className="space-y-1.5 text-xs">
                       <p className="font-medium">Common use cases:</p>
                       <ul className="space-y-1 list-disc pl-4 text-muted-foreground">
