@@ -13,7 +13,7 @@
     <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-with-border-v2.jpg">
 </picture>
 
-Changing application config shouldn't require a deploy. Replane gives you a single place to manage dynamic configuration—with version history, change approvals, and instant sync to your running services.
+Replane is a dynamic configuration manager. Store feature flags, app settings, and operational config in one place—with version history, optional approvals, and realtime sync to your services. No redeploys needed.
 
 ## Features
 
