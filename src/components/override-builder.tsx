@@ -55,6 +55,26 @@ export function OverrideBuilder({
     [overrides, onChange],
   );
 
+  const handleMoveUp = useCallback(
+    (index: number) => {
+      if (index <= 0) return;
+      const newOverrides = [...overrides];
+      [newOverrides[index - 1], newOverrides[index]] = [newOverrides[index], newOverrides[index - 1]];
+      onChange(newOverrides);
+    },
+    [overrides, onChange],
+  );
+
+  const handleMoveDown = useCallback(
+    (index: number) => {
+      if (index >= overrides.length - 1) return;
+      const newOverrides = [...overrides];
+      [newOverrides[index], newOverrides[index + 1]] = [newOverrides[index + 1], newOverrides[index]];
+      onChange(newOverrides);
+    },
+    [overrides, onChange],
+  );
+
   return (
     <div className="space-y-4">
       {overrides.length > 0 && (
@@ -64,12 +84,15 @@ export function OverrideBuilder({
               key={overrideIndex}
               override={override}
               index={overrideIndex}
+              totalCount={overrides.length}
               readOnly={readOnly}
               schema={schema}
               projectId={projectId}
               configName={configName}
               onUpdate={updatedOverride => handleUpdateOverride(overrideIndex, updatedOverride)}
               onRemove={() => handleRemoveOverride(overrideIndex)}
+              onMoveUp={() => handleMoveUp(overrideIndex)}
+              onMoveDown={() => handleMoveDown(overrideIndex)}
             />
           ))}
         </div>

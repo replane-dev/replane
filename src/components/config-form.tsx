@@ -1200,7 +1200,7 @@ export function ConfigForm(props: ConfigFormProps) {
               watchedDefaultVariant?.overrides &&
               (watchedDefaultVariant.overrides as any[])?.length > 0 && (
                 <Button type="button" variant="outline" onClick={() => onTestOverrides()}>
-                  Test overrides
+                  Evaluate
                 </Button>
               )}
             {onDelete && role === 'maintainer' && (

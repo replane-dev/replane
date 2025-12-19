@@ -11,29 +11,35 @@ import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
 import {asConfigValue} from '@/engine/core/zod';
-import {ChevronDown, ChevronRight, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
+import {ArrowDown, ArrowUp, ChevronDown, ChevronRight, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
 import React, {useCallback, useState} from 'react';
 import {ConditionEditor} from './condition-editor';
 
 interface OverrideCardProps {
   override: Override;
   index: number;
+  totalCount: number;
   readOnly?: boolean;
   schema?: any;
   projectId?: string;
   onUpdate: (updatedOverride: Override) => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   configName?: string;
 }
 
 const OverrideCardComponent = ({
   override,
   index,
+  totalCount,
   readOnly,
   schema,
   projectId,
   onUpdate,
   onRemove,
+  onMoveUp,
+  onMoveDown,
   configName,
 }: OverrideCardProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -138,6 +144,44 @@ const OverrideCardComponent = ({
           <Badge variant="outline" className="shrink-0 font-mono text-xs">
             #{index + 1}
           </Badge>
+          {!readOnly && totalCount > 1 && (
+            <div className="flex shrink-0" onClick={e => e.stopPropagation()}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={index === 0}
+                    onClick={onMoveUp}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Move up (higher priority)</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={index === totalCount - 1}
+                    onClick={onMoveDown}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Move down (lower priority)</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
           <Input
             value={override.name}
             onChange={e => {

@@ -130,6 +130,7 @@ export interface ConfigVersionMembers {
 export interface ConfigVersions {
   author_id: number | null;
   config_id: string;
+  config_name: string;
   created_at: Timestamp;
   description: string;
   id: string;
