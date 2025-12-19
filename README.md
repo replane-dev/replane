@@ -55,43 +55,53 @@ services:
     volumes:
       - replane-db:/var/lib/postgresql/data
 
-  app:
+  replane:
     image: ghcr.io/replane-dev/replane:latest
     depends_on:
       - db
+    ports:
+      - '8080:8080'
     environment:
-      # Optional, Replane can start without an external database
+      # External database (optional, Replane can start without an external database, mount /data to persist data)
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
       BASE_URL: http://localhost:8080
       SECRET_KEY: change-me-to-a-long-random-string
-      # Pick one or more providers (GitHub example below)
-      GITHUB_CLIENT_ID: your-github-client-id
-      GITHUB_CLIENT_SECRET: your-github-client-secret
-      # Optional: enable password authentication (doesn't verify email addresses, use with caution)
+
+      # Password authentication (enabled by default if no other providers are enabled)
       # PASSWORD_AUTH_ENABLED: true
-      # Optional: add more providers
+
+      # GITHUB_CLIENT_ID: your-github-client-id
+      # GITHUB_CLIENT_SECRET: your-github-client-secret
+
       # GITLAB_CLIENT_ID: your-gitlab-client-id
       # GITLAB_CLIENT_SECRET: your-gitlab-client-secret
+
       # GOOGLE_CLIENT_ID: your-google-client-id
       # GOOGLE_CLIENT_SECRET: your-google-client-secret
+
       # OKTA_CLIENT_ID: your-okta-client-id
       # OKTA_CLIENT_SECRET: your-okta-client-secret
       # OKTA_ISSUER: https://your-domain.okta.com
-      # Optional: Magic link authentication via email
-      # MAGIC_LINK_ENABLED: true  # Required to enable magic link sign-in
-      # Connection string format (recommended):
+
+      # Magic link authentication via email (requires email server configuration)
+      # MAGIC_LINK_ENABLED: true
+
+      # Email server configuration
+      # Connection string format:
       # EMAIL_SERVER: smtp://username:password@sandbox.smtp.mailtrap.io:2525
       # EMAIL_FROM: noreply@your-domain.com
       # Or individual variables format:
       # EMAIL_SERVER_HOST: sandbox.smtp.mailtrap.io
       # EMAIL_SERVER_PORT: 2525
-      # EMAIL_FROM: noreply@your-domain.com
       # EMAIL_SERVER_USER: smtp-user
       # EMAIL_SERVER_PASSWORD: smtp-user-password
-      # Optional: restrict registration to specific email domains
+      # EMAIL_FROM: noreply@your-domain.com
+
+      # Restrict sign-up to specific email domains
       # ALLOWED_EMAIL_DOMAINS: gmail.com,my-company.com
-    ports:
-      - '8080:8080'
+
+      # Set the port to listen on (defaults to 8080)
+      # PORT: 12345
 
 volumes:
   replane-db:
