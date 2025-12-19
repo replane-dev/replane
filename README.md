@@ -19,9 +19,8 @@ Replane is a small web app for managing JSON configs with:
 - Proposals (review/approve changes before applying)
 - Realtime updates via Server-Sent Events (SSE)
 - Audit log for who changed what and when
-- Optional JSON Schema validation
-- Roles (owner/editor/viewer)
-- SDK keys (create/revoke) for programmatic access
+- JSON Schema validation
+- [JavaScript SDK](https://github.com/replane-dev/replane-javascript)
 
 If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focused, auditable UI.
 
@@ -35,14 +34,13 @@ If you’ve outgrown ad‑hoc env files or spreadsheets, this gives you a focuse
 
 Non‑engineering teammates (product, operations, support) can safely change values in the UI when a JSON Schema is attached—invalid or out‑of‑range inputs are blocked before save.
 
-## Requirements
-
-- Node.js 22+ and pnpm (for running from source)
-- At least one authentication method: password auth, magic link (email), or OAuth (GitHub, GitLab, Google, Okta)
-
-Optional: PostgreSQL database (14+).
-
 ## Self‑hosting with Docker
+
+One line to get started:
+
+```sh
+docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY_BASE=secret replane/replane
+```
 
 Example docker‑compose.yml:
 
