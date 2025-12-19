@@ -105,9 +105,6 @@ importers:
       '@sentry/nextjs':
         specifier: ^10.31.0
         version: 10.31.0(@opentelemetry/context-async-hooks@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(next@16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)(webpack@5.103.0)
-      '@sentry/node-native':
-        specifier: ^10.31.0
-        version: 10.31.0
       '@tanstack/react-query':
         specifier: ^5.90.12
         version: 5.90.12(react@19.2.1)
@@ -2292,10 +2289,6 @@ packages:
     resolution: {integrity: sha512-uLmh6n0Ax/yjVO4FROpeVqzEJVMgIxDsnmKlAoQ4/HYmc2wQQbJmdIgjzZN2ruelaYEaQV7iouSYLZv4wdujOQ==}
     engines: {node: '>=18'}
 
-  '@sentry-internal/node-native-stacktrace@0.3.0':
-    resolution: {integrity: sha512-ef0M2y2JDrC/H0AxMJJQInGTdZTlnwa6AAVWR4fMOpJRubkfdH2IZXE/nWU0Nj74oeJLQgdPtS6DeijLJtqq8Q==}
-    engines: {node: '>=18'}
-
   '@sentry-internal/replay-canvas@10.31.0':
     resolution: {integrity: sha512-mR6t6YNMLKndn1FvaDoOTWA15LfatcC/RMXkKYggULJWxMOs1/TCowjVidPXb/2JtfeHQvbJg5dH/hM+wW5c1Q==}
     engines: {node: '>=18'}
@@ -2389,10 +2382,6 @@ packages:
       '@opentelemetry/resources': ^1.30.1 || ^2.1.0 || ^2.2.0
       '@opentelemetry/sdk-trace-base': ^1.30.1 || ^2.1.0 || ^2.2.0
       '@opentelemetry/semantic-conventions': ^1.37.0
-
-  '@sentry/node-native@10.31.0':
-    resolution: {integrity: sha512-BWgqVqzL7ItAHCDw7j396V5O5OEaeI9c1N/qbK8DLJD9svs4sUKsK75WXcegzrKQHY8SSkeZL0cMc+3aFb8ohA==}
-    engines: {node: '>=18'}
 
   '@sentry/node@10.31.0':
     resolution: {integrity: sha512-xdQQEj5Xo6zjQ0cXs9qT+ANyE+c3p8DJBbXdkM3c0h//5wkWBXvbTPofpUJy+ojf7Ek5SDza62ith+b1y4Lwgw==}
@@ -8124,11 +8113,6 @@ snapshots:
     dependencies:
       '@sentry/core': 10.31.0
 
-  '@sentry-internal/node-native-stacktrace@0.3.0':
-    dependencies:
-      detect-libc: 2.1.2
-      node-abi: 3.85.0
-
   '@sentry-internal/replay-canvas@10.31.0':
     dependencies:
       '@sentry-internal/replay': 10.31.0
@@ -8248,14 +8232,6 @@ snapshots:
       '@sentry/core': 10.31.0
       '@sentry/opentelemetry': 10.31.0(@opentelemetry/api@1.9.0)(@opentelemetry/context-async-hooks@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       import-in-the-middle: 2.0.0
-    transitivePeerDependencies:
-      - supports-color
-
-  '@sentry/node-native@10.31.0':
-    dependencies:
-      '@sentry-internal/node-native-stacktrace': 0.3.0
-      '@sentry/core': 10.31.0
-      '@sentry/node': 10.31.0
     transitivePeerDependencies:
       - supports-color
 

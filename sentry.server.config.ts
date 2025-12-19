@@ -3,7 +3,6 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs';
-import {eventLoopBlockIntegration} from '@sentry/node-native';
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
 
@@ -20,9 +19,6 @@ if (SENTRY_DSN) {
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
 
-    integrations: [
-      eventLoopBlockIntegration({threshold: 1000, maxEventsPerHour: 1}),
-      Sentry.zodErrorsIntegration(),
-    ],
+    integrations: [Sentry.zodErrorsIntegration()],
   });
 }
