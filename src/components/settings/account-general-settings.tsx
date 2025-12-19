@@ -195,6 +195,7 @@ export function AccountGeneralSettings() {
         <div>
           <Label className="text-sm font-medium">Email</Label>
           <p className="text-sm text-muted-foreground mt-1">{userEmail}</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Email address cannot be changed</p>
         </div>
       </div>
 
