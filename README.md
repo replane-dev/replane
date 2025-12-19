@@ -36,7 +36,7 @@ Non‑engineering teammates (product, operations, support) can safely change val
 
 - PostgreSQL (tested with 17; 14+ should work)
 - Node.js 22+ and pnpm (for running from source)
-- One or more OAuth providers for sign‑in (GitHub, GitLab, Google, or Okta)
+- At least one authentication method: password auth, magic link (email), or OAuth (GitHub, GitLab, Google, Okta)
 
 ## Self‑hosting with Docker
 
@@ -64,6 +64,8 @@ services:
       # Pick one or more providers (GitHub example below)
       GITHUB_CLIENT_ID: your-github-client-id
       GITHUB_CLIENT_SECRET: your-github-client-secret
+      # Optional: enable password authentication (doesn't verify email addresses, use with caution)
+      # PASSWORD_AUTH_ENABLED: true
       # Optional: add more providers
       # GITLAB_CLIENT_ID: your-gitlab-client-id
       # GITLAB_CLIENT_SECRET: your-gitlab-client-secret
@@ -110,6 +112,14 @@ Notes
 ### Authentication Providers
 
 Configure at least one authentication provider. You can enable multiple providers simultaneously:
+
+**Password Authentication**
+
+Traditional email/password sign-in. This does not verify email addresses, use with caution.
+
+- `PASSWORD_AUTH_ENABLED=true` – Enables password-based registration and sign-in
+
+When enabled, users can create accounts with email and password, and sign in using their credentials. Passwords must be at least 8 characters.
 
 **Email (Magic Link)**
 
