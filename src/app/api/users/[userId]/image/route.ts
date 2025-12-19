@@ -1,6 +1,7 @@
 import {getAuthOptions} from '@/app/auth-options';
-import {getPgPool} from '@/engine/core/pg-pool-cache';
-import {getDatabaseUrl} from '@/engine/engine-singleton';
+import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {normalizeEmail} from '@/engine/core/utils';
+import {getEngineSingleton} from '@/engine/engine-singleton';
 import {getServerSession} from 'next-auth';
 import {NextResponse} from 'next/server';
 
@@ -18,8 +19,9 @@ export async function GET(
   // Check authentication - user can only access their own image
   const session = await getServerSession(getAuthOptions());
   const currentUserId = (session?.user as any)?.id;
+  const currentUserEmail = session?.user?.email;
 
-  if (!currentUserId) {
+  if (!currentUserId || !currentUserEmail) {
     return new NextResponse(null, {status: 401});
   }
 
@@ -28,33 +30,40 @@ export async function GET(
   }
 
   try {
-    const databaseUrl = getDatabaseUrl();
-    const [pool] = getPgPool(databaseUrl);
-
-    const result = await pool.query('SELECT image FROM users WHERE id = $1', [userIdNum]);
-
-    if (!result.rows[0]?.image) {
-      return new NextResponse(null, {status: 404});
-    }
-
-    const imageDataUrl = result.rows[0].image as string;
-
-    // Parse the data URL to extract the content type and base64 data
-    const matches = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) {
-      return new NextResponse(null, {status: 404});
-    }
-
-    const [, contentType, base64Data] = matches;
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-
-    return new NextResponse(imageBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=60', // Cache for 1 minute
-      },
+    const engine = await getEngineSingleton();
+    const userProfile = await engine.useCases.getUserProfile(GLOBAL_CONTEXT, {
+      currentUserEmail: normalizeEmail(currentUserEmail),
     });
+
+    if (!userProfile?.image) {
+      return new NextResponse(null, {status: 404});
+    }
+
+    const imageData = userProfile.image;
+
+    // Check if it's a base64 data URL (uploaded image)
+    const dataUrlMatches = imageData.match(/^data:([^;]+);base64,(.+)$/);
+    if (dataUrlMatches) {
+      const [, contentType, base64Data] = dataUrlMatches;
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
+      return new NextResponse(imageBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'private, max-age=60', // Cache for 1 minute
+        },
+      });
+    }
+
+    // Check if it's an external URL (OAuth provider image like GitHub)
+    if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
+      // Redirect to the external image URL
+      return NextResponse.redirect(imageData, {status: 302});
+    }
+
+    // Unknown format
+    return new NextResponse(null, {status: 404});
   } catch (error) {
     console.error('Failed to fetch user image:', error);
     return new NextResponse(null, {status: 500});
