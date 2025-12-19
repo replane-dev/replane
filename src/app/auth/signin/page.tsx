@@ -2,11 +2,13 @@
 
 import {SignInForm} from '@/components/auth/sign-in-form';
 import {ReplaneIcon} from '@/components/replane-icon';
+import {PASSWORD_PROVIDER_NAME} from '@/engine/core/constants';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {redirect, useSearchParams} from 'next/navigation';
+import {NO_SIGNUP_REDIRECT_PARAM, NO_SIGNUP_REDIRECT_VALUE} from '../signup/page';
 
 export default function SignInPage() {
   const params = useSearchParams();
@@ -21,7 +23,12 @@ export default function SignInPage() {
   }
 
   // If no users exist, redirect to signup page for initial setup
-  if (!data.hasUsers) {
+  if (
+    !data.hasUsers &&
+    data.providers.some(x => x.name !== PASSWORD_PROVIDER_NAME) &&
+    data.passwordAuthEnabled &&
+    params.get(NO_SIGNUP_REDIRECT_PARAM) !== NO_SIGNUP_REDIRECT_VALUE
+  ) {
     redirect(`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 

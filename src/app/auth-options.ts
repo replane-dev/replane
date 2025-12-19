@@ -1,4 +1,4 @@
-import {MAGIC_LINK_MAX_AGE_SECONDS} from '@/engine/core/constants';
+import {MAGIC_LINK_MAX_AGE_SECONDS, PASSWORD_PROVIDER_NAME} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {TooManyRequestsError} from '@/engine/core/errors';
 import {createLogger} from '@/engine/core/logger';
@@ -55,7 +55,7 @@ export function getAuthOptions(): AuthOptions {
         return [
           CredentialsProvider({
             id: 'credentials',
-            name: 'Email',
+            name: PASSWORD_PROVIDER_NAME,
             credentials: {
               email: {label: 'Email', type: 'email'},
               password: {label: 'Password', type: 'password'},

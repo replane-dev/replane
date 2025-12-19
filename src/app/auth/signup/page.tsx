@@ -8,6 +8,9 @@ import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {redirect, useSearchParams} from 'next/navigation';
 
+export const NO_SIGNUP_REDIRECT_PARAM = 'no-signup-redirect';
+export const NO_SIGNUP_REDIRECT_VALUE = 'true';
+
 export default function SignUpPage() {
   const params = useSearchParams();
   const callbackUrl = params.get('callbackUrl') ?? '/app';
@@ -21,7 +24,9 @@ export default function SignUpPage() {
   }
 
   if (!data.passwordAuthEnabled) {
-    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    redirect(
+      `/auth/signin?${NO_SIGNUP_REDIRECT_PARAM}=${NO_SIGNUP_REDIRECT_VALUE}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
+    );
   }
 
   const allowedEmailDomains = data.allowedEmailDomains;

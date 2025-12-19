@@ -30,3 +30,5 @@ export const ACCEPTED_IMAGE_TYPES: readonly string[] = [
 ];
 export const ACCEPTED_IMAGE_TYPES_REGEX = /^data:image\/(png|jpeg|jpg|webp|gif);base64,.+$/i;
 export const LOGO_SIZE = 128; // pixels
+
+export const PASSWORD_PROVIDER_NAME = 'Email';

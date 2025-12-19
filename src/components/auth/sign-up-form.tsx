@@ -1,5 +1,6 @@
 'use client';
 
+import {NO_SIGNUP_REDIRECT_PARAM, NO_SIGNUP_REDIRECT_VALUE} from '@/app/auth/signup/page';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
@@ -173,7 +174,7 @@ export function SignUpForm({callbackUrl, allowedEmailDomains}: SignUpFormProps) 
           <div className="text-center text-sm">
             Already have an account?{' '}
             <Link
-              href={`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+              href={`/auth/signin?${NO_SIGNUP_REDIRECT_PARAM}=${NO_SIGNUP_REDIRECT_VALUE}&callbackUrl=${encodeURIComponent(callbackUrl)}`}
               className="text-primary hover:underline font-medium"
             >
               Sign in
