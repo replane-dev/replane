@@ -14,3 +14,8 @@ export const ENGINE_STOP_TIMEOUT_MS = 10 * 1000;
 export const MAX_CONFIG_VERSION = 1_000_000_007;
 
 export const MAGIC_LINK_MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours
+
+export const MIN_PASSWORD_LENGTH = 8;
+
+export const AUTH_MAX_REQUESTS_PER_WINDOW = 10;
+export const AUTH_MAX_REQUESTS_WINDOW_MS = 60 * 1000;

@@ -4,11 +4,29 @@ import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
+import {zodResolver} from '@hookform/resolvers/zod';
 import {SiGithub, SiGitlab, SiGoogle, SiOkta} from '@icons-pack/react-simple-icons';
-import {AlertCircle, Check, Copy, ExternalLink, Mail} from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  Mail,
+} from 'lucide-react';
 import {signIn} from 'next-auth/react';
+import Link from 'next/link';
 import {useState} from 'react';
+import {useForm} from 'react-hook-form';
 import {toast} from 'sonner';
+import {z} from 'zod';
+import {EmailDomainNotice, ErrorBanner, OrDivider, PasswordInput} from './shared';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface Provider {
   id: string;
@@ -20,9 +38,21 @@ interface SignInFormProps {
   callbackUrl: string;
   error?: string | null;
   allowedEmailDomains?: string[] | null;
+  passwordAuthEnabled?: boolean;
 }
 
-const providerConfigs = [
+// ============================================================================
+// Provider Configuration
+// ============================================================================
+
+const OAUTH_PROVIDER_CONFIG: Record<string, {icon: typeof SiGithub; label: string}> = {
+  github: {icon: SiGithub, label: 'Continue with GitHub'},
+  gitlab: {icon: SiGitlab, label: 'Continue with GitLab'},
+  google: {icon: SiGoogle, label: 'Continue with Google'},
+  okta: {icon: SiOkta, label: 'Continue with Okta'},
+};
+
+const PROVIDER_SETUP_INFO = [
   {
     id: 'github',
     name: 'GitHub',
@@ -61,6 +91,23 @@ const providerConfigs = [
   },
 ];
 
+// ============================================================================
+// Validation Schemas (simplified - domain validation happens server-side)
+// ============================================================================
+
+const passwordFormSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const magicLinkFormSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+});
+
+// ============================================================================
+// Small Reusable Components
+// ============================================================================
+
 function CopyButton({text}: {text: string}) {
   const [copied, setCopied] = useState(false);
 
@@ -85,6 +132,281 @@ function CopyButton({text}: {text: string}) {
   );
 }
 
+// ============================================================================
+// OAuth Provider Button
+// ============================================================================
+
+interface OAuthButtonProps {
+  provider: Provider;
+  isLoading: boolean;
+  disabled: boolean;
+  onSignIn: () => void;
+}
+
+function OAuthButton({provider, isLoading, disabled, onSignIn}: OAuthButtonProps) {
+  const config = OAUTH_PROVIDER_CONFIG[provider.id];
+  const Icon = config?.icon;
+  const label = config?.label || `Continue with ${provider.name}`;
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={onSignIn}
+      disabled={disabled}
+      className="w-full"
+    >
+      {Icon && <Icon className={isLoading ? 'animate-pulse' : ''} />}
+      {isLoading ? 'Signing in...' : label}
+    </Button>
+  );
+}
+
+// ============================================================================
+// Password Sign-In Form
+// ============================================================================
+
+interface PasswordFormProps {
+  callbackUrl: string;
+  showBackButton?: boolean;
+  onBack?: () => void;
+  onInteraction?: () => void;
+}
+
+function PasswordForm({callbackUrl, showBackButton, onBack, onInteraction}: PasswordFormProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState(false);
+
+  const handleInteraction = () => {
+    setAuthError(false);
+    onInteraction?.();
+  };
+
+  type FormData = z.infer<typeof passwordFormSchema>;
+
+  const {
+    register,
+    handleSubmit,
+    formState: {errors},
+  } = useForm<FormData>({
+    resolver: zodResolver(passwordFormSchema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    setIsLoading(true);
+    setAuthError(false);
+
+    try {
+      const result = await signIn('credentials', {
+        email: data.email.trim(),
+        password: data.password,
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        setAuthError(true);
+        // Check for rate limiting error
+        if (result.error.includes('Too many')) {
+          toast.error('Too many attempts', {
+            description: 'Please wait a moment before trying again.',
+          });
+        } else {
+          toast.error('Sign in failed', {
+            description: 'Invalid email or password. Please try again.',
+          });
+        }
+      } else if (result?.ok) {
+        window.location.href = callbackUrl;
+      }
+    } catch {
+      setAuthError(true);
+      toast.error('Sign in failed', {
+        description: 'Please check your connection and try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      {showBackButton && onBack && (
+        <Button type="button" variant="ghost" size="sm" onClick={onBack} className="mb-2 -ml-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      )}
+
+      <div className="space-y-1">
+        <Label htmlFor="password-email">Email</Label>
+        <Input
+          id="password-email"
+          type="email"
+          placeholder="your.email@example.com"
+          disabled={isLoading}
+          className={errors.email ? 'border-destructive' : ''}
+          {...register('email', {onChange: handleInteraction})}
+        />
+        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="password-input">Password</Label>
+        <PasswordInput
+          id="password-input"
+          placeholder="••••••••"
+          disabled={isLoading}
+          error={!!errors.password || authError}
+          {...register('password', {onChange: handleInteraction})}
+        />
+        {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+        {authError && !errors.password && (
+          <p className="text-xs text-destructive">Invalid email or password</p>
+        )}
+      </div>
+
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="animate-spin" />
+            Signing in...
+          </>
+        ) : (
+          <>
+            <KeyRound className="h-4 w-4" />
+            Sign in
+          </>
+        )}
+      </Button>
+
+      <div className="text-center text-sm">
+        Don&apos;t have an account?{' '}
+        <Link
+          href={`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+          className="text-primary hover:underline font-medium"
+        >
+          Sign up
+        </Link>
+      </div>
+    </form>
+  );
+}
+
+// ============================================================================
+// Magic Link Form
+// ============================================================================
+
+interface MagicLinkFormProps {
+  callbackUrl: string;
+  onInteraction?: () => void;
+}
+
+function MagicLinkForm({callbackUrl, onInteraction}: MagicLinkFormProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
+
+  type FormData = z.infer<typeof magicLinkFormSchema>;
+
+  const {
+    register,
+    handleSubmit,
+    formState: {errors},
+    reset,
+  } = useForm<FormData>({
+    resolver: zodResolver(magicLinkFormSchema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    setIsLoading(true);
+
+    try {
+      const result = await signIn('email', {
+        email: data.email.trim(),
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        toast.error('Unable to send sign-in link', {
+          description: 'Please check your email address and try again.',
+        });
+      } else {
+        setSentEmail(data.email);
+        setEmailSent(true);
+        toast.success('Check your email', {
+          description: 'We sent you a magic link to sign in.',
+        });
+      }
+    } catch {
+      toast.error('Unable to send sign-in link', {
+        description: 'Please check your connection and try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (emailSent) {
+    return (
+      <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-center">
+        <Mail className="mx-auto mb-2 h-8 w-8 text-green-600 dark:text-green-400" />
+        <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">
+          Check your email
+        </p>
+        <p className="text-xs text-muted-foreground">
+          We sent a magic link to <strong>{sentEmail}</strong>
+        </p>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          onClick={() => {
+            setEmailSent(false);
+            setSentEmail('');
+            reset();
+          }}
+          className="mt-2"
+        >
+          Use a different email
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+      <div className="space-y-1">
+        <Label htmlFor="magic-email">Email address</Label>
+        <Input
+          id="magic-email"
+          type="email"
+          placeholder="your.email@example.com"
+          disabled={isLoading}
+          className={errors.email ? 'border-destructive' : ''}
+          {...register('email', {onChange: onInteraction})}
+        />
+        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+      </div>
+      <Button type="submit" className="w-full" variant="outline" disabled={isLoading}>
+        {isLoading ? (
+          'Sending magic link...'
+        ) : (
+          <>
+            <Mail />
+            Continue with Email
+          </>
+        )}
+      </Button>
+    </form>
+  );
+}
+
+// ============================================================================
+// No Providers Configured
+// ============================================================================
+
 function NoProvidersConfigured() {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
@@ -106,15 +428,12 @@ function NoProvidersConfigured() {
           Available Providers
         </p>
         <div className="space-y-2">
-          {providerConfigs.map(provider => {
+          {PROVIDER_SETUP_INFO.map(provider => {
             const Icon = provider.icon;
             const isExpanded = expandedProvider === provider.id;
 
             return (
-              <div
-                key={provider.id}
-                className="rounded-lg border bg-card overflow-hidden transition-all"
-              >
+              <div key={provider.id} className="rounded-lg border bg-card overflow-hidden">
                 <button
                   onClick={() => setExpandedProvider(isExpanded ? null : provider.id)}
                   className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
@@ -157,7 +476,6 @@ function NoProvidersConfigured() {
                         ))}
                       </div>
                     </div>
-
                     <a
                       href={provider.setupUrl}
                       target="_blank"
@@ -190,91 +508,34 @@ function NoProvidersConfigured() {
   );
 }
 
-export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}: SignInFormProps) {
+// ============================================================================
+// Main Sign-In Form
+// ============================================================================
+
+export function SignInForm({
+  providers,
+  callbackUrl,
+  error,
+  allowedEmailDomains,
+  passwordAuthEnabled,
+}: SignInFormProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailDomainError, setEmailDomainError] = useState<string | null>(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [errorDismissed, setErrorDismissed] = useState(false);
 
   const hasEmailProvider = providers.some(p => p.id === 'email');
-  const oauthProviders = providers.filter(p => p.id !== 'email');
+  const hasCredentialsProvider = providers.some(p => p.id === 'credentials');
+  const oauthProviders = providers.filter(p => p.id !== 'email' && p.id !== 'credentials');
 
-  // Check if email domain is allowed
-  const isEmailDomainAllowed = (email: string): boolean => {
-    if (!allowedEmailDomains || allowedEmailDomains.length === 0) {
-      return true; // No restrictions
-    }
+  const hasOtherProviders = oauthProviders.length > 0 || hasEmailProvider;
+  const passwordIsOnlyOption = hasCredentialsProvider && !hasOtherProviders;
+  const noProvidersAvailable = providers.length === 0 && !passwordAuthEnabled;
 
-    const emailParts = email.split('@');
-    if (emailParts.length !== 2) {
-      return false; // Invalid email format
-    }
-
-    const domain = emailParts[1].toLowerCase();
-    return allowedEmailDomains.some(allowed => allowed.toLowerCase() === domain);
-  };
-
-  const handleSignIn = async (providerId: string) => {
+  const handleOAuthSignIn = async (providerId: string) => {
     setLoadingProvider(providerId);
     try {
       await signIn(providerId, {callbackUrl});
-    } catch (error) {
-      console.error('Sign in error:', error);
-      setLoadingProvider(null);
-    }
-  };
-
-  const handleEmailChange = (newEmail: string) => {
-    setEmail(newEmail);
-    setEmailDomainError(null);
-
-    // Validate domain if there are restrictions and email has @ symbol
-    if (allowedEmailDomains && allowedEmailDomains.length > 0 && newEmail.includes('@')) {
-      if (!isEmailDomainAllowed(newEmail)) {
-        const domain = newEmail.split('@')[1];
-        setEmailDomainError(
-          `Email domain "@${domain}" is not allowed. Please use an email from: ${allowedEmailDomains.map(d => `@${d}`).join(', ')}`,
-        );
-      }
-    }
-  };
-
-  const handleEmailSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    // Validate domain before submitting
-    if (!isEmailDomainAllowed(email)) {
-      setEmailDomainError(
-        `This email domain is not allowed. Please use an email from: ${allowedEmailDomains?.map(d => `@${d}`).join(', ')}`,
-      );
-      return;
-    }
-
-    setLoadingProvider('email');
-    try {
-      const result = await signIn('email', {
-        email: email.trim(),
-        redirect: false,
-        callbackUrl,
-      });
-
-      if (result?.error) {
-        toast.error('Unable to send sign-in link', {
-          description: 'Please check your email address and try again.',
-        });
-      } else {
-        setEmailSent(true);
-        toast.success('Check your email', {
-          description: 'We sent you a magic link to sign in.',
-        });
-      }
-    } catch (error) {
-      console.error('Email sign in error:', error);
-      toast.error('Unable to send sign-in link', {
-        description: 'Please check your connection and try again.',
-      });
-    } finally {
+    } catch {
       setLoadingProvider(null);
     }
   };
@@ -284,145 +545,75 @@ export function SignInForm({providers, callbackUrl, error, allowedEmailDomains}:
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Get started</CardTitle>
         <CardDescription>
-          {providers.length > 0 ? 'Choose your sign in method' : 'Setup required'}
+          {providers.length > 0 ? 'Sign in to your account' : 'Setup required'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-8">
-          {error && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+        <div className="flex flex-col gap-6">
+          {error && !errorDismissed && <ErrorBanner message={error} />}
 
           {allowedEmailDomains && allowedEmailDomains.length > 0 && (
-            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
-              <p className="text-sm font-medium text-foreground mb-1">Email domain restrictions</p>
-              <p className="text-sm text-muted-foreground">
-                Only emails from the following domains are allowed:
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {allowedEmailDomains.map(domain => (
-                  <code
-                    key={domain}
-                    className="inline-flex items-center rounded bg-blue-500/20 px-2 py-0.5 text-xs font-mono text-foreground"
-                  >
-                    @{domain}
-                  </code>
-                ))}
-              </div>
-            </div>
+            <EmailDomainNotice domains={allowedEmailDomains} />
           )}
 
-          {providers.length === 0 ? (
+          {noProvidersAvailable ? (
             <NoProvidersConfigured />
           ) : (
             <div className="flex flex-col gap-4">
-              {/* OAuth providers */}
-              {oauthProviders.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {oauthProviders.map(provider => {
-                    const isLoading = loadingProvider === provider.id;
-
-                    // Map provider IDs to icons and labels
-                    const providerConfig: Record<string, {icon: typeof SiGithub; label: string}> = {
-                      github: {icon: SiGithub, label: 'Continue with GitHub'},
-                      gitlab: {icon: SiGitlab, label: 'Continue with GitLab'},
-                      google: {icon: SiGoogle, label: 'Continue with Google'},
-                      okta: {icon: SiOkta, label: 'Continue with Okta'},
-                    };
-
-                    const config = providerConfig[provider.id];
-                    const Icon = config?.icon;
-                    const label = config?.label || `Continue with ${provider.name}`;
-
-                    return (
-                      <Button
-                        key={provider.id}
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleSignIn(provider.id)}
-                        disabled={loadingProvider !== null}
-                        className="w-full"
-                      >
-                        {Icon && <Icon className={isLoading ? 'animate-pulse' : ''} />}
-                        {isLoading ? 'Signing in...' : label}
-                      </Button>
-                    );
-                  })}
-                </div>
+              {/* Password form - expanded when it's the only option or user selected it */}
+              {hasCredentialsProvider && (passwordIsOnlyOption || showPasswordForm) && (
+                <PasswordForm
+                  callbackUrl={callbackUrl}
+                  showBackButton={!passwordIsOnlyOption && showPasswordForm}
+                  onBack={() => setShowPasswordForm(false)}
+                  onInteraction={() => setErrorDismissed(true)}
+                />
               )}
 
-              {/* Email magic link sign in */}
-              {hasEmailProvider && (
-                <div className="flex flex-col gap-4">
+              {/* Provider selection - shown when password form is not expanded */}
+              {!showPasswordForm && !passwordIsOnlyOption && (
+                <>
+                  {/* OAuth buttons */}
                   {oauthProviders.length > 0 && (
-                    <div className="relative my-2">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-                      </div>
-                    </div>
-                  )}
-                  {emailSent ? (
-                    <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-center">
-                      <Mail className="mx-auto mb-2 h-8 w-8 text-green-600 dark:text-green-400" />
-                      <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">
-                        Check your email
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        We sent a magic link to <strong>{email}</strong>
-                      </p>
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        onClick={() => {
-                          setEmailSent(false);
-                          setEmail('');
-                        }}
-                        className="mt-2"
-                      >
-                        Use a different email
-                      </Button>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleEmailSignIn} className="space-y-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="email">Email address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="your.email@example.com"
-                          value={email}
-                          onChange={e => handleEmailChange(e.target.value)}
+                    <div className="flex flex-col gap-2">
+                      {oauthProviders.map(provider => (
+                        <OAuthButton
+                          key={provider.id}
+                          provider={provider}
+                          isLoading={loadingProvider === provider.id}
                           disabled={loadingProvider !== null}
-                          required
-                          className={emailDomainError ? 'border-destructive' : ''}
+                          onSignIn={() => handleOAuthSignIn(provider.id)}
                         />
-                        {emailDomainError && (
-                          <p className="text-xs text-destructive">{emailDomainError}</p>
-                        )}
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={loadingProvider !== null || !email.trim() || !!emailDomainError}
-                      >
-                        {loadingProvider === 'email' ? (
-                          <>Sending magic link...</>
-                        ) : (
-                          <>
-                            <Mail />
-                            Continue with Email
-                          </>
-                        )}
-                      </Button>
-                    </form>
+                      ))}
+                    </div>
                   )}
-                </div>
+
+                  {/* Password option button */}
+                  {hasCredentialsProvider && hasOtherProviders && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowPasswordForm(true)}
+                      className="w-full"
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      Continue with Password
+                    </Button>
+                  )}
+
+                  {/* Divider between OAuth/password and magic link */}
+                  {hasEmailProvider && (oauthProviders.length > 0 || hasCredentialsProvider) && (
+                    <OrDivider />
+                  )}
+
+                  {/* Magic link form */}
+                  {hasEmailProvider && (
+                    <MagicLinkForm
+                      callbackUrl={callbackUrl}
+                      onInteraction={() => setErrorDismissed(true)}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}

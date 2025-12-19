@@ -22,6 +22,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "argon2",
       "better-sqlite3",
       "esbuild",
       "sharp",
@@ -75,6 +76,7 @@
     "ajv": "^8.17.1",
     "ajv-draft-04": "^1.0.0",
     "ajv-formats": "^3.0.1",
+    "argon2": "^0.44.0",
     "assert": "^2.1.0",
     "async-channel": "^0.2.0",
     "better-sqlite3": "^12.5.0",

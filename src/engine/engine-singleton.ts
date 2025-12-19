@@ -5,6 +5,16 @@ import {NodemailerEmailService, type EmailService} from './core/email-service';
 import {ensureDefined, joinUndefined} from './core/utils';
 import {createEngine, type Engine} from './engine';
 
+/**
+ * Checks if password-based authentication is enabled.
+ * Controlled by PASSWORD_AUTH_ENABLED environment variable.
+ *
+ * @returns true if email/password authentication should be enabled
+ */
+export function isPasswordAuthEnabled(): boolean {
+  return process.env.PASSWORD_AUTH_ENABLED === 'true';
+}
+
 export const getDatabaseUrl = () =>
   ensureDefined(
     process.env.DATABASE_URL ??
@@ -58,6 +68,7 @@ export const engineLazy = new Lazy(async () => {
     logLevel: 'info',
     emailService,
     baseUrl,
+    passwordAuthEnabled: isPasswordAuthEnabled(),
   });
 
   return engine;

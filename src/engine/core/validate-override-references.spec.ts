@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {extractConditionReferences, extractOverrideReferences, validateOverrideReferences, type ConfigReference} from './validate-override-references';
 import type {Condition, Override} from './override-condition-schemas';
+import {asConfigValue} from './zod';
 
 describe('extractReferences', () => {
   describe('equals condition', () => {
@@ -33,7 +34,7 @@ describe('extractReferences', () => {
         property: 'userId',
         value: {
           type: 'literal',
-          value: 'user-123',
+          value: asConfigValue('user-123'),
         },
       };
 
@@ -254,7 +255,7 @@ describe('extractReferences', () => {
             property: 'isPremium',
             value: {
               type: 'literal',
-              value: true,
+              value: asConfigValue(true),
             },
           },
         ],
@@ -333,7 +334,7 @@ describe('extractReferences', () => {
             property: 'c',
             value: {
               type: 'literal',
-              value: 100,
+              value: asConfigValue(100),
             },
           },
         ],
@@ -433,7 +434,7 @@ describe('extractOverrideReferences', () => {
           },
         },
       ],
-      value: {enabled: true},
+      value: asConfigValue({enabled: true}),
     };
 
     const references = extractOverrideReferences(override);
@@ -448,7 +449,7 @@ describe('extractOverrideReferences', () => {
     const override: Override = {
       name: 'empty-conditions',
       conditions: [],
-      value: {enabled: true},
+      value: asConfigValue({enabled: true}),
     };
 
     const references = extractOverrideReferences(override);
@@ -465,7 +466,7 @@ describe('extractOverrideReferences', () => {
           property: 'userId',
           value: {
             type: 'literal',
-            value: 'user-123',
+            value: asConfigValue('user-123'),
           },
         },
         {
@@ -473,11 +474,11 @@ describe('extractOverrideReferences', () => {
           property: 'status',
           value: {
             type: 'literal',
-            value: ['active', 'pending'],
+            value: asConfigValue(['active', 'pending']),
           },
         },
       ],
-      value: {feature: true},
+      value: asConfigValue({feature: true}),
     };
 
     const references = extractOverrideReferences(override);
@@ -533,7 +534,7 @@ describe('extractOverrideReferences', () => {
           },
         },
       ],
-      value: {},
+      value: asConfigValue({}),
     };
 
     const references = extractOverrideReferences(override);
@@ -564,7 +565,7 @@ describe('extractOverrideReferences', () => {
           property: 'literal1',
           value: {
             type: 'literal',
-            value: 'literal-value',
+            value: asConfigValue('literal-value'),
           },
         },
         {
@@ -575,7 +576,7 @@ describe('extractOverrideReferences', () => {
           seed: 'seed',
         },
       ],
-      value: {},
+      value: asConfigValue({}),
     };
 
     const references = extractOverrideReferences(override);
@@ -600,7 +601,7 @@ describe('extractOverrideReferences', () => {
           },
         },
       ],
-      value: {enabled: true},
+      value: asConfigValue({enabled: true}),
     };
 
     const references = extractOverrideReferences(override);
@@ -629,7 +630,7 @@ describe('extractOverrideReferences', () => {
           seed: 'experiment-2',
         },
       ],
-      value: {variant: 'control'},
+      value: asConfigValue({variant: 'control'}),
     };
 
     const references = extractOverrideReferences(override);
@@ -652,7 +653,7 @@ describe('extractOverrideReferences', () => {
           },
         },
       ],
-      value: {},
+      value: asConfigValue({}),
     };
 
     const references = extractOverrideReferences(override);
@@ -681,7 +682,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {enabled: true},
+          value: asConfigValue({enabled: true}),
         },
       ];
 
@@ -703,11 +704,11 @@ describe('validateOverrideReferences', () => {
               property: 'userId',
               value: {
                 type: 'literal',
-                value: 'user-123',
+                value: asConfigValue('user-123'),
               },
             },
           ],
-          value: {feature: true},
+          value: asConfigValue({feature: true}),
         },
       ];
 
@@ -777,7 +778,7 @@ describe('validateOverrideReferences', () => {
               ],
             },
           ],
-          value: {result: true},
+          value: asConfigValue({result: true}),
         },
       ];
 
@@ -807,7 +808,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {enabled: true},
+          value: asConfigValue({enabled: true}),
         },
       ];
 
@@ -835,7 +836,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
       ];
 
@@ -864,7 +865,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
       ];
 
@@ -905,7 +906,7 @@ describe('validateOverrideReferences', () => {
               ],
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
       ];
 
@@ -933,7 +934,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
         {
           name: 'second-override',
@@ -949,7 +950,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
       ];
 
@@ -977,7 +978,7 @@ describe('validateOverrideReferences', () => {
               },
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
       ];
 
@@ -1025,7 +1026,7 @@ describe('validateOverrideReferences', () => {
               ],
             },
           ],
-          value: {},
+          value: asConfigValue({}),
         },
       ];
 

@@ -255,6 +255,13 @@ export interface UserNotificationPreferences {
   updated_at: Timestamp;
 }
 
+export interface UserCredentials {
+  email: string;
+  password_hash: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface DB {
   accounts: Accounts;
   audit_logs: AuditLogs;
@@ -275,6 +282,7 @@ export interface DB {
   projects: Projects;
   sdk_keys: SdkKeys;
   sessions: Sessions;
+  user_credentials: UserCredentials;
   user_notification_preferences: UserNotificationPreferences;
   users: Users;
   verification_token: VerificationToken;

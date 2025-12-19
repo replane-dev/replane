@@ -406,3 +406,11 @@ export function toSettledResult<T>(promise: Promise<T>): Promise<SettledResult<T
     .then(value => ({type: 'success' as const, value}))
     .catch(error => ({type: 'error' as const, error}));
 }
+
+export function bytesToHex(bytes: Uint8Array): string {
+  let hex: string[] = [];
+  for (let i = 0; i < bytes.length; i++) {
+    hex.push(bytes[i].toString(16).padStart(2, '0'));
+  }
+  return hex.join('');
+}

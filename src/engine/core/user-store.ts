@@ -1,3 +1,4 @@
+import assert from 'assert';
 import {Kysely, type Selectable} from 'kysely';
 import {z} from 'zod';
 import type {DB, Users} from './db';
@@ -7,6 +8,8 @@ export function User() {
     email: z.string().nullable(),
     id: z.number(),
     name: z.string().nullable(),
+    emailVerified: z.date().nullable(),
+    image: z.string().nullable(),
   });
 }
 
@@ -14,6 +17,18 @@ export interface User extends z.infer<ReturnType<typeof User>> {}
 
 export class UserStore {
   constructor(private readonly db: Kysely<DB>) {}
+
+  async insert(user: Omit<User, 'id'>): Promise<User> {
+    const result = await this.db
+      .insertInto('users')
+      .values(user)
+      .returning(['id', 'email', 'name', 'emailVerified', 'image'])
+      .executeTakeFirst();
+
+    assert(result, 'Failed to insert user');
+
+    return mapUser(result);
+  }
 
   async getById(userId: number): Promise<User | undefined> {
     const result = await this.db
@@ -45,7 +60,7 @@ export class UserStore {
     const result = await this.db
       .selectFrom('users')
       .selectAll()
-      .where('email', '=', email)
+      .where('email', '=', email.toLowerCase())
       .executeTakeFirst();
     if (result) {
       return mapUser(result);
@@ -64,5 +79,7 @@ function mapUser(user: Selectable<Users>): User {
     email: user.email,
     id: user.id,
     name: user.name,
+    emailVerified: user.emailVerified,
+    image: user.image,
   };
 }

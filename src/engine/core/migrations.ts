@@ -1476,6 +1476,21 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_user_notification_preferences_user_id ON user_notification_preferences(user_id);
     `,
   },
+  {
+    name: 'Create user_credentials table for password authentication',
+    sql: /*sql*/ `
+      -- Create user_credentials table for storing password hashes
+      -- Separate from users table to keep next-auth managed table clean
+      CREATE TABLE user_credentials (
+        email TEXT PRIMARY KEY,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX idx_user_credentials_email ON user_credentials(email);
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';

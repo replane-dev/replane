@@ -1,6 +1,6 @@
 'use client';
 
-import {SignInForm} from '@/components/auth/sign-in-form';
+import {SignUpForm} from '@/components/auth/sign-up-form';
 import {ReplaneIcon} from '@/components/replane-icon';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
@@ -8,7 +8,7 @@ import {useSession} from 'next-auth/react';
 import Link from 'next/link';
 import {redirect, useSearchParams} from 'next/navigation';
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const params = useSearchParams();
   const callbackUrl = params.get('callbackUrl') ?? '/app';
   const {data: session} = useSession();
@@ -20,30 +20,11 @@ export default function SignInPage() {
     redirect(callbackUrl);
   }
 
-  // If no users exist, redirect to signup page for initial setup
-  if (!data.hasUsers) {
-    redirect(`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  if (!data.passwordAuthEnabled) {
+    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
-  const providers = data.providers;
   const allowedEmailDomains = data.allowedEmailDomains;
-  const passwordAuthEnabled = data.passwordAuthEnabled;
-
-  const errorMessages: Record<string, string> = {
-    OAuthSignin: 'Error constructing authorization URL.',
-    OAuthCallback: 'Error handling OAuth callback.',
-    OAuthCreateAccount: 'Could not create OAuth provider account.',
-    EmailCreateAccount: 'Could not create email provider account.',
-    Callback: 'Error in callback handler.',
-    OAuthAccountNotLinked: 'This account is not linked. Please sign in with the original account.',
-    EmailSignin: 'Unable to send sign-in email. Please check your email address and try again.',
-    CredentialsSignin: 'Sign in failed. Check the details you provided are correct.',
-    SessionRequired: 'Please sign in to access this page.',
-    default: 'Unable to sign in.',
-  };
-
-  const error = params.get('error');
-  const errorMessage = error ? errorMessages[error] || errorMessages.default : null;
 
   return (
     <div className="bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -59,13 +40,7 @@ export default function SignInPage() {
             Dynamic configuration for your apps and services
           </p>
         </div>
-        <SignInForm
-          providers={providers}
-          callbackUrl={callbackUrl}
-          error={errorMessage}
-          allowedEmailDomains={allowedEmailDomains}
-          passwordAuthEnabled={passwordAuthEnabled}
-        />
+        <SignUpForm callbackUrl={callbackUrl} allowedEmailDomains={allowedEmailDomains} />
         <div className="text-muted-foreground text-balance text-center text-xs">
           By clicking continue, you agree to our{' '}
           <a href="/terms" className="underline underline-offset-4 hover:text-foreground">

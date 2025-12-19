@@ -1,14 +1,17 @@
 import {MAGIC_LINK_MAX_AGE_SECONDS} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {TooManyRequestsError} from '@/engine/core/errors';
 import {createLogger} from '@/engine/core/logger';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {ensureDefined, normalizeEmail} from '@/engine/core/utils';
-import {getDatabaseUrl, getEngineSingleton} from '@/engine/engine-singleton';
+import {getDatabaseUrl, getEngineSingleton, isPasswordAuthEnabled} from '@/engine/engine-singleton';
 import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
 import {getEmailServerConfig, isMagicLinkAuthEnabled} from '@/lib/email-server-config';
+import {authRateLimiter} from '@/lib/rate-limiter';
 import PostgresAdapter from '@auth/pg-adapter';
 import * as Sentry from '@sentry/nextjs';
 import {type AuthOptions} from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import EmailProvider from 'next-auth/providers/email';
 import GithubProvider from 'next-auth/providers/github';
 import GitlabProvider from 'next-auth/providers/gitlab';
@@ -44,6 +47,61 @@ export function getAuthOptions(): AuthOptions {
       error: '/auth/error',
     },
     providers: [
+      // Credentials provider (email/password) - requires PASSWORD_AUTH_ENABLED=true
+      (() => {
+        if (!isPasswordAuthEnabled()) {
+          return [];
+        }
+        return [
+          CredentialsProvider({
+            id: 'credentials',
+            name: 'Email',
+            credentials: {
+              email: {label: 'Email', type: 'email'},
+              password: {label: 'Password', type: 'password'},
+            },
+            async authorize(credentials) {
+              if (!credentials?.email || !credentials?.password) {
+                return null;
+              }
+
+              const email = credentials.email.toLowerCase();
+
+              // Rate limit by email to prevent brute force attacks
+              const rateLimitResult = authRateLimiter.limit(`auth:${email}`);
+              if (!rateLimitResult.success) {
+                logger.warn(GLOBAL_CONTEXT, {
+                  msg: 'Auth: login rate limited',
+                  email,
+                  event: 'auth.login.rate_limited',
+                  resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+                });
+                throw new TooManyRequestsError('Too many login attempts. Please try again later.');
+              }
+
+              const engine = await getEngineSingleton();
+              const result = await engine.useCases.verifyPasswordCredentials(GLOBAL_CONTEXT, {
+                email: credentials.email,
+                password: credentials.password,
+              });
+
+              if (!result) {
+                return null;
+              }
+
+              // Reset rate limit on successful login
+              authRateLimiter.reset(`auth:${email}`);
+
+              return {
+                id: String(result.id),
+                email: result.email,
+                name: result.name,
+                image: result.image,
+              };
+            },
+          }),
+        ];
+      })(),
       // Email provider (magic link) - requires MAGIC_LINK_ENABLED=true and email server configuration
       (() => {
         if (!isMagicLinkAuthEnabled()) {

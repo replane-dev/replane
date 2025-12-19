@@ -1,8 +1,10 @@
 import {getAuthOptions} from '@/app/auth-options';
+import {MIN_PASSWORD_LENGTH} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
+import {normalizeEmail} from '@/engine/core/utils';
 import {
   ConfigSchema,
   ConfigValue,
@@ -11,6 +13,7 @@ import {
   MaintainerArray,
   Uuid,
 } from '@/engine/core/zod';
+import {isPasswordAuthEnabled} from '@/engine/engine-singleton';
 import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
@@ -150,16 +153,50 @@ export const appRouter = createTRPCRouter({
         role: opts.input.role,
       });
     }),
-  getAuthProviders: baseProcedure.query(async () => {
+  getAuthProviders: baseProcedure.query(async opts => {
     const authOptions = getAuthOptions();
+
+    // Check if there are any users in the system
+    const {hasUsers} = await opts.ctx.engine.useCases.hasUsers(GLOBAL_CONTEXT, {});
+
     return {
       providers: authOptions.providers.map(p => ({
         id: p.id,
         name: p.name,
       })),
       allowedEmailDomains: getAllowedEmailDomains(),
+      passwordAuthEnabled: isPasswordAuthEnabled(),
+      hasUsers,
     };
   }),
+  registerWithPassword: baseProcedure
+    .input(
+      z.object({
+        email: z.email('Invalid email address'),
+        password: z
+          .string()
+          .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`),
+        name: z.string().min(1, 'Name is required').optional(),
+      }),
+    )
+    .mutation(async opts => {
+      const result = await opts.ctx.engine.useCases.registerWithPassword(GLOBAL_CONTEXT, {
+        email: opts.input.email,
+        password: opts.input.password,
+        name: opts.input.name,
+      });
+
+      // Initialize the user in our engine (creates workspace, etc.)
+      await opts.ctx.engine.useCases.initUser(GLOBAL_CONTEXT, {
+        userEmail: normalizeEmail(result.email),
+        exampleProject: true,
+      });
+
+      return {
+        success: result.success,
+        email: result.email,
+      };
+    }),
   hello: baseProcedure
     .input(
       z.object({

@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {
+  bytesToHex,
   chunkArray,
   getDaysAgo,
   isValidJsonSchema,
@@ -1017,5 +1018,82 @@ describe('mapConcurrently', () => {
         map: async x => x,
       }),
     ).rejects.toThrow(/greater than 0/i);
+  });
+});
+
+describe('bytesToHex', () => {
+  it('should convert empty Uint8Array to empty string', () => {
+    const bytes = new Uint8Array([]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('');
+  });
+
+  it('should convert single byte to two-character hex string', () => {
+    const bytes = new Uint8Array([255]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('ff');
+  });
+
+  it('should pad single-digit hex values with leading zero', () => {
+    const bytes = new Uint8Array([0]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('00');
+  });
+
+  it('should convert multiple bytes to hex string', () => {
+    const bytes = new Uint8Array([1, 2, 3, 4, 5]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('0102030405');
+  });
+
+  it('should handle bytes with mixed values', () => {
+    const bytes = new Uint8Array([0, 15, 16, 255]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('000f10ff');
+  });
+
+  it('should convert known byte sequence correctly', () => {
+    // "Hello" in ASCII bytes
+    const bytes = new Uint8Array([72, 101, 108, 108, 111]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('48656c6c6f');
+  });
+
+  it('should handle all possible byte values', () => {
+    // Test boundary values
+    const bytes = new Uint8Array([0, 127, 128, 255]);
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('007f80ff');
+  });
+
+  it('should produce lowercase hex characters', () => {
+    const bytes = new Uint8Array([171, 205, 239]); // 0xab, 0xcd, 0xef
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('abcdef');
+  });
+
+  it('should handle large arrays', () => {
+    const bytes = new Uint8Array(1000).fill(170); // 0xaa
+
+    const result = bytesToHex(bytes);
+
+    expect(result).toBe('aa'.repeat(1000));
+    expect(result.length).toBe(2000);
   });
 });

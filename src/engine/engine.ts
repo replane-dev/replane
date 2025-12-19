@@ -7,7 +7,7 @@ import {ConfigService} from './core/config-service';
 import {type Context, GLOBAL_CONTEXT} from './core/context';
 import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
-import {PreferencesAwareEmailService, type EmailService} from './core/email-service';
+import {type EmailService, PreferencesAwareEmailService} from './core/email-service';
 import {EventHubPublisher} from './core/event-hub';
 import {createSha256HashingService} from './core/hashing-service';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
@@ -72,8 +72,10 @@ import {createGetStatusUseCase} from './core/use-cases/get-status-use-case';
 import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list-use-case';
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
+import {createHasUsersUseCase} from './core/use-cases/has-users-use-case';
 import {createInitUserUseCase} from './core/use-cases/init-user-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
+import {createRegisterWithPasswordUseCase} from './core/use-cases/register-with-password-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
 import {createRejectConfigProposalUseCase} from './core/use-cases/reject-config-proposal-use-case';
 import {createRemoveWorkspaceMemberUseCase} from './core/use-cases/remove-workspace-member-use-case';
@@ -85,6 +87,7 @@ import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/upda
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
+import {createVerifyPasswordCredentialsUseCase} from './core/use-cases/verify-password-credentials-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
 import {WorkspaceMemberService} from './core/workspace-member-service';
@@ -98,6 +101,7 @@ export interface EngineOptions {
   onConflictRetriesCount?: number;
   emailService?: EmailService;
   baseUrl: string;
+  passwordAuthEnabled?: boolean;
 }
 
 interface ToUseCaseOptions {
@@ -322,6 +326,15 @@ export async function createEngine(options: EngineOptions) {
     // User account use cases
     initUser: createInitUserUseCase(),
     deleteUserAccount: createDeleteUserAccountUseCase(),
+    registerWithPassword: createRegisterWithPasswordUseCase({
+      passwordAuthEnabled: options.passwordAuthEnabled ?? false,
+      logger,
+    }),
+    verifyPasswordCredentials: createVerifyPasswordCredentialsUseCase({
+      passwordAuthEnabled: options.passwordAuthEnabled ?? false,
+      logger,
+    }),
+    hasUsers: createHasUsersUseCase(),
     // Notification preferences use cases
     getNotificationPreferences: createGetNotificationPreferencesUseCase(),
     updateNotificationPreferences: createUpdateNotificationPreferencesUseCase(),
