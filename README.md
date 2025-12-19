@@ -139,7 +139,7 @@ By default, Replane uses an integrated database. To use an external database ins
 
 Configure at least one authentication provider. You can enable multiple providers simultaneously:
 
-**Password Authentication**
+#### Password Authentication
 
 Traditional email/password sign-in. This does not verify email addresses, use with caution. Enabled by default if no other authentication providers are configured.
 
@@ -147,13 +147,13 @@ Traditional email/password sign-in. This does not verify email addresses, use wi
 
 When enabled, users can create accounts with email and password, and sign in using their credentials. Passwords must be at least 8 characters.
 
-**Email Magic Link**
+#### Email Magic Link
 
 The email provider sends passwordless magic links to users for authentication. When enabled, an email input field appears on the sign-in page.
 
 - `MAGIC_LINK_ENABLED=true` – Explicitly enables magic link authentication
 
-**Email Server Configuration**
+#### Email Server Configuration
 
 Email server configuration is required for magic link authentication. It can be used for other purposes (notifications, alerts, etc.) without enabling magic link authentication.
 
@@ -170,28 +170,28 @@ Email server configuration is required for magic link authentication. It can be 
 - `EMAIL_SERVER_USER` – SMTP username for authentication
 - `EMAIL_SERVER_PASSWORD` – SMTP password for authentication
 
-**GitHub**
+#### GitHub
 
 - `GITHUB_CLIENT_ID`
 - `GITHUB_CLIENT_SECRET`
 
 [Create OAuth App](https://github.com/settings/developers) with callback URL: `{BASE_URL}/api/auth/callback/github`
 
-**GitLab**
+#### GitLab
 
 - `GITLAB_CLIENT_ID`
 - `GITLAB_CLIENT_SECRET`
 
 [Create OAuth Application](https://gitlab.com/-/profile/applications) with redirect URI: `{BASE_URL}/api/auth/callback/gitlab`
 
-**Google**
+#### Google
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 
 [Create OAuth credentials](https://console.cloud.google.com/apis/credentials) with authorized redirect URI: `{BASE_URL}/api/auth/callback/google`
 
-**Okta**
+#### Okta
 
 - `OKTA_CLIENT_ID`
 - `OKTA_CLIENT_SECRET`
