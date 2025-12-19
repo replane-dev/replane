@@ -39,7 +39,7 @@ Non‑engineering teammates (product, operations, support) can safely change val
 One line to get started:
 
 ```sh
-docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=changeme replane/replane
+docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=xxx replane/replane
 ```
 
 Example docker‑compose.yml:
