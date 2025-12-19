@@ -106,9 +106,10 @@ export type ConfigDto = z.infer<typeof ConfigDto>;
 const ReplicationStreamConfigChangeRecord = z
   .object({
     type: z.literal('config_change'),
-    name: ConfigName(),
+    config: ConfigDto,
     overrides: z.array(RenderedOverrideSchema),
     value: z.unknown(),
+    name: ConfigName(),
   })
   .openapi('ReplicationStreamConfigChangeRecord');
 
@@ -233,9 +234,14 @@ sdkApi.openapi(
               type: 'data',
               data: JSON.stringify({
                 type: 'config_change',
-                name: event.configName,
+                config: {
+                  name: event.configName,
+                  overrides: event.overrides,
+                  value: event.value,
+                },
                 overrides: event.overrides,
                 value: event.value,
+                name: event.configName,
               } satisfies ReplicationStreamRecord),
             });
           }
