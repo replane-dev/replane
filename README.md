@@ -131,7 +131,20 @@ Notes
 
 By default, Replane uses an integrated database. To use an external database instead:
 
+**Configuration Format 1: Connection String**
+
 - `DATABASE_URL` – Postgres connection string (e.g., `postgresql://user:pass@host:5432/replane`).
+
+**Configuration Format 2: Individual Variables**
+
+- `DATABASE_USER` - PostgreSQL username
+- `DATABASE_PASSWORD` - PostgreSQL password
+- `DATABASE_HOST` - PostgreSQL host
+- `DATABASE_PORT` - PostgreSQL port
+- `DATABASE_NAME` - PostgreSQL database name
+
+**Optional knobs**
+
 - `DATABASE_SSL_CA` – Custom SSL/TLS certificate authority (CA) for external PostgreSQL connections.
 - `DATABASE_MAX_CONNECTIONS` – Maximum connections in the pool. Defaults to `10`.
 
