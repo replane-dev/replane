@@ -3,8 +3,98 @@
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {cn} from '@/lib/utils';
+import {SiGithub, SiGitlab, SiGoogle, SiOkta} from '@icons-pack/react-simple-icons';
 import {Eye, EyeOff} from 'lucide-react';
 import {forwardRef, useState} from 'react';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface AuthProvider {
+  id: string;
+  name: string;
+}
+
+// ============================================================================
+// Provider Configuration
+// ============================================================================
+
+export const OAUTH_PROVIDER_CONFIG: Record<string, {icon: typeof SiGithub; label: string}> = {
+  github: {icon: SiGithub, label: 'GitHub'},
+  gitlab: {icon: SiGitlab, label: 'GitLab'},
+  google: {icon: SiGoogle, label: 'Google'},
+  okta: {icon: SiOkta, label: 'Okta'},
+};
+
+// ============================================================================
+// OAuth Provider Button
+// ============================================================================
+
+interface OAuthButtonProps {
+  provider: AuthProvider;
+  isLoading: boolean;
+  disabled: boolean;
+  onSignIn: () => void;
+  variant?: 'signin' | 'signup';
+}
+
+export function OAuthButton({
+  provider,
+  isLoading,
+  disabled,
+  onSignIn,
+  variant = 'signin',
+}: OAuthButtonProps) {
+  const config = OAUTH_PROVIDER_CONFIG[provider.id];
+  const Icon = config?.icon;
+  const providerLabel = config?.label || provider.name;
+  const actionLabel = variant === 'signup' ? 'Sign up with' : 'Continue with';
+  const label = `${actionLabel} ${providerLabel}`;
+
+  return (
+    <Button type="button" variant="outline" onClick={onSignIn} disabled={disabled} className="w-full">
+      {Icon && <Icon className={isLoading ? 'animate-pulse' : ''} />}
+      {isLoading ? 'Signing in...' : label}
+    </Button>
+  );
+}
+
+// ============================================================================
+// OAuth Providers List
+// ============================================================================
+
+interface OAuthProvidersProps {
+  providers: AuthProvider[];
+  callbackUrl: string;
+  variant?: 'signin' | 'signup';
+  onSignIn: (providerId: string) => Promise<void>;
+  loadingProvider: string | null;
+}
+
+export function OAuthProviders({
+  providers,
+  variant = 'signin',
+  onSignIn,
+  loadingProvider,
+}: OAuthProvidersProps) {
+  if (providers.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {providers.map(provider => (
+        <OAuthButton
+          key={provider.id}
+          provider={provider}
+          isLoading={loadingProvider === provider.id}
+          disabled={loadingProvider !== null}
+          onSignIn={() => onSignIn(provider.id)}
+          variant={variant}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ============================================================================
 // Email Domain Notice

@@ -23,13 +23,15 @@ export default function SignUpPage() {
     redirect(callbackUrl);
   }
 
-  if (!data.passwordAuthEnabled) {
+  // If password auth is not enabled and there are no OAuth providers, redirect to sign-in
+  if (!data.passwordAuthEnabled && data.providers.length === 0) {
     redirect(
       `/auth/signin?${NO_SIGNUP_REDIRECT_PARAM}=${NO_SIGNUP_REDIRECT_VALUE}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
     );
   }
 
   const allowedEmailDomains = data.allowedEmailDomains;
+  const providers = data.providers;
 
   return (
     <div className="bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -45,7 +47,12 @@ export default function SignUpPage() {
             Dynamic configuration for apps and services
           </p>
         </div>
-        <SignUpForm callbackUrl={callbackUrl} allowedEmailDomains={allowedEmailDomains} />
+        <SignUpForm
+          callbackUrl={callbackUrl}
+          allowedEmailDomains={allowedEmailDomains}
+          providers={providers}
+          passwordAuthEnabled={data.passwordAuthEnabled}
+        />
         <div className="text-muted-foreground text-balance text-center text-xs">
           By clicking continue, you agree to our{' '}
           <a href="/terms" className="underline underline-offset-4 hover:text-foreground">

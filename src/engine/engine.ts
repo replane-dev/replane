@@ -85,6 +85,7 @@ import {createUpdateNotificationPreferencesUseCase} from './core/use-cases/updat
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
+import {createUpdateUserProfileUseCase} from './core/use-cases/update-user-profile-use-case';
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
 import {createVerifyPasswordCredentialsUseCase} from './core/use-cases/verify-password-credentials-use-case';
@@ -326,6 +327,7 @@ export async function createEngine(options: EngineOptions) {
     // User account use cases
     initUser: createInitUserUseCase(),
     deleteUserAccount: createDeleteUserAccountUseCase(),
+    updateUserProfile: createUpdateUserProfileUseCase(),
     registerWithPassword: createRegisterWithPasswordUseCase({
       passwordAuthEnabled: options.passwordAuthEnabled ?? false,
       logger,

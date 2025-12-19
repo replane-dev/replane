@@ -103,6 +103,29 @@ export const appRouter = createTRPCRouter({
         confirmEmail: opts.input.confirmEmail,
       });
     }),
+  updateUserProfile: baseProcedure
+    .input(
+      z.object({
+        /** Base64 data URL for new image, null to remove, undefined to keep unchanged */
+        image: z
+          .string()
+          .max(Math.ceil(MAX_IMAGE_UPLOAD_SIZE * 1.4)) // base64 encoding overhead (~37%)
+          .regex(ACCEPTED_IMAGE_TYPES_REGEX, {
+            message: 'Invalid image format. Please upload a PNG, JPEG, WebP, or GIF image.',
+          })
+          .nullable()
+          .optional(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.currentUserEmail) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.updateUserProfile(GLOBAL_CONTEXT, {
+        currentUserEmail: opts.ctx.currentUserEmail,
+        image: opts.input.image,
+      });
+    }),
   getWorkspaceMembers: baseProcedure.input(z.object({workspaceId: Uuid()})).query(async opts => {
     if (!opts.ctx.currentUserEmail) {
       throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});

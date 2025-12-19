@@ -22,35 +22,26 @@ import {useState} from 'react';
 import {useForm} from 'react-hook-form';
 import {toast} from 'sonner';
 import {z} from 'zod';
-import {EmailDomainNotice, ErrorBanner, OrDivider, PasswordInput} from './shared';
+import {
+  type AuthProvider,
+  EmailDomainNotice,
+  ErrorBanner,
+  OAuthProviders,
+  OrDivider,
+  PasswordInput,
+} from './shared';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface Provider {
-  id: string;
-  name: string;
-}
-
 interface SignInFormProps {
-  providers: Provider[];
+  providers: AuthProvider[];
   callbackUrl: string;
   error?: string | null;
   allowedEmailDomains?: string[] | null;
   passwordAuthEnabled?: boolean;
 }
-
-// ============================================================================
-// Provider Configuration
-// ============================================================================
-
-const OAUTH_PROVIDER_CONFIG: Record<string, {icon: typeof SiGithub; label: string}> = {
-  github: {icon: SiGithub, label: 'Continue with GitHub'},
-  gitlab: {icon: SiGitlab, label: 'Continue with GitLab'},
-  google: {icon: SiGoogle, label: 'Continue with Google'},
-  okta: {icon: SiOkta, label: 'Continue with Okta'},
-};
 
 const PROVIDER_SETUP_INFO = [
   {
@@ -132,35 +123,6 @@ function CopyButton({text}: {text: string}) {
   );
 }
 
-// ============================================================================
-// OAuth Provider Button
-// ============================================================================
-
-interface OAuthButtonProps {
-  provider: Provider;
-  isLoading: boolean;
-  disabled: boolean;
-  onSignIn: () => void;
-}
-
-function OAuthButton({provider, isLoading, disabled, onSignIn}: OAuthButtonProps) {
-  const config = OAUTH_PROVIDER_CONFIG[provider.id];
-  const Icon = config?.icon;
-  const label = config?.label || `Continue with ${provider.name}`;
-
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={onSignIn}
-      disabled={disabled}
-      className="w-full"
-    >
-      {Icon && <Icon className={isLoading ? 'animate-pulse' : ''} />}
-      {isLoading ? 'Signing in...' : label}
-    </Button>
-  );
-}
 
 // ============================================================================
 // Password Sign-In Form
@@ -574,19 +536,13 @@ export function SignInForm({
               {!showPasswordForm && !passwordIsOnlyOption && (
                 <>
                   {/* OAuth buttons */}
-                  {oauthProviders.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      {oauthProviders.map(provider => (
-                        <OAuthButton
-                          key={provider.id}
-                          provider={provider}
-                          isLoading={loadingProvider === provider.id}
-                          disabled={loadingProvider !== null}
-                          onSignIn={() => handleOAuthSignIn(provider.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <OAuthProviders
+                    providers={oauthProviders}
+                    callbackUrl={callbackUrl}
+                    variant="signin"
+                    onSignIn={handleOAuthSignIn}
+                    loadingProvider={loadingProvider}
+                  />
 
                   {/* Password option button */}
                   {hasCredentialsProvider && hasOtherProviders && (

@@ -72,6 +72,31 @@ export class UserStore {
   async deleteById(userId: number): Promise<void> {
     await this.db.deleteFrom('users').where('id', '=', userId).execute();
   }
+
+  async updateById(params: {
+    id: number;
+    name?: string;
+    image?: string | null;
+  }): Promise<User | undefined> {
+    const updates: Partial<{name: string; image: string | null}> = {};
+    if (params.name !== undefined) updates.name = params.name;
+    if (params.image !== undefined) updates.image = params.image;
+
+    if (Object.keys(updates).length === 0) {
+      return this.getById(params.id);
+    }
+
+    const result = await this.db
+      .updateTable('users')
+      .set(updates)
+      .where('id', '=', params.id)
+      .returning(['id', 'email', 'name', 'emailVerified', 'image'])
+      .executeTakeFirst();
+
+    console.log('result', result);
+
+    return result ? mapUser(result) : undefined;
+  }
 }
 
 function mapUser(user: Selectable<Users>): User {
