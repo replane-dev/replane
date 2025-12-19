@@ -1,8 +1,8 @@
+import {getDatabaseUrl} from '@/environment';
 import {type Context, GLOBAL_CONTEXT} from '../core/context';
 import {createLogger} from '../core/logger';
 import {migrate} from '../core/migrations';
 import {getPgPool} from '../core/pg-pool-cache';
-import {getDatabaseUrl} from '../engine-singleton';
 
 async function main(ctx: Context) {
   const logger = createLogger({level: 'info'});

@@ -1,5 +1,4 @@
-import {isEmailServerConfigured} from '@/lib/email-server-config';
-
+import {isEmailServerConfigured} from '@/environment';
 import type {ProjectListItem} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 import type {WorkspaceListItem} from '../workspace-query-service';

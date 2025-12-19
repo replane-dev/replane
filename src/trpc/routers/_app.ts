@@ -17,8 +17,7 @@ import {
   MaintainerArray,
   Uuid,
 } from '@/engine/core/zod';
-import {isPasswordAuthEnabled} from '@/engine/engine-singleton';
-import {getAllowedEmailDomains} from '@/lib/email-domain-validator';
+import {getAllowedEmailDomains, isPasswordAuthEnabled} from '@/environment';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';

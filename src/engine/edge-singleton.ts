@@ -1,4 +1,5 @@
 import {Lazy} from '@/engine/core/lazy';
+import {getDatabaseUrl} from '@/environment';
 import * as Sentry from '@sentry/nextjs';
 import {ENGINE_STOP_TIMEOUT_MS} from './core/constants';
 import {GLOBAL_CONTEXT} from './core/context';
@@ -6,7 +7,6 @@ import {createLogger} from './core/logger';
 import {stopAllPools} from './core/pg-pool-cache';
 import {ensureDefined, wait} from './core/utils';
 import {createEdge, type Edge} from './edge';
-import {getDatabaseUrl} from './engine-singleton';
 
 // Shared singleton for SDK/edge operations.
 export const edgeLazy = new Lazy(async () => {
@@ -61,4 +61,3 @@ export const edgeLazy = new Lazy(async () => {
 export async function getEdgeSingleton(): Promise<Edge> {
   return edgeLazy.get();
 }
-

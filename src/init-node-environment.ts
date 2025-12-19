@@ -2,13 +2,13 @@ import '../sentry.server.config';
 
 import 'next-logger';
 
-import {getEmailServerConfig} from '@/lib/email-server-config';
+import {getEmailServerConfig} from '@/environment';
 
 if (!process.env.BASE_URL) {
   throw new Error('BASE_URL is not defined');
 }
-if (!process.env.SECRET_KEY_BASE) {
-  throw new Error('SECRET_KEY_BASE is not defined');
+if (!process.env.SECRET_KEY) {
+  throw new Error('SECRET_KEY is not defined');
 }
 
 if (process.env.MAGIC_LINK_ENABLED === 'true') {
@@ -20,5 +20,5 @@ if (process.env.MAGIC_LINK_ENABLED === 'true') {
   }
 }
 
-process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY_BASE;
+process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;

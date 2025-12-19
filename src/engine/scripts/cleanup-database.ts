@@ -1,7 +1,7 @@
 // This is intended for local development only to cleanup database schemas used for testing
 
+import {getDatabaseUrl} from '@/environment';
 import {Client} from 'pg';
-import {getDatabaseUrl} from '../engine-singleton';
 
 async function main() {
   const client = new Client({

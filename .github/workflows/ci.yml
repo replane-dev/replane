@@ -34,7 +34,7 @@ jobs:
           # Required env vars for build (using dummy values)
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
           BASE_URL: http://localhost:8080
-          SECRET_KEY_BASE: dummy-secret-key-for-ci-build-only
+          SECRET_KEY: dummy-secret-key-for-ci-build-only
           NEXTAUTH_SECRET: dummy-secret-key-for-ci-build-only
           NEXTAUTH_URL: http://localhost:8080
 
@@ -101,6 +101,6 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/replane_test
           BASE_URL: http://localhost:8080
-          SECRET_KEY_BASE: test-secret-key-for-ci
+          SECRET_KEY: test-secret-key-for-ci
           NEXTAUTH_SECRET: test-secret-key-for-ci
           NEXTAUTH_URL: http://localhost:8080

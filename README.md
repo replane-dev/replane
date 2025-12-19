@@ -39,7 +39,7 @@ Non‑engineering teammates (product, operations, support) can safely change val
 One line to get started:
 
 ```sh
-docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY_BASE=secret replane/replane
+docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=changeme replane/replane
 ```
 
 Example docker‑compose.yml:
@@ -63,7 +63,7 @@ services:
       # Optional, Replane can start without an external database
       DATABASE_URL: postgresql://postgres:postgres@db:5432/replane
       BASE_URL: http://localhost:8080
-      SECRET_KEY_BASE: change-me-to-a-long-random-string
+      SECRET_KEY: change-me-to-a-long-random-string
       # Pick one or more providers (GitHub example below)
       GITHUB_CLIENT_ID: your-github-client-id
       GITHUB_CLIENT_SECRET: your-github-client-secret
@@ -110,7 +110,7 @@ Notes
 ### Required
 
 - `BASE_URL` – e.g. http://localhost:8080 or your external URL
-- `SECRET_KEY_BASE` – long random string (used to sign sessions)
+- `SECRET_KEY` – long random string (used to sign sessions)
 
 ### PostgreSQL Database
 
@@ -284,7 +284,7 @@ All state is stored in PostgreSQL when `DATABASE_URL` is not set. For the integr
 
 ## Security
 
-- Always set a strong `SECRET_KEY_BASE`.
+- Always set a strong `SECRET_KEY`.
 - Run behind HTTPS in production (via reverse proxy or platform LB).
 - Restrict database network access to the app only.
 

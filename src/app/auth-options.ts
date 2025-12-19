@@ -1,12 +1,16 @@
-import {MAGIC_LINK_MAX_AGE_SECONDS, PASSWORD_PROVIDER_NAME} from '@/engine/core/constants';
+import {JWT_MAX_AGE_SECONDS, PASSWORD_PROVIDER_NAME} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {TooManyRequestsError} from '@/engine/core/errors';
 import {createLogger} from '@/engine/core/logger';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {ensureDefined, normalizeEmail} from '@/engine/core/utils';
-import {getDatabaseUrl, getEngineSingleton, isPasswordAuthEnabled} from '@/engine/engine-singleton';
-import {isEmailDomainAllowed} from '@/lib/email-domain-validator';
-import {getEmailServerConfig, isMagicLinkAuthEnabled} from '@/lib/email-server-config';
+import {getEngineSingleton} from '@/engine/engine-singleton';
+import {
+  getDatabaseUrl,
+  getEmailServerConfig,
+  getEnabledAuthProviders,
+  isEmailDomainAllowed,
+} from '@/environment';
 import {authRateLimiter} from '@/lib/rate-limiter';
 import PostgresAdapter from '@auth/pg-adapter';
 import * as Sentry from '@sentry/nextjs';
@@ -32,11 +36,13 @@ export function getAuthOptions(): AuthOptions {
     process.on(signal, freePool);
   });
 
+  const enabledAuthProviders = getEnabledAuthProviders();
+
   cached = {
     // Important: use JWT session strategy so middleware can authorize via getToken
     session: {strategy: 'jwt'},
     jwt: {
-      maxAge: MAGIC_LINK_MAX_AGE_SECONDS,
+      maxAge: JWT_MAX_AGE_SECONDS,
     },
     // Provide a stable secret so both middleware (edge) and server can verify tokens
     secret: ensureDefined(process.env.NEXTAUTH_SECRET, 'NEXTAUTH_SECRET is not defined'),
@@ -49,7 +55,7 @@ export function getAuthOptions(): AuthOptions {
     providers: [
       // Credentials provider (email/password) - requires PASSWORD_AUTH_ENABLED=true
       (() => {
-        if (!isPasswordAuthEnabled()) {
+        if (!enabledAuthProviders.includes('credentials')) {
           return [];
         }
         return [
@@ -104,7 +110,7 @@ export function getAuthOptions(): AuthOptions {
       })(),
       // Email provider (magic link) - requires MAGIC_LINK_ENABLED=true and email server configuration
       (() => {
-        if (!isMagicLinkAuthEnabled()) {
+        if (!enabledAuthProviders.includes('email')) {
           return [];
         }
         const emailConfig = getEmailServerConfig();
@@ -143,7 +149,7 @@ export function getAuthOptions(): AuthOptions {
           }),
         ];
       })(),
-      process.env.GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_SECRET
+      enabledAuthProviders.includes('github')
         ? [
             GithubProvider({
               clientId: ensureDefined(
@@ -158,7 +164,7 @@ export function getAuthOptions(): AuthOptions {
             }),
           ]
         : [],
-      process.env.GITLAB_CLIENT_ID || process.env.GITLAB_CLIENT_SECRET
+      enabledAuthProviders.includes('gitlab')
         ? [
             GitlabProvider({
               clientId: ensureDefined(
@@ -173,7 +179,7 @@ export function getAuthOptions(): AuthOptions {
             }),
           ]
         : [],
-      process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_SECRET
+      enabledAuthProviders.includes('google')
         ? [
             GoogleProvider({
               clientId: ensureDefined(
@@ -188,7 +194,7 @@ export function getAuthOptions(): AuthOptions {
             }),
           ]
         : [],
-      process.env.OKTA_CLIENT_ID || process.env.OKTA_CLIENT_SECRET || process.env.OKTA_ISSUER
+      enabledAuthProviders.includes('okta')
         ? [
             OktaProvider({
               clientId: ensureDefined(process.env.OKTA_CLIENT_ID, 'OKTA_CLIENT_ID is not defined'),
