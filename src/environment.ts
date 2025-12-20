@@ -264,3 +264,16 @@ export function getPort(): number {
 export function isDevelopment(): boolean {
   return process.env.NODE_ENV !== 'production';
 }
+
+/**
+ * Checks if user registration is disabled.
+ * Controlled by DISABLE_REGISTRATION environment variable.
+ *
+ * When enabled, new user signups are blocked. Existing users can still sign in.
+ * Useful for private instances or when you want to manage users manually.
+ *
+ * @returns true if registration is disabled, false otherwise
+ */
+export function isRegistrationDisabled(): boolean {
+  return process.env.DISABLE_REGISTRATION === 'true';
+}

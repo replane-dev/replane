@@ -1,4 +1,4 @@
-import {isEmailDomainAllowed} from '@/environment';
+import {isEmailDomainAllowed, isRegistrationDisabled} from '@/environment';
 import {BadRequestError, ForbiddenError} from '../errors';
 import type {Logger} from '../logger';
 import {hashPassword, validatePassword} from '../password-utils';
@@ -31,6 +31,16 @@ export function createRegisterWithPasswordUseCase(
     // Check if password auth is enabled (unless bypassed for initial setup)
     if (!options.passwordAuthEnabled) {
       throw new ForbiddenError('Password authentication is not enabled');
+    }
+
+    // Check if registration is disabled
+    if (isRegistrationDisabled()) {
+      logger.warn(ctx, {
+        msg: 'Auth: registration blocked - registration is disabled',
+        email: req.email,
+        event: 'auth.register.disabled',
+      });
+      throw new ForbiddenError('Registration is disabled');
     }
 
     const email = req.email.toLowerCase();

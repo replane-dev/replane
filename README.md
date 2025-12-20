@@ -108,6 +108,9 @@ services:
       # EMAIL_SERVER_PASSWORD: smtp-user-password
       # EMAIL_FROM: noreply@your-domain.com
 
+      # Disable new user registration (existing users can still sign in)
+      # DISABLE_REGISTRATION: true
+
       # Restrict sign-up to specific email domains
       # ALLOWED_EMAIL_DOMAINS: gmail.com,my-company.com
 
@@ -223,6 +226,7 @@ Email server configuration is required for magic link authentication. It can be 
 
 ### Optional
 
+- `DISABLE_REGISTRATION=true` – Disables new user registration. Existing users can still sign in. Useful for private instances or when you want to manage users manually.
 - `ALLOWED_EMAIL_DOMAINS` – comma-separated list of email domains allowed for user registration (e.g., `gmail.com,my-company.com`). If not set, all email domains are allowed. Users with email addresses from other domains will be blocked from signing up.
 - `HEALTHCHECK_PATH` – custom path for the health check endpoint. Defaults to `/api/health`.
 

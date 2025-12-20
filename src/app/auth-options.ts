@@ -10,6 +10,7 @@ import {
   getEmailServerConfig,
   getEnabledAuthProviders,
   isEmailDomainAllowed,
+  isRegistrationDisabled,
 } from '@/environment';
 import {authRateLimiter} from '@/lib/rate-limiter';
 import PostgresAdapter from '@auth/pg-adapter';
@@ -221,6 +222,24 @@ export function getAuthOptions(): AuthOptions {
             });
             // Return a redirect to the error page with AccessDenied error
             return '/auth/error?error=AccessDenied';
+          }
+
+          // Check if registration is disabled for new users (OAuth/magic link)
+          // Credentials provider handles this in its own use case
+          if (isRegistrationDisabled() && account?.provider !== 'credentials' && email) {
+            const engine = await getEngineSingleton();
+            const {exists} = await engine.useCases.userExists(GLOBAL_CONTEXT, {
+              email: email.toLowerCase(),
+            });
+            if (!exists) {
+              logger.warn(GLOBAL_CONTEXT, {
+                msg: 'Sign-in blocked: registration is disabled',
+                email,
+                provider: account?.provider,
+                event: 'auth.register.disabled',
+              });
+              return '/auth/error?error=AccessDenied';
+            }
           }
 
           // Provider-specific validations

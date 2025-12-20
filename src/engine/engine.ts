@@ -88,6 +88,7 @@ import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-u
 import {createUpdateUserProfileUseCase} from './core/use-cases/update-user-profile-use-case';
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
+import {createUserExistsUseCase} from './core/use-cases/user-exists-use-case';
 import {createVerifyPasswordCredentialsUseCase} from './core/use-cases/verify-password-credentials-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
@@ -338,6 +339,7 @@ export async function createEngine(options: EngineOptions) {
       logger,
     }),
     hasUsers: createHasUsersUseCase(),
+    userExists: createUserExistsUseCase(),
     // Notification preferences use cases
     getNotificationPreferences: createGetNotificationPreferencesUseCase(),
     updateNotificationPreferences: createUpdateNotificationPreferencesUseCase(),
