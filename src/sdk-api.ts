@@ -129,8 +129,8 @@ const ReplicationStreamRecord = z
 type ReplicationStreamRecord = z.infer<typeof ReplicationStreamRecord>;
 
 const StartReplicationStreamBody = z.object({
-  currentConfigs: z.array(ConfigDto),
-  requiredConfigs: z.array(z.string()),
+  currentConfigs: z.array(ConfigDto).optional(),
+  requiredConfigs: z.array(z.string()).optional(),
 });
 
 export type StartReplicationStreamBody = z.infer<typeof StartReplicationStreamBody>;
@@ -313,7 +313,7 @@ export function createSdkState(
   options: StartReplicationStreamBody & {serverConfigs: ConfigDto[]},
 ): ConfigDto[] {
   const configs = new Map<string, ConfigDto>();
-  for (const config of options.currentConfigs) {
+  for (const config of options.currentConfigs ?? []) {
     configs.set(config.name, config);
   }
 
@@ -322,7 +322,7 @@ export function createSdkState(
   }
 
   const missingConfigs = new Set<string>();
-  for (const configName of options.requiredConfigs) {
+  for (const configName of options.requiredConfigs ?? []) {
     if (!configs.has(configName)) {
       missingConfigs.add(configName);
     }
