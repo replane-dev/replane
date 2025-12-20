@@ -61,6 +61,7 @@ export class EventHubTopic<T> implements Topic<T> {
       })
       .where('id', '=', consumerId)
       .where('topic', '=', this.topic)
+      .returningAll()
       .execute();
 
     if (affected.length !== 1) {
