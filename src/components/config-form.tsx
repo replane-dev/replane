@@ -171,6 +171,9 @@ export function ConfigForm(props: ConfigFormProps) {
   // Track which action button was clicked
   const submitActionRef = React.useRef<'save' | 'propose' | null>(null);
 
+  // Track if we've successfully submitted to prevent useEffect from re-dirtying
+  const hasSubmittedRef = React.useRef(false);
+
   // Create variant-specific schema
   const variantSchema = z.object({
     environmentId: z.string(),
@@ -480,6 +483,9 @@ export function ConfigForm(props: ConfigFormProps) {
       editorEmails,
     };
 
+    // Mark as submitted to prevent useEffect from re-dirtying during async operations
+    hasSubmittedRef.current = true;
+
     // Reset the form's dirty state before calling callbacks
     // (callbacks may close the sheet, so we need to clear dirty state first)
     form.reset(values, {keepValues: true});
@@ -581,6 +587,11 @@ export function ConfigForm(props: ConfigFormProps) {
 
   // Notify parent when form dirty state changes
   React.useEffect(() => {
+    // Skip if we've already submitted successfully - prevents race condition
+    // where useEffect fires with stale isDirty value during async submission
+    if (hasSubmittedRef.current) {
+      return;
+    }
     if (onDirtyChange) {
       onDirtyChange(form.formState.isDirty);
     }
