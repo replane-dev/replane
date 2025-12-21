@@ -21,6 +21,8 @@ Replane is a dynamic configuration manager. Store feature flags, app settings, a
 docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=xxx replane/replane
 ```
 
+Open your browser at http://localhost:8080.
+
 ## Use cases
 
 - **Feature flags** – toggle features, run A/B tests, roll out to user segments
