@@ -48,7 +48,7 @@ Open your browser at http://localhost:8080.
 
 ## Official SDKs
 
-| Language   | Package             | Links                                                                                                                |
+| Technology | Package             | Links                                                                                                                |
 | ---------- | ------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | JavaScript | `@replanejs/sdk`    | [npm](https://www.npmjs.com/package/@replanejs/sdk) · [GitHub](https://github.com/replane-dev/replane-javascript)    |
 | React      | `@replanejs/react`  | [npm](https://www.npmjs.com/package/@replanejs/react) · [GitHub](https://github.com/replane-dev/replane-javascript)  |
