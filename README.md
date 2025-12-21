@@ -319,52 +319,9 @@ Notes
 
 All state is stored in PostgreSQL when `DATABASE_URL` is not set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
 
-## Building from source
+## Contributing
 
-To build Replane from source code, you need:
-
-- **Node.js**: Version 22.0.0 or greater (specified in `package.json` engines)
-- **pnpm**: Version 10.7.0 or greater (check with `pnpm --version`)
-
-Start by cloning the repository:
-
-```sh
-git clone https://github.com/replane-dev/replane.git
-cd replane
-```
-
-Install dependencies:
-
-```sh
-pnpm install
-```
-
-### Environment setup
-
-Before running the app, configure the required environment variables. Create a `.env` (see `.env.example`) file in the project root:
-
-```sh
-BASE_URL=http://localhost:3000
-SECRET_KEY=your-development-secret-key
-DATABASE_URL=postgresql://user:pass@host:5432/replane
-```
-
-### Production build
-
-Build the application for production:
-
-```sh
-pnpm build
-```
-
-Run migrations and start the server:
-
-```sh
-pnpm migrate
-pnpm start
-```
-
-See [Environment variables](#environment-variables) below for all available options.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on building from source and contributing to Replane.
 
 ## Security
 
