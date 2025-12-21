@@ -2,7 +2,6 @@
 <p align="center">Dynamic configuration for apps and services.</p>
 
 <p align="center">
-  <a href="https://github.com/replane-dev/replane/actions"><img src="https://github.com/replane-dev/replane/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://hub.docker.com/r/replane/replane"><img src="https://img.shields.io/docker/v/replane/replane?label=docker" alt="Docker"></a>
   <a href="https://github.com/replane-dev/replane/blob/main/LICENSE"><img src="https://img.shields.io/github/license/replane-dev/replane" alt="License"></a>
   <a href="https://github.com/orgs/replane-dev/discussions"><img src="https://img.shields.io/badge/discussions-join-blue?logo=github" alt="Community"></a>
@@ -39,10 +38,14 @@ Replane is a dynamic configuration manager. Store feature flags, app settings, a
 
 ## Official SDKs
 
-- [JavaScript](https://github.com/replane-dev/replane-javascript)
-- React (coming soon)
-- Next.js (coming soon)
-- Python (coming soon)
+| Language   | Package             | Links                                                                                                                |
+| ---------- | ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| JavaScript | `@replanejs/sdk`    | [npm](https://www.npmjs.com/package/@replanejs/sdk) · [GitHub](https://github.com/replane-dev/replane-javascript)    |
+| React      | `@replanejs/react`  | [npm](https://www.npmjs.com/package/@replanejs/react) · [GitHub](https://github.com/replane-dev/replane-javascript)  |
+| Next.js    | `@replanejs/next`   | [npm](https://www.npmjs.com/package/@replanejs/next) · [GitHub](https://github.com/replane-dev/replane-javascript)   |
+| Svelte     | `@replanejs/svelte` | [npm](https://www.npmjs.com/package/@replanejs/svelte) · [GitHub](https://github.com/replane-dev/replane-javascript) |
+| Python     | `replane`           | [PyPI](https://pypi.org/project/replane/) · [GitHub](https://github.com/replane-dev/replane-python)                  |
+| .NET       | `Replane`           | [NuGet](https://www.nuget.org/packages/Replane) · [GitHub](https://github.com/replane-dev/replane-dotnet)            |
 
 ## Self‑hosting with Docker
 
