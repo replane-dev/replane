@@ -374,6 +374,10 @@ See [Environment variables](#environment-variables) below for all available opti
 
 For detailed security guidelines and to report vulnerabilities, see [SECURITY.md](SECURITY.md).
 
+## Community
+
+Have questions or want to discuss Replane? Join the conversation in [GitHub Discussions](https://github.com/orgs/replane-dev/discussions).
+
 ## Related
 
 - JavaScript SDK lives in https://github.com/replane-dev/replane-javascript.
