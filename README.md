@@ -3,8 +3,9 @@
 
 <p align="center">
   <a href="https://github.com/replane-dev/replane/actions"><img src="https://github.com/replane-dev/replane/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/replane-dev/replane/pkgs/container/replane"><img src="https://img.shields.io/badge/ghcr.io-replane-blue" alt="Docker"></a>
+  <a href="https://hub.docker.com/r/replane/replane"><img src="https://img.shields.io/docker/v/replane/replane?label=docker" alt="Docker"></a>
   <a href="https://github.com/replane-dev/replane/blob/main/LICENSE"><img src="https://img.shields.io/github/license/replane-dev/replane" alt="License"></a>
+  <a href="https://github.com/orgs/replane-dev/discussions"><img src="https://img.shields.io/badge/discussions-join-blue?logo=github" alt="Community"></a>
 </p>
 
 <picture>
