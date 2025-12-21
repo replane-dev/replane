@@ -36,7 +36,7 @@ Open your browser at http://localhost:8080.
 
 - **Version history** – every change creates a snapshot; restore any previous state
 - **Change proposals** – require review before changes go live; per-project or per-environment
-- **Realtime updates** – SDKs receive changes instantly via Server-Sent Events
+- **Realtime updates** – SDKs receive latest changes via Server-Sent Events
 - **Audit log** – track who changed what, when, and why
 - **JSON Schema validation** – prevent invalid configs; auto-generate TypeScript types
 - **Environments** – different values for production, staging, development
