@@ -54,7 +54,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: 'Support',
-      url: 'https://github.com/replane-dev/replane/issues',
+      url: 'https://github.com/orgs/replane-dev/discussions/categories/q-a',
       icon: LifeBuoy,
       target: '_blank' as const,
     },
