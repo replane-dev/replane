@@ -43,6 +43,8 @@ Open your browser at http://localhost:8080.
 - **Overrides** – return different values based on context (user ID, plan, region)
 - **Role-based access** – workspace admins, project maintainers, config editors
 - **Email notifications** – notify approvers and authors on proposal events
+- **High availability** – each node [can operate independently](https://replane.dev/docs/concepts/architecture/#high-availability) if others are down
+- **Low latency** – sub-millisecond config reads; sub-second propagation via SSE
 
 ## Official SDKs
 
