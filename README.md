@@ -327,7 +327,7 @@ Notes
 
 ## Backups
 
-All state is stored in PostgreSQL when `DATABASE_URL` is not set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
+All state is stored in PostgreSQL when `DATABASE_URL` is set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
 
 ## Contributing
 
@@ -339,7 +339,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on building from source 
 - Run behind HTTPS in production (via reverse proxy or platform LB).
 - Restrict database network access to the app only.
 
-For detailed security guidelines and to report vulnerabilities, see [SECURITY.md](SECURITY.md).
+For detailed security guidelines and to report vulnerabilities, see [SECURITY.md](https://github.com/replane-dev/.github/blob/main/SECURITY.md).
 
 ## Community
 
