@@ -4,8 +4,10 @@ import {ErrorFallback} from '@/components/error-fallback';
 import {DelayedFullscreenSpinner} from '@/components/spinner';
 import {ThemeProvider} from '@/components/theme-provider';
 import {Toaster} from '@/components/ui/sonner';
+import {DEFAULT_CONFIGS, type ReplaneConfigs} from '@/replane/types';
 import {TRPCReactProvider} from '@/trpc/client';
 import {HydrateClient} from '@/trpc/server';
+import {ReplaneRoot} from '@replanejs/next';
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import {Suspense} from 'react';
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -62,15 +64,23 @@ export default function RootLayout({
         </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <AuthSession>
-              <HydrateClient>
-                <ErrorBoundary FallbackComponent={ErrorFallback}>
-                  <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>
-                    <BrowserOnly>{children}</BrowserOnly>
-                  </Suspense>
-                </ErrorBoundary>
-              </HydrateClient>
-            </AuthSession>
+            <ReplaneRoot<ReplaneConfigs>
+              options={{
+                baseUrl: process.env.REPLANE_BASE_URL!,
+                sdkKey: process.env.REPLANE_SDK_KEY!,
+                fallbacks: DEFAULT_CONFIGS,
+              }}
+            >
+              <AuthSession>
+                <HydrateClient>
+                  <ErrorBoundary FallbackComponent={ErrorFallback}>
+                    <Suspense fallback={<DelayedFullscreenSpinner delay={1000} />}>
+                      <BrowserOnly>{children}</BrowserOnly>
+                    </Suspense>
+                  </ErrorBoundary>
+                </HydrateClient>
+              </AuthSession>
+            </ReplaneRoot>
             <Toaster
               toastOptions={{
                 classNames: {

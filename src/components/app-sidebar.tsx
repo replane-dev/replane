@@ -13,6 +13,7 @@ import {
 import * as React from 'react';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
+import {AnnouncementBanner} from '@/components/announcement-banner';
 import {FeedbackDialog} from '@/components/feedback-dialog';
 import {NavMain} from '@/components/nav-main';
 import {NavSecondary} from '@/components/nav-secondary';
@@ -103,7 +104,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
   return (
     <>
       <Sidebar variant="inset" {...props}>
-        <SidebarHeader className="space-y-2">
+        <SidebarHeader>
           <OrgSwitcher />
         </SidebarHeader>
         <SidebarContent>
@@ -113,7 +114,10 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
           <div className="ml-2">
             <NavMain items={data.navMain} />
           </div>
-          <NavSecondary items={data.navSecondary} className="mt-auto" />
+          <div className="mt-auto flex flex-col">
+            <AnnouncementBanner />
+            <NavSecondary items={data.navSecondary} />
+          </div>
         </SidebarContent>
         <SidebarFooter>
           <NavUser />
