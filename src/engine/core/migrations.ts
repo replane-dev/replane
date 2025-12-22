@@ -1562,7 +1562,10 @@ export async function migrateStep(
 
     assert(
       runCount <= migrations.length,
-      `Unexpected number of run migrations: ${runCount} > ${migrations.length}`,
+      `Database version mismatch: the database has ${runCount} migrations applied, ` +
+        `but this version of Replane only knows about ${migrations.length}. ` +
+        `This typically happens when a newer version of Replane was previously run against this database. ` +
+        `Please upgrade to the latest version of Replane to continue.`,
     );
 
     // Check if all migrations are complete
