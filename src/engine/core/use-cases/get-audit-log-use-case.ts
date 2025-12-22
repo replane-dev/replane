@@ -1,9 +1,9 @@
+import type {Identity} from '../identity';
 import type {AuditLog} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetAuditLogRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   from?: Date; // inclusive
   to?: Date; // exclusive
   authorEmails?: string[]; // normalized emails expected
@@ -31,7 +31,7 @@ export function createGetAuditLogUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     let userIds: number[] | undefined = undefined;

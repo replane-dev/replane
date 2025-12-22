@@ -39,12 +39,14 @@ export class ConfigQueryService {
   async getConfigDetails(opts: {
     name: string;
     projectId: string;
-    currentUserEmail: NormalizedEmail;
+    currentUserEmail?: NormalizedEmail;
   }): Promise<ConfigDetails | undefined> {
-    const myProjectRole = await this.projectUsers.getByProjectIdAndEmail({
-      projectId: opts.projectId,
-      userEmail: opts.currentUserEmail,
-    });
+    const myProjectRole = opts.currentUserEmail
+      ? await this.projectUsers.getByProjectIdAndEmail({
+          projectId: opts.projectId,
+          userEmail: opts.currentUserEmail,
+        })
+      : null;
 
     const config = await this.configs.getByName({
       name: opts.name,
@@ -56,8 +58,10 @@ export class ConfigQueryService {
 
     const configUsers = await this.configUsers.getByConfigId(config.id);
 
-    const myConfigRole =
-      configUsers.find(cu => cu.user_email_normalized === opts.currentUserEmail)?.role ?? 'viewer';
+    const myConfigRole = opts.currentUserEmail
+      ? (configUsers.find(cu => cu.user_email_normalized === opts.currentUserEmail)?.role ??
+          'viewer')
+      : 'viewer';
 
     // Get all environment-specific variants for this config
     // (default variant is now part of the config itself)

@@ -1,12 +1,13 @@
+import type {Identity} from '../identity';
+import {isUserIdentity} from '../identity';
 import type {ProjectDetails} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export type {ProjectDetails};
 
 export interface GetProjectRequest {
   id: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetProjectResponse {
@@ -20,12 +21,15 @@ export function createGetProjectUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
+
+    // For API keys, we don't have a user email to get myRole
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
 
     const project = await tx.projectQueryService.getProject({
       id: req.id,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
 
     return {project};

@@ -3,7 +3,7 @@ import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail, toSettledResult} from '@/engine/core/utils';
 import {TRPCError} from '@trpc/server';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -21,7 +21,7 @@ describe('Per-Environment Approvals', () => {
           requireProposals: true,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
     });
 
@@ -49,7 +49,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -120,7 +120,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -165,7 +165,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -237,7 +237,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -287,7 +287,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -343,7 +343,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Original description',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -413,7 +413,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -463,7 +463,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -517,7 +517,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL, otherMaintainerEmail],
           projectId: fixture.projectId,
@@ -567,7 +567,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Original description',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -630,7 +630,7 @@ describe('Per-Environment Approvals', () => {
         value: {x: 1},
         schema: null,
         description: 'Test config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -753,7 +753,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
           requireProposals: true,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Set requireProposals=true on production
@@ -772,7 +772,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
         value: {x: 1},
         schema: null,
         description: 'Version 1',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -787,7 +787,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
           requireProposals: false,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Update the config to version 2
@@ -829,7 +829,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
           requireProposals: true,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Try to restore to version 1 - should fail because production values would change
@@ -862,7 +862,7 @@ describe('Schema and override changes with per-environment approvals', () => {
         requireProposals: true,
         allowSelfApprovals: true,
       },
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Set requireProposals=true on production only
@@ -889,7 +889,7 @@ describe('Schema and override changes with per-environment approvals', () => {
       value: {x: 1},
       schema: null,
       description: 'Test config',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -939,7 +939,7 @@ describe('Schema and override changes with per-environment approvals', () => {
       value: {x: 1},
       schema: null,
       description: 'Test config',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -995,7 +995,7 @@ describe('Schema and override changes with per-environment approvals', () => {
       value: {x: 1},
       schema: null,
       description: 'Test config',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,

@@ -1,14 +1,14 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteProjectEnvironmentRequest {
   environmentId: string;
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface DeleteProjectEnvironmentResponse {}
@@ -21,7 +21,10 @@ export function createDeleteProjectEnvironmentUseCase(
   deps: DeleteProjectEnvironmentUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectEnvironmentRequest, DeleteProjectEnvironmentResponse> {
   return async (ctx, tx, req) => {
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     const environment = await tx.projectEnvironments.getById({
@@ -35,7 +38,7 @@ export function createDeleteProjectEnvironmentUseCase(
     // Check if user has admin permission
     await tx.permissionService.ensureCanManageProjectEnvironments(ctx, {
       projectId: environment.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Check if this is the last environment

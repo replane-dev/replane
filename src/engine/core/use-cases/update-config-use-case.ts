@@ -1,9 +1,10 @@
 import assert from 'assert';
 import type {Context} from '../context';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
-import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export interface UpdateConfigRequest {
   configId: string;
@@ -18,7 +19,7 @@ export interface UpdateConfigRequest {
     overrides: Override[];
     useDefaultSchema: boolean;
   }>;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   prevVersion: number;
   originalProposalId?: string;
 }
@@ -30,7 +31,10 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
   UpdateConfigResponse
 > {
   return async (ctx: Context, tx, req) => {
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    // Updating configs requires a user identity to track authorship
+    const currentUserEmail = requireUserEmail(req.identity);
+
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     // Get the config to check its project's requireProposals setting
@@ -42,7 +46,7 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
     // Get the project to check requireProposals setting
     const project = await tx.projects.getById({
       id: config.projectId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
     if (!project) {
       throw new BadRequestError('Project not found');

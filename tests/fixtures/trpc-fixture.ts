@@ -1,8 +1,9 @@
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
+import {createUserIdentity, type Identity} from '@/engine/core/identity';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {asConfigSchema, asConfigValue, type NormalizedEmail} from '@/engine/core/zod';
 import {createEdge, type Edge} from '@/engine/edge';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/environment';
@@ -38,6 +39,7 @@ export class AppFixture {
   private _projectId: string | undefined;
   private _productionEnvironmentId: string | undefined;
   private _developmentEnvironmentId: string | undefined;
+  private _identity: Identity | undefined;
 
   constructor(private options: TrpcFixtureOptions) {}
 
@@ -79,20 +81,21 @@ export class AppFixture {
     }
 
     const createCaller = createCallerFactory(appRouter);
+    this._identity = createUserIdentity(normalizeEmail(this.options.authEmail));
 
-    this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
+    this._trpc = createCaller({engine, identity: this._identity});
     this._engine = engine;
     this._edge = edge;
 
     // Create test workspace
     const {workspaceId} = await engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-      currentUserEmail: normalizeEmail(this.options.authEmail),
+      identity: this._identity,
       name: 'Test Workspace',
     });
     this._workspaceId = workspaceId;
 
     const {projectId, environments} = await engine.useCases.createProject(GLOBAL_CONTEXT, {
-      currentUserEmail: normalizeEmail(this.options.authEmail),
+      identity: this._identity,
       workspaceId,
       name: 'Test Project',
       description: 'Default project for tests',
@@ -109,6 +112,13 @@ export class AppFixture {
 
   setNow(date: Date) {
     this.overrideNow = date;
+  }
+
+  get identity(): Identity {
+    if (!this._identity) {
+      throw new Error('identity is not initialized');
+    }
+    return this._identity;
   }
 
   get trpc(): TrpcCaller {
@@ -174,7 +184,7 @@ export class AppFixture {
     schema: unknown | null;
     overrides: any[];
     description: string;
-    currentUserEmail: string;
+    identity: Identity;
     editorEmails: string[];
     maintainerEmails: string[];
     projectId: string;
@@ -182,13 +192,13 @@ export class AppFixture {
     // Fetch environments for the specific project
     const {environments} = await this.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
       projectId: params.projectId,
-      currentUserEmail: normalizeEmail(params.currentUserEmail),
+      identity: params.identity,
     });
 
     return this.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: params.name,
       description: params.description,
-      currentUserEmail: normalizeEmail(params.currentUserEmail),
+      identity: params.identity,
       editorEmails: params.editorEmails,
       maintainerEmails: params.maintainerEmails,
       projectId: params.projectId,
@@ -236,4 +246,12 @@ export function useAppFixture(options: TrpcFixtureOptions) {
   });
 
   return fixture;
+}
+
+/**
+ * Helper to create an identity from an email (for backward compatibility in tests)
+ */
+export function emailToIdentity(email: NormalizedEmail | string): Identity {
+  const normalizedEmail = typeof email === 'string' ? normalizeEmail(email) : email;
+  return createUserIdentity(normalizedEmail);
 }

@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_OWNER_EMAIL = normalizeEmail('other-owner@example.com');
@@ -32,7 +32,7 @@ describe('patchProject', () => {
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       details: {name: 'Renamed Project', description: 'Updated description'},
     });
 
@@ -54,7 +54,7 @@ describe('patchProject', () => {
     // create second project
     await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       name: 'SecondProj',
       description: 'desc',
     });
@@ -62,7 +62,7 @@ describe('patchProject', () => {
     await expect(
       fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
         id: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         details: {name: 'SecondProj', description: 'x'}, // already existing name from previous test
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -71,7 +71,7 @@ describe('patchProject', () => {
   it('updates members (add/remove) and emits audit message', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       name: 'MembersProj',
       description: 'members',
     });
@@ -79,7 +79,7 @@ describe('patchProject', () => {
     // add another owner
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       members: {
         users: [
           {email: CURRENT_USER_EMAIL, role: 'admin'},
@@ -96,7 +96,7 @@ describe('patchProject', () => {
     // now remove current user (leave OTHER_OWNER_EMAIL only) -> should succeed since at least one owner remains
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
@@ -116,7 +116,7 @@ describe('patchProject', () => {
   it('fails when removing all owners', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       name: 'NoOwnerRemoval',
       description: 'members',
     });
@@ -124,7 +124,7 @@ describe('patchProject', () => {
     await expect(
       fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
         id: projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         members: {users: []},
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -134,14 +134,14 @@ describe('patchProject', () => {
     // Create project with two owners then remove current user, leaving OTHER_OWNER_EMAIL only. After removal current user loses owner role.
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       name: 'ForbiddenMembersEdit',
       description: 'x',
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       members: {
         users: [
           {email: CURRENT_USER_EMAIL, role: 'admin'},
@@ -153,7 +153,7 @@ describe('patchProject', () => {
     // Remove CURRENT_USER_EMAIL (performed while still owner)
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
@@ -161,7 +161,7 @@ describe('patchProject', () => {
     await expect(
       fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
         id: projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         members: {
           users: [
             {email: OTHER_OWNER_EMAIL, role: 'admin'},

@@ -5,6 +5,7 @@ import type {Context} from './context';
 import type {DateProvider} from './date-provider';
 import type {DB} from './db';
 import type {EmailService} from './email-service';
+import type {Identity} from './identity';
 import type {PermissionService} from './permission-service';
 import type {ProjectQueryService} from './project-query-service';
 import type {ProposalService} from './proposal-service';
@@ -24,11 +25,10 @@ import type {WorkspaceStore} from './stores/workspace-store';
 import type {UserStore} from './user-store';
 import type {WorkspaceMemberService} from './workspace-member-service';
 import type {WorkspaceQueryService} from './workspace-query-service';
-import type {NormalizedEmail} from './zod';
 
 export interface ProjectRequest {
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface TransactionalProjectUseCase<TRequest extends ProjectRequest, TResponse> {

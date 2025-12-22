@@ -1,17 +1,18 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {isUserIdentity, requireUserEmail, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import {createConfigId, type ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import {validateOverrideReferences} from '../validate-override-references';
-import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export interface CreateConfigRequest {
   name: string;
   description: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   editorEmails: string[];
   maintainerEmails: string[];
   projectId: string;
@@ -44,8 +45,11 @@ export function createCreateConfigUseCase(
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanCreateConfig(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
+
+    // Creating configs requires a user identity to track authorship
+    const currentUserEmail = requireUserEmail(req.identity);
 
     // Validate no user appears with multiple roles
     const allMembers = [
@@ -138,7 +142,7 @@ export function createCreateConfigUseCase(
       });
     }
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     const configId = createConfigId();

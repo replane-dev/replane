@@ -1,5 +1,12 @@
 import type {Context} from './context';
 import {ForbiddenError} from './errors';
+import type {
+  AdminApiKeyScope,
+  ApiKeyIdentity,
+  Identity,
+  UserIdentity,
+} from './identity';
+import {hasProjectAccess, hasScope, isApiKeyIdentity, isUserIdentity} from './identity';
 import type {Logger} from './logger';
 import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
@@ -59,14 +66,18 @@ export class PermissionService {
     return unique([...configEditorEmails, ...projectOwnerEmails]);
   }
 
-  async canEditConfig(
+  // ============================================================================
+  // User-based permission checks (used by API key identity checks internally)
+  // ============================================================================
+
+  private async canUserEditConfig(
     ctx: Context,
     params: {configId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
     const config = await this.configStore.getById(params.configId);
     if (!config) return false;
 
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: config.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -79,21 +90,21 @@ export class PermissionService {
     return (
       configUser?.role === 'editor' ||
       configUser?.role === 'maintainer' ||
-      (await this.canEditProjectConfigs(ctx, {
+      (await this.canUserEditProjectConfigs(ctx, {
         projectId: config.projectId,
         currentUserEmail: params.currentUserEmail,
       }))
     );
   }
 
-  async canManageConfig(
+  private async canUserManageConfig(
     ctx: Context,
     params: {configId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
     const config = await this.configStore.getById(params.configId);
     if (!config) return false;
 
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: config.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -106,17 +117,17 @@ export class PermissionService {
 
     if (user?.role === 'maintainer') return true;
 
-    return await this.canManageProjectConfigs(ctx, {
+    return await this.canUserManageProjectConfigs(ctx, {
       projectId: config.projectId,
       currentUserEmail: params.currentUserEmail,
     });
   }
 
-  async canManageProjectSdkKeys(
+  private async canUserManageProjectSdkKeys(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -130,11 +141,11 @@ export class PermissionService {
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
-  async canManageProject(
+  private async canUserManageProject(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -148,11 +159,11 @@ export class PermissionService {
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
-  async canDeleteProject(
+  private async canUserDeleteProject(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -166,11 +177,11 @@ export class PermissionService {
     return user.role === 'admin';
   }
 
-  async canEditProjectConfigs(
+  private async canUserEditProjectConfigs(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -184,11 +195,11 @@ export class PermissionService {
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
-  async canManageProjectConfigs(
+  private async canUserManageProjectConfigs(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -202,11 +213,11 @@ export class PermissionService {
     return user.role === 'admin' || user.role === 'maintainer';
   }
 
-  async canManageProjectUsers(
+  private async canUserManageProjectUsers(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -220,11 +231,11 @@ export class PermissionService {
     return user.role === 'admin';
   }
 
-  async canManageProjectEnvironments(
+  private async canUserManageProjectEnvironments(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
@@ -238,20 +249,20 @@ export class PermissionService {
     return user.role === 'admin';
   }
 
-  async canCreateConfig(
+  private async canUserCreateConfig(
     ctx: Context,
     params: {projectId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const isWorkspaceMember = await this.isWorkspaceMember(ctx, {
+    const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
       projectId: params.projectId,
       currentUserEmail: params.currentUserEmail,
     });
     if (!isWorkspaceMember) return false;
 
-    return await this.canManageProjectConfigs(ctx, params);
+    return await this.canUserManageProjectConfigs(ctx, params);
   }
 
-  async isWorkspaceMember(
+  private async isUserWorkspaceMember(
     ctx: Context,
     params:
       | {projectId: string; currentUserEmail: NormalizedEmail}
@@ -294,7 +305,7 @@ export class PermissionService {
     }
   }
 
-  async isWorkspaceAdmin(
+  private async isUserWorkspaceAdmin(
     ctx: Context,
     params: {workspaceId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
@@ -304,20 +315,367 @@ export class PermissionService {
     });
     return member?.role === 'admin';
   }
-  async ensureCanEditConfig(
+
+  // ============================================================================
+  // API Key permission checks
+  // ============================================================================
+
+  private async canApiKeyAccessProject(
     ctx: Context,
-    params: {configId: string; currentUserEmail: NormalizedEmail},
-  ): Promise<void> {
+    identity: ApiKeyIdentity,
+    projectId: string,
+  ): Promise<boolean> {
+    // Check project access restriction
+    if (!hasProjectAccess(identity, projectId)) {
+      return false;
+    }
+
+    // Verify the project belongs to the API key's workspace
+    const project = await this.projectStore.getByIdWithoutPermissionCheck(projectId);
+    if (!project || project.workspaceId !== identity.workspaceId) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private async getConfigProjectId(configId: string): Promise<string | null> {
+    const config = await this.configStore.getById(configId);
+    return config?.projectId ?? null;
+  }
+
+  // ============================================================================
+  // Identity-based permission checks (public API)
+  // ============================================================================
+
+  async canEditConfig(ctx: Context, params: {configId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserEditConfig(ctx, {
+        configId: params.configId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'config:write')) {
+      return false;
+    }
+
+    const projectId = await this.getConfigProjectId(params.configId);
+    if (!projectId) return false;
+
+    return this.canApiKeyAccessProject(ctx, params.identity, projectId);
+  }
+
+  async canManageConfig(ctx: Context, params: {configId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserManageConfig(ctx, {
+        configId: params.configId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'config:write')) {
+      return false;
+    }
+
+    const projectId = await this.getConfigProjectId(params.configId);
+    if (!projectId) return false;
+
+    return this.canApiKeyAccessProject(ctx, params.identity, projectId);
+  }
+
+  async canManageProjectSdkKeys(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserManageProjectSdkKeys(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'sdk_key:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canManageProject(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserManageProject(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'project:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canDeleteProject(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserDeleteProject(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'project:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canEditProjectConfigs(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserEditProjectConfigs(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'config:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canManageProjectConfigs(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserManageProjectConfigs(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'config:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canManageProjectUsers(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserManageProjectUsers(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'member:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canManageProjectEnvironments(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserManageProjectEnvironments(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'environment:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canCreateConfig(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.canUserCreateConfig(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'config:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async isWorkspaceMember(
+    ctx: Context,
+    params:
+      | {projectId: string; identity: Identity}
+      | {workspaceId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      if ('projectId' in params) {
+        return this.isUserWorkspaceMember(ctx, {
+          projectId: params.projectId,
+          currentUserEmail: params.identity.email,
+        });
+      } else {
+        return this.isUserWorkspaceMember(ctx, {
+          workspaceId: params.workspaceId,
+          currentUserEmail: params.identity.email,
+        });
+      }
+    }
+
+    // API key: check workspace match
+    if ('workspaceId' in params) {
+      return params.identity.workspaceId === params.workspaceId;
+    }
+
+    // Check if project belongs to API key's workspace
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async isWorkspaceAdmin(
+    ctx: Context,
+    params: {workspaceId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.isUserWorkspaceAdmin(ctx, {
+        workspaceId: params.workspaceId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API keys cannot be workspace admins - admin operations require user identity
+    return false;
+  }
+
+  async canReadProject(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      // Users can read projects if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'project:read')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canReadConfig(ctx: Context, params: {configId: string; identity: Identity}): Promise<boolean> {
+    const projectId = await this.getConfigProjectId(params.configId);
+    if (!projectId) return false;
+
+    if (isUserIdentity(params.identity)) {
+      // Users can read configs if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'config:read')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, projectId);
+  }
+
+  async canReadSdkKeys(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      // Users can read SDK keys if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'sdk_key:read')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canReadEnvironments(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      // Users can read environments if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'environment:read')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  async canReadMembers(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      // Users can read members if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    if (!hasScope(params.identity, 'member:read')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
+  }
+
+  // ============================================================================
+  // Ensure methods (throw on failure)
+  // ============================================================================
+
+  async ensureCanEditConfig(ctx: Context, params: {configId: string; identity: Identity}): Promise<void> {
     const canEdit = await this.canEditConfig(ctx, params);
     if (!canEdit) {
       throw new ForbiddenError('User does not have permission to edit this config');
     }
   }
 
-  async ensureCanManageConfig(
-    ctx: Context,
-    params: {configId: string; currentUserEmail: NormalizedEmail},
-  ): Promise<void> {
+  async ensureCanManageConfig(ctx: Context, params: {configId: string; identity: Identity}): Promise<void> {
     const canManage = await this.canManageConfig(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage this config');
@@ -326,7 +684,7 @@ export class PermissionService {
 
   async ensureCanManageSdkKeys(
     ctx: Context,
-    params: {projectId: string; currentUserEmail: NormalizedEmail},
+    params: {projectId: string; identity: Identity},
   ): Promise<void> {
     const canManage = await this.canManageProjectSdkKeys(ctx, params);
     if (!canManage) {
@@ -334,10 +692,7 @@ export class PermissionService {
     }
   }
 
-  async ensureCanManageProject(
-    ctx: Context,
-    params: {projectId: string; currentUserEmail: NormalizedEmail},
-  ): Promise<void> {
+  async ensureCanManageProject(ctx: Context, params: {projectId: string; identity: Identity}): Promise<void> {
     const canManage = await this.canManageProject(ctx, params);
     if (!canManage) {
       throw new ForbiddenError('User does not have permission to manage this project');
@@ -346,7 +701,7 @@ export class PermissionService {
 
   async ensureCanManageProjectUsers(
     ctx: Context,
-    params: {projectId: string; currentUserEmail: NormalizedEmail},
+    params: {projectId: string; identity: Identity},
   ): Promise<void> {
     const canManage = await this.canManageProjectUsers(ctx, params);
     if (!canManage) {
@@ -356,7 +711,7 @@ export class PermissionService {
 
   async ensureCanManageProjectEnvironments(
     ctx: Context,
-    params: {projectId: string; currentUserEmail: NormalizedEmail},
+    params: {projectId: string; identity: Identity},
   ): Promise<void> {
     const canManage = await this.canManageProjectEnvironments(ctx, params);
     if (!canManage) {
@@ -368,7 +723,7 @@ export class PermissionService {
 
   async ensureCanCreateConfig(
     ctx: Context,
-    params: {projectId: string; currentUserEmail: NormalizedEmail},
+    params: {projectId: string; identity: Identity},
   ): Promise<void> {
     const canCreate = await this.canCreateConfig(ctx, params);
     if (!canCreate) {
@@ -378,7 +733,7 @@ export class PermissionService {
 
   async ensureCanDeleteProject(
     ctx: Context,
-    params: {projectId: string; currentUserEmail: NormalizedEmail},
+    params: {projectId: string; identity: Identity},
   ): Promise<void> {
     const canDelete = await this.canDeleteProject(ctx, params);
     if (!canDelete) {
@@ -389,8 +744,8 @@ export class PermissionService {
   async ensureIsWorkspaceMember(
     ctx: Context,
     params:
-      | {projectId: string; currentUserEmail: NormalizedEmail}
-      | {workspaceId: string; currentUserEmail: NormalizedEmail},
+      | {projectId: string; identity: Identity}
+      | {workspaceId: string; identity: Identity},
   ): Promise<void> {
     const canView = await this.isWorkspaceMember(ctx, params);
     if (!canView) {
@@ -400,11 +755,72 @@ export class PermissionService {
 
   async ensureIsWorkspaceAdmin(
     ctx: Context,
-    params: {workspaceId: string; currentUserEmail: NormalizedEmail},
+    params: {workspaceId: string; identity: Identity},
   ): Promise<void> {
     const isAdmin = await this.isWorkspaceAdmin(ctx, params);
     if (!isAdmin) {
       throw new ForbiddenError('User is not an admin of this workspace');
+    }
+  }
+
+  async ensureCanReadProject(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<void> {
+    const canRead = await this.canReadProject(ctx, params);
+    if (!canRead) {
+      throw new ForbiddenError('User does not have permission to read this project');
+    }
+  }
+
+  async ensureCanReadConfig(ctx: Context, params: {configId: string; identity: Identity}): Promise<void> {
+    const canRead = await this.canReadConfig(ctx, params);
+    if (!canRead) {
+      throw new ForbiddenError('User does not have permission to read this config');
+    }
+  }
+
+  async ensureCanReadSdkKeys(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<void> {
+    const canRead = await this.canReadSdkKeys(ctx, params);
+    if (!canRead) {
+      throw new ForbiddenError('User does not have permission to read SDK keys for this project');
+    }
+  }
+
+  async ensureCanReadEnvironments(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<void> {
+    const canRead = await this.canReadEnvironments(ctx, params);
+    if (!canRead) {
+      throw new ForbiddenError('User does not have permission to read environments for this project');
+    }
+  }
+
+  async ensureCanReadMembers(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<void> {
+    const canRead = await this.canReadMembers(ctx, params);
+    if (!canRead) {
+      throw new ForbiddenError('User does not have permission to read members for this project');
+    }
+  }
+
+  // ============================================================================
+  // User identity requirement check
+  // ============================================================================
+
+  /**
+   * Ensure the identity is a user (not an API key).
+   * Some operations (like workspace management) require a user identity.
+   */
+  ensureUserIdentity(identity: Identity): asserts identity is UserIdentity {
+    if (!isUserIdentity(identity)) {
+      throw new ForbiddenError('This operation requires a user identity, not an API key');
     }
   }
 }

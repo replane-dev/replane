@@ -134,21 +134,46 @@ export class ConfigStore {
   }
 
   async getProjectConfigs(params: {
-    currentUserEmail: NormalizedEmail;
+    currentUserEmail?: NormalizedEmail;
     projectId: string;
   }): Promise<ConfigInfo[]> {
-    const configsQuery = this.db
+    const baseConfigs = await this.getProjectConfigsBase(params.projectId);
+
+    if (!params.currentUserEmail || baseConfigs.length === 0) {
+      return baseConfigs.map(c => this.mapToConfigInfo(c, 'viewer'));
+    }
+
+    // Fetch user roles for all configs in a single query
+    const userRoles = await this.db
+      .selectFrom('config_users')
+      .select(['config_id', 'role'])
+      .where('user_email_normalized', '=', params.currentUserEmail)
+      .where(
+        'config_id',
+        'in',
+        baseConfigs.map(c => c.id),
+      )
+      .execute();
+
+    const roleMap = new Map(userRoles.map(r => [r.config_id, r.role]));
+
+    return baseConfigs.map(c => this.mapToConfigInfo(c, roleMap.get(c.id) ?? 'viewer'));
+  }
+
+  /**
+   * Get project configs without checking user permissions.
+   * Used for API key access where user-specific roles are not needed.
+   */
+  async getProjectConfigsWithoutPermissionCheck(projectId: string): Promise<ConfigInfo[]> {
+    const baseConfigs = await this.getProjectConfigsBase(projectId);
+    return baseConfigs.map(c => this.mapToConfigInfo(c, 'viewer'));
+  }
+
+  private async getProjectConfigsBase(projectId: string) {
+    return await this.db
       .selectFrom('configs')
       .orderBy('configs.name')
-      .leftJoin('config_users', jb =>
-        jb.on(eb =>
-          eb.and([
-            eb('config_users.config_id', '=', eb.ref('configs.id')),
-            eb('config_users.user_email_normalized', '=', params.currentUserEmail),
-          ]),
-        ),
-      )
-      .where('configs.project_id', '=', params.projectId)
+      .where('configs.project_id', '=', projectId)
       .select([
         'configs.created_at',
         'configs.updated_at',
@@ -156,22 +181,33 @@ export class ConfigStore {
         'configs.name',
         'configs.description',
         'configs.version',
-        'config_users.role as myRole',
         'configs.project_id',
-      ]);
+      ])
+      .execute();
+  }
 
-    const configs = await configsQuery.execute();
-
-    return configs.map(c => ({
+  private mapToConfigInfo(
+    c: {
+      created_at: Date;
+      updated_at: Date;
+      id: string;
+      name: string;
+      description: string;
+      version: number;
+      project_id: string;
+    },
+    myRole: ConfigInfo['myRole'],
+  ): ConfigInfo {
+    return {
       name: c.name,
       createdAt: c.created_at,
       updatedAt: c.updated_at,
       descriptionPreview: c.description.substring(0, 100),
-      myRole: c.myRole ?? 'viewer',
+      myRole,
       version: c.version,
       id: c.id,
       projectId: c.project_id,
-    }));
+    };
   }
 
   async getByName(params: {projectId: string; name: string}): Promise<Config | undefined> {

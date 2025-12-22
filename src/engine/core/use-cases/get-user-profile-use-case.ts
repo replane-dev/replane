@@ -1,8 +1,8 @@
+import {requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetUserProfileRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetUserProfileResponse {
@@ -17,7 +17,10 @@ export function createGetUserProfileUseCase(): TransactionalUseCase<
   GetUserProfileResponse | null
 > {
   return async (_ctx, tx, req) => {
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
+    const user = await tx.users.getByEmail(currentUserEmail);
 
     if (!user) {
       return null;

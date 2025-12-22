@@ -1,11 +1,11 @@
+import {requireUserEmail, type Identity} from '../identity';
 import type {ProjectListItem} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export type {ProjectListItem};
 
 export interface GetProjectListRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetProjectListResponse {
@@ -17,8 +17,11 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
   GetProjectListResponse
 > {
   return async (_ctx, tx, req) => {
+    // This operation requires a user identity since projects are user-specific
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const projects = await tx.projectQueryService.getProjectList({
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
     return {projects};
   };

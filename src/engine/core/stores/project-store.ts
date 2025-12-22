@@ -199,6 +199,25 @@ export class ProjectStore {
     await this.db.deleteFrom('projects').where('id', '=', id).execute();
   }
 
+  /**
+   * Get a project by ID without checking user permissions.
+   * Used internally for permission checks where we need project info
+   * before we can verify user access.
+   */
+  async getByIdWithoutPermissionCheck(id: string): Promise<Project | undefined> {
+    const row = await this.db
+      .selectFrom('projects')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
+
+    if (!row) {
+      return undefined;
+    }
+
+    return mapProject(row);
+  }
+
   async countByWorkspace(workspaceId: string): Promise<number> {
     const row = await this.db
       .selectFrom('projects')

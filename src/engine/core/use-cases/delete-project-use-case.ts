@@ -1,13 +1,13 @@
 import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {isUserIdentity, requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteProjectRequest {
   id: string;
   confirmName: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface DeleteProjectResponse {}
@@ -18,9 +18,12 @@ export function createDeleteProjectUseCase(
   deps: DeleteProjectUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectRequest, DeleteProjectResponse> {
   return async (ctx, tx, req) => {
+    // Deleting projects requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const project = await tx.projects.getById({
       id: req.id,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
     if (!project) throw new BadRequestError('Project not found');
 
@@ -32,7 +35,7 @@ export function createDeleteProjectUseCase(
     // Only owners/admins can delete a project
     await tx.permissionService.ensureCanDeleteProject(ctx, {
       projectId: project.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Prevent deleting the last remaining project within the workspace
@@ -42,7 +45,7 @@ export function createDeleteProjectUseCase(
     }
 
     // Capture data for audit before deletion
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     await tx.projects.deleteById(project.id);

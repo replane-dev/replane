@@ -1,14 +1,15 @@
 import assert from 'assert';
 import {InputData, JSONSchemaInput, quicktype} from 'quicktype-core';
 import {BadRequestError} from '../errors';
+import type {Identity} from '../identity';
+import {isUserIdentity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import {trimEnd} from '../utils';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetProjectConfigTypesRequest {
   projectId: string;
   environmentId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetProjectConfigTypesResponse {
@@ -146,13 +147,17 @@ export function createGetProjectConfigTypesUseCase(
     // Ensure user has access to the project
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const project = await tx.projects.getById({
-      id: req.projectId,
-      currentUserEmail: req.currentUserEmail,
-    });
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
+
+    const project = currentUserEmail
+      ? await tx.projects.getById({
+          id: req.projectId,
+          currentUserEmail,
+        })
+      : await tx.projects.getByIdWithoutPermissionCheck(req.projectId);
 
     if (!project) {
       throw new BadRequestError('Project not found');
@@ -218,10 +223,12 @@ export function createGetProjectConfigTypesUseCase(
       throw new BadRequestError('Project environment not found');
     }
 
-    const workspace = await tx.workspaces.getById({
-      id: project.workspaceId,
-      currentUserEmail: req.currentUserEmail,
-    });
+    const workspace = currentUserEmail
+      ? await tx.workspaces.getById({
+          id: project.workspaceId,
+          currentUserEmail,
+        })
+      : await tx.workspaces.getByIdSimple(project.workspaceId);
 
     if (!workspace) {
       throw new BadRequestError('Workspace not found');

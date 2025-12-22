@@ -1,13 +1,13 @@
 import assert from 'assert';
 import {ForbiddenError, NotFoundError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {processLogoImage} from '../image-utils';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface UpdateWorkspaceRequest {
   workspaceId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: string;
   /** Base64 data URL for new logo, null to remove, undefined to keep unchanged */
   logo?: string | null;
@@ -22,16 +22,19 @@ export function createUpdateWorkspaceUseCase(): TransactionalUseCase<
   UpdateWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
+    // Updating workspaces requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureIsWorkspaceAdmin(ctx, {
       workspaceId: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const now = new Date();
 
     const workspace = await tx.workspaces.getById({
       id: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
 
     if (!workspace) {
@@ -43,7 +46,7 @@ export function createUpdateWorkspaceUseCase(): TransactionalUseCase<
       throw new ForbiddenError('Only workspace admins can update settings');
     }
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     // Process logo if provided (resize and convert to PNG)

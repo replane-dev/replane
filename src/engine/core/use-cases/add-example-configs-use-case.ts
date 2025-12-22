@@ -1,16 +1,17 @@
 import assert from 'assert';
 import type {ConfigService} from '../config-service';
 import type {Context} from '../context';
+import {requireUserEmail, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import {ConfigStore, createConfigId} from '../stores/config-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import type {TransactionalUseCase} from '../use-case';
 import type {User} from '../user-store';
-import {asConfigSchema, asConfigValue, type ConfigValue, type NormalizedEmail} from '../zod';
+import {asConfigSchema, asConfigValue, type ConfigValue} from '../zod';
 
 export interface AddExampleConfigsRequest {
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface AddExampleConfigsResponse {
@@ -22,13 +23,16 @@ export function createAddExampleConfigsUseCase(): TransactionalUseCase<
   AddExampleConfigsResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     // Verify permission to create configs in this project
     await tx.permissionService.ensureCanCreateConfig(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     const {addedConfigsCount} = await createExampleConfigs({

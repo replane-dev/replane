@@ -1,12 +1,13 @@
 import type {ConfigDetails} from '../config-query-service';
+import type {Identity} from '../identity';
+import {isUserIdentity} from '../identity';
 import type {ProjectDetails, ProjectEnvironment, ProjectUser} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetConfigPageDataRequest {
   configName: string;
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetConfigPageDataResponse {
@@ -23,18 +24,20 @@ export function createGetConfigPageDataUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
+
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
 
     const [config, project, environments, projectUsers] = await Promise.all([
       tx.configQueryService.getConfigDetails({
         name: req.configName,
         projectId: req.projectId,
-        currentUserEmail: req.currentUserEmail,
+        currentUserEmail,
       }),
       tx.projectQueryService.getProject({
         id: req.projectId,
-        currentUserEmail: req.currentUserEmail,
+        currentUserEmail,
       }),
       tx.projectQueryService.getEnvironments({
         projectId: req.projectId,

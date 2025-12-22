@@ -1,8 +1,9 @@
+import {requireUserEmail, type Identity} from '../identity';
 import {processLogoImage} from '../image-utils';
 import type {TransactionalUseCase} from '../use-case';
 
 export interface UpdateUserProfileRequest {
-  currentUserEmail: string;
+  identity: Identity;
   /** Base64 data URL for new image, null to remove, undefined to keep unchanged */
   image?: string | null;
 }
@@ -17,7 +18,10 @@ export function createUpdateUserProfileUseCase(): TransactionalUseCase<
   UpdateUserProfileResponse
 > {
   return async (_ctx, tx, req) => {
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
+    const user = await tx.users.getByEmail(currentUserEmail);
 
     if (!user) {
       throw new Error('User not found');
@@ -40,4 +44,3 @@ export function createUpdateUserProfileUseCase(): TransactionalUseCase<
     };
   };
 }
-

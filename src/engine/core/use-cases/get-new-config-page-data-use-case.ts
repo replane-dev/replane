@@ -1,10 +1,10 @@
+import type {Identity} from '../identity';
 import type {ProjectEnvironment, ProjectUser} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetNewConfigPageDataRequest {
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetNewConfigPageDataResponse {
@@ -19,7 +19,7 @@ export function createGetNewConfigPageDataUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const [environments, projectUsers] = await Promise.all([

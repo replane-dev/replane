@@ -1,13 +1,13 @@
 import {BadRequestError} from '../errors';
 import type {HashingService} from '../hashing-service';
+import {requireUserEmail, type Identity} from '../identity';
 import {buildRawSdkKey} from '../sdk-key-utils';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
-import type {NormalizedEmail} from '../zod';
 
 export interface CreateSdkKeyRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: string;
   description: string;
   projectId: string;
@@ -28,11 +28,14 @@ export function createCreateSdkKeyUseCase(deps: {
   hasher: HashingService;
 }): TransactionalUseCase<CreateSdkKeyRequest, CreateSdkKeyResponse> {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureCanManageSdkKeys(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     if (!user) {
       throw new Error('User not found');
     }

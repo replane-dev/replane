@@ -1,12 +1,12 @@
 import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import type {ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteConfigRequest {
   configId: ConfigId;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   prevVersion: number;
 }
 
@@ -20,10 +20,13 @@ export function createDeleteConfigUseCase(
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanManageConfig(ctx, {
       configId: req.configId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    // Deleting configs requires a user identity to track authorship
+    const currentUserEmail = requireUserEmail(req.identity);
+
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     // Get the config to find the project
@@ -34,7 +37,7 @@ export function createDeleteConfigUseCase(
 
     const project = await tx.projects.getById({
       id: config.projectId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
     if (!project) {
       throw new BadRequestError('Project not found');

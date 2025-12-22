@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_OWNER_EMAIL = normalizeEmail('other-owner@example.com');
@@ -13,7 +13,7 @@ describe('deleteProject', () => {
   it('deletes a project (not the last one) and emits audit message', async () => {
     // Create an extra project so default project is not last one when deleting
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'ToDelete',
       description: 'temp',
@@ -23,7 +23,7 @@ describe('deleteProject', () => {
     await fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
       id: projectId,
       confirmName: 'ToDelete',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     const res = await fixture.engine.testing.pool.query(`SELECT * FROM projects WHERE id = $1`, [
@@ -46,7 +46,7 @@ describe('deleteProject', () => {
 
   it('fails when confirmation name does not match', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'WrongConfirm',
       description: 'x',
@@ -56,7 +56,7 @@ describe('deleteProject', () => {
       fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
         id: projectId,
         confirmName: 'Mismatch',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
@@ -73,7 +73,7 @@ describe('deleteProject', () => {
       fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
         id: fixture.projectId,
         confirmName: 'Test Project',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
@@ -81,7 +81,7 @@ describe('deleteProject', () => {
   it('forbids deletion by non-owner', async () => {
     // Create project with two owners then remove current user to drop ownership
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'ForbiddenDelete',
       description: 'x',
@@ -89,7 +89,7 @@ describe('deleteProject', () => {
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       members: {
         users: [
           {email: CURRENT_USER_EMAIL, role: 'admin'},
@@ -100,7 +100,7 @@ describe('deleteProject', () => {
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
@@ -108,7 +108,7 @@ describe('deleteProject', () => {
       fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
         id: projectId,
         confirmName: 'ForbiddenDelete',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
@@ -127,12 +127,12 @@ describe('deleteProject with proposals required', () => {
         requireProposals: true,
         allowSelfApprovals: false,
       },
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Create an extra project so we are not attempting to delete the last one
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'ToDeleteWithProposals',
       description: 'temp',
@@ -144,7 +144,7 @@ describe('deleteProject with proposals required', () => {
     await fixture.engine.useCases.deleteProject(GLOBAL_CONTEXT, {
       id: projectId,
       confirmName: 'ToDeleteWithProposals',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify project is deleted

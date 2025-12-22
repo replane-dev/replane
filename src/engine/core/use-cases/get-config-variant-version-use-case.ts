@@ -1,12 +1,12 @@
 import assert from 'assert';
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 import type {ConfigSnapshot} from './get-config-proposal-use-case';
 
 export interface GetConfigVariantVersionRequest {
   configId: string;
   version: number;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -22,7 +22,7 @@ export function createGetConfigVariantVersionUseCase(): TransactionalUseCase<
     // Check permissions - viewing version details requires edit access
     await tx.permissionService.ensureCanEditConfig(ctx, {
       configId: req.configId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Get the config to verify it exists and belongs to the project

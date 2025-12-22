@@ -1,13 +1,13 @@
 import {NotFoundError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import type {
   UserNotificationPreferences,
   UserNotificationPreferencesUpdate,
 } from '../stores/user-notification-preferences-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface UpdateNotificationPreferencesRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   preferences: UserNotificationPreferencesUpdate;
 }
 
@@ -21,8 +21,11 @@ export function createUpdateNotificationPreferencesUseCase(): TransactionalUseCa
   UpdateNotificationPreferencesResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     // Get the current user
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     if (!user) {
       throw new NotFoundError('User not found');
     }
@@ -41,4 +44,3 @@ export function createUpdateNotificationPreferencesUseCase(): TransactionalUseCa
     };
   };
 }
-

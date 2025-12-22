@@ -47,8 +47,25 @@ export class ProjectQueryService {
 
   async getProject(opts: {
     id: string;
-    currentUserEmail: NormalizedEmail;
+    currentUserEmail?: NormalizedEmail;
   }): Promise<ProjectDetails | null> {
+    // If no user email provided (e.g., API key access), use the simple lookup
+    if (!opts.currentUserEmail) {
+      const project = await this.projects.getByIdWithoutPermissionCheck(opts.id);
+      if (!project) return null;
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        workspaceId: project.workspaceId,
+        requireProposals: project.requireProposals,
+        allowSelfApprovals: project.allowSelfApprovals,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        myRole: null,
+      };
+    }
+
     const project = await this.projects.getById({
       id: opts.id,
       currentUserEmail: opts.currentUserEmail,

@@ -1,6 +1,7 @@
 import assert from 'assert';
 import {ConfigService} from '../config-service';
 import {type Context} from '../context';
+import {requireUserEmail, type Identity} from '../identity';
 import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
 import {ConfigStore} from '../stores/config-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
@@ -11,11 +12,10 @@ import {createWorkspaceId, Workspace, WorkspaceStore} from '../stores/workspace-
 import type {TransactionalUseCase} from '../use-case';
 import type {UserStore} from '../user-store';
 import {createUuidV7} from '../uuid';
-import {type NormalizedEmail} from '../zod';
 import {createExampleConfigs} from './add-example-configs-use-case';
 
 export interface CreateWorkspaceRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: string;
 }
 
@@ -29,14 +29,17 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
   CreateWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
+    // Creating workspaces requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const now = new Date();
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     const {workspace, project} = await createWorkspace({
       ctx,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
       name: {type: 'custom', name: req.name},
       workspaceStore: tx.workspaces,
       workspaceMemberStore: tx.workspaceMembers,
@@ -56,7 +59,7 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
 
 export async function createWorkspace(params: {
   ctx: Context;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: {type: 'personal'} | {type: 'custom'; name: string};
   workspaceStore: WorkspaceStore;
   workspaceMemberStore: WorkspaceMemberStore;
@@ -72,7 +75,7 @@ export async function createWorkspace(params: {
 }) {
   const {
     ctx,
-    currentUserEmail,
+    identity,
     name,
     workspaceStore,
     workspaceMemberStore,
@@ -86,6 +89,12 @@ export async function createWorkspace(params: {
     users,
     exampleProject,
   } = params;
+
+  // This function requires a user identity
+  if (identity.type !== 'user') {
+    throw new Error('Only users can create workspaces');
+  }
+  const currentUserEmail = identity.email;
 
   const user = await users.getByEmail(currentUserEmail);
   assert(user, 'Current user not found');

@@ -1,14 +1,14 @@
 import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectEnvironment} from '../stores/project-environment-store';
 import {createProjectId} from '../stores/project-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
-import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   workspaceId: string;
   name: string;
   description: string;
@@ -29,6 +29,9 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
   CreateProjectResponse
 > {
   return async (ctx, tx, req) => {
+    // Creating projects requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const now = new Date();
 
     const existing = await tx.projects.getByName({
@@ -37,13 +40,13 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     });
     if (existing) throw new BadRequestError('Project with this name already exists');
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     // Ensure user is a member of the workspace
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       workspaceId: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const projectId = createProjectId();
@@ -98,7 +101,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     await tx.projectUsers.create([
       {
         projectId,
-        email: req.currentUserEmail,
+        email: currentUserEmail,
         role: 'admin',
         createdAt: now,
         updatedAt: now,

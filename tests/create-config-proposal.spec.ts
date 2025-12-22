@@ -4,7 +4,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -43,7 +43,7 @@ describe('createConfigProposal', () => {
       value: 'test',
       schema: null,
       description: 'Old description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -79,7 +79,7 @@ describe('createConfigProposal', () => {
       },
       message: null,
       proposedDelete: false,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     expect(configProposalId).toBeDefined();
@@ -98,7 +98,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({x: 1}),
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'To be deleted',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -127,7 +127,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     const proposal = await fixture.engine.testing.configProposals.getById({
@@ -149,7 +149,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({x: 1}),
       schema: {type: 'object', properties: {x: {type: 'number'}}},
       description: 'Members test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -180,7 +180,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue({x: 1}),
         schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
@@ -207,7 +207,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({x: 1}),
       schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
       description: 'Original',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -237,7 +237,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue({x: 1}),
         schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
@@ -264,7 +264,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({x: 1}),
       schema: asConfigSchema({type: 'object'}),
       description: 'Audit members test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -294,7 +294,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue({x: 1}),
         schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
@@ -331,7 +331,7 @@ describe('createConfigProposal', () => {
         editorEmails: [],
         maintainerEmails: [],
         environmentVariants: [],
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         defaultVariant: {
           value: asConfigValue('test'),
           schema: null,
@@ -350,7 +350,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue('test'),
       schema: null,
       description: 'Test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -380,7 +380,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: OTHER_USER_EMAIL,
+      identity: emailToIdentity(OTHER_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue('test'),
         schema: null,
@@ -405,7 +405,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({x: 1}),
       schema: asConfigSchema({type: 'object'}),
       description: 'Audit test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -434,7 +434,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue({x: 1}),
         schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
@@ -468,7 +468,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue(1),
       schema: null,
       description: 'Version 1',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -496,7 +496,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       prevVersion: 1,
       defaultVariant: {
         value: asConfigValue(1),
@@ -529,7 +529,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue(1),
         schema: null,
@@ -553,7 +553,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -581,7 +581,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       prevVersion: 1,
       defaultVariant: {
         value: asConfigValue(1),
@@ -615,7 +615,7 @@ describe('createConfigProposal', () => {
             useDefaultSchema: false,
           },
         ],
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         defaultVariant: {
           value: asConfigValue(1),
           schema: null,
@@ -634,7 +634,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue('test'),
       schema: null,
       description: 'To be deleted',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -649,7 +649,7 @@ describe('createConfigProposal', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       environmentVariants: [],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue('test'),
         schema: null,
@@ -673,7 +673,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({enabled: true}),
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Variant test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -708,7 +708,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue({enabled: true}),
         schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
@@ -737,7 +737,7 @@ describe('createConfigProposal', () => {
       value: asConfigValue({count: 10}),
       schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -771,7 +771,7 @@ describe('createConfigProposal', () => {
           useDefaultSchema: false,
         },
       ],
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       defaultVariant: {
         value: asConfigValue({count: 10}),
         schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),

@@ -107,9 +107,6 @@ const ReplicationStreamConfigChangeRecord = z
   .object({
     type: z.literal('config_change'),
     config: ConfigDto,
-    overrides: z.array(RenderedOverrideSchema),
-    value: z.unknown(),
-    name: ConfigName(),
   })
   .openapi('ReplicationStreamConfigChangeRecord');
 
@@ -162,16 +159,13 @@ sdkApi.openapi(
   },
 
   async c => {
+    console.log('\n\n');
+    console.log('agent:', c.req.header('x-replane-agent'));
+    console.log('\n\n');
+
     const projectId = c.get('projectId');
     const context = c.get('context');
     const edge = await getEdge();
-
-    const headers = {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    };
 
     const abortController = new AbortController();
     const onAbort = () => abortController.abort();
@@ -239,9 +233,6 @@ sdkApi.openapi(
                   overrides: event.overrides,
                   value: event.value,
                 },
-                overrides: event.overrides,
-                value: event.value,
-                name: event.configName,
               } satisfies ReplicationStreamRecord),
             });
           }
@@ -273,7 +264,14 @@ sdkApi.openapi(
       },
     }).pipeThrough(new SseEncoderStream());
 
-    return new Response(stream, {headers});
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    });
   },
 );
 

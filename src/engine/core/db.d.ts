@@ -5,6 +5,18 @@
 
 import type {ColumnType} from 'kysely';
 
+export type AdminApiKeyScope =
+  | 'project:read'
+  | 'project:write'
+  | 'config:read'
+  | 'config:write'
+  | 'environment:read'
+  | 'environment:write'
+  | 'sdk_key:read'
+  | 'sdk_key:write'
+  | 'member:read'
+  | 'member:write';
+
 export type ConfigProposalRejectionReason =
   | 'another_proposal_approved'
   | 'config_deleted'
@@ -39,6 +51,30 @@ export interface Accounts {
   token_type: string | null;
   type: string;
   userId: number;
+}
+
+export interface AdminApiKeyProjects {
+  admin_api_key_id: string;
+  project_id: string;
+}
+
+export interface AdminApiKeyScopes {
+  admin_api_key_id: string;
+  scope: AdminApiKeyScope;
+}
+
+export interface AdminApiKeys {
+  created_at: Generated<Timestamp>;
+  created_by_email: string;
+  description: Generated<string>;
+  expires_at: Timestamp | null;
+  id: Generated<string>;
+  key_hash: string;
+  key_prefix: string;
+  last_used_at: Timestamp | null;
+  name: string;
+  updated_at: Generated<Timestamp>;
+  workspace_id: string;
 }
 
 export interface AuditLogs {
@@ -266,6 +302,9 @@ export interface Workspaces {
 
 export interface DB {
   accounts: Accounts;
+  admin_api_key_projects: AdminApiKeyProjects;
+  admin_api_key_scopes: AdminApiKeyScopes;
+  admin_api_keys: AdminApiKeys;
   audit_logs: AuditLogs;
   config_proposal_members: ConfigProposalMembers;
   config_proposal_variants: ConfigProposalVariants;

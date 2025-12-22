@@ -1,15 +1,15 @@
 import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {diffMembers} from '../member-diff';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectUserRole} from '../stores/project-user-store';
 import type {TransactionalUseCase} from '../use-case';
 import {normalizeEmail} from '../utils';
-import type {NormalizedEmail} from '../zod';
 
 export interface PatchProjectRequest {
   id: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   details?: {
     name: string;
     description: string;
@@ -28,26 +28,29 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
   PatchProjectResponse
 > {
   return async (ctx, tx, req) => {
+    // Patching projects requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const existing = await tx.projects.getById({
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
       id: req.id,
     });
     if (!existing) throw new BadRequestError('Project not found');
 
     const now = new Date();
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     // Patch details
     if (req.details) {
       const canManage = await tx.permissionService.canManageProject(ctx, {
         projectId: req.id,
-        currentUserEmail: req.currentUserEmail,
+        identity: req.identity,
       });
       if (!canManage) throw new BadRequestError('You are not allowed to manage this project');
 
@@ -100,7 +103,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
     if (req.members) {
       await tx.permissionService.ensureCanManageProjectUsers(ctx, {
         projectId: req.id,
-        currentUserEmail: req.currentUserEmail,
+        identity: req.identity,
       });
 
       const prevUsers = await tx.projectUsers.getByProjectId(req.id);

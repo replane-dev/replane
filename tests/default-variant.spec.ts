@@ -3,7 +3,7 @@ import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -17,7 +17,7 @@ describe('Default Variant', () => {
         {
           name: 'default-only-config',
           description: 'Config with only default variant',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -59,7 +59,7 @@ describe('Default Variant', () => {
         {
           name: 'mixed-variants-config',
           description: 'Config with mixed variants',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -117,7 +117,7 @@ describe('Default Variant', () => {
         {
           name: 'all-envs-config',
           description: 'Config with all environments covered',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -181,7 +181,7 @@ describe('Default Variant', () => {
       const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'partial-env-with-default',
         description: 'Should succeed with default fallback',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -211,7 +211,7 @@ describe('Default Variant', () => {
       const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'default-only-config',
         description: 'Should succeed with only default',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -231,7 +231,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-default-schema',
           description: 'Should fail schema validation',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -249,7 +249,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-env-schema',
           description: 'Should fail schema validation',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -276,7 +276,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-env-schema',
           description: 'Should fail schema validation',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -303,7 +303,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-env-id',
           description: 'Should fail',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -334,7 +334,7 @@ describe('Default Variant', () => {
         {
           name: 'fallback-test-config',
           description: 'Test fallback',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -357,7 +357,7 @@ describe('Default Variant', () => {
       const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'override-test-config',
         description: 'Test override',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -394,7 +394,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'schema-inherit-config',
         description: 'Test schema inheritance',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -438,7 +438,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'schema-inherit-fail-config',
           description: 'Test schema inheritance failure',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -470,7 +470,7 @@ describe('Default Variant', () => {
       const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'schema-inherit-null-schema-config',
         description: 'Test schema inheritance with null schema',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -505,7 +505,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'schema-inherit-null-config',
         description: 'Test schema inheritance with null',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -539,7 +539,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'api-response-test',
         description: 'Test API response',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -569,7 +569,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'mixed-api-response-test',
         description: 'Test mixed API response',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -627,7 +627,7 @@ describe('Default Variant', () => {
       const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'patch-schema-inherit-config',
         description: 'Test patch schema inheritance',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -720,7 +720,7 @@ describe('Default Variant', () => {
       const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'patch-schema-inherit-fail-config',
         description: 'Test patch schema inheritance failure',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -803,7 +803,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'patch-with-default-config',
         description: 'Test patch with default',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,

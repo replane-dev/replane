@@ -1,12 +1,12 @@
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteSdkKeyRequest {
   id: string;
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface DeleteSdkKeyResponse {}
@@ -16,6 +16,9 @@ export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
   DeleteSdkKeyResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const sdkKey = await tx.sdkKeys.getById({
       sdkKeyId: req.id,
       projectId: req.projectId,
@@ -26,10 +29,10 @@ export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
 
     await tx.permissionService.ensureCanManageSdkKeys(ctx, {
       projectId: sdkKey.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     if (!user) {
       throw new BadRequestError('User not found');
     }

@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -16,7 +16,7 @@ describe('createConfig', () => {
       value: {flag: true},
       schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
       description: 'A new config for testing',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -51,7 +51,7 @@ describe('createConfig', () => {
       value: {enabled: true},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Mixed case + digits + hyphen',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -68,7 +68,7 @@ describe('createConfig', () => {
       value: 'v1',
       schema: {type: 'string'},
       description: 'A duplicate config for testing v1',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -81,7 +81,7 @@ describe('createConfig', () => {
         value: 'v2',
         schema: {type: 'string'},
         description: 'A duplicate config for testing v2',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -106,7 +106,7 @@ describe('createConfig', () => {
       value: 'v1',
       schema: null,
       description: 'A config without a schema',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -131,7 +131,7 @@ describe('createConfig', () => {
         value: {flag: 'not_boolean'},
         schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
         description: 'Invalid create schema',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -146,7 +146,7 @@ describe('createConfig', () => {
       value: 1,
       schema: {type: 'number'},
       description: 'Members test owner',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: ['editor1@example.com', 'editor2@example.com'],
       maintainerEmails: [CURRENT_USER_EMAIL, 'owner2@example.com'],
       projectId: fixture.projectId,
@@ -174,14 +174,14 @@ describe('createConfig', () => {
       value: 'x',
       schema: {type: 'string'},
       description: 'Members test editor',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [CURRENT_USER_EMAIL],
       maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -205,7 +205,7 @@ describe('createConfig', () => {
       value: 123,
       schema: {type: 'number'},
       description: 'audit test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -237,7 +237,7 @@ describe('createConfig', () => {
         value: {x: 1},
         schema: null,
         description: 'Test duplicate user',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [duplicateEmail, 'editor@example.com'],
         maintainerEmails: [duplicateEmail, 'owner@example.com'],
         projectId: fixture.projectId,
@@ -253,7 +253,7 @@ describe('createConfig', () => {
         value: {x: 1},
         schema: null,
         description: 'Test case insensitive duplicate',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: ['User@Example.com'],
         maintainerEmails: ['user@example.com'],
         projectId: fixture.projectId,
@@ -269,7 +269,7 @@ describe('createConfig', () => {
         value: {x: 1},
         schema: null,
         description: 'Test case insensitive duplicate',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: ['User@Example.com', 'User@Example.com'],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -284,7 +284,7 @@ describe('createConfig', () => {
       value: {x: 1},
       schema: null,
       description: 'Test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,

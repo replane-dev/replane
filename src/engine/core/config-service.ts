@@ -352,10 +352,11 @@ export class ConfigService {
       );
 
     // Validate permissions
+    const reviewerIdentity = {type: 'user' as const, email: normalizeEmail(reviewer.email)};
     if (schemaOrOverridesChanged || membersChanged) {
       await this.permissionService.ensureCanManageConfig(ctx, {
         configId: existingConfig.id,
-        currentUserEmail: normalizeEmail(reviewer.email),
+        identity: reviewerIdentity,
       });
     } else if (
       descriptionChanged ||
@@ -366,7 +367,7 @@ export class ConfigService {
     ) {
       await this.permissionService.ensureCanEditConfig(ctx, {
         configId: existingConfig.id,
-        currentUserEmail: normalizeEmail(reviewer.email),
+        identity: reviewerIdentity,
       });
     }
 
@@ -650,7 +651,7 @@ export class ConfigService {
     assert(params.reviewer.email, 'Reviewer must have an email');
     await this.permissionService.ensureCanManageConfig(ctx, {
       configId: existingConfig.id,
-      currentUserEmail: normalizeEmail(params.reviewer.email),
+      identity: {type: 'user', email: normalizeEmail(params.reviewer.email)},
     });
 
     // Reject all pending CONFIG proposals

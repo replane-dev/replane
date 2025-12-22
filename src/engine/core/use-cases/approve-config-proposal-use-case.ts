@@ -1,15 +1,15 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError, ForbiddenError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ConfigProposalId} from '../stores/config-proposal-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface ApproveConfigProposalRequest {
   proposalId: ConfigProposalId;
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface ApproveConfigProposalResponse {}
@@ -23,6 +23,9 @@ export function createApproveConfigProposalUseCase(
   deps: ApproveConfigProposalUseCaseDeps,
 ): TransactionalUseCase<ApproveConfigProposalRequest, ApproveConfigProposalResponse> {
   return async (ctx, tx, req) => {
+    // Approving proposals requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const proposal = await tx.configProposals.getById({
       id: req.proposalId,
       projectId: req.projectId,
@@ -31,7 +34,7 @@ export function createApproveConfigProposalUseCase(
       throw new BadRequestError('Proposal not found');
     }
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     // Get the config to check allowSelfApprovals
@@ -43,7 +46,7 @@ export function createApproveConfigProposalUseCase(
     // Get the project to check allowSelfApprovals setting
     const project = await tx.projects.getById({
       id: config.projectId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
     if (!project) {
       throw new BadRequestError('Project not found');

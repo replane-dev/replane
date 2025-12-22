@@ -3,7 +3,7 @@ import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -59,7 +59,7 @@ describe('getConfigProposalList', () => {
       value: {a: 1},
       schema: {type: 'object', properties: {a: {type: 'number'}}},
       description: 'A',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -93,7 +93,7 @@ describe('getConfigProposalList', () => {
             useDefaultSchema: false,
           },
         ],
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
@@ -127,7 +127,7 @@ describe('getConfigProposalList', () => {
             useDefaultSchema: false,
           },
         ],
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
@@ -141,7 +141,7 @@ describe('getConfigProposalList', () => {
       value: asConfigValue({b: 1}),
       schema: asConfigSchema({type: 'object', properties: {b: {type: 'number'}}}),
       description: 'B',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -174,7 +174,7 @@ describe('getConfigProposalList', () => {
             useDefaultSchema: false,
           },
         ],
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
       },
@@ -185,7 +185,7 @@ describe('getConfigProposalList', () => {
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       proposalId: P3,
-      currentUserEmail: OTHER_USER_EMAIL,
+      identity: emailToIdentity(OTHER_USER_EMAIL),
     });
 
     // 0) Get pending proposals
@@ -203,7 +203,7 @@ describe('getConfigProposalList', () => {
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       proposalId: P2,
-      currentUserEmail: OTHER_USER_EMAIL,
+      identity: emailToIdentity(OTHER_USER_EMAIL),
     });
 
     // 1) Filter by configIds (only A)
@@ -291,7 +291,7 @@ describe('getConfigProposalList', () => {
   it('should not return proposals for non-members', async () => {
     await expect(
       fixture.engine.useCases.getConfigProposalList(GLOBAL_CONTEXT, {
-        currentUserEmail: NON_MEMBER_USER_EMAIL,
+        identity: emailToIdentity(NON_MEMBER_USER_EMAIL),
         projectId: fixture.projectId,
       }),
     ).rejects.toThrow(ForbiddenError);

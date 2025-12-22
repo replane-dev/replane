@@ -1,10 +1,10 @@
 import assert from 'assert';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteUserAccountRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   confirmEmail: string;
 }
 
@@ -17,19 +17,22 @@ export function createDeleteUserAccountUseCase(): TransactionalUseCase<
   DeleteUserAccountResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const now = new Date();
 
     // Verify the confirmation email matches
-    if (req.confirmEmail.toLowerCase() !== req.currentUserEmail.toLowerCase()) {
+    if (req.confirmEmail.toLowerCase() !== currentUserEmail.toLowerCase()) {
       throw new Error('Email confirmation does not match');
     }
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     // Remove user from all workspaces and their projects
     await tx.workspaceMemberService.removeUserFromAllWorkspaces({
-      userEmail: req.currentUserEmail,
+      userEmail: currentUserEmail,
     });
 
     // Create audit log before deletion
@@ -43,7 +46,7 @@ export function createDeleteUserAccountUseCase(): TransactionalUseCase<
         type: 'user_account_deleted',
         user: {
           id: user.id,
-          email: req.currentUserEmail,
+          email: currentUserEmail,
         },
       },
     });

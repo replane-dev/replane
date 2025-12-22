@@ -1,10 +1,10 @@
+import {requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import {normalizeEmail} from '../utils';
-import type {NormalizedEmail} from '../zod';
 import {createWorkspace} from './create-workspace-use-case';
 
 export interface InitUserRequest {
-  userEmail: NormalizedEmail;
+  identity: Identity;
   exampleProject?: boolean;
 }
 
@@ -15,10 +15,13 @@ export interface InitUserResponse {
 
 export function createInitUserUseCase(): TransactionalUseCase<InitUserRequest, InitUserResponse> {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     // Create a personal workspace with an optional example project
     const result = await createWorkspace({
       ctx,
-      currentUserEmail: req.userEmail,
+      identity: req.identity,
       name: {type: 'personal'},
       workspaceStore: tx.workspaces,
       workspaceMemberStore: tx.workspaceMembers,
@@ -41,7 +44,7 @@ export function createInitUserUseCase(): TransactionalUseCase<InitUserRequest, I
       .execute();
 
     const now = tx.dateProvider.now();
-    const normalizedEmail = normalizeEmail(req.userEmail);
+    const normalizedEmail = normalizeEmail(currentUserEmail);
 
     for (const workspace of workspaces) {
       // Check if already a member
@@ -54,7 +57,7 @@ export function createInitUserUseCase(): TransactionalUseCase<InitUserRequest, I
         await tx.workspaceMembers.create([
           {
             workspaceId: workspace.id,
-            email: req.userEmail,
+            email: currentUserEmail,
             role: 'member',
             createdAt: now,
             updatedAt: now,

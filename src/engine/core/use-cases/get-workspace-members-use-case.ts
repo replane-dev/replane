@@ -1,10 +1,10 @@
+import type {Identity} from '../identity';
 import type {WorkspaceMemberRole} from '../stores/workspace-member-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetWorkspaceMembersRequest {
   workspaceId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface WorkspaceMember {
@@ -23,7 +23,7 @@ export function createGetWorkspaceMembersUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       workspaceId: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const members = await tx.workspaceMembers.getByWorkspaceId(req.workspaceId);

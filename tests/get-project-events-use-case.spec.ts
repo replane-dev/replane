@@ -4,7 +4,7 @@ import type {ProjectEvent} from '@/engine/core/use-cases/get-project-events-use-
 import {normalizeEmail, wait} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
 
 /**
  * Integration tests for createGetProjectEventsUseCase
@@ -77,7 +77,7 @@ describe('getProjectEvents', () => {
         schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
         overrides: [],
         description: 'A feature flag',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -106,7 +106,7 @@ describe('getProjectEvents', () => {
         schema: {type: 'object', properties: {count: {type: 'number'}}},
         overrides: [],
         description: 'Config for update testing',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -132,7 +132,7 @@ describe('getProjectEvents', () => {
       // Update the config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated description',
         editorEmails: [],
         maintainerEmails: [],
@@ -173,7 +173,7 @@ describe('getProjectEvents', () => {
         schema: {type: 'object', properties: {data: {type: 'string'}}},
         overrides: [],
         description: 'Config for delete testing',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -199,7 +199,7 @@ describe('getProjectEvents', () => {
       // Delete the config
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
 
@@ -234,13 +234,13 @@ describe('getProjectEvents', () => {
       // Create a config with different values per environment
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'env-specific-config',
         description: 'Config with environment-specific values',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -277,7 +277,7 @@ describe('getProjectEvents', () => {
       const {projectId: secondProjectId} = await fixture.engine.useCases.createProject(
         GLOBAL_CONTEXT,
         {
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           workspaceId: fixture.workspaceId,
           name: 'Second Project',
           description: 'Another project for isolation testing',
@@ -303,13 +303,13 @@ describe('getProjectEvents', () => {
       const {environments: secondProjectEnvs} =
         await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
           projectId: secondProjectId,
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
         });
 
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'other-project-config',
         description: 'Config in second project',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: secondProjectId,
@@ -336,7 +336,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config in first project',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -377,7 +377,7 @@ describe('getProjectEvents', () => {
         schema: {type: 'object', properties: {version: {type: 'number'}}},
         overrides: [],
         description: 'Config for lifecycle testing',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -387,7 +387,7 @@ describe('getProjectEvents', () => {
       // Update the config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated lifecycle config',
         editorEmails: [],
         maintainerEmails: [],
@@ -410,7 +410,7 @@ describe('getProjectEvents', () => {
       // Delete the config
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 2,
       });
       await fixture.syncReplica();
@@ -466,7 +466,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config for abort testing',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -508,7 +508,7 @@ describe('getProjectEvents', () => {
       // Create a config with overrides
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       const overrides = [
@@ -528,7 +528,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'config-with-overrides',
         description: 'Config with conditional overrides',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -595,7 +595,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config created after cleanup',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -619,7 +619,7 @@ describe('getProjectEvents', () => {
         schema: {type: 'object', properties: {threshold: {type: 'number'}}},
         overrides: [],
         description: 'Base config to be referenced',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -628,7 +628,7 @@ describe('getProjectEvents', () => {
       // Create a config that references the base config via an override condition
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       const referencingOverrides: Override[] = [
@@ -653,7 +653,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'referencing-config',
         description: 'Config that references base-config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -698,7 +698,7 @@ describe('getProjectEvents', () => {
       // Update the base config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId: baseConfigDetails!.config.id,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated base config',
         editorEmails: [],
         maintainerEmails: [],
@@ -744,7 +744,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Shared base config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -752,7 +752,7 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Create first config that references shared-base
@@ -778,7 +778,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'consumer-config-1',
         description: 'First config referencing shared-base',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -819,7 +819,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'consumer-config-2',
         description: 'Second config referencing shared-base',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -863,7 +863,7 @@ describe('getProjectEvents', () => {
       // Update the shared base config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId: sharedBaseDetails!.config.id,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated shared base',
         editorEmails: [],
         maintainerEmails: [],
@@ -912,7 +912,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Independent config A',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -924,7 +924,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Independent config B',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -954,13 +954,13 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Update config A
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId: configADetails!.config.id,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated config A',
         editorEmails: [],
         maintainerEmails: [],
@@ -1013,7 +1013,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config for multi-update testing',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1023,14 +1023,14 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Perform 2 updates
       for (let i = 1; i <= 2; i++) {
         await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
           configId,
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           description: `Update ${i}`,
           editorEmails: [],
           maintainerEmails: [],
@@ -1092,7 +1092,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Ephemeral config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1102,7 +1102,7 @@ describe('getProjectEvents', () => {
       // Immediately delete it
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
       await fixture.syncReplica();
@@ -1141,14 +1141,14 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Create a config with different values per environment
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'dev-vs-prod-config',
         description: 'Config with different values per environment',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1213,7 +1213,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config for concurrent subscription testing',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1254,7 +1254,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with no overrides',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1301,7 +1301,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with complex nested value',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1336,7 +1336,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with null value',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1373,7 +1373,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with array value',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1410,7 +1410,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with string value',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1424,7 +1424,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with number value',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1438,7 +1438,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config with boolean value',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1508,7 +1508,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Version tracking test',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1517,13 +1517,13 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Update to version 2
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Version 2',
         editorEmails: [],
         maintainerEmails: [],
@@ -1542,7 +1542,7 @@ describe('getProjectEvents', () => {
       // Update to version 3
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Version 3',
         editorEmails: [],
         maintainerEmails: [],
@@ -1561,7 +1561,7 @@ describe('getProjectEvents', () => {
       // Update to version 4
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Version 4',
         editorEmails: [],
         maintainerEmails: [],
@@ -1603,7 +1603,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config to add overrides',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1625,7 +1625,7 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Update config to add overrides
@@ -1645,7 +1645,7 @@ describe('getProjectEvents', () => {
 
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Added overrides',
         editorEmails: [],
         maintainerEmails: [],
@@ -1677,7 +1677,7 @@ describe('getProjectEvents', () => {
     it('should emit event when overrides are removed from existing config', async () => {
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       const initialOverrides: Override[] = [
@@ -1698,7 +1698,7 @@ describe('getProjectEvents', () => {
       const {configId} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'remove-overrides-config',
         description: 'Config to remove overrides',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1733,7 +1733,7 @@ describe('getProjectEvents', () => {
       // Update config to remove overrides
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Removed overrides',
         editorEmails: [],
         maintainerEmails: [],
@@ -1778,7 +1778,7 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       const multipleOverrides: Override[] = [
@@ -1820,7 +1820,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'multi-override-config',
         description: 'Config with multiple overrides',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1861,7 +1861,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Base config that will be deleted',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1869,7 +1869,7 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Create a config that references the base config
@@ -1895,7 +1895,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'refs-deletable-config',
         description: 'Config that references deletable-base',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1932,7 +1932,7 @@ describe('getProjectEvents', () => {
       // Delete the base config
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         configId: baseConfigId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
       await fixture.syncReplica();
@@ -1961,7 +1961,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Base config to be referenced later',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1974,7 +1974,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config that will add a reference',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -1997,7 +1997,7 @@ describe('getProjectEvents', () => {
 
       const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Update config to add a reference
@@ -2022,7 +2022,7 @@ describe('getProjectEvents', () => {
 
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
         configId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Added reference',
         editorEmails: [],
         maintainerEmails: [],
@@ -2076,7 +2076,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config in real project',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -2112,7 +2112,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'First subscription config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -2145,7 +2145,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Second subscription config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -2163,7 +2163,7 @@ describe('getProjectEvents', () => {
       // Create second project
       const {projectId: project2Id, environments: project2Envs} =
         await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: emailToIdentity(CURRENT_USER_EMAIL),
           workspaceId: fixture.workspaceId,
           name: 'Second Test Project',
           description: 'Second project for simultaneous subscription testing',
@@ -2201,7 +2201,7 @@ describe('getProjectEvents', () => {
         schema: null,
         overrides: [],
         description: 'Config in project 1',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -2212,7 +2212,7 @@ describe('getProjectEvents', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'project2-config',
         description: 'Config in project 2',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: project2Id,

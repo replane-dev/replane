@@ -1,9 +1,11 @@
+import type {Identity} from '../identity';
+import {isUserIdentity} from '../identity';
 import {combineConfigAndProjectRoles} from '../role-utils';
 import type {TransactionalUseCase} from '../use-case';
-import type {ConfigInfo, NormalizedEmail} from '../zod';
+import type {ConfigInfo} from '../zod';
 
 export interface GetConfigListRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -20,28 +22,31 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
+
+    // For API keys, we don't have project/config roles
+    const myProjectRole = currentUserEmail
+      ? await tx.projectUsers.getByProjectIdAndEmail({
+          projectId: req.projectId,
+          userEmail: currentUserEmail,
+        })
+      : null;
+
+    const configs = await tx.configs.getProjectConfigs({
+      currentUserEmail,
       projectId: req.projectId,
-      userEmail: req.currentUserEmail,
     });
 
     return {
-      configs: await tx.configs
-        .getProjectConfigs({
-          currentUserEmail: req.currentUserEmail,
-          projectId: req.projectId,
-        })
-        .then(configs =>
-          configs.map(config => ({
-            ...config,
-            myRole: myProjectRole
-              ? combineConfigAndProjectRoles(myProjectRole.role, config.myRole)
-              : config.myRole,
-          })),
-        ),
+      configs: configs.map(config => ({
+        ...config,
+        myRole: myProjectRole
+          ? combineConfigAndProjectRoles(myProjectRole.role, config.myRole)
+          : config.myRole,
+      })),
     };
   };
 }

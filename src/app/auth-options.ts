@@ -277,7 +277,7 @@ export function getAuthOptions(): AuthOptions {
           const userEmail = normalizeEmail(user.email ?? 'unknown@replane.dev');
           const engine = await getEngineSingleton();
           await engine.useCases.initUser(GLOBAL_CONTEXT, {
-            userEmail,
+            identity: {type: 'user', email: userEmail},
             exampleProject: true,
           });
         } catch (error) {
