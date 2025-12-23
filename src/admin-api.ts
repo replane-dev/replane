@@ -531,7 +531,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           overrides: cfg.overrides,
         },
         variants: configDetails.variants.map(e => ({
-          environmentId: e.id,
+          environmentId: e.environmentId,
           value: e.value,
           schema: e.schema,
           overrides: e.overrides,

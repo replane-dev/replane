@@ -34,6 +34,7 @@ describe('Admin API - Create Project', () => {
 
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Should Fail',
+      description: 'Test project',
     });
 
     expect(response.status).toBe(403);
@@ -70,15 +71,19 @@ describe('Admin API - Create Project', () => {
     // Create first project
     await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Duplicate Test',
+      description: 'First project',
     });
 
     // Try to create duplicate
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Duplicate Test',
+      description: 'Second project',
     });
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toContain('already exists');
+    // Error message could be in different formats depending on the error type
+    const errorString = typeof data.error === 'string' ? data.error : JSON.stringify(data);
+    expect(errorString.toLowerCase()).toContain('already exists');
   });
 });

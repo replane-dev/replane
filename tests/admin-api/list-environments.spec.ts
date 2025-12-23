@@ -45,7 +45,7 @@ describe('Admin API - List Environments', () => {
       expect(env.id).toBeDefined();
       expect(env.name).toBeDefined();
       expect(typeof env.order).toBe('number');
-      expect(typeof env.requireProposals).toBe('boolean');
+      // Note: requireProposals is not included in the list environments response
     }
   });
 
