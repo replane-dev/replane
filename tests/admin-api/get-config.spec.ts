@@ -15,12 +15,12 @@ describe('Admin API - Get Config', () => {
       schema?: unknown;
       editors?: string[];
       maintainers?: string[];
-      overrides?: Array<{condition: unknown; value: unknown}>;
+      overrides?: Array<{name: string; conditions: unknown; value: unknown}>;
       variants?: Array<{
         environmentId: string;
         value: unknown;
         schema: unknown;
-        overrides: Array<{condition: unknown; value: unknown}>;
+        overrides: Array<{name: string; conditions: unknown; value: unknown}>;
         useBaseSchema: boolean;
       }>;
     } = {},
@@ -48,9 +48,13 @@ describe('Admin API - Get Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('read-auth-config', {key: 'value', nested: {data: 123}}, {
-          description: 'Test config description',
-        }),
+        createConfigBody(
+          'read-auth-config',
+          {key: 'value', nested: {data: 123}},
+          {
+            description: 'Test config description',
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
@@ -486,24 +490,28 @@ describe('Admin API - Get Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('variants-read-config', {base: true}, {
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {production: true, env: 'prod'},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-            {
-              environmentId: fixture.developmentEnvironmentId,
-              value: {development: true, env: 'dev'},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        createConfigBody(
+          'variants-read-config',
+          {base: true},
+          {
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {production: true, env: 'prod'},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+              {
+                environmentId: fixture.developmentEnvironmentId,
+                value: {development: true, env: 'dev'},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
@@ -544,18 +552,22 @@ describe('Admin API - Get Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('use-base-schema-read-config', {enabled: true}, {
-          schema,
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {enabled: false},
-              schema: null,
-              overrides: [],
-              useBaseSchema: true,
-            },
-          ],
-        }),
+        createConfigBody(
+          'use-base-schema-read-config',
+          {enabled: true},
+          {
+            schema,
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {enabled: false},
+                schema: null,
+                overrides: [],
+                useBaseSchema: true,
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
@@ -587,17 +599,21 @@ describe('Admin API - Get Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('variant-schema-read-config', {base: true}, {
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {variant_specific: 'prod-value'},
-              schema: variantSchema,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        createConfigBody(
+          'variant-schema-read-config',
+          {base: true},
+          {
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {variant_specific: 'prod-value'},
+                schema: variantSchema,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
@@ -626,12 +642,16 @@ describe('Admin API - Get Config', () => {
       const overrides = [
         {
           name: 'beta-override',
-          conditions: [{operator: 'equals', property: 'userType', value: {type: 'literal', value: 'beta'}}],
+          conditions: [
+            {operator: 'equals', property: 'userType', value: {type: 'literal', value: 'beta'}},
+          ],
           value: {beta: true},
         },
         {
           name: 'premium-override',
-          conditions: [{operator: 'equals', property: 'userType', value: {type: 'literal', value: 'premium'}}],
+          conditions: [
+            {operator: 'equals', property: 'userType', value: {type: 'literal', value: 'premium'}},
+          ],
           value: {premium: true},
         },
       ];
@@ -688,23 +708,33 @@ describe('Admin API - Get Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('variant-overrides-config', {base: true}, {
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {production: true},
-              schema: null,
-              overrides: [
-                {
-                  name: 'prod-override',
-                  conditions: [{operator: 'equals', property: 'env', value: {type: 'literal', value: 'prod'}}],
-                  value: {prod_override: true},
-                },
-              ],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        createConfigBody(
+          'variant-overrides-config',
+          {base: true},
+          {
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {production: true},
+                schema: null,
+                overrides: [
+                  {
+                    name: 'prod-override',
+                    conditions: [
+                      {
+                        operator: 'equals',
+                        property: 'env',
+                        value: {type: 'literal', value: 'prod'},
+                      },
+                    ],
+                    value: {prod_override: true},
+                  },
+                ],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
@@ -785,13 +815,23 @@ describe('Admin API - Get Config', () => {
         'PUT',
         `/projects/${fixture.projectId}/configs/version-check-config`,
         token,
-        {description: 'Updated', editors: [], base: {value: 'v2', schema: null, overrides: []}, variants: []},
+        {
+          description: 'Updated',
+          editors: [],
+          base: {value: 'v2', schema: null, overrides: []},
+          variants: [],
+        },
       );
       await fixture.adminApiRequest(
         'PUT',
         `/projects/${fixture.projectId}/configs/version-check-config`,
         token,
-        {description: 'Updated again', editors: [], base: {value: 'v3', schema: null, overrides: []}, variants: []},
+        {
+          description: 'Updated again',
+          editors: [],
+          base: {value: 'v3', schema: null, overrides: []},
+          variants: [],
+        },
       );
 
       const response = await fixture.adminApiRequest(

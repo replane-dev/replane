@@ -15,7 +15,7 @@ describe('Admin API - Delete Config', () => {
       schema?: unknown;
       editors?: string[];
       maintainers?: string[];
-      overrides?: Array<{condition: unknown; value: unknown}>;
+      overrides?: Array<{name: string; conditions: unknown; value: unknown}>;
       variants?: Array<{
         environmentId: string;
         value: unknown;
@@ -165,20 +165,36 @@ describe('Admin API - Delete Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('complex-delete-config', {base: true}, {
-          schema: {type: 'object', properties: {base: {type: 'boolean'}}},
-          editors: ['editor@example.com'],
-          overrides: [{name: 'test-override', conditions: [{operator: 'equals', property: 'userType', value: {type: 'literal', value: 'test'}}], value: {override: true}}],
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {production: true},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        createConfigBody(
+          'complex-delete-config',
+          {base: true},
+          {
+            schema: {type: 'object', properties: {base: {type: 'boolean'}}},
+            editors: ['editor@example.com'],
+            overrides: [
+              {
+                name: 'test-override',
+                conditions: [
+                  {
+                    operator: 'equals',
+                    property: 'userType',
+                    value: {type: 'literal', value: 'test'},
+                  },
+                ],
+                value: {override: true},
+              },
+            ],
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {production: true},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       // Delete
@@ -339,7 +355,10 @@ describe('Admin API - Delete Config', () => {
       );
       const listData = await listResponse.json();
       expect(listData.configs).toHaveLength(2);
-      expect(listData.configs.map((c: {name: string}) => c.name).sort()).toEqual(['config-a', 'config-c']);
+      expect(listData.configs.map((c: {name: string}) => c.name).sort()).toEqual([
+        'config-a',
+        'config-c',
+      ]);
     });
   });
 

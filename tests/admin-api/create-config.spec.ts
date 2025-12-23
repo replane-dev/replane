@@ -15,7 +15,7 @@ describe('Admin API - Create Config', () => {
       description?: string;
       editors?: string[];
       maintainers?: string[];
-      overrides?: Array<{condition: unknown; value: unknown}>;
+      overrides?: Array<{conditions: unknown; value: unknown}>;
       variants?: Array<{
         environmentId: string;
         value: unknown;
@@ -157,7 +157,8 @@ describe('Admin API - Create Config', () => {
         scopes: ['config:write', 'config:read'],
       });
 
-      const description = 'This is a custom description for testing purposes with special chars: <>!@#$%';
+      const description =
+        'This is a custom description for testing purposes with special chars: <>!@#$%';
       const response = await fixture.adminApiRequest(
         'POST',
         `/projects/${fixture.projectId}/configs`,
@@ -415,7 +416,9 @@ describe('Admin API - Create Config', () => {
         token,
       );
       const configData = await getResponse.json();
-      expect(configData.editors.sort()).toEqual(['editor1@example.com', 'editor2@example.com'].sort());
+      expect(configData.editors.sort()).toEqual(
+        ['editor1@example.com', 'editor2@example.com'].sort(),
+      );
     });
 
     it('should create config with maintainers', async () => {
@@ -505,14 +508,14 @@ describe('Admin API - Create Config', () => {
 
       // Find variants by environmentId
       const prodVariant = configData.variants.find(
-        (v: {environmentId: string; value: unknown}) => 
+        (v: {environmentId: string; value: unknown}) =>
           v.environmentId === fixture.productionEnvironmentId,
       );
       expect(prodVariant).toBeDefined();
       expect(prodVariant.value).toEqual({production: true});
 
       const devVariant = configData.variants.find(
-        (v: {environmentId: string; value: unknown}) => 
+        (v: {environmentId: string; value: unknown}) =>
           v.environmentId === fixture.developmentEnvironmentId,
       );
       expect(devVariant).toBeDefined();
@@ -557,7 +560,7 @@ describe('Admin API - Create Config', () => {
         token,
       );
       const configData = await getResponse.json();
-      
+
       // Find production variant
       const prodVariant = configData.variants.find(
         (v: {environmentId: string}) => v.environmentId === fixture.productionEnvironmentId,
@@ -663,11 +666,13 @@ describe('Admin API - Create Config', () => {
       const overrides = [
         {
           name: 'beta-override',
-          conditions: [{
-            operator: 'equals',
-            property: 'userType',
-            value: {type: 'literal', value: 'beta'},
-          }],
+          conditions: [
+            {
+              operator: 'equals',
+              property: 'userType',
+              value: {type: 'literal', value: 'beta'},
+            },
+          ],
           value: {betaFeature: true},
         },
       ];

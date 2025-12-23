@@ -15,12 +15,12 @@ describe('Admin API - Update Config', () => {
       schema?: unknown;
       editors?: string[];
       maintainers?: string[];
-      overrides?: Array<{condition: unknown; value: unknown}>;
+      overrides?: Array<{name: string; conditions: unknown; value: unknown}>;
       variants?: Array<{
         environmentId: string;
         value: unknown;
         schema: unknown;
-        overrides: Array<{condition: unknown; value: unknown}>;
+        overrides: Array<{name: string; conditions: unknown; value: unknown}>;
         useBaseSchema: boolean;
       }>;
     } = {},
@@ -43,12 +43,12 @@ describe('Admin API - Update Config', () => {
       description?: string;
       schema?: unknown;
       editors?: string[];
-      overrides?: Array<{condition: unknown; value: unknown}>;
+      overrides?: Array<{name: string; conditions: unknown; value: unknown}>;
       variants?: Array<{
         environmentId: string;
         value: unknown;
         schema: unknown;
-        overrides: Array<{condition: unknown; value: unknown}>;
+        overrides: Array<{name: string; conditions: unknown; value: unknown}>;
         useBaseSchema: boolean;
       }>;
     } = {},
@@ -490,7 +490,9 @@ describe('Admin API - Update Config', () => {
         token,
       );
       const configData = await getResponse.json();
-      expect(configData.editors.sort()).toEqual(['editor2@example.com', 'editor3@example.com'].sort());
+      expect(configData.editors.sort()).toEqual(
+        ['editor2@example.com', 'editor3@example.com'].sort(),
+      );
     });
 
     it('should remove all editors', async () => {
@@ -545,17 +547,20 @@ describe('Admin API - Update Config', () => {
         'PUT',
         `/projects/${fixture.projectId}/configs/add-variants-config`,
         token,
-        updateConfigBody({base: true}, {
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {production: true},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        updateConfigBody(
+          {base: true},
+          {
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {production: true},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       expect(response.status).toBe(200);
@@ -581,34 +586,41 @@ describe('Admin API - Update Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('update-variant-config', {base: true}, {
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {version: 1},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        createConfigBody(
+          'update-variant-config',
+          {base: true},
+          {
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {version: 1},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
         'PUT',
         `/projects/${fixture.projectId}/configs/update-variant-config`,
         token,
-        updateConfigBody({base: true}, {
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {version: 2, newField: 'added'},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        updateConfigBody(
+          {base: true},
+          {
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {version: 2, newField: 'added'},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       expect(response.status).toBe(200);
@@ -639,36 +651,43 @@ describe('Admin API - Update Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('update-use-base-schema-config', {enabled: true}, {
-          schema,
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {enabled: false},
-              schema: null,
-              overrides: [],
-              useBaseSchema: false,
-            },
-          ],
-        }),
+        createConfigBody(
+          'update-use-base-schema-config',
+          {enabled: true},
+          {
+            schema,
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {enabled: false},
+                schema: null,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
         'PUT',
         `/projects/${fixture.projectId}/configs/update-use-base-schema-config`,
         token,
-        updateConfigBody({enabled: true}, {
-          schema,
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {enabled: false},
-              schema: null,
-              overrides: [],
-              useBaseSchema: true, // Changed from false to true
-            },
-          ],
-        }),
+        updateConfigBody(
+          {enabled: true},
+          {
+            schema,
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {enabled: false},
+                schema: null,
+                overrides: [],
+                useBaseSchema: true, // Changed from false to true
+              },
+            ],
+          },
+        ),
       );
 
       expect(response.status).toBe(200);
@@ -707,18 +726,21 @@ describe('Admin API - Update Config', () => {
         'PUT',
         `/projects/${fixture.projectId}/configs/variant-schema-update-config`,
         token,
-        updateConfigBody({count: 2}, {
-          schema,
-          variants: [
-            {
-              environmentId: fixture.productionEnvironmentId,
-              value: {count: 'not-a-number'}, // Invalid
-              schema: null,
-              overrides: [],
-              useBaseSchema: true,
-            },
-          ],
-        }),
+        updateConfigBody(
+          {count: 2},
+          {
+            schema,
+            variants: [
+              {
+                environmentId: fixture.productionEnvironmentId,
+                value: {count: 'not-a-number'}, // Invalid
+                schema: null,
+                overrides: [],
+                useBaseSchema: true,
+              },
+            ],
+          },
+        ),
       );
 
       expect(response.status).toBe(400);
@@ -741,7 +763,9 @@ describe('Admin API - Update Config', () => {
       const overrides = [
         {
           name: 'beta-override',
-          conditions: [{operator: 'equals', property: 'userType', value: {type: 'literal', value: 'beta'}}],
+          conditions: [
+            {operator: 'equals', property: 'userType', value: {type: 'literal', value: 'beta'}},
+          ],
           value: {beta: true},
         },
       ];
@@ -773,26 +797,36 @@ describe('Admin API - Update Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('update-overrides-config', {default: true}, {
-          overrides: [
-            {
-              name: 'old-override',
-              conditions: [{operator: 'equals', property: 'segment', value: {type: 'literal', value: 'old'}}],
-              value: {old: true},
-            },
-          ],
-        }),
+        createConfigBody(
+          'update-overrides-config',
+          {default: true},
+          {
+            overrides: [
+              {
+                name: 'old-override',
+                conditions: [
+                  {operator: 'equals', property: 'segment', value: {type: 'literal', value: 'old'}},
+                ],
+                value: {old: true},
+              },
+            ],
+          },
+        ),
       );
 
       const newOverrides = [
         {
           name: 'new-override',
-          conditions: [{operator: 'equals', property: 'segment', value: {type: 'literal', value: 'new'}}],
+          conditions: [
+            {operator: 'equals', property: 'segment', value: {type: 'literal', value: 'new'}},
+          ],
           value: {new: true},
         },
         {
           name: 'another-override',
-          conditions: [{operator: 'equals', property: 'segment', value: {type: 'literal', value: 'another'}}],
+          conditions: [
+            {operator: 'equals', property: 'segment', value: {type: 'literal', value: 'another'}},
+          ],
           value: {another: true},
         },
       ];
@@ -824,15 +858,21 @@ describe('Admin API - Update Config', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('remove-overrides-config', {default: true}, {
-          overrides: [
-            {
-              name: 'remove-override',
-              conditions: [{operator: 'equals', property: 'segment', value: {type: 'literal', value: 'old'}}],
-              value: {override: true},
-            },
-          ],
-        }),
+        createConfigBody(
+          'remove-overrides-config',
+          {default: true},
+          {
+            overrides: [
+              {
+                name: 'remove-override',
+                conditions: [
+                  {operator: 'equals', property: 'segment', value: {type: 'literal', value: 'old'}},
+                ],
+                value: {override: true},
+              },
+            ],
+          },
+        ),
       );
 
       const response = await fixture.adminApiRequest(
@@ -884,7 +924,15 @@ describe('Admin API - Update Config', () => {
             description: 'Updated',
             schema: newSchema,
             editors: ['new-editor@example.com'],
-            overrides: [{name: 's1-override', conditions: [{operator: 'equals', property: 'segment', value: {type: 'literal', value: 's1'}}], value: {v: 99}}],
+            overrides: [
+              {
+                name: 's1-override',
+                conditions: [
+                  {operator: 'equals', property: 'segment', value: {type: 'literal', value: 's1'}},
+                ],
+                value: {v: 99},
+              },
+            ],
             variants: [
               {
                 environmentId: fixture.productionEnvironmentId,
