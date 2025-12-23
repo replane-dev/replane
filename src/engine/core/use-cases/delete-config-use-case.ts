@@ -1,44 +1,40 @@
-import assert from 'assert';
-import {BadRequestError} from '../errors';
-import {requireUserEmail, type Identity} from '../identity';
-import type {ConfigId} from '../stores/config-store';
+import {BadRequestError, NotFoundError} from '../errors';
+import {getAuditIdentityInfo, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 
 export interface DeleteConfigRequest {
-  configId: ConfigId;
+  projectId: string;
+  configName: string;
   identity: Identity;
-  prevVersion: number;
+  /** Previous version for optimistic locking. If not provided, uses current config version. */
+  prevVersion?: number;
 }
 
 export interface DeleteConfigResponse {}
 
-export interface DeleteConfigUseCaseDeps {}
-
-export function createDeleteConfigUseCase(
-  deps: DeleteConfigUseCaseDeps,
-): TransactionalUseCase<DeleteConfigRequest, DeleteConfigResponse> {
+export function createDeleteConfigUseCase(): TransactionalUseCase<
+  DeleteConfigRequest,
+  DeleteConfigResponse
+> {
   return async (ctx, tx, req) => {
+    const auditInfo = getAuditIdentityInfo(req.identity);
+
+    // Look up config by projectId + configName
+    const config = await tx.configs.getByName({
+      projectId: req.projectId,
+      name: req.configName,
+    });
+    if (!config) {
+      throw new NotFoundError('Config not found');
+    }
+
+    // Check permission
     await tx.permissionService.ensureCanManageConfig(ctx, {
-      configId: req.configId,
+      configId: config.id,
       identity: req.identity,
     });
 
-    // Deleting configs requires a user identity to track authorship
-    const currentUserEmail = requireUserEmail(req.identity);
-
-    const currentUser = await tx.users.getByEmail(currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
-    // Get the config to find the project
-    const config = await tx.configs.getById(req.configId);
-    if (!config) {
-      throw new BadRequestError('Config not found');
-    }
-
-    const project = await tx.projects.getById({
-      id: config.projectId,
-      currentUserEmail,
-    });
+    const project = await tx.projects.getByIdWithoutPermissionCheck(config.projectId);
     if (!project) {
       throw new BadRequestError('Project not found');
     }
@@ -51,11 +47,20 @@ export function createDeleteConfigUseCase(
       );
     }
 
-    await tx.configService.deleteConfig(ctx, {
-      configId: req.configId,
-      reviewer: currentUser,
-      deleteAuthor: currentUser,
-      prevVersion: req.prevVersion,
+    // Get user for audit log (null for API key)
+    let userId: number | null = null;
+    if (auditInfo.userEmail) {
+      const currentUser = await tx.users.getByEmail(auditInfo.userEmail);
+      if (!currentUser) {
+        throw new BadRequestError('User not found');
+      }
+      userId = currentUser.id;
+    }
+
+    await tx.configService.deleteConfigDirect(ctx, {
+      configId: config.id,
+      userId,
+      prevVersion: req.prevVersion ?? config.version,
     });
 
     return {};

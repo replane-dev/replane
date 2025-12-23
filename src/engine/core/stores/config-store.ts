@@ -306,7 +306,7 @@ export class ConfigStore {
       .select([
         'c.name',
         'c.schema as default_schema',
-        'cv.use_default_schema as use_default_schema',
+        'cv.use_base_schema as use_base_schema',
         'cv.schema as environment_schema',
       ])
       .where('c.project_id', '=', params.projectId)
@@ -315,7 +315,7 @@ export class ConfigStore {
 
     return rows.map(row => {
       // If no environment variant or using default schema, use the config's schema
-      if (!row.environment_schema || row.use_default_schema !== false) {
+      if (!row.environment_schema || row.use_base_schema !== false) {
         return {
           name: row.name,
           schema: row.default_schema ? JSON.parse(row.default_schema) : null,

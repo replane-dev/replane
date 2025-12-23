@@ -18,7 +18,7 @@ export function createGetProjectEnvironmentsUseCase(): TransactionalUseCase<
   GetProjectEnvironmentsResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadEnvironments(ctx, {
       projectId: req.projectId,
       identity: req.identity,
     });

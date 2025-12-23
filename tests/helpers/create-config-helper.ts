@@ -41,13 +41,13 @@ export function convertLegacyCreateConfigParams(
       schema: params.schema,
       overrides: params.overrides,
     },
-    // Environment variants use the same values with useDefaultSchema
+    // Environment variants use the same values with useBaseSchema
     environmentVariants: environments.map(env => ({
       environmentId: env.id,
       value: params.value,
       schema: params.schema,
       overrides: params.overrides,
-      useDefaultSchema: true,
+      useBaseSchema: true,
     })),
   };
 }

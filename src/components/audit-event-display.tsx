@@ -688,6 +688,30 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
         </div>
       </div>
     );
+  } else if (type === 'admin_api_key_created') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Admin API key <strong>{payload.adminApiKey.name}</strong> was created
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Scopes: {payload.adminApiKey.scopes.join(', ')}
+        </div>
+        {payload.adminApiKey.projectIds && (
+          <div className="text-xs text-muted-foreground">
+            Restricted to {payload.adminApiKey.projectIds.length} project(s)
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === 'admin_api_key_deleted') {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          Admin API key <strong>{payload.adminApiKey.name}</strong> was deleted
+        </div>
+      </div>
+    );
   } else {
     assertNever(type, 'Unhandled audit event type');
   }

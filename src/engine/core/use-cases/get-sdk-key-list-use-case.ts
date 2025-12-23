@@ -22,7 +22,7 @@ export function createGetSdkKeyListUseCase(): TransactionalUseCase<
   GetSdkKeyListResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadSdkKeys(ctx, {
       projectId: req.projectId,
       identity: req.identity,
     });

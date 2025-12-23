@@ -119,7 +119,7 @@ export interface ConfigProposalVariants {
   overrides: string;
   proposal_id: string;
   schema: string | null;
-  use_default_schema: boolean;
+  use_base_schema: boolean;
   value: string;
 }
 
@@ -152,7 +152,7 @@ export interface ConfigVariants {
   overrides: string;
   schema: string | null;
   updated_at: Timestamp;
-  use_default_schema: Generated<boolean>;
+  use_base_schema: Generated<boolean>;
   value: string;
 }
 
@@ -183,7 +183,7 @@ export interface ConfigVersionVariants {
   id: string;
   overrides: string;
   schema: string | null;
-  use_default_schema: boolean;
+  use_base_schema: boolean;
   value: string;
 }
 

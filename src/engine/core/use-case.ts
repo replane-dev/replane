@@ -9,6 +9,7 @@ import type {Identity} from './identity';
 import type {PermissionService} from './permission-service';
 import type {ProjectQueryService} from './project-query-service';
 import type {ProposalService} from './proposal-service';
+import type {AdminApiKeyStore} from './stores/admin-api-key-store';
 import type {AuditLogStore} from './stores/audit-log-store';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {ConfigStore} from './stores/config-store';
@@ -52,6 +53,7 @@ export interface UseCaseTransaction {
   configUsers: ConfigUserStore;
   permissionService: PermissionService;
   sdkKeys: SdkKeyStore;
+  adminApiKeys: AdminApiKeyStore;
   auditLogs: AuditLogStore;
   projectUsers: ProjectUserStore;
   projects: ProjectStore;

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sidebar';
 import {Skeleton} from '@/components/ui/skeleton';
 import {useAppContext} from '@/contexts/app-context';
-import {Globe, Mail, Palette, Settings as SettingsIcon, Users} from 'lucide-react';
+import {Globe, KeyRound, Mail, Palette, Settings as SettingsIcon, Users} from 'lucide-react';
 import * as React from 'react';
 import {Suspense} from 'react';
 import {AccountAppearanceSettings} from './settings/account-appearance-settings';
@@ -23,6 +23,7 @@ import {AccountGeneralSettings} from './settings/account-general-settings';
 import {ProjectEnvironmentsSettings} from './settings/project-environments-settings';
 import {ProjectGeneralSettings} from './settings/project-general-settings';
 import {ProjectMembersSettings} from './settings/project-members-settings';
+import {WorkspaceApiKeysSettings} from './settings/workspace-api-keys-settings';
 import {WorkspaceGeneralSettings} from './settings/workspace-general-settings';
 import {WorkspaceMembersSettings} from './settings/workspace-members-settings';
 
@@ -32,6 +33,7 @@ type SettingsSection =
   | 'account-email-preferences'
   | 'org-general'
   | 'org-members'
+  | 'org-api-keys'
   | 'project-general'
   | 'project-environments'
   | 'project-members';
@@ -84,6 +86,7 @@ export function SettingsDialog({
         items: [
           {name: 'General', icon: SettingsIcon, section: 'org-general' as SettingsSection},
           {name: 'Members', icon: Users, section: 'org-members' as SettingsSection},
+          {name: 'API Keys', icon: KeyRound, section: 'org-api-keys' as SettingsSection},
         ],
       },
       {
@@ -108,6 +111,7 @@ export function SettingsDialog({
       },
       'org-general': {title: 'Workspace Settings', breadcrumb: ['Workspace', 'General']},
       'org-members': {title: 'Workspace Members', breadcrumb: ['Workspace', 'Members']},
+      'org-api-keys': {title: 'API Keys', breadcrumb: ['Workspace', 'API Keys']},
       'project-general': {title: 'Project Settings', breadcrumb: ['Project', 'General']},
       'project-environments': {
         title: 'Project Environments',
@@ -161,6 +165,9 @@ export function SettingsDialog({
                 )}
                 {activeSection === 'org-members' && (
                   <WorkspaceMembersSettings workspaceId={workspaceId} />
+                )}
+                {activeSection === 'org-api-keys' && (
+                  <WorkspaceApiKeysSettings workspaceId={workspaceId} />
                 )}
                 {activeSection === 'project-general' && (
                   <ProjectGeneralSettings projectId={projectId} />

@@ -101,7 +101,7 @@ export async function createExampleConfigs(params: {
         value: v.value,
         schema: asConfigSchema(v.schema),
         overrides: v.overrides,
-        useDefaultSchema: v.useDefaultSchema,
+        useBaseSchema: v.useBaseSchema,
       })),
       members: undefined, // Example configs don't have members
       authorId: currentUser.id,
@@ -124,7 +124,7 @@ interface ExampleConfig {
     value: ConfigValue;
     schema: unknown;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
 }
 
@@ -424,7 +424,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
           }),
           schema: null,
           overrides: [],
-          useDefaultSchema: true,
+          useBaseSchema: true,
         },
         {
           environmentId: developmentId,
@@ -435,7 +435,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
           }),
           schema: null,
           overrides: [],
-          useDefaultSchema: true,
+          useBaseSchema: true,
         },
       ],
     },

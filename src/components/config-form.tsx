@@ -1,7 +1,7 @@
 'use client';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
-import {ConfigMemberList} from '@/components/config-member-list';
+import {EditorList} from '@/components/config-member-list';
 import {ConfigMetadataHeader} from '@/components/config-metadata-header';
 import {ConfigVariantFields} from '@/components/config-variant-fields';
 import {SchemaDiffWarning} from '@/components/schema-diff-warning';
@@ -52,7 +52,7 @@ export interface ConfigVariantData {
   value: unknown;
   schema: unknown | null;
   overrides: Override[];
-  useDefaultSchema?: boolean; // Whether to inherit schema from default variant
+  useBaseSchema?: boolean; // Whether to inherit schema from default variant
 }
 
 export interface ConfigFormSubmitData {
@@ -67,7 +67,7 @@ export interface ConfigFormSubmitData {
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
   description: string;
   maintainerEmails: string[];
@@ -136,7 +136,6 @@ export function ConfigForm(props: ConfigFormProps) {
     onPropose,
     onValuesChange,
     onTestOverrides,
-    projectUsers,
     onDirtyChange,
   } = props;
 
@@ -189,7 +188,7 @@ export function ConfigForm(props: ConfigFormProps) {
           return false;
         }
       }, 'Invalid JSON — check for missing quotes, brackets, or commas'),
-    useDefaultSchema: z.boolean(), // Inherit schema from default variant
+    useBaseSchema: z.boolean(), // Inherit schema from default variant
     schemaEnabled: z.boolean().default(false),
     schema: z
       .string()
@@ -197,10 +196,10 @@ export function ConfigForm(props: ConfigFormProps) {
       .transform(s => (s ?? '').trim())
       .superRefine((val, ctx) => {
         const parent = (ctx as any).parent;
-        const useDefaultSchema = parent?.useDefaultSchema ?? false;
+        const useBaseSchema = parent?.useBaseSchema ?? false;
         const enabled = parent?.schemaEnabled ?? false;
         // Skip validation if using default schema
-        if (useDefaultSchema || !enabled) return;
+        if (useBaseSchema || !enabled) return;
         if (!val) {
           ctx.addIssue({
             code: 'custom',
@@ -263,38 +262,33 @@ export function ConfigForm(props: ConfigFormProps) {
     }),
     // Environment variants
     environmentVariants: z.array(variantSchema),
-    members: z
-      .array(
-        z.object({
-          email: z.string().min(1, 'Please enter an email address'),
-          role: z.enum(['maintainer', 'editor']),
-        }),
-      )
+    editors: z
+      .array(z.string())
       .default([])
-      .superRefine((members, ctx) => {
+      .superRefine((editors, ctx) => {
         // Validate email format
-        for (let i = 0; i < members.length; i++) {
-          const member = members[i];
-          if (!member.email) continue;
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email.trim())) {
+        for (let i = 0; i < editors.length; i++) {
+          const email = editors[i];
+          if (!email) continue;
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             ctx.addIssue({
               code: 'custom',
               message: 'Please enter a valid email address',
-              path: [i, 'email'],
+              path: [i],
             });
           }
         }
 
         // Check for duplicates
         const emailSet = new Set<string>();
-        for (let i = 0; i < members.length; i++) {
-          const email = members[i].email.trim().toLowerCase();
+        for (let i = 0; i < editors.length; i++) {
+          const email = editors[i].trim().toLowerCase();
           if (!email) continue;
           if (emailSet.has(email)) {
             ctx.addIssue({
               code: 'custom',
               message: 'This email has already been added',
-              path: [i, 'email'],
+              path: [i],
             });
           }
           emailSet.add(email);
@@ -336,16 +330,13 @@ export function ConfigForm(props: ConfigFormProps) {
           environmentId: env.id,
           enabled: !!existingVariant,
           value: existingVariant ? JSON.stringify(existingVariant.value, null, 2) : '{}',
-          useDefaultSchema: existingVariant?.useDefaultSchema ?? true,
+          useBaseSchema: existingVariant?.useBaseSchema ?? true,
           schemaEnabled: existingVariant?.schema !== null && existingVariant?.schema !== undefined,
           schema: existingVariant?.schema ? JSON.stringify(existingVariant.schema, null, 2) : '',
           overrides: existingVariant?.overrides ?? [],
         };
       }),
-      members: [
-        ...defaultMaintainerEmails.map(email => ({email, role: 'maintainer' as const})),
-        ...defaultEditorEmails.map(email => ({email, role: 'editor' as const})),
-      ],
+      editors: defaultEditorEmails,
     },
     mode: 'onTouched',
   });
@@ -398,7 +389,7 @@ export function ConfigForm(props: ConfigFormProps) {
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];
-      useDefaultSchema: boolean;
+      useBaseSchema: boolean;
     }> = [];
     for (let i = 0; i < values.environmentVariants.length; i++) {
       const variant = values.environmentVariants[i];
@@ -412,7 +403,7 @@ export function ConfigForm(props: ConfigFormProps) {
       let parsedSchema: any | null = null;
 
       // Determine which schema to use for validation
-      if (variant.useDefaultSchema) {
+      if (variant.useBaseSchema) {
         // Use default schema for validation if available
         if (defaultParsedSchema) {
           const validationResult = validateAgainstJsonSchema(payloadValue, defaultParsedSchema);
@@ -461,25 +452,21 @@ export function ConfigForm(props: ConfigFormProps) {
         value: payloadValue,
         schema: parsedSchema,
         overrides: variant.overrides as Override[],
-        useDefaultSchema: variant.useDefaultSchema,
+        useBaseSchema: variant.useBaseSchema,
       });
     }
 
-    // Transform member array back to maintainerEmails and editorEmails
-    const members = (values.members ?? []).filter(m => m.email.trim());
-    const maintainerEmails = members
-      .filter(m => m.role === 'maintainer')
-      .map(m => m.email.trim().toLowerCase());
-    const editorEmails = members
-      .filter(m => m.role === 'editor')
-      .map(m => m.email.trim().toLowerCase());
+    // Transform editors array to editorEmails (no maintainers from config form)
+    const editorEmails = (values.editors ?? [])
+      .filter(e => e.trim())
+      .map(e => e.trim().toLowerCase());
 
     const submitData: ConfigFormSubmitData = {
       name: values.name ?? defaultName,
       defaultVariant: processedDefaultVariant,
       environmentVariants: processedEnvVariants,
       description: values.description ?? '',
-      maintainerEmails: maintainerEmails,
+      maintainerEmails: [],
       editorEmails,
     };
 
@@ -544,10 +531,10 @@ export function ConfigForm(props: ConfigFormProps) {
       });
     }
 
-    // Check for member errors
-    if (errors.members) {
+    // Check for editor errors
+    if (errors.editors) {
       errorCount++;
-      errorMessages.push('Access control');
+      errorMessages.push('Editors');
     }
 
     toast.error('Unable to save — please fix the highlighted errors', {
@@ -563,7 +550,7 @@ export function ConfigForm(props: ConfigFormProps) {
   const watchedDescription = useWatch({control: form.control, name: 'description'});
   const watchedDefaultVariant = useWatch({control: form.control, name: 'defaultVariant'});
   const watchedEnvVariants = useWatch({control: form.control, name: 'environmentVariants'});
-  const watchedMembers = useWatch({control: form.control, name: 'members'});
+  const watchedEditors = useWatch({control: form.control, name: 'editors'});
 
   const overrideBuilderDefaultValue = React.useMemo(() => {
     if (!watchedDefaultVariant?.value) return null;
@@ -621,57 +608,30 @@ export function ConfigForm(props: ConfigFormProps) {
 
     // For edit/proposal modes, compare with defaults
     const currentDescription = (watchedDescription ?? '').trim();
-    const currentMembers = (watchedMembers ?? []).filter(m => m.email.trim());
+    const currentEditors = (watchedEditors ?? [])
+      .filter(e => e.trim())
+      .map(e => e.trim().toLowerCase())
+      .sort();
 
-    // Normalize members for comparison
-    const normalizeMembers = (members: typeof currentMembers) => {
-      const normalized = members
-        .filter(m => m.email.trim())
-        .map(m => ({email: m.email.trim().toLowerCase(), role: m.role}))
-        .sort((a, b) => {
-          if (a.email !== b.email) return a.email.localeCompare(b.email);
-          return a.role.localeCompare(b.role);
-        });
-      return normalized;
-    };
+    const defaultEditorsNormalized = defaultEditorEmails.map(e => e.toLowerCase()).sort();
 
-    const defaultMembers = [
-      ...defaultMaintainerEmails.map(email => ({
-        email: email.toLowerCase(),
-        role: 'maintainer' as const,
-      })),
-      ...defaultEditorEmails.map(email => ({
-        email: email.toLowerCase(),
-        role: 'editor' as const,
-      })),
-    ].sort((a, b) => {
-      if (a.email !== b.email) return a.email.localeCompare(b.email);
-      return a.role.localeCompare(b.role);
-    });
-
-    const normalizedCurrent = normalizeMembers(currentMembers);
-    const normalizedDefault = normalizeMembers(defaultMembers);
-
-    // Compare members
-    const membersChanged =
-      normalizedCurrent.length !== normalizedDefault.length ||
-      normalizedCurrent.some(
-        (m, i) => m.email !== normalizedDefault[i]?.email || m.role !== normalizedDefault[i]?.role,
-      );
+    // Compare editors
+    const editorsChanged =
+      currentEditors.length !== defaultEditorsNormalized.length ||
+      currentEditors.some((e, i) => e !== defaultEditorsNormalized[i]);
 
     // Compare description
     const descriptionChanged = currentDescription !== (defaultDescription ?? '').trim();
 
     // Check for changes in default variant or environment variants
-    return descriptionChanged || membersChanged || true; // TODO: implement proper change detection
+    return descriptionChanged || editorsChanged || true; // TODO: implement proper change detection
   }, [
     mode,
     watchedName,
     watchedDescription,
     watchedDefaultVariant,
-    watchedMembers,
+    watchedEditors,
     defaultDescription,
-    defaultMaintainerEmails,
     defaultEditorEmails,
   ]);
 
@@ -689,12 +649,9 @@ export function ConfigForm(props: ConfigFormProps) {
     }
 
     // Parse current form values to compare with defaults
-    const currentEditors = (watchedMembers ?? [])
-      .filter(m => m.role === 'editor' && m.email.trim())
-      .map(m => m.email.trim().toLowerCase());
-    const currentMaintainers = (watchedMembers ?? [])
-      .filter(m => m.role === 'maintainer' && m.email.trim())
-      .map(m => m.email.trim().toLowerCase());
+    const proposalCurrentEditors = (watchedEditors ?? [])
+      .filter(e => e.trim())
+      .map(e => e.trim().toLowerCase());
 
     // Parse default variant values
     let proposedDefaultValue: unknown = null;
@@ -761,8 +718,8 @@ export function ConfigForm(props: ConfigFormProps) {
           overrides: proposedDefaultOverrides,
         },
         environmentVariants: proposedEnvVariants,
-        editorEmails: currentEditors,
-        maintainerEmails: currentMaintainers,
+        editorEmails: proposalCurrentEditors,
+        maintainerEmails: [],
       },
     });
   }, [
@@ -775,7 +732,7 @@ export function ConfigForm(props: ConfigFormProps) {
     defaultMaintainerEmails,
     watchedDefaultVariant,
     watchedEnvVariants,
-    watchedMembers,
+    watchedEditors,
   ]);
 
   // Check if base configuration changes affect any protected environments
@@ -1097,48 +1054,35 @@ export function ConfigForm(props: ConfigFormProps) {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold">Access Control</h3>
+                <h3 className="text-lg font-semibold">Editors</h3>
                 <p className="text-sm text-muted-foreground">
-                  Manage who can edit and approve changes
+                  Users who can edit this config&apos;s value and overrides, but can&apos;t edit the
+                  schema.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                {!isViewMode && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    onClick={() => showSettings('project-members')}
-                    className="text-xs"
-                  >
-                    Manage project members
-                  </Button>
-                )}
-                <Help>
-                  <p>
-                    Config-level members who can approve proposals. Project admins and maintainers
-                    automatically have approval rights.
-                  </p>
-                </Help>
-              </div>
+              <Help>
+                <p>
+                  Add users who need to change config values without full maintainer access. They
+                  can edit value and overrides, but not the schema or other editors.
+                </p>
+              </Help>
             </div>
 
             <FormField
               control={form.control}
-              name="members"
+              name="editors"
               render={({field}) => (
                 <FormItem>
                   <FormControl>
-                    <ConfigMemberList
-                      members={field.value ?? []}
+                    <EditorList
+                      editors={field.value ?? []}
                       onChange={field.onChange}
                       disabled={!canEditMembers}
-                      errors={form.formState.errors.members as any}
-                      projectUsers={projectUsers}
+                      errors={form.formState.errors.editors as any}
                     />
                   </FormControl>
                   {mode === 'edit' && !canEditMembers && (
-                    <FormDescription>Only maintainers can modify access control.</FormDescription>
+                    <FormDescription>Only maintainers can modify editors.</FormDescription>
                   )}
                   <FormMessage />
                 </FormItem>
@@ -1156,27 +1100,16 @@ export function ConfigForm(props: ConfigFormProps) {
         <div className="sticky bottom-0 z-5 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 py-3">
           <div className="flex gap-2">
             {mode === 'new' && onCreate && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      type="submit"
-                      form="config-form"
-                      disabled={!!submitting || !canSubmit || !hasChanges}
-                      onClick={() => {
-                        submitActionRef.current = 'save';
-                      }}
-                    >
-                      {submitting ? 'Creating…' : 'Create config'}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!hasChanges && !submitting && canSubmit && (
-                  <TooltipContent>
-                    <p>Fill in the required fields to create a config.</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
+              <Button
+                type="submit"
+                form="config-form"
+                disabled={!!submitting || !canSubmit}
+                onClick={() => {
+                  submitActionRef.current = 'save';
+                }}
+              >
+                {submitting ? 'Creating…' : 'Create config'}
+              </Button>
             )}
             {mode === 'edit' && !proposalRequiredResult.required && onSave && (
               <Button

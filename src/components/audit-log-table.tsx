@@ -158,6 +158,16 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
       action: 'User Account Deleted',
       details: `User account deleted: ${payload.user.email}`,
     };
+  } else if (payload.type === 'admin_api_key_created') {
+    return {
+      action: 'Admin API Key Created',
+      details: `API key "${payload.adminApiKey.name}" was created with scopes: ${payload.adminApiKey.scopes.join(', ')}`,
+    };
+  } else if (payload.type === 'admin_api_key_deleted') {
+    return {
+      action: 'Admin API Key Deleted',
+      details: `API key "${payload.adminApiKey.name}" was deleted`,
+    };
   } else {
     assertNever(payload, `Unhandled payload type: ${JSON.stringify(payload)}`);
   }

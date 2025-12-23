@@ -4,7 +4,7 @@ import {useMemo} from 'react';
 interface VariantWithSchema {
   schemaEnabled?: boolean;
   schema?: string;
-  useDefaultSchema?: boolean;
+  useBaseSchema?: boolean;
 }
 
 interface DefaultVariantSchema {
@@ -13,14 +13,14 @@ interface DefaultVariantSchema {
 }
 
 /**
- * Get the effective schema for a variant, considering useDefaultSchema
+ * Get the effective schema for a variant, considering useBaseSchema
  */
 function getEffectiveSchema(
   variant: VariantWithSchema,
   defaultVariant: DefaultVariantSchema | undefined,
 ): {enabled: boolean; schemaText: string; parsed: unknown} {
   // If using default schema, use the default variant's schema
-  if (variant.useDefaultSchema && defaultVariant) {
+  if (variant.useBaseSchema && defaultVariant) {
     const enabled = defaultVariant.schemaEnabled ?? false;
     const schemaText = (defaultVariant.schema ?? '').trim();
     let parsed: unknown = null;
@@ -51,7 +51,7 @@ function getEffectiveSchema(
 /**
  * Check if schemas differ across environments
  * Uses deep equality to ignore property order
- * Considers useDefaultSchema - variants that inherit from default are treated as having the default schema
+ * Considers useBaseSchema - variants that inherit from default are treated as having the default schema
  */
 export function useSchemaDiffCheck(watchedVariants: VariantWithSchema[] | undefined): boolean {
   return useMemo(() => {

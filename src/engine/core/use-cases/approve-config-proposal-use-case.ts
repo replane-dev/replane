@@ -68,10 +68,11 @@ export function createApproveConfigProposalUseCase(
     const patchAuthor = proposal.authorId ? await tx.users.getById(proposal.authorId) : currentUser;
     assert(patchAuthor, 'Patch author not found');
 
-    assert(
-      config.version === proposal.baseConfigVersion,
-      "Config proposal version mismatch, even though all proposals must've be rejected after a config edit",
-    );
+    if (config.version !== proposal.baseConfigVersion) {
+      throw new BadRequestError(
+        'Config has been modified since this proposal was created. Please create a new proposal.',
+      );
+    }
 
     // Mark the proposal as approved BEFORE patching
     await tx.configProposals.updateById({

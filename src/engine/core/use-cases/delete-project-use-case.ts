@@ -1,12 +1,11 @@
-import assert from 'assert';
 import {BadRequestError} from '../errors';
-import {isUserIdentity, requireUserEmail, type Identity} from '../identity';
+import {getAuditIdentityInfo, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 
 export interface DeleteProjectRequest {
   id: string;
-  confirmName: string;
+  confirmName: string | null;
   identity: Identity;
 }
 
@@ -18,17 +17,13 @@ export function createDeleteProjectUseCase(
   deps: DeleteProjectUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectRequest, DeleteProjectResponse> {
   return async (ctx, tx, req) => {
-    // Deleting projects requires a user identity
-    const currentUserEmail = requireUserEmail(req.identity);
+    const auditInfo = getAuditIdentityInfo(req.identity);
 
-    const project = await tx.projects.getById({
-      id: req.id,
-      currentUserEmail,
-    });
+    const project = await tx.projects.getByIdWithoutPermissionCheck(req.id);
     if (!project) throw new BadRequestError('Project not found');
 
     // confirm project name
-    if (project.name !== req.confirmName) {
+    if (project.name !== (req.confirmName ?? project.name)) {
       throw new BadRequestError('Project name confirmation does not match');
     }
 
@@ -44,16 +39,22 @@ export function createDeleteProjectUseCase(
       throw new BadRequestError('Cannot delete the last remaining project in this workspace');
     }
 
-    // Capture data for audit before deletion
-    const currentUser = await tx.users.getByEmail(currentUserEmail);
-    assert(currentUser, 'Current user not found');
+    // Get user ID for audit log (null for API key)
+    let userId: number | null = null;
+    if (auditInfo.userEmail) {
+      const user = await tx.users.getByEmail(auditInfo.userEmail);
+      if (!user) {
+        throw new BadRequestError('User not found');
+      }
+      userId = user.id;
+    }
 
     await tx.projects.deleteById(project.id);
 
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),
-      userId: currentUser.id,
+      userId,
       configId: null,
       projectId: null,
       payload: {

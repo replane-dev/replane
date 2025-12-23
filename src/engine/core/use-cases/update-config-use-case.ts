@@ -1,68 +1,82 @@
-import assert from 'assert';
 import type {Context} from '../context';
-import {BadRequestError} from '../errors';
-import {requireUserEmail, type Identity} from '../identity';
+import {BadRequestError, NotFoundError} from '../errors';
+import {getAuditIdentityInfo, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigSchema, ConfigValue} from '../zod';
 
+/**
+ * Request for updating a config.
+ * Config is identified by `projectId` + `configName`.
+ */
 export interface UpdateConfigRequest {
-  configId: string;
+  projectId: string;
+  configName: string;
   description: string;
-  editorEmails: string[];
-  maintainerEmails: string[];
-  defaultVariant: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
-  environmentVariants: Array<{
+  editors: string[];
+  maintainers: string[] | null;
+  base: {value: ConfigValue; schema: ConfigSchema | null; overrides: Override[]};
+  environments: Array<{
     environmentId: string;
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
   identity: Identity;
-  prevVersion: number;
+  /** Previous version for optimistic locking. If not provided, uses current config version. */
+  prevVersion?: number;
   originalProposalId?: string;
 }
 
-export interface UpdateConfigResponse {}
+export interface UpdateConfigResponse {
+  configId: string;
+  version: number;
+}
 
 export function createUpdateConfigUseCase(): TransactionalUseCase<
   UpdateConfigRequest,
   UpdateConfigResponse
 > {
   return async (ctx: Context, tx, req) => {
-    // Updating configs requires a user identity to track authorship
-    const currentUserEmail = requireUserEmail(req.identity);
+    const auditInfo = getAuditIdentityInfo(req.identity);
 
-    const currentUser = await tx.users.getByEmail(currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
-    // Get the config to check its project's requireProposals setting
-    const config = await tx.configs.getById(req.configId);
+    // Resolve config by projectId + configName
+    const config = await tx.configs.getByName({
+      projectId: req.projectId,
+      name: req.configName,
+    });
     if (!config) {
-      throw new BadRequestError('Config not found');
+      throw new NotFoundError('Config not found');
     }
 
+    const configId = config.id;
+
     // Get the project to check requireProposals setting
-    const project = await tx.projects.getById({
-      id: config.projectId,
-      currentUserEmail,
-    });
+    const project = await tx.projects.getByIdWithoutPermissionCheck(config.projectId);
     if (!project) {
       throw new BadRequestError('Project not found');
     }
 
+    // Use provided prevVersion or current config version
+    const prevVersion = req.prevVersion ?? config.version;
+
+    // Check version for optimistic locking if prevVersion was explicitly provided
+    if (req.prevVersion !== undefined && config.version !== req.prevVersion) {
+      throw new BadRequestError('Config was edited by another user. Please refresh and try again.');
+    }
+
+    const currentVariants = await tx.configVariants.getByConfigId(configId);
+    const currentMembers = await tx.configUsers.getByConfigId(configId);
+    const currentEditorEmails = currentMembers
+      .filter(m => m.role === 'editor')
+      .map(m => m.user_email_normalized);
+    const currentMaintainerEmails = currentMembers
+      .filter(m => m.role === 'maintainer')
+      .map(m => m.user_email_normalized);
+
     // Check if approval is required using the new per-environment logic
     if (project.requireProposals) {
-      const currentVariants = await tx.configVariants.getByConfigId(req.configId);
-      const currentMembers = await tx.configUsers.getByConfigId(req.configId);
-      const currentEditorEmails = currentMembers
-        .filter(m => m.role === 'editor')
-        .map(m => m.user_email_normalized);
-      const currentMaintainerEmails = currentMembers
-        .filter(m => m.role === 'maintainer')
-        .map(m => m.user_email_normalized);
-
       const approvalResult = await tx.configService.isApprovalRequired({
         project,
         existingConfig: config,
@@ -73,15 +87,15 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
           schema: v.schema,
           overrides: v.overrides,
         })),
-        proposedDefaultVariant: req.defaultVariant,
-        proposedEnvironmentVariants: req.environmentVariants,
+        proposedDefaultVariant: req.base,
+        proposedEnvironmentVariants: req.environments,
         currentMembers: {
           editorEmails: currentEditorEmails,
           maintainerEmails: currentMaintainerEmails,
         },
         proposedMembers: {
-          editorEmails: req.editorEmails,
-          maintainerEmails: req.maintainerEmails,
+          editorEmails: req.editors,
+          maintainerEmails: req.maintainers ?? currentMaintainerEmails,
         },
       });
 
@@ -95,20 +109,33 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
       }
     }
 
-    // Call configService.updateConfig with full state
-    await tx.configService.updateConfig(ctx, {
-      configId: req.configId,
+    // Get user ID for audit log (null for API key)
+    let userId: number | null = null;
+    if (auditInfo.userEmail) {
+      const user = await tx.users.getByEmail(auditInfo.userEmail);
+      if (!user) {
+        throw new BadRequestError('User not found');
+      }
+      userId = user.id;
+    }
+
+    // Call configService.updateConfigDirect with full state
+    await tx.configService.updateConfigDirect(ctx, {
+      configId,
       description: req.description,
-      editorEmails: req.editorEmails,
-      maintainerEmails: req.maintainerEmails,
-      defaultVariant: req.defaultVariant,
-      environmentVariants: req.environmentVariants,
-      currentUser,
-      reviewer: currentUser,
-      prevVersion: req.prevVersion,
+      editorEmails: req.editors,
+      maintainerEmails: req.maintainers ?? currentMaintainerEmails,
+      defaultVariant: req.base,
+      environmentVariants: req.environments,
+      identity: req.identity,
+      userId,
+      prevVersion,
       originalProposalId: req.originalProposalId,
     });
 
-    return {};
+    return {
+      configId,
+      version: prevVersion + 1,
+    };
   };
 }

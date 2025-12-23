@@ -504,7 +504,7 @@ export default function ReviewConfigProposalPage() {
                   proposedValue: v.value,
                   proposedSchema: v.schema,
                   proposedOverrides: v.overrides,
-                  useDefaultSchema: false,
+                  useBaseSchema: false,
                   currentValue: baseVariant?.value ?? proposal.base.value,
                   currentSchema: baseVariant?.schema ?? null,
                   currentOverrides: baseVariant?.overrides ?? [],

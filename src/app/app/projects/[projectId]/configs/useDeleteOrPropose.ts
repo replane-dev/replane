@@ -43,7 +43,7 @@ export function useDeleteOrProposeConfig() {
             value: x.value,
             schema: x.schema,
             overrides: x.overrides,
-            useDefaultSchema: x.useDefaultSchema,
+            useBaseSchema: x.useBaseSchema,
           })),
           defaultVariant: {
             value: params.config.config.value,
@@ -66,7 +66,8 @@ export function useDeleteOrProposeConfig() {
         return;
       }
       await deleteConfig.mutateAsync({
-        configId: params.config.config.id,
+        projectId: project.id,
+        configName: params.config.config.name,
         prevVersion: params.prevVersion,
       });
       await params.onAfterDelete?.();

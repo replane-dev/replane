@@ -64,7 +64,7 @@ export interface ProposedVariantChange {
   proposedValue: ConfigValue;
   proposedSchema: ConfigSchema | null;
   proposedOverrides: Override[];
-  useDefaultSchema: boolean;
+  useBaseSchema: boolean;
   currentValue: ConfigValue;
   currentSchema: ConfigSchema | null;
   currentOverrides: Override[];
@@ -319,11 +319,11 @@ export function ConfigProposalDiff({
       {proposedVariants.map(variant => {
         const variantDiffs = [];
 
-        // Check if useDefaultSchema changed
-        const useDefaultSchemaChanged =
-          variant.useDefaultSchema !== undefined &&
+        // Check if useBaseSchema changed
+        const useBaseSchemaChanged =
+          variant.useBaseSchema !== undefined &&
           variant.currentUseDefaultSchema !== undefined &&
-          variant.useDefaultSchema !== variant.currentUseDefaultSchema;
+          variant.useBaseSchema !== variant.currentUseDefaultSchema;
 
         // Only show value if it actually changed
         if (
@@ -364,7 +364,7 @@ export function ConfigProposalDiff({
           });
         }
 
-        if (variantDiffs.length === 0 && !useDefaultSchemaChanged) return null;
+        if (variantDiffs.length === 0 && !useBaseSchemaChanged) return null;
 
         return (
           <div key={variant.environmentId} className="rounded-lg border bg-card/50 overflow-hidden">
@@ -375,7 +375,7 @@ export function ConfigProposalDiff({
             </div>
             <div className="p-6 space-y-6">
               {/* Show "Inherit base schema" change if it changed */}
-              {useDefaultSchemaChanged && (
+              {useBaseSchemaChanged && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="text-sm font-semibold text-foreground">Inherit base schema</div>
@@ -401,12 +401,12 @@ export function ConfigProposalDiff({
                           variant="outline"
                           className={cn(
                             'text-xs font-normal',
-                            variant.useDefaultSchema
+                            variant.useBaseSchema
                               ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900'
                               : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900',
                           )}
                         >
-                          {variant.useDefaultSchema ? 'Enabled' : 'Disabled'}
+                          {variant.useBaseSchema ? 'Enabled' : 'Disabled'}
                         </Badge>
                       </div>
                     </div>

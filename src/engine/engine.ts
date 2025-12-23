@@ -16,6 +16,7 @@ import {prepareDb} from './core/prepare-db';
 import {ProjectQueryService} from './core/project-query-service';
 import {ProposalService} from './core/proposal-service';
 import {type AppHubEvents} from './core/replica';
+import {AdminApiKeyStore} from './core/stores/admin-api-key-store';
 import {AuditLogStore} from './core/stores/audit-log-store';
 import {ConfigProposalStore} from './core/stores/config-proposal-store';
 import {ConfigStore} from './core/stores/config-store';
@@ -33,18 +34,21 @@ import type {TransactionalUseCase, UseCase, UseCaseTransaction} from './core/use
 import {createAddExampleConfigsUseCase} from './core/use-cases/add-example-configs-use-case';
 import {createAddWorkspaceMemberUseCase} from './core/use-cases/add-workspace-member-use-case';
 import {createApproveConfigProposalUseCase} from './core/use-cases/approve-config-proposal-use-case';
+import {createCreateAdminApiKeyUseCase} from './core/use-cases/create-admin-api-key-use-case';
 import {createCreateConfigProposalUseCase} from './core/use-cases/create-config-proposal-use-case';
 import {createCreateConfigUseCase} from './core/use-cases/create-config-use-case';
 import {createCreateProjectEnvironmentUseCase} from './core/use-cases/create-project-environment-use-case';
 import {createCreateProjectUseCase} from './core/use-cases/create-project-use-case';
 import {createCreateSdkKeyUseCase} from './core/use-cases/create-sdk-key-use-case';
 import {createCreateWorkspaceUseCase} from './core/use-cases/create-workspace-use-case';
+import {createDeleteAdminApiKeyUseCase} from './core/use-cases/delete-admin-api-key-use-case';
 import {createDeleteConfigUseCase} from './core/use-cases/delete-config-use-case';
 import {createDeleteProjectEnvironmentUseCase} from './core/use-cases/delete-project-environment-use-case';
 import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-case';
 import {createDeleteSdkKeyUseCase} from './core/use-cases/delete-sdk-key-use-case';
 import {createDeleteUserAccountUseCase} from './core/use-cases/delete-user-account-use-case';
 import {createDeleteWorkspaceUseCase} from './core/use-cases/delete-workspace-use-case';
+import {createGetAdminApiKeyUseCase} from './core/use-cases/get-admin-api-key-use-case';
 import {createGetAppLayoutDataUseCase} from './core/use-cases/get-app-layout-data-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
 import {createGetAuditLogUseCase} from './core/use-cases/get-audit-log-use-case';
@@ -74,6 +78,7 @@ import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-m
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
 import {createHasUsersUseCase} from './core/use-cases/has-users-use-case';
 import {createInitUserUseCase} from './core/use-cases/init-user-use-case';
+import {createListAdminApiKeysUseCase} from './core/use-cases/list-admin-api-keys-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
 import {createRegisterWithPasswordUseCase} from './core/use-cases/register-with-password-use-case';
 import {createRejectAllPendingConfigProposalsUseCase} from './core/use-cases/reject-all-pending-config-proposals-use-case';
@@ -89,6 +94,7 @@ import {createUpdateUserProfileUseCase} from './core/use-cases/update-user-profi
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
 import {createUserExistsUseCase} from './core/use-cases/user-exists-use-case';
+import {createVerifyAdminApiKeyUseCase} from './core/use-cases/verify-admin-api-key-use-case';
 import {createVerifyPasswordCredentialsUseCase} from './core/use-cases/verify-password-credentials-use-case';
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
@@ -133,6 +139,7 @@ function toUseCase<TReq, TRes>(
         const users = new UserStore(dbTx);
         const configUsers = new ConfigUserStore(dbTx);
         const sdkKeys = new SdkKeyStore(dbTx, hub);
+        const adminApiKeys = new AdminApiKeyStore(dbTx);
         const auditLogs = new AuditLogStore(dbTx);
         const projectUsers = new ProjectUserStore(dbTx);
         const projects = new ProjectStore(dbTx);
@@ -218,6 +225,7 @@ function toUseCase<TReq, TRes>(
           configUsers,
           permissionService,
           sdkKeys,
+          adminApiKeys,
           auditLogs,
           projectUsers,
           projects,
@@ -286,7 +294,7 @@ export async function createEngine(options: EngineOptions) {
     getConfigProposalList: createGetConfigProposalListUseCase(),
     updateConfig: createUpdateConfigUseCase(),
     getConfig: createGetConfigUseCase({}),
-    deleteConfig: createDeleteConfigUseCase({}),
+    deleteConfig: createDeleteConfigUseCase(),
     getConfigVariantVersionList: createGetConfigVariantVersionListUseCase(),
     getConfigVariantVersion: createGetConfigVariantVersionUseCase(),
     getConfigVersionList: createGetConfigVersionListUseCase(),
@@ -343,6 +351,11 @@ export async function createEngine(options: EngineOptions) {
     // Notification preferences use cases
     getNotificationPreferences: createGetNotificationPreferencesUseCase(),
     updateNotificationPreferences: createUpdateNotificationPreferencesUseCase(),
+    // Admin API key use cases
+    createAdminApiKey: createCreateAdminApiKeyUseCase(),
+    listAdminApiKeys: createListAdminApiKeysUseCase(),
+    getAdminApiKey: createGetAdminApiKeyUseCase(),
+    deleteAdminApiKey: createDeleteAdminApiKeyUseCase(),
   } satisfies UseCaseMap;
 
   const engineUseCases = {} as InferEngineUserCaseMap<typeof transactionalUseCases>;
@@ -362,10 +375,12 @@ export async function createEngine(options: EngineOptions) {
     useCases: {
       ...engineUseCases,
       getHealth: createGetHealthUseCase(),
+      verifyAdminApiKey: createVerifyAdminApiKeyUseCase({db}),
     },
     mail: options.emailService,
     testing: {
       pool,
+      db,
       dbSchema: options.dbSchema,
       auditLogs: new AuditLogStore(db),
       projects: new ProjectStore(db),

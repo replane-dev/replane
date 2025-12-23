@@ -93,27 +93,27 @@ sdkApi.use('*', async (c, next) => {
   }
 });
 
-const ConfigDto = z
+const SdkConfigDto = z
   .object({
     name: ConfigName(),
     value: z.unknown(),
     overrides: z.array(RenderedOverrideSchema),
   })
-  .openapi('ConfigResponse');
+  .openapi('SdkConfigDto');
 
-export type ConfigDto = z.infer<typeof ConfigDto>;
+export type SdkConfigDto = z.infer<typeof SdkConfigDto>;
 
 const ReplicationStreamConfigChangeRecord = z
   .object({
     type: z.literal('config_change'),
-    config: ConfigDto,
+    config: SdkConfigDto,
   })
   .openapi('ReplicationStreamConfigChangeRecord');
 
 const ReplicationStreamInitRecord = z
   .object({
     type: z.literal('init'),
-    configs: z.array(ConfigDto),
+    configs: z.array(SdkConfigDto),
   })
   .openapi('ReplicationStreamInitRecord');
 
@@ -125,10 +125,12 @@ const ReplicationStreamRecord = z
 
 type ReplicationStreamRecord = z.infer<typeof ReplicationStreamRecord>;
 
-const StartReplicationStreamBody = z.object({
-  currentConfigs: z.array(ConfigDto).optional(),
-  requiredConfigs: z.array(z.string()).optional(),
-});
+const StartReplicationStreamBody = z
+  .object({
+    currentConfigs: z.array(SdkConfigDto).optional(),
+    requiredConfigs: z.array(z.string()).optional(),
+  })
+  .openapi('StartReplicationStreamBody');
 
 export type StartReplicationStreamBody = z.infer<typeof StartReplicationStreamBody>;
 
@@ -159,10 +161,6 @@ sdkApi.openapi(
   },
 
   async c => {
-    console.log('\n\n');
-    console.log('agent:', c.req.header('x-replane-agent'));
-    console.log('\n\n');
-
     const projectId = c.get('projectId');
     const context = c.get('context');
     const edge = await getEdge();
@@ -308,9 +306,9 @@ class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
 }
 
 export function createSdkState(
-  options: StartReplicationStreamBody & {serverConfigs: ConfigDto[]},
-): ConfigDto[] {
-  const configs = new Map<string, ConfigDto>();
+  options: StartReplicationStreamBody & {serverConfigs: SdkConfigDto[]},
+): SdkConfigDto[] {
+  const configs = new Map<string, SdkConfigDto>();
   for (const config of options.currentConfigs ?? []) {
     configs.set(config.name, config);
   }

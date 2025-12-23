@@ -138,3 +138,20 @@ export function requireUserEmail(identity: Identity): NormalizedEmail {
   }
   return identity.email;
 }
+
+/**
+ * Get audit info from an identity.
+ * Returns user email if user identity, or API key ID if API key identity.
+ * Used for creating audit logs that work with both identity types.
+ */
+export interface AuditIdentityInfo {
+  userEmail: NormalizedEmail | null;
+  apiKeyId: string | null;
+}
+
+export function getAuditIdentityInfo(identity: Identity): AuditIdentityInfo {
+  if (isUserIdentity(identity)) {
+    return {userEmail: identity.email, apiKeyId: null};
+  }
+  return {userEmail: null, apiKeyId: identity.apiKeyId};
+}

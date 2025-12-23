@@ -20,7 +20,7 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
   GetConfigListResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadConfigs(ctx, {
       projectId: req.projectId,
       identity: req.identity,
     });

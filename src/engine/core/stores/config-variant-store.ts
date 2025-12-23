@@ -13,7 +13,7 @@ export interface ConfigVariant {
   overrides: Override[];
   createdAt: Date;
   updatedAt: Date;
-  useDefaultSchema: boolean;
+  useBaseSchema: boolean;
 }
 
 export class ConfigVariantStore {
@@ -60,7 +60,7 @@ export class ConfigVariantStore {
         'cv.overrides',
         'cv.created_at',
         'cv.updated_at',
-        'cv.use_default_schema',
+        'cv.use_base_schema',
         'pe.name as environment_name',
       ])
       .where('cv.config_id', '=', configId)
@@ -106,7 +106,7 @@ export class ConfigVariantStore {
         overrides: serializeJson(variant.overrides),
         created_at: variant.createdAt,
         updated_at: variant.updatedAt,
-        use_default_schema: variant.useDefaultSchema,
+        use_base_schema: variant.useBaseSchema,
       })
       .execute();
   }
@@ -118,7 +118,7 @@ export class ConfigVariantStore {
     schema?: unknown | null;
     overrides?: Override[];
     updatedAt: Date;
-    useDefaultSchema?: boolean;
+    useBaseSchema?: boolean;
   }): Promise<void> {
     const updateData: any = {
       updated_at: params.updatedAt,
@@ -133,8 +133,8 @@ export class ConfigVariantStore {
     if (params.overrides !== undefined) {
       updateData.overrides = serializeJson(params.overrides);
     }
-    if (params.useDefaultSchema !== undefined) {
-      updateData.use_default_schema = params.useDefaultSchema;
+    if (params.useBaseSchema !== undefined) {
+      updateData.use_base_schema = params.useBaseSchema;
     }
 
     await this.db
@@ -161,7 +161,7 @@ export class ConfigVariantStore {
     overrides: string;
     created_at: Date;
     updated_at: Date;
-    use_default_schema: boolean;
+    use_base_schema: boolean;
   }): ConfigVariant {
     return {
       id: row.id,
@@ -172,7 +172,7 @@ export class ConfigVariantStore {
       overrides: deserializeJson(row.overrides) ?? [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      useDefaultSchema: row.use_default_schema,
+      useBaseSchema: row.use_base_schema,
     };
   }
 }

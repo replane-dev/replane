@@ -3,7 +3,7 @@ import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OUTSIDER_USER_EMAIL = normalizeEmail('outsider@example.com');
@@ -169,14 +169,14 @@ describe('Read Use Cases - Permission Checks', () => {
               value: asConfigValue({test: true}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: asConfigValue({test: true}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           identity: emailToIdentity(CURRENT_USER_EMAIL),

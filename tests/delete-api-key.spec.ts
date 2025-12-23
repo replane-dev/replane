@@ -1,7 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, TEST_USER_ID, useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keydel@example.com');
 

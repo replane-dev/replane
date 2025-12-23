@@ -1,7 +1,7 @@
 import {createAuditLogId} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('auditor@example.com');
 

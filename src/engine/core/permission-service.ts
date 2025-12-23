@@ -421,6 +421,26 @@ export class PermissionService {
     return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
   }
 
+  async canCreateProject(
+    ctx: Context,
+    params: {workspaceId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      // Users can create projects if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        workspaceId: params.workspaceId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and workspace match
+    if (!hasScope(params.identity, 'project:write')) {
+      return false;
+    }
+
+    return params.identity.workspaceId === params.workspaceId;
+  }
+
   async canDeleteProject(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
     if (isUserIdentity(params.identity)) {
       return this.canUserDeleteProject(ctx, {
@@ -603,11 +623,33 @@ export class PermissionService {
     }
 
     // API key: check scope and project access
-    if (!hasScope(params.identity, 'config:read')) {
+    // Note: config:write implies config:read
+    if (!hasScope(params.identity, 'config:read') && !hasScope(params.identity, 'config:write')) {
       return false;
     }
 
     return this.canApiKeyAccessProject(ctx, params.identity, projectId);
+  }
+
+  async canReadConfigs(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      // Users can read configs if they're workspace members
+      return this.isUserWorkspaceMember(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.email,
+      });
+    }
+
+    // API key: check scope and project access
+    // Note: config:write implies config:read
+    if (!hasScope(params.identity, 'config:read') && !hasScope(params.identity, 'config:write')) {
+      return false;
+    }
+
+    return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
   }
 
   async canReadSdkKeys(ctx: Context, params: {projectId: string; identity: Identity}): Promise<boolean> {
@@ -640,7 +682,11 @@ export class PermissionService {
     }
 
     // API key: check scope and project access
-    if (!hasScope(params.identity, 'environment:read')) {
+    // Note: config:write implies environment:read since creating/updating configs requires knowing environments
+    if (
+      !hasScope(params.identity, 'environment:read') &&
+      !hasScope(params.identity, 'config:write')
+    ) {
       return false;
     }
 
@@ -731,6 +777,16 @@ export class PermissionService {
     }
   }
 
+  async ensureCanCreateProject(
+    ctx: Context,
+    params: {workspaceId: string; identity: Identity},
+  ): Promise<void> {
+    const canCreate = await this.canCreateProject(ctx, params);
+    if (!canCreate) {
+      throw new ForbiddenError('User does not have permission to create projects in this workspace');
+    }
+  }
+
   async ensureCanDeleteProject(
     ctx: Context,
     params: {projectId: string; identity: Identity},
@@ -777,6 +833,16 @@ export class PermissionService {
     const canRead = await this.canReadConfig(ctx, params);
     if (!canRead) {
       throw new ForbiddenError('User does not have permission to read this config');
+    }
+  }
+
+  async ensureCanReadConfigs(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<void> {
+    const canRead = await this.canReadConfigs(ctx, params);
+    if (!canRead) {
+      throw new ForbiddenError('User does not have permission to read configs for this project');
     }
   }
 

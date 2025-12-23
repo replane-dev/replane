@@ -18,7 +18,7 @@ export function createGetProjectUsersUseCase(): TransactionalUseCase<
   GetProjectUsersResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadMembers(ctx, {
       projectId: req.projectId,
       identity: req.identity,
     });

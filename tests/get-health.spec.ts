@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 describe('get-health', () => {
   const fixture = useAppFixture({authEmail: 'test@example.com'});

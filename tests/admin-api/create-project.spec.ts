@@ -1,0 +1,77 @@
+import {describe, expect, it} from 'vitest';
+import {useAppFixture} from '../fixtures/app-fixture';
+
+const CURRENT_USER_EMAIL = 'test@example.com';
+
+describe('Admin API - Create Project', () => {
+  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
+
+  it('should create project with project:write scope', async () => {
+    const {token} = await fixture.createAdminApiKey({
+      scopes: ['project:write', 'project:read'],
+    });
+
+    const response = await fixture.adminApiRequest('POST', '/projects', token, {
+      name: 'API Created Project',
+      description: 'Created via Admin API',
+    });
+
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.id).toBeDefined();
+    expect(data.name).toBe('API Created Project');
+    expect(data.environments).toHaveLength(2);
+    expect(data.environments.map((e: {name: string}) => e.name)).toContain('Production');
+    expect(data.environments.map((e: {name: string}) => e.name)).toContain('Development');
+  });
+
+  it('should return 403 without project:write scope', async () => {
+    const {token} = await fixture.createAdminApiKey({
+      scopes: ['project:read'],
+    });
+
+    const response = await fixture.adminApiRequest('POST', '/projects', token, {
+      name: 'Should Fail',
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it('should create project with custom settings', async () => {
+    const {token} = await fixture.createAdminApiKey({
+      scopes: ['project:write'],
+    });
+
+    const response = await fixture.adminApiRequest('POST', '/projects', token, {
+      name: 'Custom Settings Project',
+      description: 'With proposals enabled',
+      requireProposals: true,
+      allowSelfApprovals: false,
+    });
+
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.name).toBe('Custom Settings Project');
+  });
+
+  it('should return 400 for duplicate project name', async () => {
+    const {token} = await fixture.createAdminApiKey({
+      scopes: ['project:write'],
+    });
+
+    // Create first project
+    await fixture.adminApiRequest('POST', '/projects', token, {
+      name: 'Duplicate Test',
+    });
+
+    // Try to create duplicate
+    const response = await fixture.adminApiRequest('POST', '/projects', token, {
+      name: 'Duplicate Test',
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain('already exists');
+  });
+});
+

@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {GetConfigListResponse} from '@/engine/core/use-cases/get-config-list-use-case';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 

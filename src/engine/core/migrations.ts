@@ -1579,6 +1579,19 @@ export const migrations: Migration[] = [
       CREATE INDEX admin_api_key_projects_project_id_idx ON admin_api_key_projects(project_id);
     `,
   },
+  {
+    name: 'Rename use_default_schema to use_base_schema',
+    sql: /*sql*/ `
+      -- Rename column in config_variants
+      ALTER TABLE config_variants RENAME COLUMN use_default_schema TO use_base_schema;
+
+      -- Rename column in config_proposal_variants
+      ALTER TABLE config_proposal_variants RENAME COLUMN use_default_schema TO use_base_schema;
+
+      -- Rename column in config_version_variants
+      ALTER TABLE config_version_variants RENAME COLUMN use_default_schema TO use_base_schema;
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';

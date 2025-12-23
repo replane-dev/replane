@@ -99,7 +99,7 @@ export function createCreateProjectEnvironmentUseCase(
         overrides: sourceVariant.overrides,
         createdAt: now,
         updatedAt: now,
-        useDefaultSchema: sourceVariant.useDefaultSchema,
+        useBaseSchema: sourceVariant.useBaseSchema,
       });
     }
 

@@ -4,7 +4,7 @@ import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
 import {normalizeEmail} from '../src/engine/core/utils';
-import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -252,25 +252,26 @@ describe('Override Reference Validation - Integration Tests', () => {
       assert(variant, 'Production variant should exist');
 
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'patchable-config',
         description: 'Config to patch',
-        editorEmails: [],
-        maintainerEmails: [CURRENT_USER_EMAIL],
-        defaultVariant: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
-        environmentVariants: [
+        editors: [],
+        maintainers: [CURRENT_USER_EMAIL],
+        base: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
+        environments: [
           {
             environmentId: fixture.productionEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: overrides,
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
         identity: emailToIdentity(CURRENT_USER_EMAIL),
@@ -329,25 +330,26 @@ describe('Override Reference Validation - Integration Tests', () => {
 
       await expect(
         fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-          configId,
+          projectId: fixture.projectId,
+          configName: 'patchable-config-2',
           description: 'Config to patch',
-          editorEmails: [],
-          maintainerEmails: [CURRENT_USER_EMAIL],
-          defaultVariant: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
-          environmentVariants: [
+          editors: [],
+          maintainers: [CURRENT_USER_EMAIL],
+          base: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
+          environments: [
             {
               environmentId: fixture.productionEnvironmentId,
               value: asConfigValue({enabled: false}),
               schema: null,
               overrides: overrides,
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: asConfigValue({enabled: false}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           identity: emailToIdentity(CURRENT_USER_EMAIL),
@@ -357,25 +359,26 @@ describe('Override Reference Validation - Integration Tests', () => {
 
       await expect(
         fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-          configId,
+          projectId: fixture.projectId,
+          configName: 'patchable-config-2',
           description: 'Config to patch',
-          editorEmails: [],
-          maintainerEmails: [CURRENT_USER_EMAIL],
-          defaultVariant: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
-          environmentVariants: [
+          editors: [],
+          maintainers: [CURRENT_USER_EMAIL],
+          base: {value: asConfigValue({enabled: false}), schema: null, overrides: []},
+          environments: [
             {
               environmentId: fixture.productionEnvironmentId,
               value: asConfigValue({enabled: false}),
               schema: null,
               overrides: overrides,
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: asConfigValue({enabled: false}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           identity: emailToIdentity(CURRENT_USER_EMAIL),

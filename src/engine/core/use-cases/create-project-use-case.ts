@@ -1,6 +1,5 @@
-import assert from 'assert';
 import {BadRequestError} from '../errors';
-import {requireUserEmail, type Identity} from '../identity';
+import {getAuditIdentityInfo, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectEnvironment} from '../stores/project-environment-store';
 import {createProjectId} from '../stores/project-store';
@@ -29,8 +28,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
   CreateProjectResponse
 > {
   return async (ctx, tx, req) => {
-    // Creating projects requires a user identity
-    const currentUserEmail = requireUserEmail(req.identity);
+    const auditInfo = getAuditIdentityInfo(req.identity);
 
     const now = new Date();
 
@@ -40,14 +38,21 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     });
     if (existing) throw new BadRequestError('Project with this name already exists');
 
-    const user = await tx.users.getByEmail(currentUserEmail);
-    assert(user, 'Current user not found');
-
-    // Ensure user is a member of the workspace
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    // Check permission to create projects in this workspace
+    await tx.permissionService.ensureCanCreateProject(ctx, {
       workspaceId: req.workspaceId,
       identity: req.identity,
     });
+
+    // Get user ID for audit log (null for API key)
+    let userId: number | null = null;
+    if (auditInfo.userEmail) {
+      const user = await tx.users.getByEmail(auditInfo.userEmail);
+      if (!user) {
+        throw new BadRequestError('User not found');
+      }
+      userId = user.id;
+    }
 
     const projectId = createProjectId();
 
@@ -90,7 +95,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       id: createAuditLogId(),
       createdAt: now,
       projectId,
-      userId: user.id,
+      userId,
       configId: null,
       payload: {
         type: 'project_created',
@@ -98,15 +103,18 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       },
     });
 
-    await tx.projectUsers.create([
-      {
-        projectId,
-        email: currentUserEmail,
-        role: 'admin',
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
+    // Add user as project admin (only for user identities)
+    if (auditInfo.userEmail) {
+      await tx.projectUsers.create([
+        {
+          projectId,
+          email: auditInfo.userEmail,
+          role: 'admin',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]);
+    }
 
     return {projectId, environments: [production, dev].map(e => ({id: e.id, name: e.name}))};
   };

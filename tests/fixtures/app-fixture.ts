@@ -1,5 +1,7 @@
+import {createAdminApi} from '@/admin-api';
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
+import type {AdminApiKeyScope} from '@/engine/core/db';
 import {createUserIdentity, type Identity} from '@/engine/core/identity';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
@@ -11,7 +13,7 @@ import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
 
-export interface TrpcFixtureOptions {
+export interface AppFixtureOptions {
   authEmail: string;
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
@@ -34,6 +36,7 @@ export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
   private _edge: Edge | undefined;
+  private _adminApi: ReturnType<typeof createAdminApi> | undefined;
   private overrideNow: Date = new Date();
   private _workspaceId: string | undefined;
   private _projectId: string | undefined;
@@ -41,7 +44,7 @@ export class AppFixture {
   private _developmentEnvironmentId: string | undefined;
   private _identity: Identity | undefined;
 
-  constructor(private options: TrpcFixtureOptions) {}
+  constructor(private options: AppFixtureOptions) {}
 
   async init() {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
@@ -86,6 +89,7 @@ export class AppFixture {
     this._trpc = createCaller({engine, identity: this._identity});
     this._engine = engine;
     this._edge = edge;
+    this._adminApi = createAdminApi(engine);
 
     // Create test workspace
     const {workspaceId} = await engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
@@ -170,6 +174,60 @@ export class AppFixture {
     ];
   }
 
+  get adminApi(): ReturnType<typeof createAdminApi> {
+    if (!this._adminApi) {
+      throw new Error('adminApi is not initialized');
+    }
+    return this._adminApi;
+  }
+
+  /**
+   * Create an admin API key for testing
+   */
+  async createAdminApiKey(params: {
+    name?: string;
+    description?: string;
+    scopes: AdminApiKeyScope[];
+    projectIds?: string[] | null;
+    expiresAt?: Date | null;
+  }): Promise<{id: string; token: string}> {
+    const result = await this.engine.useCases.createAdminApiKey(GLOBAL_CONTEXT, {
+      identity: this.identity,
+      workspaceId: this.workspaceId,
+      name: params.name ?? 'Test API Key',
+      description: params.description ?? 'Test API key for testing',
+      scopes: params.scopes,
+      projectIds: params.projectIds ?? null,
+      expiresAt: params.expiresAt ?? null,
+    });
+
+    return {
+      id: result.adminApiKey.id,
+      token: result.adminApiKey.token,
+    };
+  }
+
+  /**
+   * Make an authenticated request to the Admin API
+   */
+  async adminApiRequest(
+    method: string,
+    path: string,
+    token: string,
+    body?: unknown,
+  ): Promise<Response> {
+    const request = new Request(`http://localhost${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    return this.adminApi.fetch(request);
+  }
+
   async syncReplica() {
     await this.edge.testing.replicaService.sync();
   }
@@ -212,7 +270,7 @@ export class AppFixture {
         value: asConfigValue(params.value),
         schema: params.schema !== null ? asConfigSchema(params.schema) : null,
         overrides: params.overrides,
-        useDefaultSchema: false,
+        useBaseSchema: false,
       })),
     });
   }
@@ -231,10 +289,11 @@ export class AppFixture {
     this._trpc = undefined;
     this._engine = undefined;
     this._edge = undefined;
+    this._adminApi = undefined;
   }
 }
 
-export function useAppFixture(options: TrpcFixtureOptions) {
+export function useAppFixture(options: AppFixtureOptions) {
   const fixture = new AppFixture(options);
 
   beforeEach(async () => {

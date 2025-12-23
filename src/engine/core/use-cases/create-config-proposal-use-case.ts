@@ -28,7 +28,7 @@ export interface CreateConfigProposalRequest {
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
   message: string | null;
   identity: Identity;
@@ -105,7 +105,7 @@ export function createCreateConfigProposalUseCase(
           value: x.value,
           schema: x.schema,
           overrides: x.overrides,
-          useDefaultSchema: x.useDefaultSchema,
+          useBaseSchema: x.useBaseSchema,
         })),
         members: currentMembers.map(m => ({
           id: createConfigProposalMemberId(),
@@ -160,7 +160,7 @@ export function createCreateConfigProposalUseCase(
           value: v.value,
           schema: v.schema ?? null,
           overrides: v.overrides,
-          useDefaultSchema: v.useDefaultSchema ?? false,
+          useBaseSchema: v.useBaseSchema ?? false,
         })),
         members: proposedMembers.map(m => ({
           id: createConfigProposalMemberId(),

@@ -4,7 +4,7 @@ import type {ProjectEvent} from '@/engine/core/use-cases/get-project-events-use-
 import {normalizeEmail, wait} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/trpc-fixture';
+import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
 
 /**
  * Integration tests for createGetProjectEventsUseCase
@@ -131,23 +131,24 @@ describe('getProjectEvents', () => {
 
       // Update the config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'update-test-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated description',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({count: 2}),
           schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
           overrides: [],
         },
-        environmentVariants: fixture.environments.map(env => ({
+        environments: fixture.environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({count: 2}),
           schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -198,7 +199,8 @@ describe('getProjectEvents', () => {
 
       // Delete the config
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'delete-test-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
@@ -254,7 +256,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({mode: env.name === 'Production' ? 'production' : 'development'}),
           schema: asConfigSchema({type: 'object', properties: {mode: {type: 'string'}}}),
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -323,7 +325,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({other: true}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -386,30 +388,32 @@ describe('getProjectEvents', () => {
 
       // Update the config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'lifecycle-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated lifecycle config',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({version: 2}),
           schema: asConfigSchema({type: 'object', properties: {version: {type: 'number'}}}),
           overrides: [],
         },
-        environmentVariants: fixture.environments.map(env => ({
+        environments: fixture.environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({version: 2}),
           schema: asConfigSchema({type: 'object', properties: {version: {type: 'number'}}}),
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
 
       // Delete the config
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'lifecycle-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 2,
       });
@@ -542,7 +546,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({feature: 'default'}),
           schema: asConfigSchema({type: 'object', properties: {feature: {type: 'string'}}}),
           overrides: overrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -667,7 +671,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({tier: 'basic'}),
           schema: asConfigSchema({type: 'object', properties: {tier: {type: 'string'}}}),
           overrides: referencingOverrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -697,23 +701,24 @@ describe('getProjectEvents', () => {
 
       // Update the base config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId: baseConfigDetails!.config.id,
+        projectId: fixture.projectId,
+        configName: 'base-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated base config',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({threshold: 200}),
           schema: asConfigSchema({type: 'object', properties: {threshold: {type: 'number'}}}),
           overrides: [],
         },
-        environmentVariants: environments.map(env => ({
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({threshold: 200}),
           schema: asConfigSchema({type: 'object', properties: {threshold: {type: 'number'}}}),
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -792,7 +797,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({status: 'normal'}),
           schema: null,
           overrides: refOverrides1,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -833,7 +838,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({allowed: false}),
           schema: null,
           overrides: refOverrides2,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -862,23 +867,24 @@ describe('getProjectEvents', () => {
 
       // Update the shared base config
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId: sharedBaseDetails!.config.id,
+        projectId: fixture.projectId,
+        configName: 'shared-base',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated shared base',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({limit: 100}),
           schema: null,
           overrides: [],
         },
-        environmentVariants: environments.map(env => ({
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({limit: 100}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -959,23 +965,24 @@ describe('getProjectEvents', () => {
 
       // Update config A
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId: configADetails!.config.id,
+        projectId: fixture.projectId,
+        configName: 'independent-config-a',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Updated config A',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({a: 10}),
           schema: null,
           overrides: [],
         },
-        environmentVariants: environments.map(env => ({
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({a: 10}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -1029,23 +1036,24 @@ describe('getProjectEvents', () => {
       // Perform 2 updates
       for (let i = 1; i <= 2; i++) {
         await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-          configId,
+          projectId: fixture.projectId,
+          configName: 'multi-update-config',
           identity: emailToIdentity(CURRENT_USER_EMAIL),
           description: `Update ${i}`,
-          editorEmails: [],
-          maintainerEmails: [],
+          editors: [],
+          maintainers: [],
           prevVersion: i,
-          defaultVariant: {
+          base: {
             value: asConfigValue({counter: i}),
             schema: null,
             overrides: [],
           },
-          environmentVariants: environments.map(env => ({
+          environments: environments.map(env => ({
             environmentId: env.id,
             value: asConfigValue({counter: i}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           })),
         });
         await fixture.syncReplica();
@@ -1101,7 +1109,8 @@ describe('getProjectEvents', () => {
 
       // Immediately delete it
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'ephemeral-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
@@ -1165,7 +1174,7 @@ describe('getProjectEvents', () => {
           }),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -1522,57 +1531,60 @@ describe('getProjectEvents', () => {
 
       // Update to version 2
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'version-tracking-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Version 2',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {value: asConfigValue({v: 2}), schema: null, overrides: []},
-        environmentVariants: environments.map(env => ({
+        base: {value: asConfigValue({v: 2}), schema: null, overrides: []},
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({v: 2}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
 
       // Update to version 3
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'version-tracking-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Version 3',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 2,
-        defaultVariant: {value: asConfigValue({v: 3}), schema: null, overrides: []},
-        environmentVariants: environments.map(env => ({
+        base: {value: asConfigValue({v: 3}), schema: null, overrides: []},
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({v: 3}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
 
       // Update to version 4
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'version-tracking-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Version 4',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 3,
-        defaultVariant: {value: asConfigValue({v: 4}), schema: null, overrides: []},
-        environmentVariants: environments.map(env => ({
+        base: {value: asConfigValue({v: 4}), schema: null, overrides: []},
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({v: 4}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
@@ -1644,23 +1656,24 @@ describe('getProjectEvents', () => {
       ];
 
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'add-overrides-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Added overrides',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({feature: 'default'}),
           schema: null,
           overrides: newOverrides,
         },
-        environmentVariants: environments.map(env => ({
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({feature: 'default'}),
           schema: null,
           overrides: newOverrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
@@ -1712,7 +1725,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({mode: 'normal'}),
           schema: null,
           overrides: initialOverrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
@@ -1732,23 +1745,24 @@ describe('getProjectEvents', () => {
 
       // Update config to remove overrides
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'remove-overrides-config',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Removed overrides',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({mode: 'normal'}),
           schema: null,
           overrides: [], // Empty overrides
         },
-        environmentVariants: environments.map(env => ({
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({mode: 'normal'}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
@@ -1834,7 +1848,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({variant: 'default'}),
           schema: null,
           overrides: multipleOverrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
@@ -1909,7 +1923,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({matched: false}),
           schema: null,
           overrides: referencingOverrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
 
@@ -1931,7 +1945,8 @@ describe('getProjectEvents', () => {
 
       // Delete the base config
       await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        configId: baseConfigId,
+        projectId: fixture.projectId,
+        configName: 'deletable-base',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
@@ -2021,23 +2036,24 @@ describe('getProjectEvents', () => {
       ];
 
       await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        configId,
+        projectId: fixture.projectId,
+        configName: 'will-add-reference',
         identity: emailToIdentity(CURRENT_USER_EMAIL),
         description: 'Added reference',
-        editorEmails: [],
-        maintainerEmails: [],
+        editors: [],
+        maintainers: [],
         prevVersion: 1,
-        defaultVariant: {
+        base: {
           value: asConfigValue({status: 'independent'}),
           schema: null,
           overrides: newRefOverrides,
         },
-        environmentVariants: environments.map(env => ({
+        environments: environments.map(env => ({
           environmentId: env.id,
           value: asConfigValue({status: 'independent'}),
           schema: null,
           overrides: newRefOverrides,
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();
@@ -2226,7 +2242,7 @@ describe('getProjectEvents', () => {
           value: asConfigValue({project: 2}),
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         })),
       });
       await fixture.syncReplica();

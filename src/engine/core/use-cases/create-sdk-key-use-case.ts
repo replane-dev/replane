@@ -1,6 +1,6 @@
 import {BadRequestError} from '../errors';
 import type {HashingService} from '../hashing-service';
-import {requireUserEmail, type Identity} from '../identity';
+import {getAuditIdentityInfo, type Identity} from '../identity';
 import {buildRawSdkKey} from '../sdk-key-utils';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
@@ -28,16 +28,21 @@ export function createCreateSdkKeyUseCase(deps: {
   hasher: HashingService;
 }): TransactionalUseCase<CreateSdkKeyRequest, CreateSdkKeyResponse> {
   return async (ctx, tx, req) => {
-    // This operation requires a user identity
-    const currentUserEmail = requireUserEmail(req.identity);
+    const auditInfo = getAuditIdentityInfo(req.identity);
 
     await tx.permissionService.ensureCanManageSdkKeys(ctx, {
       projectId: req.projectId,
       identity: req.identity,
     });
-    const user = await tx.users.getByEmail(currentUserEmail);
-    if (!user) {
-      throw new Error('User not found');
+
+    // Get user ID for audit log (null for API key)
+    let userId: number | null = null;
+    if (auditInfo.userEmail) {
+      const user = await tx.users.getByEmail(auditInfo.userEmail);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      userId = user.id;
     }
 
     const env = await tx.projectEnvironments.getById({
@@ -67,7 +72,7 @@ export function createCreateSdkKeyUseCase(deps: {
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: now,
-      userId: user.id,
+      userId,
       projectId: req.projectId,
       configId: null,
       payload: {

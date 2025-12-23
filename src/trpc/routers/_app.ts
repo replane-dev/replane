@@ -5,6 +5,7 @@ import {
   MIN_PASSWORD_LENGTH,
 } from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {ADMIN_API_KEY_SCOPES, type AdminApiKeyScope} from '@/engine/core/identity';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
@@ -21,6 +22,10 @@ import {getAllowedEmailDomains, isPasswordAuthEnabled} from '@/environment';
 import {TRPCError} from '@trpc/server';
 import {z} from 'zod';
 import {baseProcedure, createTRPCRouter} from '../init';
+
+const AdminApiKeyScopeSchema = z.enum(
+  ADMIN_API_KEY_SCOPES as [AdminApiKeyScope, ...AdminApiKeyScope[]],
+);
 
 export const appRouter = createTRPCRouter({
   getWorkspace: baseProcedure.input(z.object({workspaceId: Uuid()})).query(async opts => {
@@ -291,7 +296,7 @@ export const appRouter = createTRPCRouter({
             value: ConfigValue(),
             schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
-            useDefaultSchema: z.boolean(),
+            useBaseSchema: z.boolean(),
           }),
         ),
       }),
@@ -309,7 +314,8 @@ export const appRouter = createTRPCRouter({
   updateConfig: baseProcedure
     .input(
       z.object({
-        configId: Uuid(),
+        projectId: Uuid(),
+        configName: ConfigName(),
         description: ConfigDescription(),
         editorEmails: EditorArray(),
         maintainerEmails: MaintainerArray(),
@@ -324,7 +330,7 @@ export const appRouter = createTRPCRouter({
             value: ConfigValue(),
             schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
-            useDefaultSchema: z.boolean(),
+            useBaseSchema: z.boolean(),
           }),
         ),
         prevVersion: z.number(),
@@ -335,16 +341,25 @@ export const appRouter = createTRPCRouter({
       if (!opts.ctx.identity) {
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
-      await opts.ctx.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
-        ...opts.input,
+      const result = await opts.ctx.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+        projectId: opts.input.projectId,
+        configName: opts.input.configName,
+        description: opts.input.description,
+        editors: opts.input.editorEmails,
+        maintainers: opts.input.maintainerEmails,
+        base: opts.input.defaultVariant,
+        environments: opts.input.environmentVariants,
         identity: opts.ctx.identity,
+        prevVersion: opts.input.prevVersion,
+        originalProposalId: opts.input.originalProposalId,
       });
-      return {};
+      return result;
     }),
   deleteConfig: baseProcedure
     .input(
       z.object({
-        configId: Uuid(),
+        projectId: Uuid(),
+        configName: ConfigName(),
         prevVersion: z.number(),
       }),
     )
@@ -353,7 +368,8 @@ export const appRouter = createTRPCRouter({
         throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
       }
       await opts.ctx.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
-        configId: opts.input.configId,
+        projectId: opts.input.projectId,
+        configName: opts.input.configName,
         identity: opts.ctx.identity,
         prevVersion: opts.input.prevVersion,
       });
@@ -920,7 +936,7 @@ export const appRouter = createTRPCRouter({
             value: ConfigValue(),
             schema: ConfigSchema().nullable(),
             overrides: ConfigOverrides(),
-            useDefaultSchema: z.boolean(),
+            useBaseSchema: z.boolean(),
           }),
         ),
         message: z.string().max(5000).nullable(),
@@ -1095,6 +1111,85 @@ export const appRouter = createTRPCRouter({
           proposalApproved: opts.input.proposalApproved,
           proposalRejected: opts.input.proposalRejected,
         },
+      });
+    }),
+
+  // Admin API key management
+  listAdminApiKeys: baseProcedure
+    .input(
+      z.object({
+        workspaceId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.listAdminApiKeys(GLOBAL_CONTEXT, {
+        identity: opts.ctx.identity,
+        workspaceId: opts.input.workspaceId,
+      });
+    }),
+
+  getAdminApiKey: baseProcedure
+    .input(
+      z.object({
+        workspaceId: Uuid(),
+        adminApiKeyId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.getAdminApiKey(GLOBAL_CONTEXT, {
+        identity: opts.ctx.identity,
+        workspaceId: opts.input.workspaceId,
+        adminApiKeyId: opts.input.adminApiKeyId,
+      });
+    }),
+
+  createAdminApiKey: baseProcedure
+    .input(
+      z.object({
+        workspaceId: Uuid(),
+        name: z.string().min(1).max(100),
+        description: z.string().max(500).default(''),
+        scopes: z.array(AdminApiKeyScopeSchema).min(1),
+        projectIds: z.array(Uuid()).nullable(),
+        expiresAt: z.coerce.date().nullable(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.createAdminApiKey(GLOBAL_CONTEXT, {
+        identity: opts.ctx.identity,
+        workspaceId: opts.input.workspaceId,
+        name: opts.input.name,
+        description: opts.input.description,
+        scopes: opts.input.scopes,
+        projectIds: opts.input.projectIds,
+        expiresAt: opts.input.expiresAt,
+      });
+    }),
+
+  deleteAdminApiKey: baseProcedure
+    .input(
+      z.object({
+        workspaceId: Uuid(),
+        adminApiKeyId: Uuid(),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      return await opts.ctx.engine.useCases.deleteAdminApiKey(GLOBAL_CONTEXT, {
+        identity: opts.ctx.identity,
+        workspaceId: opts.input.workspaceId,
+        adminApiKeyId: opts.input.adminApiKeyId,
       });
     }),
 });

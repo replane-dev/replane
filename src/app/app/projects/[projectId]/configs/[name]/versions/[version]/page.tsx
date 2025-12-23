@@ -94,7 +94,7 @@ export default function ConfigVersionDetailsPage() {
         value: v.value,
         schema: v.schema,
         overrides: v.overrides,
-        useDefaultSchema: v.schema === null,
+        useBaseSchema: v.schema === null,
       })),
     [versionSnapshot.variants],
   );

@@ -27,7 +27,7 @@ export interface ConfigProposalVariant {
   value: ConfigValue;
   schema: ConfigSchema | null;
   overrides: Override[];
-  useDefaultSchema: boolean;
+  useBaseSchema: boolean;
 }
 
 export interface ConfigProposalMember {
@@ -347,7 +347,7 @@ export class ConfigProposalStore {
         value: serializeJson(v.value),
         schema: v.schema !== null ? serializeJson(v.schema) : null,
         overrides: serializeJson(v.overrides),
-        use_default_schema: v.useDefaultSchema,
+        use_base_schema: v.useBaseSchema,
       }));
 
       await this.db.insertInto('config_proposal_variants').values(variantsToInsert).execute();
@@ -418,7 +418,7 @@ export class ConfigProposalStore {
         'cpv.id',
         'cpv.proposal_id',
         'cpv.environment_id',
-        'cpv.use_default_schema',
+        'cpv.use_base_schema',
         'cpv.value',
         'cpv.schema',
         'cpv.overrides',
@@ -431,7 +431,7 @@ export class ConfigProposalStore {
       (row): ConfigProposalVariantWithEnvironment => ({
         id: row.id,
         environmentId: row.environment_id,
-        useDefaultSchema: row.use_default_schema,
+        useBaseSchema: row.use_base_schema,
         value: deserializeJson(row.value) as ConfigProposalVariant['value'],
         schema:
           row.schema !== null

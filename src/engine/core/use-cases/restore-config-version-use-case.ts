@@ -69,7 +69,7 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       value: variant.value as ConfigValue,
       schema: variant.schema as ConfigSchema | null,
       overrides: variant.overrides,
-      useDefaultSchema: variant.useDefaultSchema,
+      useBaseSchema: variant.useBaseSchema,
     }));
 
     // Default variant comes from version snapshot
