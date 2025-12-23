@@ -21,7 +21,7 @@ export function createGetWorkspaceUseCase(): TransactionalUseCase<
       identity: req.identity,
     });
 
-    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.user.email : undefined;
 
     const workspace = currentUserEmail
       ? await tx.workspaces.getById({

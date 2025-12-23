@@ -1,3 +1,4 @@
+import {isUserIdentity, type Identity} from './identity';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
@@ -46,12 +47,9 @@ export class ProjectQueryService {
     private projectUsers: ProjectUserStore,
   ) {}
 
-  async getProject(opts: {
-    id: string;
-    currentUserEmail?: NormalizedEmail;
-  }): Promise<ProjectDetails | null> {
+  async getProject(opts: {id: string; identity: Identity}): Promise<ProjectDetails | null> {
     // If no user email provided (e.g., API key access), use the simple lookup
-    if (!opts.currentUserEmail) {
+    if (!isUserIdentity(opts.identity)) {
       const project = await this.projects.getByIdWithoutPermissionCheck(opts.id);
       if (!project) return null;
       return {
@@ -69,7 +67,7 @@ export class ProjectQueryService {
 
     const project = await this.projects.getById({
       id: opts.id,
-      currentUserEmail: opts.currentUserEmail,
+      currentUserEmail: opts.identity.user.email,
     });
     if (!project) return null;
     return {

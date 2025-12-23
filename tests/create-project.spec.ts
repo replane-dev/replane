@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -14,7 +14,7 @@ describe('createProject', () => {
 
   it('creates a project with current user as admin and emits audit message', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'Another Project',
       description: 'Second project',
@@ -61,7 +61,7 @@ describe('createProject', () => {
 
   it('fails with duplicate name', async () => {
     await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'DupProject',
       description: 'First',
@@ -69,7 +69,7 @@ describe('createProject', () => {
 
     await expect(
       fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         workspaceId: fixture.workspaceId,
         name: 'DupProject',
         description: 'Second',

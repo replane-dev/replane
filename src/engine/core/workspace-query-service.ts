@@ -34,7 +34,7 @@ export class WorkspaceQueryService {
     if (opts.identity.type !== 'user') {
       throw new Error('API keys cannot create workspaces');
     }
-    const currentUserEmail = opts.identity.email;
+    const currentUserEmail = opts.identity.user.email;
 
     const workspaces = await this.workspaces.getAllTheUserMemberOf({
       currentUserEmail,
@@ -52,7 +52,6 @@ export class WorkspaceQueryService {
         projectEnvironmentStore: this.projectEnvironments,
         configs: this.configs,
         configService: this.configService,
-        users: this.users,
         auditLogs: this.auditLogs,
         now: new Date(),
         exampleProject: true,

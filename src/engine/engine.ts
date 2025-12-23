@@ -179,7 +179,6 @@ function toUseCase<TReq, TRes>(
         });
         const configService = new ConfigService(
           configs,
-          configProposals,
           configUsers,
           permissionService,
           auditLogs,
@@ -188,6 +187,7 @@ function toUseCase<TReq, TRes>(
           configVariants,
           configVersions,
           proposalService,
+          users,
         );
         const workspaceMemberService = new WorkspaceMemberService(workspaceMembers, projectUsers);
 
@@ -378,6 +378,9 @@ export async function createEngine(options: EngineOptions) {
       verifyAdminApiKey: createVerifyAdminApiKeyUseCase({db}),
     },
     mail: options.emailService,
+    stores: {
+      users: new UserStore(db),
+    },
     testing: {
       pool,
       db,

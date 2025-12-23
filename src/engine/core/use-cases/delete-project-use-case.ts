@@ -1,5 +1,5 @@
 import {BadRequestError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 
@@ -17,8 +17,6 @@ export function createDeleteProjectUseCase(
   deps: DeleteProjectUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectRequest, DeleteProjectResponse> {
   return async (ctx, tx, req) => {
-    const auditInfo = getAuditIdentityInfo(req.identity);
-
     const project = await tx.projects.getByIdWithoutPermissionCheck(req.id);
     if (!project) throw new BadRequestError('Project not found');
 
@@ -39,22 +37,12 @@ export function createDeleteProjectUseCase(
       throw new BadRequestError('Cannot delete the last remaining project in this workspace');
     }
 
-    // Get user ID for audit log (null for API key)
-    let userId: number | null = null;
-    if (auditInfo.userEmail) {
-      const user = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!user) {
-        throw new BadRequestError('User not found');
-      }
-      userId = user.id;
-    }
-
     await tx.projects.deleteById(project.id);
 
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),
-      userId,
+      userId: getUserIdFromIdentity(req.identity),
       configId: null,
       projectId: null,
       payload: {

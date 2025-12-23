@@ -10,7 +10,6 @@ import type {ProjectUserStore} from '../stores/project-user-store';
 import type {WorkspaceMemberStore} from '../stores/workspace-member-store';
 import {createWorkspaceId, Workspace, WorkspaceStore} from '../stores/workspace-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {UserStore} from '../user-store';
 import {createUuidV7} from '../uuid';
 import {createExampleConfigs} from './add-example-configs-use-case';
 
@@ -48,7 +47,6 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
       projectEnvironmentStore: tx.projectEnvironments,
       configs: tx.configs,
       configService: tx.configService,
-      users: tx.users,
       auditLogs: tx.auditLogs,
       now,
       exampleProject: false,
@@ -66,7 +64,6 @@ export async function createWorkspace(params: {
   projectStore: ProjectStore;
   projectUserStore: ProjectUserStore;
   projectEnvironmentStore: ProjectEnvironmentStore;
-  users: UserStore;
   auditLogs: AuditLogStore;
   configs: ConfigStore;
   configService: ConfigService;
@@ -86,7 +83,6 @@ export async function createWorkspace(params: {
     configs,
     configService,
     now,
-    users,
     exampleProject,
   } = params;
 
@@ -94,13 +90,11 @@ export async function createWorkspace(params: {
   if (identity.type !== 'user') {
     throw new Error('Only users can create workspaces');
   }
-  const currentUserEmail = identity.email;
+  const currentUserEmail = identity.user.email;
 
-  const user = await users.getByEmail(currentUserEmail);
-  assert(user, 'Current user not found');
   const workspaceName =
-    name.type === 'personal' && user.name
-      ? `${user.name}'s Replane`
+    name.type === 'personal' && identity.user.name
+      ? `${identity.user.name}'s Replane`
       : name.type === 'custom'
         ? name.name
         : 'Personal';
@@ -164,14 +158,11 @@ export async function createWorkspace(params: {
     id: developmentId,
   });
 
-  const currentUser = await users.getByEmail(currentUserEmail);
-  assert(currentUser, 'Current user not found');
-
   await auditLogs.create({
     id: createAuditLogId(),
     createdAt: now,
     projectId: null,
-    userId: currentUser.id,
+    userId: identity.user.id,
     configId: null,
     payload: {
       type: 'workspace_created',
@@ -189,7 +180,7 @@ export async function createWorkspace(params: {
       configs: configs,
       configService: configService,
       projectEnvironments: projectEnvironmentStore,
-      currentUser: currentUser,
+      userId: identity.user.id,
     });
   }
 

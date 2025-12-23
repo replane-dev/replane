@@ -64,10 +64,6 @@ export function createApproveConfigProposalUseCase(
       throw new BadRequestError('Proposal has already been rejected');
     }
 
-    // author id might be null if the user was deleted
-    const patchAuthor = proposal.authorId ? await tx.users.getById(proposal.authorId) : currentUser;
-    assert(patchAuthor, 'Patch author not found');
-
     if (config.version !== proposal.baseConfigVersion) {
       throw new BadRequestError(
         'Config has been modified since this proposal was created. Please create a new proposal.',
@@ -102,8 +98,7 @@ export function createApproveConfigProposalUseCase(
     if (proposal.isDelete) {
       await tx.configService.deleteConfig(ctx, {
         configId: proposal.configId,
-        deleteAuthor: patchAuthor,
-        reviewer: currentUser,
+        identity: req.identity,
         prevVersion: proposal.baseConfigVersion,
         originalProposalId: proposal.id,
       });
@@ -126,20 +121,26 @@ export function createApproveConfigProposalUseCase(
           overrides: proposal.overrides,
         },
         environmentVariants: proposal.variants,
-        currentUser: patchAuthor,
-        reviewer: currentUser,
+        editAuthorId: proposal.authorId,
+        reviewer: req.identity,
         prevVersion: proposal.baseConfigVersion,
         originalProposalId: proposal.id,
       });
     }
 
+    let patchAuthorEmail: string | null = null;
+    if (proposal.authorId) {
+      const patchAuthor = await tx.users.getById(proposal.authorId);
+      assert(patchAuthor, 'Patch author not found');
+      patchAuthorEmail = patchAuthor.email;
+    }
+
     // Send email notification to the proposal author
-    const patchAuthorEmail = patchAuthor.email;
     if (tx.emailService && patchAuthorEmail) {
       const proposalUrl = `${deps.baseUrl}/app/projects/${project.id}/configs/${config.name}/proposals/${proposal.id}`;
       const configName = config.name;
       const projectName = project.name;
-      const reviewerName = currentUser.name ?? (currentUser.email || 'Unknown');
+      const reviewerName = req.identity.identityName;
       const emailService = tx.emailService;
 
       tx.scheduleOptimisticEffect(async () => {

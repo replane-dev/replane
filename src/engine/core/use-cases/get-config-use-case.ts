@@ -4,7 +4,6 @@ import type {
   PendingConfigProposalSummary,
 } from '../config-query-service';
 import type {Identity} from '../identity';
-import {isUserIdentity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 
 export type {ConfigDetails, ConfigVariantWithEnvironmentName, PendingConfigProposalSummary};
@@ -31,12 +30,10 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
       identity: req.identity,
     });
 
-    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
-
     const config = await tx.configQueryService.getConfigDetails({
       name: req.name,
       projectId: req.projectId,
-      currentUserEmail,
+      identity: req.identity,
     });
 
     return {config};

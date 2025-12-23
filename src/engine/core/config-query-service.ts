@@ -1,10 +1,10 @@
-import {combineConfigAndProjectRoles} from './role-utils';
+import {getEmailFromIdentity2, isUserIdentity, type Identity} from './identity';
+import {getHighestRole} from './role-utils';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariant, ConfigVariantStore} from './stores/config-variant-store';
 import type {ProjectUserStore} from './stores/project-user-store';
-import type {NormalizedEmail} from './zod';
 
 export interface PendingConfigProposalSummary {
   id: string;
@@ -39,12 +39,12 @@ export class ConfigQueryService {
   async getConfigDetails(opts: {
     name: string;
     projectId: string;
-    currentUserEmail?: NormalizedEmail;
+    identity: Identity;
   }): Promise<ConfigDetails | undefined> {
-    const myProjectRole = opts.currentUserEmail
+    const myProjectRole = isUserIdentity(opts.identity)
       ? await this.projectUsers.getByProjectIdAndEmail({
           projectId: opts.projectId,
-          userEmail: opts.currentUserEmail,
+          userEmail: opts.identity.user.email,
         })
       : null;
 
@@ -58,19 +58,19 @@ export class ConfigQueryService {
 
     const configUsers = await this.configUsers.getByConfigId(config.id);
 
-    const myConfigRole = opts.currentUserEmail
-      ? (configUsers.find(cu => cu.user_email_normalized === opts.currentUserEmail)?.role ??
-          'viewer')
-      : 'viewer';
-
+    const myConfigRole =
+      configUsers.find(cu => cu.user_email_normalized === getEmailFromIdentity2(opts.identity))
+        ?.role ?? 'viewer';
     // Get all environment-specific variants for this config
     // (default variant is now part of the config itself)
     const variants = await this.configVariants.getByConfigId(config.id);
 
     // Get pending config-level proposals (deletion, members, description)
     const pendingConfigProposals = await this.configProposals.getPendingProposalsWithAuthorEmails({
-        configId: config.id,
+      configId: config.id,
     });
+
+    const myRole = getHighestRole([myProjectRole?.role ?? 'viewer', myConfigRole]);
 
     return {
       config,
@@ -83,9 +83,7 @@ export class ConfigQueryService {
         .filter(cu => cu.role === 'maintainer')
         .map(cu => cu.user_email_normalized)
         .sort(),
-      myRole: myProjectRole
-        ? combineConfigAndProjectRoles(myProjectRole.role, myConfigRole)
-        : myConfigRole,
+      myRole: myRole === 'admin' ? 'maintainer' : myRole,
       pendingConfigProposals,
     };
   }

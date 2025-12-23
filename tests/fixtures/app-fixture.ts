@@ -84,7 +84,11 @@ export class AppFixture {
     }
 
     const createCaller = createCallerFactory(appRouter);
-    this._identity = createUserIdentity(normalizeEmail(this.options.authEmail));
+    this._identity = createUserIdentity({
+      email: normalizeEmail(this.options.authEmail),
+      id: TEST_USER_ID,
+      name: 'Test User',
+    });
 
     this._trpc = createCaller({engine, identity: this._identity});
     this._engine = engine;
@@ -275,6 +279,18 @@ export class AppFixture {
     });
   }
 
+  async emailToIdentity(email: NormalizedEmail | string): Promise<Identity> {
+    const user = await this.engine.stores.users.getByEmail(normalizeEmail(email));
+    if (!user) {
+      throw new Error(`User not found for email: ${email}`);
+    }
+    return createUserIdentity({
+      email: normalizeEmail(email),
+      id: user.id,
+      name: user.name ?? null,
+    });
+  }
+
   async destroy(ctx: Context) {
     if (this._edge) {
       await this._edge.stop();
@@ -305,12 +321,4 @@ export function useAppFixture(options: AppFixtureOptions) {
   });
 
   return fixture;
-}
-
-/**
- * Helper to create an identity from an email (for backward compatibility in tests)
- */
-export function emailToIdentity(email: NormalizedEmail | string): Identity {
-  const normalizedEmail = typeof email === 'string' ? normalizeEmail(email) : email;
-  return createUserIdentity(normalizedEmail);
 }

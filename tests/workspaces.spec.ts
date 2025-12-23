@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const ANOTHER_USER_EMAIL = normalizeEmail('another@example.com');
@@ -13,7 +13,7 @@ describe('Workspaces', () => {
   describe('createWorkspace', () => {
     it('creates a workspace with current user as admin', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'New Workspace',
       });
 
@@ -41,8 +41,7 @@ describe('Workspaces', () => {
         orderBy: 'created_at desc, id desc',
       });
       const orgCreatedEvent = messages.find(
-        m =>
-          m.payload.type === 'workspace_created' && m.payload.workspace.id === workspaceId,
+        m => m.payload.type === 'workspace_created' && m.payload.workspace.id === workspaceId,
       );
       expect(orgCreatedEvent).toBeDefined();
       expect(orgCreatedEvent?.payload).toMatchObject({
@@ -58,17 +57,14 @@ describe('Workspaces', () => {
   describe('getWorkspaceList', () => {
     it('returns only workspaces where user is a member', async () => {
       // Create org1 with current user
-      const {workspaceId: org1Id} = await fixture.engine.useCases.createWorkspace(
-        GLOBAL_CONTEXT,
-        {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          name: 'Org 1',
-        },
-      );
+      const {workspaceId: org1Id} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+        name: 'Org 1',
+      });
 
       // Get user's workspaces
       const orgs = await fixture.engine.useCases.getWorkspaceList(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Should include the test workspace created in fixture and org1
@@ -81,13 +77,13 @@ describe('Workspaces', () => {
   describe('getWorkspace', () => {
     it('returns workspace details when user is a member', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Test Org',
       });
 
       const org = await fixture.engine.useCases.getWorkspace(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       expect(org.id).toBe(workspaceId);
@@ -97,14 +93,14 @@ describe('Workspaces', () => {
 
     it('throws ForbiddenError when user is not a member', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Private Org',
       });
 
       await expect(
         fixture.engine.useCases.getWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(ANOTHER_USER_EMAIL),
+          identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -113,19 +109,19 @@ describe('Workspaces', () => {
   describe('updateWorkspace', () => {
     it('allows admin to update workspace', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Original Name',
       });
 
       await fixture.engine.useCases.updateWorkspace(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Updated Name',
       });
 
       const org = await fixture.engine.useCases.getWorkspace(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       expect(org.name).toBe('Updated Name');
@@ -133,14 +129,14 @@ describe('Workspaces', () => {
 
     it('prevents non-admin from updating', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Test Org',
       });
 
       // Add another user as member
       await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         memberEmail: ANOTHER_USER_EMAIL,
         role: 'member',
       });
@@ -148,7 +144,7 @@ describe('Workspaces', () => {
       await expect(
         fixture.engine.useCases.updateWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(ANOTHER_USER_EMAIL),
+          identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
           name: 'Hacked Name',
         }),
       ).rejects.toThrow(ForbiddenError);
@@ -158,13 +154,13 @@ describe('Workspaces', () => {
   describe('deleteWorkspace', () => {
     it('allows admin to delete workspace without projects', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'To Delete',
       });
 
       await fixture.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Verify workspace is deleted
@@ -177,13 +173,13 @@ describe('Workspaces', () => {
 
     it('allows prevents deletion when workspace has projects', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'With Projects',
       });
 
       // Create a project in this workspace
       await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         workspaceId,
         name: `Test Project ${workspaceId}`,
         description: 'Test',
@@ -192,20 +188,20 @@ describe('Workspaces', () => {
       await expect(
         fixture.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         }),
       ).resolves.toEqual({success: true});
     });
 
     it('prevents non-admin from deleting', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Test Org',
       });
 
       await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         memberEmail: ANOTHER_USER_EMAIL,
         role: 'member',
       });
@@ -213,7 +209,7 @@ describe('Workspaces', () => {
       await expect(
         fixture.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(ANOTHER_USER_EMAIL),
+          identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -223,20 +219,20 @@ describe('Workspaces', () => {
     describe('addWorkspaceMember', () => {
       it('allows admin to add members', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         const members = await fixture.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         });
 
         expect(members.length).toBe(2);
@@ -248,13 +244,13 @@ describe('Workspaces', () => {
 
       it('prevents adding duplicate members', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
@@ -262,7 +258,7 @@ describe('Workspaces', () => {
         await expect(
           fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
             workspaceId,
-            identity: emailToIdentity(CURRENT_USER_EMAIL),
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
             memberEmail: ANOTHER_USER_EMAIL,
             role: 'member',
           }),
@@ -271,13 +267,13 @@ describe('Workspaces', () => {
 
       it('prevents non-admin from adding members', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
@@ -285,7 +281,7 @@ describe('Workspaces', () => {
         await expect(
           fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
             workspaceId,
-            identity: emailToIdentity(ANOTHER_USER_EMAIL),
+            identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
             memberEmail: normalizeEmail('third@example.com'),
             role: 'member',
           }),
@@ -296,26 +292,26 @@ describe('Workspaces', () => {
     describe('removeWorkspaceMember', () => {
       it('allows admin to remove members', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
         });
 
         const members = await fixture.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         });
 
         expect(members.length).toBe(1);
@@ -324,14 +320,14 @@ describe('Workspaces', () => {
 
       it('prevents removing last admin', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await expect(
           fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
             workspaceId,
-            identity: emailToIdentity(CURRENT_USER_EMAIL),
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
             memberEmail: CURRENT_USER_EMAIL,
           }),
         ).rejects.toThrow(BadRequestError);
@@ -340,30 +336,33 @@ describe('Workspaces', () => {
       it('removes user from all projects within the workspace', async () => {
         // Create a workspace
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org With Projects',
         });
 
         // Add another user as workspace member
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         // Create a project and add the member to it
-        const {projectId: projectId1} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          workspaceId,
-          name: `Project 1 ${workspaceId}`,
-          description: 'Test project 1',
-        });
+        const {projectId: projectId1} = await fixture.engine.useCases.createProject(
+          GLOBAL_CONTEXT,
+          {
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+            workspaceId,
+            name: `Project 1 ${workspaceId}`,
+            description: 'Test project 1',
+          },
+        );
 
         // Add the member as a project admin
         await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
           projectId: projectId1,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           users: [
             {email: CURRENT_USER_EMAIL, role: 'admin'},
             {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
@@ -381,7 +380,7 @@ describe('Workspaces', () => {
         // Remove the member from the workspace
         await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
         });
 
@@ -396,44 +395,53 @@ describe('Workspaces', () => {
       it('removes user from multiple projects within the workspace', async () => {
         // Create a workspace
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org Multi Projects',
         });
 
         // Add another user as workspace member
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         // Create multiple projects
-        const {projectId: projectId1} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          workspaceId,
-          name: `Multi Project 1 ${workspaceId}`,
-          description: 'Test project 1',
-        });
+        const {projectId: projectId1} = await fixture.engine.useCases.createProject(
+          GLOBAL_CONTEXT,
+          {
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+            workspaceId,
+            name: `Multi Project 1 ${workspaceId}`,
+            description: 'Test project 1',
+          },
+        );
 
-        const {projectId: projectId2} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          workspaceId,
-          name: `Multi Project 2 ${workspaceId}`,
-          description: 'Test project 2',
-        });
+        const {projectId: projectId2} = await fixture.engine.useCases.createProject(
+          GLOBAL_CONTEXT,
+          {
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+            workspaceId,
+            name: `Multi Project 2 ${workspaceId}`,
+            description: 'Test project 2',
+          },
+        );
 
-        const {projectId: projectId3} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          workspaceId,
-          name: `Multi Project 3 ${workspaceId}`,
-          description: 'Test project 3',
-        });
+        const {projectId: projectId3} = await fixture.engine.useCases.createProject(
+          GLOBAL_CONTEXT,
+          {
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+            workspaceId,
+            name: `Multi Project 3 ${workspaceId}`,
+            description: 'Test project 3',
+          },
+        );
 
         // Add the member to all three projects with different roles
         await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
           projectId: projectId1,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           users: [
             {email: CURRENT_USER_EMAIL, role: 'admin'},
             {email: ANOTHER_USER_EMAIL, role: 'admin'},
@@ -442,7 +450,7 @@ describe('Workspaces', () => {
 
         await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
           projectId: projectId2,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           users: [
             {email: CURRENT_USER_EMAIL, role: 'admin'},
             {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
@@ -451,7 +459,7 @@ describe('Workspaces', () => {
 
         await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
           projectId: projectId3,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           users: [
             {email: CURRENT_USER_EMAIL, role: 'admin'},
             {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
@@ -468,7 +476,7 @@ describe('Workspaces', () => {
         // Remove the member from the workspace
         await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
         });
 
@@ -482,7 +490,7 @@ describe('Workspaces', () => {
         // Verify workspace members list no longer includes the removed user
         const members = await fixture.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         });
         expect(members.find(m => m.email === ANOTHER_USER_EMAIL)).toBeUndefined();
       });
@@ -492,7 +500,7 @@ describe('Workspaces', () => {
         const {workspaceId: workspace1Id} = await fixture.engine.useCases.createWorkspace(
           GLOBAL_CONTEXT,
           {
-            identity: emailToIdentity(CURRENT_USER_EMAIL),
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
             name: 'Workspace 1',
           },
         );
@@ -500,7 +508,7 @@ describe('Workspaces', () => {
         const {workspaceId: workspace2Id} = await fixture.engine.useCases.createWorkspace(
           GLOBAL_CONTEXT,
           {
-            identity: emailToIdentity(CURRENT_USER_EMAIL),
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
             name: 'Workspace 2',
           },
         );
@@ -508,37 +516,43 @@ describe('Workspaces', () => {
         // Add another user as member to both workspaces
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId: workspace1Id,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId: workspace2Id,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         // Create a project in each workspace
-        const {projectId: project1Id} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          workspaceId: workspace1Id,
-          name: `Ws1 Project ${workspace1Id}`,
-          description: 'Project in workspace 1',
-        });
+        const {projectId: project1Id} = await fixture.engine.useCases.createProject(
+          GLOBAL_CONTEXT,
+          {
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+            workspaceId: workspace1Id,
+            name: `Ws1 Project ${workspace1Id}`,
+            description: 'Project in workspace 1',
+          },
+        );
 
-        const {projectId: project2Id} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
-          workspaceId: workspace2Id,
-          name: `Ws2 Project ${workspace2Id}`,
-          description: 'Project in workspace 2',
-        });
+        const {projectId: project2Id} = await fixture.engine.useCases.createProject(
+          GLOBAL_CONTEXT,
+          {
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+            workspaceId: workspace2Id,
+            name: `Ws2 Project ${workspace2Id}`,
+            description: 'Project in workspace 2',
+          },
+        );
 
         // Add the member to both projects
         await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
           projectId: project1Id,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           users: [
             {email: CURRENT_USER_EMAIL, role: 'admin'},
             {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
@@ -547,7 +561,7 @@ describe('Workspaces', () => {
 
         await fixture.engine.useCases.updateProjectUsers(GLOBAL_CONTEXT, {
           projectId: project2Id,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           users: [
             {email: CURRENT_USER_EMAIL, role: 'admin'},
             {email: ANOTHER_USER_EMAIL, role: 'maintainer'},
@@ -557,7 +571,7 @@ describe('Workspaces', () => {
         // Remove the member from workspace 1 only
         await fixture.engine.useCases.removeWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId: workspace1Id,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
         });
 
@@ -581,27 +595,27 @@ describe('Workspaces', () => {
     describe('updateWorkspaceMemberRole', () => {
       it('allows admin to change member roles', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'member',
         });
 
         await fixture.engine.useCases.updateWorkspaceMemberRole(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           memberEmail: ANOTHER_USER_EMAIL,
           role: 'admin',
         });
 
         const members = await fixture.engine.useCases.getWorkspaceMembers(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         });
 
         const updatedMember = members.find(m => m.email === ANOTHER_USER_EMAIL);
@@ -610,14 +624,14 @@ describe('Workspaces', () => {
 
       it('prevents demoting last admin', async () => {
         const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           name: 'Test Org',
         });
 
         await expect(
           fixture.engine.useCases.updateWorkspaceMemberRole(GLOBAL_CONTEXT, {
             workspaceId,
-            identity: emailToIdentity(CURRENT_USER_EMAIL),
+            identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
             memberEmail: CURRENT_USER_EMAIL,
             role: 'member',
           }),
@@ -629,21 +643,21 @@ describe('Workspaces', () => {
   describe('Permissions', () => {
     it('workspace members can view projects without explicit project role', async () => {
       const {workspaceId} = await fixture.engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         name: 'Test Org',
       });
 
       // Add another user as workspace member
       await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
         workspaceId,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         memberEmail: ANOTHER_USER_EMAIL,
         role: 'member',
       });
 
       // Create project
       const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         workspaceId,
         name: `Permissions Test Project ${workspaceId}`,
         description: 'Test',
@@ -652,7 +666,7 @@ describe('Workspaces', () => {
       // Verify the other user can view the project through workspace membership
       const project = await fixture.engine.useCases.getProject(GLOBAL_CONTEXT, {
         id: projectId,
-        identity: emailToIdentity(ANOTHER_USER_EMAIL),
+        identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
       });
 
       expect(project.project).toBeDefined();

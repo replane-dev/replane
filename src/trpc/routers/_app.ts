@@ -5,7 +5,11 @@ import {
   MIN_PASSWORD_LENGTH,
 } from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {ADMIN_API_KEY_SCOPES, type AdminApiKeyScope} from '@/engine/core/identity';
+import {
+  ADMIN_API_KEY_SCOPES,
+  createUserIdentity,
+  type AdminApiKeyScope,
+} from '@/engine/core/identity';
 import {ConfigDescription, ConfigName, ConfigOverrides} from '@/engine/core/stores/config-store';
 import {ProjectDescription, ProjectName} from '@/engine/core/stores/project-store';
 import {WorkspaceName} from '@/engine/core/stores/workspace-store';
@@ -237,13 +241,17 @@ export const appRouter = createTRPCRouter({
 
       // Initialize the user in our engine (creates workspace, etc.)
       await opts.ctx.engine.useCases.initUser(GLOBAL_CONTEXT, {
-        identity: {type: 'user', email: normalizeEmail(result.email)},
+        identity: createUserIdentity({
+          email: normalizeEmail(opts.input.email),
+          id: result.user.id,
+          name: result.user.name,
+        }),
         exampleProject: true,
       });
 
       return {
         success: result.success,
-        email: result.email,
+        email: result.user.email,
       };
     }),
   hello: baseProcedure

@@ -1,6 +1,6 @@
 import type {Context} from '../context';
 import {BadRequestError, NotFoundError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {getUserIdFromIdentity, isApiKeyIdentity, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigSchema, ConfigValue} from '../zod';
@@ -39,8 +39,6 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
   UpdateConfigResponse
 > {
   return async (ctx: Context, tx, req) => {
-    const auditInfo = getAuditIdentityInfo(req.identity);
-
     // Resolve config by projectId + configName
     const config = await tx.configs.getByName({
       projectId: req.projectId,
@@ -76,7 +74,7 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
       .map(m => m.user_email_normalized);
 
     // Check if approval is required using the new per-environment logic
-    if (project.requireProposals) {
+    if (project.requireProposals && !isApiKeyIdentity(req.identity)) {
       const approvalResult = await tx.configService.isApprovalRequired({
         project,
         existingConfig: config,
@@ -109,26 +107,16 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
       }
     }
 
-    // Get user ID for audit log (null for API key)
-    let userId: number | null = null;
-    if (auditInfo.userEmail) {
-      const user = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!user) {
-        throw new BadRequestError('User not found');
-      }
-      userId = user.id;
-    }
-
     // Call configService.updateConfigDirect with full state
-    await tx.configService.updateConfigDirect(ctx, {
+    await tx.configService.updateConfig(ctx, {
       configId,
       description: req.description,
       editorEmails: req.editors,
       maintainerEmails: req.maintainers ?? currentMaintainerEmails,
       defaultVariant: req.base,
       environmentVariants: req.environments,
-      identity: req.identity,
-      userId,
+      reviewer: req.identity,
+      editAuthorId: getUserIdFromIdentity(req.identity),
       prevVersion,
       originalProposalId: req.originalProposalId,
     });

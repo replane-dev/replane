@@ -1,7 +1,7 @@
 import assert from 'assert';
 import type {Context} from '../context';
 import {BadRequestError} from '../errors';
-import {requireUserEmail, type Identity} from '../identity';
+import {getUserIdFromIdentity, requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigSchema, ConfigValue} from '../zod';
 
@@ -143,8 +143,8 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       maintainerEmails: currentMaintainerEmails,
       defaultVariant,
       environmentVariants,
-      currentUser,
-      reviewer: currentUser,
+      editAuthorId: getUserIdFromIdentity(req.identity),
+      reviewer: req.identity,
       prevVersion: config.version,
     });
 

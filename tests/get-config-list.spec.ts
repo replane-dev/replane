@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {GetConfigListResponse} from '@/engine/core/use-cases/get-config-list-use-case';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -22,7 +22,7 @@ describe('getConfigList', () => {
       value: 'first-value',
       schema: {type: 'string'},
       description: 'The first config',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -33,14 +33,14 @@ describe('getConfigList', () => {
       value: {nested: 42},
       schema: {type: 'object', properties: {nested: {type: 'number'}}},
       description: 'The second config',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -80,7 +80,7 @@ describe('getConfigList', () => {
       value: 1,
       schema: {type: 'number'},
       description: 'Owner config',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -92,7 +92,7 @@ describe('getConfigList', () => {
       value: 2,
       schema: {type: 'number'},
       description: 'Editor config',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [TEST_USER_EMAIL],
       maintainerEmails: ['someone@example.com'],
       projectId: fixture.projectId,
@@ -104,14 +104,14 @@ describe('getConfigList', () => {
       value: 3,
       schema: {type: 'number'},
       description: 'Viewer config',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: ['someoneelse@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -139,7 +139,7 @@ describe('getConfigList', () => {
       value: 'v',
       schema: {type: 'string'},
       description: longDescription,
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,

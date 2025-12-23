@@ -1,6 +1,6 @@
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import {createConfigId, type ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
@@ -46,8 +46,6 @@ export function createCreateConfigUseCase(
       projectId: req.projectId,
       identity: req.identity,
     });
-
-    const auditInfo = getAuditIdentityInfo(req.identity);
 
     // Validate no user appears with multiple roles
     const allMembers = [
@@ -140,16 +138,6 @@ export function createCreateConfigUseCase(
       });
     }
 
-    // Get user ID for audit log (null for API key)
-    let authorId: number | null = null;
-    if (auditInfo.userEmail) {
-      const currentUser = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!currentUser) {
-        throw new BadRequestError('User not found');
-      }
-      authorId = currentUser.id;
-    }
-
     const configId = createConfigId();
 
     // Use the config service to create the config with all related records
@@ -161,7 +149,7 @@ export function createCreateConfigUseCase(
       defaultVariant: req.defaultVariant,
       environmentVariants,
       members: allMembers,
-      authorId,
+      authorId: getUserIdFromIdentity(req.identity),
     });
 
     return {

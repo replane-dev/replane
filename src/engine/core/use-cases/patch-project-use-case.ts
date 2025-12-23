@@ -1,5 +1,5 @@
 import {BadRequestError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import {diffMembers} from '../member-diff';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectUserRole} from '../stores/project-user-store';
@@ -27,8 +27,6 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
   PatchProjectResponse
 > {
   return async (ctx, tx, req) => {
-    const auditInfo = getAuditIdentityInfo(req.identity);
-
     // Check permission to manage this project (includes scope check for API keys)
     await tx.permissionService.ensureCanManageProject(ctx, {
       projectId: req.id,
@@ -39,16 +37,6 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
     if (!existing) throw new BadRequestError('Project not found');
 
     const now = new Date();
-
-    // Get user ID for audit log (null for API key)
-    let userId: number | null = null;
-    if (auditInfo.userEmail) {
-      const user = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!user) {
-        throw new BadRequestError('User not found');
-      }
-      userId = user.id;
-    }
 
     // Patch details
     if (req.details) {
@@ -62,7 +50,10 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
 
       // Check for duplicate name if name is being changed
       if (newName !== existing.name) {
-        const same = await tx.projects.getByName({name: newName, workspaceId: existing.workspaceId});
+        const same = await tx.projects.getByName({
+          name: newName,
+          workspaceId: existing.workspaceId,
+        });
         if (same) throw new BadRequestError('Project with this name already exists');
       }
 
@@ -78,7 +69,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
       await tx.auditLogs.create({
         id: createAuditLogId(),
         createdAt: now,
-        userId,
+        userId: getUserIdFromIdentity(req.identity),
         projectId: existing.id,
         configId: null,
         payload: {
@@ -139,7 +130,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
         await tx.auditLogs.create({
           id: createAuditLogId(),
           createdAt: now,
-          userId,
+          userId: getUserIdFromIdentity(req.identity),
           configId: null,
           projectId: req.id,
           payload: {

@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -52,14 +52,14 @@ describe('getConfig', () => {
       value: 'test-value',
       schema: {type: 'string'},
       description: 'A test config',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -104,7 +104,7 @@ describe('getConfig', () => {
       value: 'x',
       schema: {type: 'string'},
       description: 'Owner role',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: ['editor@example.com'],
       maintainerEmails: [TEST_USER_EMAIL, 'owner2@example.com'],
       projectId: fixture.projectId,
@@ -130,14 +130,14 @@ describe('getConfig', () => {
       value: 'x',
       schema: {type: 'string'},
       description: 'Editor role',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [TEST_USER_EMAIL],
       maintainerEmails: ['another-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -156,14 +156,14 @@ describe('getConfig', () => {
       value: 'x',
       schema: {type: 'string'},
       description: 'Viewer role',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: ['different-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -181,7 +181,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with no proposals',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [TEST_USER_EMAIL],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -202,7 +202,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with proposals',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -232,7 +232,7 @@ describe('getConfig', () => {
           useBaseSchema: false,
         },
       ],
-      identity: emailToIdentity(OTHER_USER_EMAIL),
+      identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
       proposedDelete: false,
       defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
@@ -260,7 +260,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with multiple proposals',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
       projectId: fixture.projectId,
@@ -292,7 +292,7 @@ describe('getConfig', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(OTHER_USER_EMAIL),
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -324,7 +324,7 @@ describe('getConfig', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(THIRD_USER_EMAIL),
+        identity: await fixture.emailToIdentity(THIRD_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -354,7 +354,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with approved proposal',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -384,7 +384,7 @@ describe('getConfig', () => {
           useBaseSchema: false,
         },
       ],
-      identity: emailToIdentity(OTHER_USER_EMAIL),
+      identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
       proposedDelete: false,
       defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
@@ -392,7 +392,7 @@ describe('getConfig', () => {
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: configProposalId,
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
@@ -411,7 +411,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with rejected proposal',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -441,7 +441,7 @@ describe('getConfig', () => {
           useBaseSchema: false,
         },
       ],
-      identity: emailToIdentity(OTHER_USER_EMAIL),
+      identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
       proposedDelete: false,
       defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
@@ -450,7 +450,7 @@ describe('getConfig', () => {
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
       proposalId: configProposalId,
       projectId: fixture.projectId,
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
     });
 
     const {config} = await fixture.trpc.getConfig({
@@ -468,7 +468,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with mixed proposals',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
       projectId: fixture.projectId,
@@ -499,7 +499,7 @@ describe('getConfig', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(OTHER_USER_EMAIL),
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -507,7 +507,7 @@ describe('getConfig', () => {
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: approvedProposalId,
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
@@ -536,7 +536,7 @@ describe('getConfig', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(THIRD_USER_EMAIL),
+        identity: await fixture.emailToIdentity(THIRD_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -558,7 +558,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config with null author',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -588,7 +588,7 @@ describe('getConfig', () => {
           useBaseSchema: false,
         },
       ],
-      identity: emailToIdentity(OTHER_USER_EMAIL),
+      identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
       proposedDelete: false,
       defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
       message: null,
@@ -624,7 +624,7 @@ describe('getConfig', () => {
       value: {enabled: false},
       schema: null,
       description: 'Config for version tracking',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -656,7 +656,7 @@ describe('getConfig', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(OTHER_USER_EMAIL),
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -665,7 +665,7 @@ describe('getConfig', () => {
 
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       proposalId: firstProposalId,
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
@@ -695,7 +695,7 @@ describe('getConfig', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(OTHER_USER_EMAIL),
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,

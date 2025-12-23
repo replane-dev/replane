@@ -1,7 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, TEST_USER_ID, useAppFixture} from './fixtures/app-fixture';
+import {TEST_USER_ID, useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keyuser@example.com');
 
@@ -10,7 +10,7 @@ describe('sdk keys', () => {
 
   it('creates an sdk key and returns one-time token', async () => {
     const result = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'Primary Key',
       description: 'Main key',
       projectId: fixture.projectId,
@@ -23,7 +23,7 @@ describe('sdk keys', () => {
     expect(result.sdkKey.description).toBe('Main key');
 
     const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
@@ -36,7 +36,7 @@ describe('sdk keys', () => {
 
   it('lists multiple keys ordered by createdAt desc', async () => {
     await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'First',
       description: '',
       projectId: fixture.projectId,
@@ -45,7 +45,7 @@ describe('sdk keys', () => {
     // Advance time a bit for ordering
     fixture.setNow(new Date('2020-01-01T00:01:00Z'));
     await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'Second',
       description: 'second desc',
       projectId: fixture.projectId,
@@ -53,7 +53,7 @@ describe('sdk keys', () => {
     });
 
     const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
@@ -62,7 +62,7 @@ describe('sdk keys', () => {
 
   it('can fetch a single key by id', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
       name: 'FetchMe',
@@ -71,7 +71,7 @@ describe('sdk keys', () => {
 
     const single = await fixture.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
       id: created.sdkKey.id,
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
@@ -86,7 +86,7 @@ describe('sdk keys', () => {
   it('returns null when fetching non-existing key', async () => {
     const single = await fixture.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
       id: '00000000-0000-0000-0000-000000000000',
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
     expect(single.sdkKey).toBeNull();
@@ -94,7 +94,7 @@ describe('sdk keys', () => {
 
   it('creator can delete their key', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
       name: 'DeleteMe',
@@ -103,12 +103,12 @@ describe('sdk keys', () => {
 
     await fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
       id: created.sdkKey.id,
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
     const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
     expect(list.sdkKeys).toHaveLength(0);
@@ -116,7 +116,7 @@ describe('sdk keys', () => {
 
   it('non-creator cannot delete key', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
       name: 'ProtectMe',
@@ -138,7 +138,7 @@ describe('sdk keys', () => {
     await expect(
       fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
         id: created.sdkKey.id,
-        identity: emailToIdentity(otherEmail),
+        identity: await fixture.emailToIdentity(otherEmail),
         projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(Error);

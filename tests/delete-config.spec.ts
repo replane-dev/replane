@@ -2,7 +2,7 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError, NotFoundError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -17,7 +17,7 @@ describe('deleteConfig', () => {
       value: {enabled: true},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'To be deleted',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -29,7 +29,7 @@ describe('deleteConfig', () => {
       value: 'keep',
       schema: {type: 'string'},
       description: 'Should remain',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -55,7 +55,7 @@ describe('deleteConfig', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       configName: 'config_to_delete',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       prevVersion: 1,
     });
 
@@ -87,7 +87,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
         configName: 'non_existent_config',
-        identity: emailToIdentity(TEST_USER_EMAIL),
+        identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
         prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
@@ -100,7 +100,7 @@ describe('deleteConfig', () => {
       value: 1,
       schema: {type: 'number'},
       description: 'double delete case',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -109,7 +109,7 @@ describe('deleteConfig', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       configName: 'double_delete',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       prevVersion: 1,
     });
 
@@ -117,7 +117,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
         configName: 'double_delete',
-        identity: emailToIdentity(TEST_USER_EMAIL),
+        identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
         prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
@@ -130,14 +130,14 @@ describe('deleteConfig', () => {
       value: 123,
       schema: {type: 'number'},
       description: 'Editor cannot delete',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [TEST_USER_EMAIL],
       maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -146,7 +146,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
         configName: 'cannot_delete_as_editor',
-        identity: emailToIdentity(TEST_USER_EMAIL),
+        identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
         prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -166,14 +166,14 @@ describe('deleteConfig', () => {
       value: 'v',
       schema: {type: 'string'},
       description: 'Viewer cannot delete',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       id: fixture.projectId,
       members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
     });
@@ -182,7 +182,7 @@ describe('deleteConfig', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
         configName: 'cannot_delete_as_viewer',
-        identity: emailToIdentity(TEST_USER_EMAIL),
+        identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
         prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -201,7 +201,7 @@ describe('deleteConfig', () => {
       value: 'x',
       schema: {type: 'string'},
       description: 'audit',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -210,7 +210,7 @@ describe('deleteConfig', () => {
     await fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       configName: 'delete_audit',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       prevVersion: 1,
     });
 
@@ -247,7 +247,7 @@ describe('deleteConfig (requireProposals=true)', () => {
         requireProposals: true,
         allowSelfApprovals: false,
       },
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
     });
 
     await fixture.createConfig({
@@ -256,7 +256,7 @@ describe('deleteConfig (requireProposals=true)', () => {
       value: 42,
       schema: {type: 'number'},
       description: 'Test',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -266,7 +266,7 @@ describe('deleteConfig (requireProposals=true)', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
         configName: 'cannot_delete_when_require_proposals',
-        identity: emailToIdentity(TEST_USER_EMAIL),
+        identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
         prevVersion: 1,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -282,7 +282,7 @@ describe('deleteConfig (requireProposals=true)', () => {
         requireProposals: true,
         allowSelfApprovals: false,
       },
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
     });
 
     await fixture.createConfig({
@@ -291,7 +291,7 @@ describe('deleteConfig (requireProposals=true)', () => {
       value: 'test',
       schema: {type: 'string'},
       description: 'Test',
-      identity: emailToIdentity(TEST_USER_EMAIL),
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
@@ -301,7 +301,7 @@ describe('deleteConfig (requireProposals=true)', () => {
       fixture.engine.useCases.deleteConfig(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
         configName: 'version_mismatch_delete',
-        identity: emailToIdentity(TEST_USER_EMAIL),
+        identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
         prevVersion: 2, // incorrect version
       }),
     ).rejects.toBeInstanceOf(BadRequestError);

@@ -1,3 +1,4 @@
+import {ForbiddenError} from './errors';
 import type {NormalizedEmail} from './zod';
 
 /**
@@ -37,7 +38,12 @@ export const ADMIN_API_KEY_SCOPES: readonly AdminApiKeyScope[] = [
  */
 export interface UserIdentity {
   type: 'user';
-  email: NormalizedEmail;
+  identityName: string;
+  user: {
+    email: NormalizedEmail;
+    id: number;
+    name: string | null;
+  };
 }
 
 /**
@@ -45,6 +51,7 @@ export interface UserIdentity {
  */
 export interface ApiKeyIdentity {
   type: 'api_key';
+  identityName: string;
   apiKeyId: string;
   workspaceId: string;
   /** Project IDs this key has access to. Null means all projects in the workspace. */
@@ -76,8 +83,12 @@ export function isApiKeyIdentity(identity: Identity): identity is ApiKeyIdentity
 /**
  * Create a user identity from an email.
  */
-export function createUserIdentity(email: NormalizedEmail): UserIdentity {
-  return {type: 'user', email};
+export function createUserIdentity(user: {
+  email: NormalizedEmail;
+  id: number;
+  name: string | null;
+}): UserIdentity {
+  return {type: 'user', identityName: user.name ?? user.email, user};
 }
 
 /**
@@ -91,6 +102,7 @@ export function createApiKeyIdentity(params: {
 }): ApiKeyIdentity {
   return {
     type: 'api_key',
+    identityName: `API key ${params.apiKeyId}`,
     apiKeyId: params.apiKeyId,
     workspaceId: params.workspaceId,
     projectIds: params.projectIds,
@@ -119,9 +131,19 @@ export function hasProjectAccess(identity: ApiKeyIdentity, projectId: string): b
 /**
  * Get the email from an identity (only available for user identities).
  */
-export function getEmailFromIdentity(identity: Identity): NormalizedEmail | null {
+export function getEmailFromIdentity2(identity: Identity): NormalizedEmail | null {
   if (isUserIdentity(identity)) {
-    return identity.email;
+    return identity.user.email;
+  }
+  return null;
+}
+
+/**
+ * Get the user ID from an identity (only available for user identities).
+ */
+export function getUserIdFromIdentity(identity: Identity): number | null {
+  if (isUserIdentity(identity)) {
+    return identity.user.id;
   }
   return null;
 }
@@ -132,26 +154,7 @@ export function getEmailFromIdentity(identity: Identity): NormalizedEmail | null
  */
 export function requireUserEmail(identity: Identity): NormalizedEmail {
   if (!isUserIdentity(identity)) {
-    // Import at runtime to avoid circular dependency
-    const {ForbiddenError} = require('./errors');
     throw new ForbiddenError('This operation requires a user identity, not an API key');
   }
-  return identity.email;
-}
-
-/**
- * Get audit info from an identity.
- * Returns user email if user identity, or API key ID if API key identity.
- * Used for creating audit logs that work with both identity types.
- */
-export interface AuditIdentityInfo {
-  userEmail: NormalizedEmail | null;
-  apiKeyId: string | null;
-}
-
-export function getAuditIdentityInfo(identity: Identity): AuditIdentityInfo {
-  if (isUserIdentity(identity)) {
-    return {userEmail: identity.email, apiKeyId: null};
-  }
-  return {userEmail: null, apiKeyId: identity.apiKeyId};
+  return identity.user.email;
 }

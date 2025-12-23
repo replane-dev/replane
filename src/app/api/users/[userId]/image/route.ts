@@ -33,7 +33,11 @@ export async function GET(
   try {
     const engine = await getEngineSingleton();
     const userProfile = await engine.useCases.getUserProfile(GLOBAL_CONTEXT, {
-      identity: createUserIdentity(normalizeEmail(currentUserEmail)),
+      identity: createUserIdentity({
+        email: normalizeEmail(currentUserEmail),
+        id: currentUserId,
+        name: null,
+      }),
     });
 
     if (!userProfile?.image) {

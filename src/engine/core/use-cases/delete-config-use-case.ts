@@ -1,5 +1,5 @@
 import {BadRequestError, NotFoundError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {isApiKeyIdentity, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 
 export interface DeleteConfigRequest {
@@ -17,9 +17,6 @@ export function createDeleteConfigUseCase(): TransactionalUseCase<
   DeleteConfigResponse
 > {
   return async (ctx, tx, req) => {
-    const auditInfo = getAuditIdentityInfo(req.identity);
-
-    // Look up config by projectId + configName
     const config = await tx.configs.getByName({
       projectId: req.projectId,
       name: req.configName,
@@ -39,27 +36,17 @@ export function createDeleteConfigUseCase(): TransactionalUseCase<
       throw new BadRequestError('Project not found');
     }
 
-    // When requireProposals is enabled, forbid direct deletions.
-    // Users should use the proposal workflow instead of deleting configs outright.
-    if (project.requireProposals) {
+    // When requireProposals is enabled, forbid direct deletions for user identities.
+    // API key identities bypass the proposal requirement.
+    if (project.requireProposals && !isApiKeyIdentity(req.identity)) {
       throw new BadRequestError(
         'Direct config deletion is disabled. Please use the proposal workflow instead.',
       );
     }
 
-    // Get user for audit log (null for API key)
-    let userId: number | null = null;
-    if (auditInfo.userEmail) {
-      const currentUser = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!currentUser) {
-        throw new BadRequestError('User not found');
-      }
-      userId = currentUser.id;
-    }
-
-    await tx.configService.deleteConfigDirect(ctx, {
+    await tx.configService.deleteConfig(ctx, {
       configId: config.id,
-      userId,
+      identity: req.identity,
       prevVersion: req.prevVersion ?? config.version,
     });
 

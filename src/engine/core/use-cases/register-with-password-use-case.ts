@@ -4,6 +4,7 @@ import type {Logger} from '../logger';
 import {hashPassword, validatePassword} from '../password-utils';
 import {UserCredentialsStore} from '../stores/user-credentials-store';
 import type {TransactionalUseCase} from '../use-case';
+import type {User} from '../user-store';
 
 export interface RegisterWithPasswordRequest {
   email: string;
@@ -13,8 +14,7 @@ export interface RegisterWithPasswordRequest {
 
 export interface RegisterWithPasswordResponse {
   success: boolean;
-  email: string;
-  userId: number;
+  user: User;
 }
 
 export interface RegisterWithPasswordUseCaseOptions {
@@ -113,8 +113,7 @@ export function createRegisterWithPasswordUseCase(
 
     return {
       success: true,
-      email: email,
-      userId: newUser.id,
+      user: newUser,
     };
   };
 }

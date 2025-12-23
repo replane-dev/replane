@@ -15,7 +15,6 @@ export interface InitUserResponse {
 
 export function createInitUserUseCase(): TransactionalUseCase<InitUserRequest, InitUserResponse> {
   return async (ctx, tx, req) => {
-    // This operation requires a user identity
     const currentUserEmail = requireUserEmail(req.identity);
 
     // Create a personal workspace with an optional example project
@@ -28,7 +27,6 @@ export function createInitUserUseCase(): TransactionalUseCase<InitUserRequest, I
       projectStore: tx.projects,
       projectUserStore: tx.projectUsers,
       projectEnvironmentStore: tx.projectEnvironments,
-      users: tx.users,
       auditLogs: tx.auditLogs,
       now: tx.dateProvider.now(),
       configs: tx.configs,

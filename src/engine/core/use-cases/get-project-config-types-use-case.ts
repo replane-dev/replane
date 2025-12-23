@@ -2,7 +2,6 @@ import assert from 'assert';
 import {InputData, JSONSchemaInput, quicktype} from 'quicktype-core';
 import {BadRequestError} from '../errors';
 import type {Identity} from '../identity';
-import {isUserIdentity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import {trimEnd} from '../utils';
 
@@ -150,14 +149,7 @@ export function createGetProjectConfigTypesUseCase(
       identity: req.identity,
     });
 
-    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
-
-    const project = currentUserEmail
-      ? await tx.projects.getById({
-          id: req.projectId,
-          currentUserEmail,
-        })
-      : await tx.projects.getByIdWithoutPermissionCheck(req.projectId);
+    const project = await tx.projects.getByIdWithoutPermissionCheck(req.projectId);
 
     if (!project) {
       throw new BadRequestError('Project not found');
@@ -223,12 +215,7 @@ export function createGetProjectConfigTypesUseCase(
       throw new BadRequestError('Project environment not found');
     }
 
-    const workspace = currentUserEmail
-      ? await tx.workspaces.getById({
-          id: project.workspaceId,
-          currentUserEmail,
-        })
-      : await tx.workspaces.getByIdSimple(project.workspaceId);
+    const workspace = await tx.workspaces.getByIdSimple(project.workspaceId);
 
     if (!workspace) {
       throw new BadRequestError('Workspace not found');

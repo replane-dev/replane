@@ -1,6 +1,6 @@
 import type {Identity} from '../identity';
 import {isUserIdentity} from '../identity';
-import {combineConfigAndProjectRoles} from '../role-utils';
+import {getHighestRole} from '../role-utils';
 import type {TransactionalUseCase} from '../use-case';
 import type {ConfigInfo} from '../zod';
 
@@ -25,7 +25,7 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
       identity: req.identity,
     });
 
-    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.user.email : undefined;
 
     // For API keys, we don't have project/config roles
     const myProjectRole = currentUserEmail
@@ -41,12 +41,16 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
     });
 
     return {
-      configs: configs.map(config => ({
-        ...config,
-        myRole: myProjectRole
-          ? combineConfigAndProjectRoles(myProjectRole.role, config.myRole)
-          : config.myRole,
-      })),
+      configs: configs.map(config => {
+        const myRole = getHighestRole([
+          myProjectRole?.role ?? 'viewer',
+          config.myConfigUserRole ?? 'viewer',
+        ]);
+        return {
+          ...config,
+          myRole: myRole === 'admin' ? 'maintainer' : myRole,
+        };
+      }),
     };
   };
 }

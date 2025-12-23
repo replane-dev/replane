@@ -1,5 +1,5 @@
 import {BadRequestError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {getUserIdFromIdentity, isUserIdentity, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectEnvironment} from '../stores/project-environment-store';
 import {createProjectId} from '../stores/project-store';
@@ -28,8 +28,6 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
   CreateProjectResponse
 > {
   return async (ctx, tx, req) => {
-    const auditInfo = getAuditIdentityInfo(req.identity);
-
     const now = new Date();
 
     const existing = await tx.projects.getByName({
@@ -43,16 +41,6 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       workspaceId: req.workspaceId,
       identity: req.identity,
     });
-
-    // Get user ID for audit log (null for API key)
-    let userId: number | null = null;
-    if (auditInfo.userEmail) {
-      const user = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!user) {
-        throw new BadRequestError('User not found');
-      }
-      userId = user.id;
-    }
 
     const projectId = createProjectId();
 
@@ -95,7 +83,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       id: createAuditLogId(),
       createdAt: now,
       projectId,
-      userId,
+      userId: getUserIdFromIdentity(req.identity),
       configId: null,
       payload: {
         type: 'project_created',
@@ -104,11 +92,11 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     });
 
     // Add user as project admin (only for user identities)
-    if (auditInfo.userEmail) {
+    if (isUserIdentity(req.identity)) {
       await tx.projectUsers.create([
         {
           projectId,
-          email: auditInfo.userEmail,
+          email: req.identity.user.email,
           role: 'admin',
           createdAt: now,
           updatedAt: now,

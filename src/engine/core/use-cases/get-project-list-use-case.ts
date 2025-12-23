@@ -25,9 +25,8 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
 > {
   return async (_ctx, tx, req) => {
     if (isUserIdentity(req.identity)) {
-      // User identity: get projects the user has access to
       const projects = await tx.projectQueryService.getProjectList({
-        currentUserEmail: req.identity.email,
+        currentUserEmail: req.identity.user.email,
       });
       return {projects};
     }

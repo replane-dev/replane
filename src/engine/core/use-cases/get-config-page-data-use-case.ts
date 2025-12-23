@@ -1,6 +1,5 @@
 import type {ConfigDetails} from '../config-query-service';
 import type {Identity} from '../identity';
-import {isUserIdentity} from '../identity';
 import type {ProjectDetails, ProjectEnvironment, ProjectUser} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
 
@@ -27,17 +26,15 @@ export function createGetConfigPageDataUseCase(): TransactionalUseCase<
       identity: req.identity,
     });
 
-    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.email : undefined;
-
     const [config, project, environments, projectUsers] = await Promise.all([
       tx.configQueryService.getConfigDetails({
         name: req.configName,
         projectId: req.projectId,
-        currentUserEmail,
+        identity: req.identity,
       }),
       tx.projectQueryService.getProject({
         id: req.projectId,
-        currentUserEmail,
+        identity: req.identity,
       }),
       tx.projectQueryService.getEnvironments({
         projectId: req.projectId,

@@ -9,7 +9,6 @@ import type {AppHubEvents} from '../replica';
 import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
 import {
-  ConfigInfo,
   ConfigSchema,
   ConfigValue,
   Uuid,
@@ -133,47 +132,19 @@ export class ConfigStore {
     }));
   }
 
-  async getProjectConfigs(params: {
-    currentUserEmail?: NormalizedEmail;
-    projectId: string;
-  }): Promise<ConfigInfo[]> {
-    const baseConfigs = await this.getProjectConfigsBase(params.projectId);
-
-    if (!params.currentUserEmail || baseConfigs.length === 0) {
-      return baseConfigs.map(c => this.mapToConfigInfo(c, 'viewer'));
-    }
-
-    // Fetch user roles for all configs in a single query
-    const userRoles = await this.db
-      .selectFrom('config_users')
-      .select(['config_id', 'role'])
-      .where('user_email_normalized', '=', params.currentUserEmail)
-      .where(
-        'config_id',
-        'in',
-        baseConfigs.map(c => c.id),
-      )
-      .execute();
-
-    const roleMap = new Map(userRoles.map(r => [r.config_id, r.role]));
-
-    return baseConfigs.map(c => this.mapToConfigInfo(c, roleMap.get(c.id) ?? 'viewer'));
-  }
-
-  /**
-   * Get project configs without checking user permissions.
-   * Used for API key access where user-specific roles are not needed.
-   */
-  async getProjectConfigsWithoutPermissionCheck(projectId: string): Promise<ConfigInfo[]> {
-    const baseConfigs = await this.getProjectConfigsBase(projectId);
-    return baseConfigs.map(c => this.mapToConfigInfo(c, 'viewer'));
-  }
-
-  private async getProjectConfigsBase(projectId: string) {
-    return await this.db
+  async getProjectConfigs(params: {currentUserEmail?: NormalizedEmail; projectId: string}) {
+    const result = await this.db
       .selectFrom('configs')
       .orderBy('configs.name')
-      .where('configs.project_id', '=', projectId)
+      .where('configs.project_id', '=', params.projectId)
+      .leftJoin('config_users', jb =>
+        jb.on(eb =>
+          eb.and([
+            eb('config_users.config_id', '=', eb.ref('configs.id')),
+            eb('config_users.user_email_normalized', '=', params.currentUserEmail ?? '_'),
+          ]),
+        ),
+      )
       .select([
         'configs.created_at',
         'configs.updated_at',
@@ -182,32 +153,20 @@ export class ConfigStore {
         'configs.description',
         'configs.version',
         'configs.project_id',
+        'config_users.role as configUserRole',
       ])
       .execute();
-  }
 
-  private mapToConfigInfo(
-    c: {
-      created_at: Date;
-      updated_at: Date;
-      id: string;
-      name: string;
-      description: string;
-      version: number;
-      project_id: string;
-    },
-    myRole: ConfigInfo['myRole'],
-  ): ConfigInfo {
-    return {
+    return result.map(c => ({
       name: c.name,
       createdAt: c.created_at,
       updatedAt: c.updated_at,
       descriptionPreview: c.description.substring(0, 100),
-      myRole,
+      myConfigUserRole: c.configUserRole,
       version: c.version,
       id: c.id,
       projectId: c.project_id,
-    };
+    }));
   }
 
   async getByName(params: {projectId: string; name: string}): Promise<Config | undefined> {

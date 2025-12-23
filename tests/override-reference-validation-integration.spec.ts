@@ -4,7 +4,7 @@ import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
 import {normalizeEmail} from '../src/engine/core/utils';
-import {emailToIdentity, useAppFixture} from './fixtures/app-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -15,7 +15,7 @@ describe('Override Reference Validation - Integration Tests', () => {
   it('setup second project for cross-project tests', async () => {
     // Create a second project for cross-project reference tests
     const result = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
-      identity: emailToIdentity(CURRENT_USER_EMAIL),
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       workspaceId: fixture.workspaceId,
       name: 'Second Project',
       description: 'For cross-project testing',
@@ -31,7 +31,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Test config',
         schema: null,
         overrides: [],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -53,7 +53,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'VIP user list',
         schema: null,
         overrides: [],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -85,7 +85,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'User limits with VIP override',
         schema: null,
         overrides,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -130,7 +130,7 @@ describe('Override Reference Validation - Integration Tests', () => {
           description: 'Config with invalid reference',
           schema: null,
           overrides,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -144,7 +144,7 @@ describe('Override Reference Validation - Integration Tests', () => {
           description: 'Config with invalid reference',
           schema: null,
           overrides,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -189,7 +189,7 @@ describe('Override Reference Validation - Integration Tests', () => {
           description: 'Config with nested invalid reference',
           schema: null,
           overrides,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -207,7 +207,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Config to patch',
         schema: null,
         overrides: [],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -221,7 +221,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Allowed users',
         schema: null,
         overrides: [],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -274,7 +274,7 @@ describe('Override Reference Validation - Integration Tests', () => {
             useBaseSchema: false,
           },
         ],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         prevVersion: 1,
       });
 
@@ -297,7 +297,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Config to patch',
         schema: null,
         overrides: [],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -352,7 +352,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               useBaseSchema: false,
             },
           ],
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           prevVersion: 1,
         }),
       ).rejects.toThrow(BadRequestError);
@@ -381,7 +381,7 @@ describe('Override Reference Validation - Integration Tests', () => {
               useBaseSchema: false,
             },
           ],
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           prevVersion: 1,
         }),
       ).rejects.toThrow(/same project ID/);
@@ -435,7 +435,7 @@ describe('Override Reference Validation - Integration Tests', () => {
           description: 'Multiple invalid references',
           schema: null,
           overrides,
-          identity: emailToIdentity(CURRENT_USER_EMAIL),
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -458,7 +458,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Premium users',
         schema: null,
         overrides: [],
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -500,7 +500,7 @@ describe('Override Reference Validation - Integration Tests', () => {
         description: 'Rate limits',
         schema: null,
         overrides,
-        identity: emailToIdentity(CURRENT_USER_EMAIL),
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,

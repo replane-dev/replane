@@ -1,5 +1,5 @@
 import {BadRequestError} from '../errors';
-import {getAuditIdentityInfo, type Identity} from '../identity';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 
@@ -16,8 +16,6 @@ export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
   DeleteSdkKeyResponse
 > {
   return async (ctx, tx, req) => {
-    const auditInfo = getAuditIdentityInfo(req.identity);
-
     const sdkKey = await tx.sdkKeys.getById({
       sdkKeyId: req.id,
       projectId: req.projectId,
@@ -31,22 +29,12 @@ export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
       identity: req.identity,
     });
 
-    // Get user ID for audit log (null for API key)
-    let userId: number | null = null;
-    if (auditInfo.userEmail) {
-      const user = await tx.users.getByEmail(auditInfo.userEmail);
-      if (!user) {
-        throw new BadRequestError('User not found');
-      }
-      userId = user.id;
-    }
-
     await tx.sdkKeys.deleteById(ctx, sdkKey.id);
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),
       projectId: sdkKey.projectId,
-      userId,
+      userId: getUserIdFromIdentity(req.identity),
       configId: null,
       payload: {
         type: 'sdk_key_deleted',

@@ -1,12 +1,10 @@
-import assert from 'assert';
 import type {ConfigService} from '../config-service';
 import type {Context} from '../context';
-import {requireUserEmail, type Identity} from '../identity';
+import {isUserIdentity, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import {ConfigStore, createConfigId} from '../stores/config-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {User} from '../user-store';
 import {asConfigSchema, asConfigValue, type ConfigValue} from '../zod';
 
 export interface AddExampleConfigsRequest {
@@ -23,17 +21,14 @@ export function createAddExampleConfigsUseCase(): TransactionalUseCase<
   AddExampleConfigsResponse
 > {
   return async (ctx, tx, req) => {
-    // This operation requires a user identity
-    const currentUserEmail = requireUserEmail(req.identity);
-
+    if (!isUserIdentity(req.identity)) {
+      throw new Error('Add example configs requires a user identity');
+    }
     // Verify permission to create configs in this project
     await tx.permissionService.ensureCanCreateConfig(ctx, {
       projectId: req.projectId,
       identity: req.identity,
     });
-
-    const currentUser = await tx.users.getByEmail(currentUserEmail);
-    assert(currentUser, 'Current user not found');
 
     const {addedConfigsCount} = await createExampleConfigs({
       ctx,
@@ -41,7 +36,7 @@ export function createAddExampleConfigsUseCase(): TransactionalUseCase<
       configs: tx.configs,
       configService: tx.configService,
       projectEnvironments: tx.projectEnvironments,
-      currentUser: currentUser,
+      userId: req.identity.user.id,
     });
 
     return {addedConfigsCount};
@@ -54,9 +49,9 @@ export async function createExampleConfigs(params: {
   configs: ConfigStore;
   configService: ConfigService;
   projectEnvironments: ProjectEnvironmentStore;
-  currentUser: User;
+  userId: number;
 }) {
-  const {ctx, projectId, configs, configService, projectEnvironments, currentUser} = params;
+  const {ctx, projectId, configs, configService, projectEnvironments, userId} = params;
 
   // Get project environments
   const environments = await projectEnvironments.getByProjectId(projectId);
@@ -104,7 +99,7 @@ export async function createExampleConfigs(params: {
         useBaseSchema: v.useBaseSchema,
       })),
       members: undefined, // Example configs don't have members
-      authorId: currentUser.id,
+      authorId: userId,
     });
 
     addedCount++;
