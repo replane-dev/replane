@@ -692,7 +692,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
       const {projectId, configName} = c.req.valid('param');
       const body = c.req.valid('json');
       const ctx = c.get('context');
-      const prevVersion = c.req.header('if-match')?.split('"')[1];
 
       const {configId, version} = await engine.useCases.updateConfig(ctx, {
         identity,
@@ -714,7 +713,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           overrides: v.overrides,
           useBaseSchema: v.useBaseSchema,
         })),
-        prevVersion: prevVersion ? parseInt(prevVersion) : undefined,
+        prevVersion: undefined,
       });
 
       return c.json({id: configId, version});
@@ -743,13 +742,12 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
       const identity = c.get('identity');
       const {projectId, configName} = c.req.valid('param');
       const ctx = c.get('context');
-      const prevVersion = c.req.header('if-match')?.split('"')[1];
 
       await engine.useCases.deleteConfig(ctx, {
         identity,
         projectId,
         configName,
-        prevVersion: prevVersion ? parseInt(prevVersion) : undefined,
+        prevVersion: undefined,
       });
 
       return c.body(null, 204);
