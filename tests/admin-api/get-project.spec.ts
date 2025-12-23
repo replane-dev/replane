@@ -79,8 +79,7 @@ describe('Admin API - Get Project', () => {
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
     const response = await fixture.adminApiRequest('GET', `/projects/${nonExistentId}`, token);
 
-    // Returns 403 because the API key doesn't have access to this project ID
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
   });
 
   it('should return 400 for invalid UUID', async () => {

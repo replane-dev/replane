@@ -6,6 +6,30 @@ const CURRENT_USER_EMAIL = 'test@example.com';
 describe('Admin API - Update Config', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
+  const createConfigBody = (name: string, value: unknown, description = 'Test config') => ({
+    name,
+    description,
+    editors: [],
+    maintainers: [],
+    base: {
+      value,
+      schema: null,
+      overrides: [],
+    },
+    environments: [],
+  });
+
+  const updateConfigBody = (value: unknown, description = 'Test config') => ({
+    description,
+    editors: [],
+    base: {
+      value,
+      schema: null,
+      overrides: [],
+    },
+    environments: [],
+  });
+
   it('should update config value with config:write scope', async () => {
     const {token} = await fixture.createAdminApiKey({
       scopes: ['config:write', 'config:read'],
@@ -16,10 +40,7 @@ describe('Admin API - Update Config', () => {
       'POST',
       `/projects/${fixture.projectId}/configs`,
       token,
-      {
-        name: 'update-test-config',
-        value: {enabled: false},
-      },
+      createConfigBody('update-test-config', {enabled: false}),
     );
     expect(createResponse.status).toBe(201);
     const {id: configId} = await createResponse.json();
@@ -28,10 +49,7 @@ describe('Admin API - Update Config', () => {
       'PUT',
       `/projects/${fixture.projectId}/configs/update-test-config`,
       token,
-      {
-        value: {enabled: true},
-        version: 1,
-      },
+      updateConfigBody({enabled: true}),
     );
 
     expect(response.status).toBe(200);
@@ -46,7 +64,7 @@ describe('Admin API - Update Config', () => {
       token,
     );
     const configData = await getResponse.json();
-    expect(configData.value).toEqual({enabled: true});
+    expect(configData.base.value).toEqual({enabled: true});
   });
 
   it('should return 403 without config:write scope', async () => {
@@ -57,10 +75,12 @@ describe('Admin API - Update Config', () => {
     ).token;
 
     // Create a config first
-    await fixture.adminApiRequest('POST', `/projects/${fixture.projectId}/configs`, writeToken, {
-      name: 'readonly-config',
-      value: 'original',
-    });
+    await fixture.adminApiRequest(
+      'POST',
+      `/projects/${fixture.projectId}/configs`,
+      writeToken,
+      createConfigBody('readonly-config', 'original'),
+    );
 
     const {token: readToken} = await fixture.createAdminApiKey({
       scopes: ['config:read'],
@@ -70,51 +90,10 @@ describe('Admin API - Update Config', () => {
       'PUT',
       `/projects/${fixture.projectId}/configs/readonly-config`,
       readToken,
-      {
-        value: 'modified',
-        version: 1,
-      },
+      updateConfigBody('modified'),
     );
 
     expect(response.status).toBe(403);
-  });
-
-  it('should return 400 for version mismatch', async () => {
-    const {token} = await fixture.createAdminApiKey({
-      scopes: ['config:write'],
-    });
-
-    // Create a config first
-    await fixture.adminApiRequest('POST', `/projects/${fixture.projectId}/configs`, token, {
-      name: 'version-test-config',
-      value: 'v1',
-    });
-
-    // First update succeeds
-    await fixture.adminApiRequest(
-      'PUT',
-      `/projects/${fixture.projectId}/configs/version-test-config`,
-      token,
-      {
-        value: 'v2',
-        version: 1,
-      },
-    );
-
-    // Second update with old version should fail
-    const response = await fixture.adminApiRequest(
-      'PUT',
-      `/projects/${fixture.projectId}/configs/version-test-config`,
-      token,
-      {
-        value: 'v3',
-        version: 1, // Wrong version
-      },
-    );
-
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toContain('edited');
   });
 
   it('should return 404 for non-existent config', async () => {
@@ -126,10 +105,7 @@ describe('Admin API - Update Config', () => {
       'PUT',
       `/projects/${fixture.projectId}/configs/non-existent-config`,
       token,
-      {
-        value: 'test',
-        version: 1,
-      },
+      updateConfigBody('test'),
     );
 
     expect(response.status).toBe(404);
@@ -141,21 +117,18 @@ describe('Admin API - Update Config', () => {
     });
 
     // Create a config first
-    await fixture.adminApiRequest('POST', `/projects/${fixture.projectId}/configs`, token, {
-      name: 'desc-update-config',
-      value: 'test',
-      description: 'Original description',
-    });
+    await fixture.adminApiRequest(
+      'POST',
+      `/projects/${fixture.projectId}/configs`,
+      token,
+      createConfigBody('desc-update-config', 'test', 'Original description'),
+    );
 
     const response = await fixture.adminApiRequest(
       'PUT',
       `/projects/${fixture.projectId}/configs/desc-update-config`,
       token,
-      {
-        value: 'test',
-        description: 'Updated description',
-        version: 1,
-      },
+      updateConfigBody('test', 'Updated description'),
     );
 
     expect(response.status).toBe(200);

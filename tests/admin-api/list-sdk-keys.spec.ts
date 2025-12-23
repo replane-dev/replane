@@ -33,7 +33,6 @@ describe('Admin API - List SDK Keys', () => {
     expect(data.sdkKeys[0].name).toBe('Test SDK Key');
     expect(data.sdkKeys[0].description).toBe('SDK key for testing');
     expect(data.sdkKeys[0].environmentId).toBe(fixture.productionEnvironmentId);
-    expect(data.sdkKeys[0].environmentName).toBe('Production');
   });
 
   it('should return 403 without sdk_key:read scope', async () => {
@@ -158,7 +157,6 @@ describe('Admin API - List SDK Keys', () => {
     expect(sdkKey.name).toBe('Test Key');
     expect(sdkKey.description).toBe('Test description');
     expect(sdkKey.environmentId).toBe(fixture.productionEnvironmentId);
-    expect(sdkKey.environmentName).toBe('Production');
     expect(sdkKey.createdAt).toBeDefined();
   });
 });

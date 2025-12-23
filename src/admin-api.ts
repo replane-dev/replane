@@ -24,8 +24,6 @@ const ProjectDto = z
   .object({
     id: z.uuid(),
     name: z.string(),
-    requireProposals: z.boolean(),
-    allowSelfApprovals: z.boolean(),
     description: z.string(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
@@ -58,7 +56,7 @@ const ConfigDto = z
       schema: ConfigSchema().nullable(),
       overrides: z.array(OverrideSchema),
     }),
-    environments: z.array(ConfigVariantDto),
+    variants: z.array(ConfigVariantDto),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
     editors: z.array(z.email()),
@@ -89,7 +87,6 @@ const EnvironmentDto = z
     id: z.uuid(),
     name: z.string(),
     order: z.number(),
-    requireProposals: z.boolean(),
   })
   .openapi('Environment');
 
@@ -249,8 +246,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           description: p.descriptionPreview,
           createdAt: p.createdAt.toISOString(),
           updatedAt: p.updatedAt.toISOString(),
-          requireProposals: p.requireProposals,
-          allowSelfApprovals: p.allowSelfApprovals,
         })),
       });
     },
@@ -298,8 +293,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         description: project.description,
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
-        requireProposals: project.requireProposals,
-        allowSelfApprovals: project.allowSelfApprovals,
       });
     },
   );
@@ -316,9 +309,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
             'application/json': {
               schema: z.object({
                 name: z.string().min(1).max(100),
-                description: z.string().max(10000).optional(),
-                requireProposals: z.boolean().optional(),
-                allowSelfApprovals: z.boolean().optional(),
+                description: z.string().max(10000),
               }),
             },
           },
@@ -346,9 +337,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         identity,
         workspaceId: identity.workspaceId,
         name: body.name,
-        description: body.description ?? '',
-        requireProposals: body.requireProposals,
-        allowSelfApprovals: body.allowSelfApprovals,
+        description: body.description,
       });
 
       return c.json({id: projectId}, 201);
@@ -371,8 +360,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
               schema: z.object({
                 name: z.string().min(1).max(100).optional(),
                 description: z.string().max(10000).optional(),
-                requireProposals: z.boolean().optional(),
-                allowSelfApprovals: z.boolean().optional(),
               }),
             },
           },
@@ -403,8 +390,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         details: {
           name: body.name,
           description: body.description,
-          requireProposals: body.requireProposals,
-          allowSelfApprovals: body.allowSelfApprovals,
         },
       });
 
@@ -545,7 +530,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           schema: cfg.schema,
           overrides: cfg.overrides,
         },
-        environments: configDetails.variants.map(e => ({
+        variants: configDetails.variants.map(e => ({
           environmentId: e.id,
           value: e.value,
           schema: e.schema,
@@ -579,7 +564,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
                   schema: ConfigSchema().nullable(),
                   overrides: z.array(OverrideSchema),
                 }),
-                environments: z.array(
+                variants: z.array(
                   z.object({
                     environmentId: z.uuid(),
                     value: ConfigValue(),
@@ -624,7 +609,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           schema: body.base.schema,
           overrides: body.base.overrides,
         },
-        environmentVariants: body.environments.map(e => ({
+        environmentVariants: body.variants.map(e => ({
           environmentId: e.environmentId,
           value: e.value,
           schema: e.schema,
@@ -659,7 +644,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
                   schema: ConfigSchema().nullable(),
                   overrides: z.array(OverrideSchema),
                 }),
-                environments: z.array(
+                variants: z.array(
                   z.object({
                     environmentId: z.uuid(),
                     value: ConfigValue(),
@@ -706,7 +691,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           schema: body.base.schema,
           overrides: body.base.overrides,
         },
-        environments: body.environments.map(v => ({
+        environments: body.variants.map(v => ({
           environmentId: v.environmentId,
           value: v.value,
           schema: v.schema,
@@ -793,7 +778,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           id: env.id,
           name: env.name,
           order: env.order,
-          requireProposals: env.requireProposals,
         })),
       });
     },

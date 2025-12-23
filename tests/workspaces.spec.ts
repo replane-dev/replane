@@ -100,7 +100,7 @@ describe('Workspaces', () => {
       await expect(
         fixture.engine.useCases.getWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
+          identity: await fixture.registerUser(ANOTHER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -133,7 +133,8 @@ describe('Workspaces', () => {
         name: 'Test Org',
       });
 
-      // Add another user as member
+      // Register another user first, then add them as member
+      const anotherUserIdentity = await fixture.registerUser(ANOTHER_USER_EMAIL);
       await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
         workspaceId,
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -144,7 +145,7 @@ describe('Workspaces', () => {
       await expect(
         fixture.engine.useCases.updateWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
+          identity: anotherUserIdentity,
           name: 'Hacked Name',
         }),
       ).rejects.toThrow(ForbiddenError);
@@ -199,6 +200,8 @@ describe('Workspaces', () => {
         name: 'Test Org',
       });
 
+      // Register another user first, then add them as member
+      const anotherUserIdentity = await fixture.registerUser(ANOTHER_USER_EMAIL);
       await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
         workspaceId,
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -209,7 +212,7 @@ describe('Workspaces', () => {
       await expect(
         fixture.engine.useCases.deleteWorkspace(GLOBAL_CONTEXT, {
           workspaceId,
-          identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
+          identity: anotherUserIdentity,
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -271,6 +274,8 @@ describe('Workspaces', () => {
           name: 'Test Org',
         });
 
+        // Register another user first, then add them as member
+        const anotherUserIdentity = await fixture.registerUser(ANOTHER_USER_EMAIL);
         await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
           workspaceId,
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -281,7 +286,7 @@ describe('Workspaces', () => {
         await expect(
           fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
             workspaceId,
-            identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
+            identity: anotherUserIdentity,
             memberEmail: normalizeEmail('third@example.com'),
             role: 'member',
           }),
@@ -647,7 +652,8 @@ describe('Workspaces', () => {
         name: 'Test Org',
       });
 
-      // Add another user as workspace member
+      // Register another user first, then add them as workspace member
+      const anotherUserIdentity = await fixture.registerUser(ANOTHER_USER_EMAIL);
       await fixture.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
         workspaceId,
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -666,7 +672,7 @@ describe('Workspaces', () => {
       // Verify the other user can view the project through workspace membership
       const project = await fixture.engine.useCases.getProject(GLOBAL_CONTEXT, {
         id: projectId,
-        identity: await fixture.emailToIdentity(ANOTHER_USER_EMAIL),
+        identity: anotherUserIdentity,
       });
 
       expect(project.project).toBeDefined();

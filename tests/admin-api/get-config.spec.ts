@@ -35,7 +35,7 @@ describe('Admin API - Get Config', () => {
     const data = await response.json();
     expect(data.name).toBe('test-config');
     expect(data.description).toBe('Test config description');
-    expect(data.value).toEqual({key: 'value', nested: {data: 123}});
+    expect(data.base.value).toEqual({key: 'value', nested: {data: 123}});
     expect(data.version).toBe(1);
     expect(data.id).toBeDefined();
     expect(data.createdAt).toBeDefined();
@@ -149,7 +149,7 @@ describe('Admin API - Get Config', () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.value).toBe('simple string value');
+    expect(data.base.value).toBe('simple string value');
   });
 
   it('should get config with array value', async () => {
@@ -177,6 +177,6 @@ describe('Admin API - Get Config', () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.value).toEqual([1, 2, 3, 'four']);
+    expect(data.base.value).toEqual([1, 2, 3, 'four']);
   });
 });

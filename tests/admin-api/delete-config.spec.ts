@@ -6,20 +6,35 @@ const CURRENT_USER_EMAIL = 'test@example.com';
 describe('Admin API - Delete Config', () => {
   const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
 
+  const createConfigBody = (name: string, value: unknown) => ({
+    name,
+    description: 'Test config',
+    editors: [],
+    maintainers: [],
+    base: {
+      value,
+      schema: null,
+      overrides: [],
+    },
+    environments: [],
+  });
+
   it('should delete config with config:write scope', async () => {
     const {token} = await fixture.createAdminApiKey({
       scopes: ['config:write', 'config:read'],
     });
 
     // Create a config first
-    await fixture.adminApiRequest('POST', `/projects/${fixture.projectId}/configs`, token, {
-      name: 'config-to-delete',
-      value: 'test',
-    });
+    await fixture.adminApiRequest(
+      'POST',
+      `/projects/${fixture.projectId}/configs`,
+      token,
+      createConfigBody('config-to-delete', 'test'),
+    );
 
     const response = await fixture.adminApiRequest(
       'DELETE',
-      `/projects/${fixture.projectId}/configs/config-to-delete?version=1`,
+      `/projects/${fixture.projectId}/configs/config-to-delete`,
       token,
     );
 
@@ -42,10 +57,12 @@ describe('Admin API - Delete Config', () => {
     ).token;
 
     // Create a config first
-    await fixture.adminApiRequest('POST', `/projects/${fixture.projectId}/configs`, writeToken, {
-      name: 'protected-config',
-      value: 'test',
-    });
+    await fixture.adminApiRequest(
+      'POST',
+      `/projects/${fixture.projectId}/configs`,
+      writeToken,
+      createConfigBody('protected-config', 'test'),
+    );
 
     const {token: readToken} = await fixture.createAdminApiKey({
       scopes: ['config:read'],
@@ -53,45 +70,11 @@ describe('Admin API - Delete Config', () => {
 
     const response = await fixture.adminApiRequest(
       'DELETE',
-      `/projects/${fixture.projectId}/configs/protected-config?version=1`,
+      `/projects/${fixture.projectId}/configs/protected-config`,
       readToken,
     );
 
     expect(response.status).toBe(403);
-  });
-
-  it('should return 400 for version mismatch', async () => {
-    const {token} = await fixture.createAdminApiKey({
-      scopes: ['config:write'],
-    });
-
-    // Create a config first
-    await fixture.adminApiRequest('POST', `/projects/${fixture.projectId}/configs`, token, {
-      name: 'version-check-config',
-      value: 'test',
-    });
-
-    // First update the config to increment version
-    await fixture.adminApiRequest(
-      'PUT',
-      `/projects/${fixture.projectId}/configs/version-check-config`,
-      token,
-      {
-        value: 'updated',
-        version: 1,
-      },
-    );
-
-    // Try to delete with old version
-    const response = await fixture.adminApiRequest(
-      'DELETE',
-      `/projects/${fixture.projectId}/configs/version-check-config?version=1`,
-      token,
-    );
-
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toContain('edited');
   });
 
   it('should return 404 for non-existent config', async () => {
@@ -101,7 +84,7 @@ describe('Admin API - Delete Config', () => {
 
     const response = await fixture.adminApiRequest(
       'DELETE',
-      `/projects/${fixture.projectId}/configs/non-existent?version=1`,
+      `/projects/${fixture.projectId}/configs/non-existent`,
       token,
     );
 

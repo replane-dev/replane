@@ -79,6 +79,8 @@ export class AppFixture {
         `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Test User', $2, NOW())`,
         [TEST_USER_ID, this.options.authEmail],
       );
+      // Reset the sequence so subsequent auto-generated IDs don't conflict
+      await connection.query(`SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))`);
     } finally {
       connection.release();
     }
@@ -289,6 +291,37 @@ export class AppFixture {
       id: user.id,
       name: user.name ?? null,
     });
+  }
+
+  /**
+   * Register a new user and return their identity.
+   * Use this when you need to test with a second user who doesn't exist yet.
+   */
+  async registerUser(email: string, name = 'Test User'): Promise<Identity> {
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await this.engine.stores.users.getByEmail(normalizedEmail);
+    if (existingUser) {
+      return createUserIdentity({
+        email: normalizedEmail,
+        id: existingUser.id,
+        name: existingUser.name ?? null,
+      });
+    }
+
+    const connection = await this.engine.testing.pool.connect();
+    try {
+      const result = await connection.query<{id: number}>(
+        `INSERT INTO users(name, email, "emailVerified") VALUES ($1, $2, NOW()) RETURNING id`,
+        [name, normalizedEmail],
+      );
+      return createUserIdentity({
+        email: normalizedEmail,
+        id: result.rows[0].id,
+        name,
+      });
+    } finally {
+      connection.release();
+    }
   }
 
   async destroy(ctx: Context) {

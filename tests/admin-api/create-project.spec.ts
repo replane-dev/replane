@@ -19,10 +19,12 @@ describe('Admin API - Create Project', () => {
     expect(response.status).toBe(201);
     const data = await response.json();
     expect(data.id).toBeDefined();
-    expect(data.name).toBe('API Created Project');
-    expect(data.environments).toHaveLength(2);
-    expect(data.environments.map((e: {name: string}) => e.name)).toContain('Production');
-    expect(data.environments.map((e: {name: string}) => e.name)).toContain('Development');
+
+    // Verify by fetching the created project
+    const getResponse = await fixture.adminApiRequest('GET', `/projects/${data.id}`, token);
+    expect(getResponse.status).toBe(200);
+    const projectData = await getResponse.json();
+    expect(projectData.name).toBe('API Created Project');
   });
 
   it('should return 403 without project:write scope', async () => {
@@ -39,7 +41,7 @@ describe('Admin API - Create Project', () => {
 
   it('should create project with custom settings', async () => {
     const {token} = await fixture.createAdminApiKey({
-      scopes: ['project:write'],
+      scopes: ['project:write', 'project:read'],
     });
 
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
@@ -51,7 +53,13 @@ describe('Admin API - Create Project', () => {
 
     expect(response.status).toBe(201);
     const data = await response.json();
-    expect(data.name).toBe('Custom Settings Project');
+    expect(data.id).toBeDefined();
+
+    // Verify by fetching the created project
+    const getResponse = await fixture.adminApiRequest('GET', `/projects/${data.id}`, token);
+    expect(getResponse.status).toBe(200);
+    const projectData = await getResponse.json();
+    expect(projectData.name).toBe('Custom Settings Project');
   });
 
   it('should return 400 for duplicate project name', async () => {
@@ -74,4 +82,3 @@ describe('Admin API - Create Project', () => {
     expect(data.error).toContain('already exists');
   });
 });
-

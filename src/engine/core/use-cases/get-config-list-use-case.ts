@@ -47,7 +47,13 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
           config.myConfigUserRole ?? 'viewer',
         ]);
         return {
-          ...config,
+          id: config.id,
+          name: config.name,
+          descriptionPreview: config.descriptionPreview,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+          version: config.version,
+          projectId: config.projectId,
           myRole: myRole === 'admin' ? 'maintainer' : myRole,
         };
       }),

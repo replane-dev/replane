@@ -29,8 +29,8 @@ describe('Admin API - Create SDK Key', () => {
     expect(data.name).toBe('Test SDK Key');
     expect(data.description).toBe('Created via API');
     expect(data.environmentId).toBe(fixture.productionEnvironmentId);
-    expect(data.token).toBeDefined();
-    expect(data.token.startsWith('rp_')).toBe(true);
+    expect(data.key).toBeDefined();
+    expect(data.key.startsWith('rp_')).toBe(true);
     expect(data.createdAt).toBeDefined();
   });
 
