@@ -1,4 +1,5 @@
 import {parse as uuidParse, stringify as uuidStringify} from 'uuid';
+import {API_KEY_PREFIX_LENGTH, API_KEY_SUFFIX_LENGTH} from './constants';
 
 export const SDK_KEY_PREFIX = 'rp_'; // distinct from previous 'cm_' usage
 
@@ -23,6 +24,26 @@ export function buildRawSdkKey(sdkKeyId: string): string {
   combined.set(uuidBytes, 24);
   const hex = bytesToHex(combined);
   return SDK_KEY_PREFIX + hex;
+}
+
+/**
+ * Get the prefix portion of an SDK key for display (first N hex chars after the rp_ prefix).
+ */
+export function getSdkKeyPrefix(rawKey: string): string {
+  if (!rawKey.startsWith(SDK_KEY_PREFIX)) {
+    throw new Error('Invalid SDK key format');
+  }
+  return rawKey.slice(0, SDK_KEY_PREFIX.length + API_KEY_PREFIX_LENGTH);
+}
+
+/**
+ * Get the suffix portion of an SDK key for display (last N hex chars).
+ */
+export function getSdkKeySuffix(rawKey: string): string {
+  if (!rawKey.startsWith(SDK_KEY_PREFIX)) {
+    throw new Error('Invalid SDK key format');
+  }
+  return rawKey.slice(-API_KEY_SUFFIX_LENGTH);
 }
 
 /**

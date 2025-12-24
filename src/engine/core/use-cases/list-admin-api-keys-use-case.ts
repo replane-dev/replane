@@ -12,6 +12,7 @@ export interface AdminApiKeyInfo {
   name: string;
   description: string;
   keyPrefix: string;
+  keySuffix: string;
   createdByEmail: string;
   createdAt: Date;
   lastUsedAt: Date | null;
@@ -43,6 +44,7 @@ export function createListAdminApiKeysUseCase(): TransactionalUseCase<
         name: key.name,
         description: key.description,
         keyPrefix: key.keyPrefix,
+        keySuffix: key.keySuffix,
         createdByEmail: key.createdByEmail,
         createdAt: key.createdAt,
         lastUsedAt: key.lastUsedAt,

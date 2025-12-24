@@ -1,4 +1,5 @@
 import {parse as uuidParse, stringify as uuidStringify} from 'uuid';
+import {API_KEY_PREFIX_LENGTH, API_KEY_SUFFIX_LENGTH} from './constants';
 
 export const ADMIN_API_KEY_PREFIX = 'rpa_'; // replane admin
 
@@ -51,13 +52,23 @@ export function extractAdminApiKeyId(rawKey: string): string | null {
 }
 
 /**
- * Get the prefix portion of an admin API key for display (first 8 chars after the prefix).
+ * Get the prefix portion of an admin API key for display (first N hex chars after the rpa_ prefix).
  */
 export function getAdminApiKeyPrefix(rawKey: string): string {
   if (!rawKey.startsWith(ADMIN_API_KEY_PREFIX)) {
     throw new Error('Invalid admin API key format');
   }
-  return rawKey.slice(0, ADMIN_API_KEY_PREFIX.length + 8);
+  return rawKey.slice(0, ADMIN_API_KEY_PREFIX.length + API_KEY_PREFIX_LENGTH);
+}
+
+/**
+ * Get the suffix portion of an admin API key for display (last N hex chars).
+ */
+export function getAdminApiKeySuffix(rawKey: string): string {
+  if (!rawKey.startsWith(ADMIN_API_KEY_PREFIX)) {
+    throw new Error('Invalid admin API key format');
+  }
+  return rawKey.slice(-API_KEY_SUFFIX_LENGTH);
 }
 
 /**

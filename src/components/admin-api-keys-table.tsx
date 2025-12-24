@@ -1,34 +1,21 @@
 'use client';
 
 import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-  type VisibilityState,
-} from '@tanstack/react-table';
-import {ArrowUpDown, ChevronDown, KeyRound, MoreHorizontal, Plus} from 'lucide-react';
+import {ChevronRight, KeyRound, MoreHorizontal, Plus} from 'lucide-react';
 import * as React from 'react';
 
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {Input} from '@/components/ui/input';
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import type {AdminApiKeyScope} from '@/engine/core/identity';
 import {useTRPC} from '@/trpc/client';
+import {formatDistanceToNow} from 'date-fns';
 import {toast} from 'sonner';
 
 interface AdminApiKeyRow {
@@ -36,6 +23,7 @@ interface AdminApiKeyRow {
   name: string;
   description: string;
   keyPrefix: string;
+  keySuffix: string;
   createdByEmail: string;
   createdAt: Date;
   lastUsedAt: Date | null;
@@ -44,36 +32,20 @@ interface AdminApiKeyRow {
   projectIds: string[] | null;
 }
 
-function formatDateTime(value: unknown): {display: string; dateTimeAttr?: string; title?: string} {
-  const d = value instanceof Date ? value : new Date(String(value ?? ''));
-  if (Number.isNaN(d.getTime())) {
-    return {display: String(value ?? '')};
-  }
-  const display = new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(d);
-  return {display, dateTimeAttr: d.toISOString(), title: d.toLocaleString('en-US')};
-}
-
-function humanizeId(id: string): string {
-  return id
-    .replace(/[_-]+/g, ' ')
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
-    .replace(/^\w/, c => c.toUpperCase());
-}
-
 export interface AdminApiKeysTableProps {
   workspaceId: string;
+  onApiKeyClick?: (id: string) => void;
   onNewApiKeyClick?: () => void;
 }
 
-export function AdminApiKeysTable({workspaceId, onNewApiKeyClick}: AdminApiKeysTableProps) {
+export function AdminApiKeysTable({
+  workspaceId,
+  onApiKeyClick,
+  onNewApiKeyClick,
+}: AdminApiKeysTableProps) {
   const qc = useQueryClient();
   const trpc = useTRPC();
+  const [search, setSearch] = React.useState('');
 
   const deleteMutation = useMutation(
     trpc.deleteAdminApiKey.mutationOptions({
@@ -92,199 +64,22 @@ export function AdminApiKeysTable({workspaceId, onNewApiKeyClick}: AdminApiKeysT
     data: {adminApiKeys},
   } = useSuspenseQuery(trpc.listAdminApiKeys.queryOptions({workspaceId}));
 
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-
-  const columns = React.useMemo<ColumnDef<AdminApiKeyRow>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: 'Name',
-        cell: ({row}) => (
-          <div className="font-medium">{row.getValue('name') || '—'}</div>
-        ),
-      },
-      {
-        accessorKey: 'keyPrefix',
-        header: 'Key prefix',
-        cell: ({row}) => (
-          <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
-            {row.getValue('keyPrefix')}...
-          </code>
-        ),
-      },
-      {
-        accessorKey: 'scopes',
-        header: 'Scopes',
-        cell: ({row}) => {
-          const scopes = row.getValue('scopes') as AdminApiKeyScope[];
-          const displayScopes = scopes.slice(0, 2);
-          const remaining = scopes.length - displayScopes.length;
-          return (
-            <div className="flex flex-wrap gap-1">
-              {displayScopes.map(scope => (
-                <Badge key={scope} variant="secondary" className="text-xs">
-                  {scope}
-                </Badge>
-              ))}
-              {remaining > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  +{remaining} more
-                </Badge>
-              )}
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'projectIds',
-        header: 'Projects',
-        cell: ({row}) => {
-          const projectIds = row.getValue('projectIds') as string[] | null;
-          if (projectIds === null) {
-            return <span className="text-muted-foreground text-sm">All projects</span>;
-          }
-          return (
-            <span className="text-sm">
-              {projectIds.length} project{projectIds.length !== 1 ? 's' : ''}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: 'createdAt',
-        header: ({column}) => (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Created
-            <ArrowUpDown className="ml-1 h-4 w-4" />
-          </Button>
-        ),
-        cell: ({row}) => {
-          const {display, dateTimeAttr, title} = formatDateTime(row.getValue('createdAt'));
-          return (
-            <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap text-sm">
-              {display}
-            </time>
-          );
-        },
-      },
-      {
-        accessorKey: 'lastUsedAt',
-        header: 'Last used',
-        cell: ({row}) => {
-          const value = row.getValue('lastUsedAt') as Date | null;
-          if (!value) {
-            return <span className="text-muted-foreground text-sm">Never</span>;
-          }
-          const {display, dateTimeAttr, title} = formatDateTime(value);
-          return (
-            <time dateTime={dateTimeAttr} title={title} className="whitespace-nowrap text-sm">
-              {display}
-            </time>
-          );
-        },
-      },
-      {
-        accessorKey: 'expiresAt',
-        header: 'Expires',
-        cell: ({row}) => {
-          const value = row.getValue('expiresAt') as Date | null;
-          if (!value) {
-            return <span className="text-muted-foreground text-sm">Never</span>;
-          }
-          const isExpired = new Date(value) < new Date();
-          const {display, dateTimeAttr, title} = formatDateTime(value);
-          return (
-            <time
-              dateTime={dateTimeAttr}
-              title={title}
-              className={`whitespace-nowrap text-sm ${isExpired ? 'text-destructive' : ''}`}
-            >
-              {display}
-              {isExpired && ' (expired)'}
-            </time>
-          );
-        },
-      },
-      {
-        id: 'actions',
-        enableHiding: false,
-        cell: ({row}) => {
-          const apiKey = row.original;
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-8 w-8 p-0"
-                  onClick={e => e.stopPropagation()}
-                  onMouseDown={e => e.stopPropagation()}
-                >
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => navigator.clipboard.writeText(apiKey.keyPrefix)}
-                >
-                  Copy key prefix
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-700"
-                  disabled={deleteMutation.isPending}
-                  onClick={async e => {
-                    e.stopPropagation();
-                    if (confirm(`Delete API key "${apiKey.name}"? This cannot be undone.`)) {
-                      try {
-                        await deleteMutation.mutateAsync({
-                          workspaceId,
-                          adminApiKeyId: apiKey.id,
-                        });
-                      } catch {
-                        // handled in onError
-                      }
-                    }
-                  }}
-                >
-                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-      },
-    ],
-    [deleteMutation, workspaceId],
-  );
-
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const table = useReactTable({
-    data: adminApiKeys as AdminApiKeyRow[],
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
-  });
+  const filteredKeys = React.useMemo(() => {
+    if (!search.trim()) return adminApiKeys as AdminApiKeyRow[];
+    const lower = search.toLowerCase();
+    return (adminApiKeys as AdminApiKeyRow[]).filter(
+      k =>
+        k.name?.toLowerCase().includes(lower) ||
+        k.keyPrefix?.toLowerCase().includes(lower) ||
+        k.description?.toLowerCase().includes(lower),
+    );
+  }, [adminApiKeys, search]);
 
   // Empty state
   if (adminApiKeys.length === 0) {
     return (
       <div className="w-full">
-        <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="flex flex-col items-center justify-center py-12 px-4">
           <div className="rounded-full bg-muted/50 p-4 mb-6">
             <KeyRound className="h-8 w-8 text-muted-foreground" />
           </div>
@@ -305,105 +100,122 @@ export function AdminApiKeysTable({workspaceId, onNewApiKeyClick}: AdminApiKeysT
   }
 
   return (
-    <div className="w-full">
-      <div className="flex items-center py-4 gap-4">
+    <div className="w-full space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
         <Input
-          placeholder="Search API keys by name"
-          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-          onChange={event => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className="max-w-md"
+          placeholder="Search API keys..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter(column => column.getCanHide())
-              .map(column => {
-                const header = column.columnDef.header as unknown;
-                const label = typeof header === 'string' ? header : humanizeId(column.id);
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={value => column.toggleVisibility(!!value)}
-                  >
-                    {label}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
         {onNewApiKeyClick && (
-          <Button onClick={onNewApiKeyClick}>
+          <Button onClick={onNewApiKeyClick} size="sm">
             <Plus className="mr-2 h-4 w-4" />
-            New API key
+            New
           </Button>
         )}
       </div>
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No API keys found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
 
-      {/* Pagination */}
-      {table.getPageCount() > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      {/* List */}
+      <div className="rounded-md border divide-y">
+        {filteredKeys.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No API keys match your search
+          </div>
+        ) : (
+          filteredKeys.map(apiKey => {
+            const isExpired = apiKey.expiresAt ? new Date(apiKey.expiresAt) < new Date() : false;
+            return (
+              <div
+                key={apiKey.id}
+                className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                onClick={() => onApiKeyClick?.(apiKey.id)}
+              >
+                {/* Icon */}
+                <div className="flex items-center justify-center w-9 h-9 rounded-md bg-muted/50 shrink-0">
+                  <KeyRound className="h-4 w-4 text-muted-foreground" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium truncate">
+                      {apiKey.name || 'Untitled Key'}
+                    </span>
+                    {isExpired && (
+                      <Badge variant="destructive" className="text-xs shrink-0">
+                        Expired
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    <code className="bg-muted px-1 py-0.5 rounded font-mono">
+                      {apiKey.keyPrefix}...{apiKey.keySuffix}
+                    </code>
+                    <span>•</span>
+                    <span>
+                      {apiKey.scopes.length} scope{apiKey.scopes.length !== 1 ? 's' : ''}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {formatDistanceToNow(new Date(apiKey.createdAt), {addSuffix: true})}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 shrink-0"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={e => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(apiKey.keyPrefix);
+                        toast.success('Key prefix copied');
+                      }}
+                    >
+                      Copy key prefix
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-700"
+                      disabled={deleteMutation.isPending}
+                      onClick={async e => {
+                        e.stopPropagation();
+                        if (confirm(`Delete API key "${apiKey.name}"? This cannot be undone.`)) {
+                          try {
+                            await deleteMutation.mutateAsync({
+                              workspaceId,
+                              adminApiKeyId: apiKey.id,
+                            });
+                          } catch {
+                            // handled in onError
+                          }
+                        }
+                      }}
+                    >
+                      {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Chevron */}
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
-

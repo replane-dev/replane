@@ -1,6 +1,7 @@
 import {
   buildRawAdminApiKey,
   getAdminApiKeyPrefix,
+  getAdminApiKeySuffix,
   hashAdminApiKey,
 } from '../admin-api-key-utils';
 import type {AdminApiKeyScope} from '../db';
@@ -68,6 +69,7 @@ export function createCreateAdminApiKeyUseCase(): TransactionalUseCase<
     const rawKey = buildRawAdminApiKey(keyId);
     const keyHash = await hashAdminApiKey(rawKey);
     const keyPrefix = getAdminApiKeyPrefix(rawKey);
+    const keySuffix = getAdminApiKeySuffix(rawKey);
     const now = new Date();
 
     await tx.adminApiKeys.create({
@@ -77,6 +79,7 @@ export function createCreateAdminApiKeyUseCase(): TransactionalUseCase<
       description: req.description,
       keyHash,
       keyPrefix,
+      keySuffix,
       createdByEmail: currentUserEmail,
       createdAt: now,
       expiresAt: req.expiresAt,

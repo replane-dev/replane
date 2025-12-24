@@ -10,6 +10,8 @@ export interface GetSdkKeyListResponse {
   sdkKeys: Array<{
     id: string;
     createdAt: Date;
+    keyPrefix: string;
+    keySuffix: string;
     name: string;
     description: string;
     environmentId: string;
@@ -32,6 +34,8 @@ export function createGetSdkKeyListUseCase(): TransactionalUseCase<
       sdkKeys: tokens.map(t => ({
         id: t.id,
         createdAt: t.createdAt,
+        keyPrefix: t.keyPrefix,
+        keySuffix: t.keySuffix,
         name: t.name,
         description: t.description,
         environmentId: t.environmentId,

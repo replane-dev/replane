@@ -1,16 +1,21 @@
 'use client';
 
+import {AdminApiKeyDetailView} from '@/components/admin-api-key-detail-view';
 import {AdminApiKeysTable} from '@/components/admin-api-keys-table';
 import {NewAdminApiKeyDialog} from '@/components/new-admin-api-key-dialog';
+import {Button} from '@/components/ui/button';
 import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
-import {Lock} from 'lucide-react';
+import {ArrowLeft, Lock} from 'lucide-react';
 import * as React from 'react';
+
+type View = {type: 'list'} | {type: 'detail'; apiKeyId: string};
 
 export function WorkspaceApiKeysSettings({workspaceId}: {workspaceId: string}) {
   const trpc = useTRPC();
   const {data: org} = useSuspenseQuery(trpc.getWorkspace.queryOptions({workspaceId}));
 
+  const [view, setView] = React.useState<View>({type: 'list'});
   const [newKeyDialogOpen, setNewKeyDialogOpen] = React.useState(false);
 
   const isAdmin = org.myRole === 'admin';
@@ -41,6 +46,39 @@ export function WorkspaceApiKeysSettings({workspaceId}: {workspaceId: string}) {
     );
   }
 
+  // Detail view
+  if (view.type === 'detail') {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={() => setView({type: 'list'})}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to API Keys
+        </Button>
+
+        <React.Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          }
+        >
+          <AdminApiKeyDetailView
+            id={view.apiKeyId}
+            workspaceId={workspaceId}
+            onBack={() => setView({type: 'list'})}
+            onDelete={() => setView({type: 'list'})}
+          />
+        </React.Suspense>
+      </div>
+    );
+  }
+
+  // List view
   return (
     <div className="space-y-6">
       <div>
@@ -60,6 +98,7 @@ export function WorkspaceApiKeysSettings({workspaceId}: {workspaceId: string}) {
       >
         <AdminApiKeysTable
           workspaceId={workspaceId}
+          onApiKeyClick={id => setView({type: 'detail', apiKeyId: id})}
           onNewApiKeyClick={() => setNewKeyDialogOpen(true)}
         />
       </React.Suspense>
@@ -72,4 +111,3 @@ export function WorkspaceApiKeysSettings({workspaceId}: {workspaceId: string}) {
     </div>
   );
 }
-

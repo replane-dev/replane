@@ -12,6 +12,8 @@ export interface GetSdkKeyPageDataResponse {
   sdkKey: {
     id: string;
     createdAt: Date;
+    keyPrefix: string;
+    keySuffix: string;
     name: string;
     description: string;
     environmentId: string;
@@ -45,6 +47,8 @@ export function createGetSdkKeyPageDataUseCase(): TransactionalUseCase<
       sdkKey: {
         id: token.id,
         createdAt: token.createdAt,
+        keyPrefix: token.keyPrefix,
+        keySuffix: token.keySuffix,
         name: token.name,
         description: token.description,
         environmentId: token.environmentId,

@@ -75,14 +75,16 @@ export function SdkKeyDetailView({id, projectId, onDelete, onDirtyChange}: SdkKe
               </div>
             </div>
 
-            {/* Key ID */}
+            {/* Key Token */}
             <div className="flex items-center gap-2.5 sm:col-span-2">
               <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0">
                 <FileKey className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-muted-foreground mb-0.5">Key ID</div>
-                <div className="text-sm font-mono font-medium break-all">{sdkKey.id}</div>
+                <div className="text-xs text-muted-foreground mb-0.5">Key Token</div>
+                <code className="text-sm font-mono font-medium bg-muted px-1.5 py-0.5 rounded">
+                  {sdkKey.keyPrefix}...{sdkKey.keySuffix}
+                </code>
               </div>
             </div>
 

@@ -8,6 +8,7 @@ export interface AdminApiKey {
   name: string;
   description: string;
   keyPrefix: string;
+  keySuffix: string;
   createdByEmail: string;
   createdAt: Date;
   updatedAt: Date;
@@ -34,6 +35,7 @@ export class AdminApiKeyStore {
     description: string;
     keyHash: string;
     keyPrefix: string;
+    keySuffix: string;
     createdByEmail: NormalizedEmail;
     createdAt: Date;
     expiresAt: Date | null;
@@ -50,6 +52,7 @@ export class AdminApiKeyStore {
         description: params.description,
         key_hash: params.keyHash,
         key_prefix: params.keyPrefix,
+        key_suffix: params.keySuffix,
         created_by_email: params.createdByEmail,
         created_at: params.createdAt,
         updated_at: params.createdAt,
@@ -135,6 +138,7 @@ export class AdminApiKeyStore {
       name: k.name,
       description: k.description,
       keyPrefix: k.key_prefix,
+      keySuffix: k.key_suffix,
       createdByEmail: k.created_by_email,
       createdAt: k.created_at,
       updatedAt: k.updated_at,
@@ -179,6 +183,7 @@ export class AdminApiKeyStore {
       name: key.name,
       description: key.description,
       keyPrefix: key.key_prefix,
+      keySuffix: key.key_suffix,
       createdByEmail: key.created_by_email,
       createdAt: key.created_at,
       updatedAt: key.updated_at,
@@ -224,6 +229,7 @@ export class AdminApiKeyStore {
       description: key.description,
       keyHash: key.key_hash,
       keyPrefix: key.key_prefix,
+      keySuffix: key.key_suffix,
       createdByEmail: key.created_by_email,
       createdAt: key.created_at,
       updatedAt: key.updated_at,

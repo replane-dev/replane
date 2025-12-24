@@ -1546,7 +1546,7 @@ export const migrations: Migration[] = [
         description TEXT NOT NULL DEFAULT '',
         -- Key hash for verification (SHA-256 of the full key)
         key_hash TEXT NOT NULL,
-        -- First 8 chars of the key for identification (shown in UI)
+        -- First chars of the key for identification (shown in UI)
         key_prefix TEXT NOT NULL,
         created_by_email TEXT NOT NULL,
         created_at TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1590,6 +1590,33 @@ export const migrations: Migration[] = [
 
       -- Rename column in config_version_variants
       ALTER TABLE config_version_variants RENAME COLUMN use_default_schema TO use_base_schema;
+    `,
+  },
+  {
+    name: 'Add key_prefix and key_suffix to sdk_keys, add key_suffix to admin_api_keys',
+    sql: /*sql*/ `
+      -- Add key_prefix and key_suffix columns to sdk_keys
+      ALTER TABLE sdk_keys ADD COLUMN key_prefix TEXT;
+      ALTER TABLE sdk_keys ADD COLUMN key_suffix TEXT;
+
+      -- Add key_suffix column to admin_api_keys (key_prefix already exists)
+      ALTER TABLE admin_api_keys ADD COLUMN key_suffix TEXT;
+
+      -- Populate sdk_keys key_prefix and key_suffix from existing key_hash
+      -- Since we can't recover the original key, we use placeholder values
+      -- New keys will have proper prefix/suffix stored on creation
+      UPDATE sdk_keys SET key_prefix = 'rp_' || LEFT(id::text, 8), key_suffix = RIGHT(id::text, 4)
+      WHERE key_prefix IS NULL;
+
+      -- Populate admin_api_keys key_suffix from key_prefix (extract last 4 chars of the key)
+      -- Since we can't recover the full key, use a placeholder based on key_prefix
+      UPDATE admin_api_keys SET key_suffix = RIGHT(key_prefix, 4)
+      WHERE key_suffix IS NULL;
+
+      -- Make columns NOT NULL after population
+      ALTER TABLE sdk_keys ALTER COLUMN key_prefix SET NOT NULL;
+      ALTER TABLE sdk_keys ALTER COLUMN key_suffix SET NOT NULL;
+      ALTER TABLE admin_api_keys ALTER COLUMN key_suffix SET NOT NULL;
     `,
   },
 ];
