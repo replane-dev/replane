@@ -9,6 +9,7 @@
     "dev": "next dev --turbopack | pino-pretty",
     "build": "next build",
     "start": "NODE_ENV=production tsx server.ts",
+    "start:inspect": "NODE_ENV=production tsx --inspect=0.0.0.0:9229 server.ts",
     "start-self-hosted": "pnpm run migrate:migrate && pnpm start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",

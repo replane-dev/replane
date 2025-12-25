@@ -199,7 +199,7 @@ sdkApi.openapi(
         // heartbeat to keep proxies from closing the connection due to inactivity
         const heartbeat = setInterval(() => {
           try {
-            controller.enqueue({type: 'ping'});
+            controller.enqueue({type: 'comment', comment: 'ping'});
           } catch {}
         }, 15_000);
 
@@ -207,12 +207,16 @@ sdkApi.openapi(
         let streamTimeout: ReturnType<typeof setTimeout> | null = null;
         if (streamTimeoutMs && streamTimeoutMs > 0) {
           streamTimeout = setTimeout(() => {
-            abortController.abort();
+            try {
+              controller.enqueue({type: 'comment', comment: 'timeout'});
+            } catch {}
+            // Small delay to allow the timeout event to be sent before closing
+            setTimeout(() => abortController.abort(), 50);
           }, streamTimeoutMs);
         }
 
         try {
-          controller.enqueue({type: 'connected'});
+          controller.enqueue({type: 'comment', comment: 'connected'});
 
           // eager async iterable to subscribe to events immediately
           // required for client not to miss any updates to configs
@@ -270,6 +274,7 @@ sdkApi.openapi(
         } finally {
           clearInterval(heartbeat);
           if (streamTimeout) clearTimeout(streamTimeout);
+          abortController.abort();
           c.req.raw.signal.removeEventListener('abort', onAbort);
           if (!errored) {
             try {
@@ -307,7 +312,7 @@ sdkApi.get('/openapi.json', c =>
   ),
 );
 
-type SseEvent = {type: 'data'; data: string} | {type: 'ping'} | {type: 'connected'};
+type SseEvent = {type: 'data'; data: string} | {type: 'comment'; comment: string};
 
 class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
   constructor() {
@@ -317,10 +322,8 @@ class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
       transform(chunk, controller) {
         if (chunk.type === 'data') {
           controller.enqueue(encoder.encode(`data: ${chunk.data}\n\n`));
-        } else if (chunk.type === 'ping') {
-          controller.enqueue(encoder.encode(': ping\n\n'));
-        } else if (chunk.type === 'connected') {
-          controller.enqueue(encoder.encode(': connected\n\n'));
+        } else if (chunk.type === 'comment') {
+          controller.enqueue(encoder.encode(`: ${chunk.comment}\n\n`));
         } else {
           assertNever(chunk, 'Unknown SSE event type');
         }
