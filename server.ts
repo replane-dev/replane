@@ -5,8 +5,12 @@ import {sdkApi} from '@/sdk-api';
 import * as Sentry from '@sentry/nextjs';
 import {createServer, IncomingMessage, ServerResponse} from 'http';
 import next from 'next';
+import {collectDefaultMetrics, register} from 'prom-client';
 import type {TLSSocket} from 'tls';
 import {parse} from 'url';
+
+// Collect default Node.js metrics (CPU, memory, event loop, etc.)
+collectDefaultMetrics();
 
 const PORT = getPort();
 const dev = isDevelopment();
@@ -102,6 +106,7 @@ async function sendResponse(res: ServerResponse, honoRes: Response) {
 const SDK_API_PREFIX = '/api/sdk/v1';
 const SENTRY_TUNNEL_PATH = '/api/internal/monitoring';
 const HEALTHCHECK_PATH = getHealthcheckPath();
+const METRICS_PATH = '/metrics';
 
 async function handleSentryTunnel(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== 'POST') {
@@ -200,6 +205,14 @@ app
           res.statusCode = 200;
           res.setHeader('content-type', 'application/json');
           res.end(JSON.stringify({status: 'ok'}));
+          return;
+        }
+
+        // Prometheus metrics endpoint
+        if (parsedUrl.pathname === METRICS_PATH) {
+          res.statusCode = 200;
+          res.setHeader('content-type', register.contentType);
+          res.end(await register.metrics());
           return;
         }
 

@@ -737,7 +737,6 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
                 name: z.string().min(1).max(100),
                 description: z.string().max(10000),
                 editors: z.array(z.email()),
-                maintainers: z.array(z.email()),
                 base: z.object({
                   value: ConfigValue(),
                   schema: ConfigSchema().nullable(),
@@ -782,7 +781,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         name: body.name,
         description: body.description,
         editorEmails: body.editors,
-        maintainerEmails: body.maintainers,
+        maintainerEmails: [], // we don't support maintainers in the admin API
         defaultVariant: {
           value: body.base.value,
           schema: body.base.schema,

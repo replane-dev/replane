@@ -84,15 +84,10 @@ describe('Admin API - Create Project', () => {
     });
 
     // Create first project
-    await fixture.adminApiRequest(
-      'POST',
-      `/workspaces/${fixture.workspaceId}/projects`,
-      token,
-      {
-        name: 'Duplicate Test',
-        description: 'First project',
-      },
-    );
+    await fixture.adminApiRequest('POST', `/workspaces/${fixture.workspaceId}/projects`, token, {
+      name: 'Duplicate Test',
+      description: 'First project',
+    });
 
     // Try to create duplicate
     const response = await fixture.adminApiRequest(

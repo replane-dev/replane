@@ -145,6 +145,7 @@ Notes
 - Replane includes an integrated database. No external database required.
 - If using an integrated database, data is stored in `/data` inside the container. Mount a volume to persist data.
 - Health check: GET /api/health → `{ "status": "ok" }`.
+- Prometheus metrics: GET /metrics → Prometheus-formatted metrics (CPU, memory, event loop, etc.).
 
 ## Environment variables
 
