@@ -209,7 +209,6 @@ function toUseCase<TReq, TRes>(
           workspaces,
           workspaceMembers,
           projects,
-          projectUsers,
           projectEnvironments,
           configs,
           configService,

@@ -6,7 +6,6 @@ import type {AuditLogStore} from './stores/audit-log-store';
 import type {ConfigStore} from './stores/config-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
-import type {ProjectUserStore} from './stores/project-user-store';
 import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {WorkspaceStore} from './stores/workspace-store';
 import {type WorkspaceInfo} from './stores/workspace-store';
@@ -19,7 +18,6 @@ export class WorkspaceService {
     private workspaces: WorkspaceStore,
     private workspaceMembers: WorkspaceMemberStore,
     private projects: ProjectStore,
-    private projectUsers: ProjectUserStore,
     private projectEnvironments: ProjectEnvironmentStore,
     private configs: ConfigStore,
     private configService: ConfigService,
@@ -48,7 +46,6 @@ export class WorkspaceService {
         workspaceStore: this.workspaces,
         workspaceMemberStore: this.workspaceMembers,
         projectStore: this.projects,
-        projectUserStore: this.projectUsers,
         projectEnvironmentStore: this.projectEnvironments,
         configs: this.configs,
         configService: this.configService,

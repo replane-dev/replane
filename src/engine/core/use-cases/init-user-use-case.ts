@@ -25,7 +25,6 @@ export function createInitUserUseCase(): TransactionalUseCase<InitUserRequest, I
       workspaceStore: tx.workspaces,
       workspaceMemberStore: tx.workspaceMembers,
       projectStore: tx.projects,
-      projectUserStore: tx.projectUsers,
       projectEnvironmentStore: tx.projectEnvironments,
       auditLogs: tx.auditLogs,
       now: tx.dateProvider.now(),
