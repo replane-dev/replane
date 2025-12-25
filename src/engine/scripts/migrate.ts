@@ -15,12 +15,23 @@ async function main(ctx: Context) {
     await migrate(ctx, client, logger, 'public').finally(() => {
       client.release();
     });
+    logger.info(ctx, {msg: 'Migration finished.'});
+
+    return 0;
   } catch (error) {
     console.error('Migration failed:', error);
+
+    return 1;
   } finally {
-    logger.info(ctx, {msg: 'Migration finished.'});
     free();
   }
 }
 
-main(GLOBAL_CONTEXT).catch(console.error);
+main(GLOBAL_CONTEXT)
+  .then(code => {
+    process.exit(code);
+  })
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
