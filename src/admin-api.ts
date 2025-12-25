@@ -316,16 +316,18 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
   adminApi.openapi(
     {
       method: 'post',
-      path: '/projects',
+      path: '/workspaces/{workspaceId}/projects',
       operationId: 'createProject',
       request: {
+        params: z.object({
+          workspaceId: z.uuid(),
+        }),
         body: {
           content: {
             'application/json': {
               schema: z.object({
                 name: z.string().min(1).max(100),
                 description: z.string().max(10000),
-                workspaceId: z.uuid(),
               }),
             },
           },
@@ -346,12 +348,13 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
     },
     async c => {
       const identity = c.get('identity');
+      const {workspaceId} = c.req.valid('param');
       const body = c.req.valid('json');
       const ctx = c.get('context');
 
       const {projectId} = await engine.useCases.createProject(ctx, {
         identity,
-        workspaceId: body.workspaceId,
+        workspaceId,
         name: body.name,
         description: body.description,
       });

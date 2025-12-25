@@ -11,11 +11,15 @@ describe('Admin API - Create Project', () => {
       scopes: ['project:write', 'project:read'],
     });
 
-    const response = await fixture.adminApiRequest('POST', '/projects', token, {
-      name: 'API Created Project',
-      description: 'Created via Admin API',
-      workspaceId: fixture.workspaceId,
-    });
+    const response = await fixture.adminApiRequest(
+      'POST',
+      `/workspaces/${fixture.workspaceId}/projects`,
+      token,
+      {
+        name: 'API Created Project',
+        description: 'Created via Admin API',
+      },
+    );
 
     expect(response.status).toBe(201);
     const data = await response.json();
@@ -33,11 +37,15 @@ describe('Admin API - Create Project', () => {
       scopes: ['project:read'],
     });
 
-    const response = await fixture.adminApiRequest('POST', '/projects', token, {
-      name: 'Should Fail',
-      description: 'Test project',
-      workspaceId: fixture.workspaceId,
-    });
+    const response = await fixture.adminApiRequest(
+      'POST',
+      `/workspaces/${fixture.workspaceId}/projects`,
+      token,
+      {
+        name: 'Should Fail',
+        description: 'Test project',
+      },
+    );
 
     expect(response.status).toBe(403);
   });
@@ -47,13 +55,17 @@ describe('Admin API - Create Project', () => {
       scopes: ['project:write', 'project:read'],
     });
 
-    const response = await fixture.adminApiRequest('POST', '/projects', token, {
-      name: 'Custom Settings Project',
-      description: 'With proposals enabled',
-      workspaceId: fixture.workspaceId,
-      requireProposals: true,
-      allowSelfApprovals: false,
-    });
+    const response = await fixture.adminApiRequest(
+      'POST',
+      `/workspaces/${fixture.workspaceId}/projects`,
+      token,
+      {
+        name: 'Custom Settings Project',
+        description: 'With proposals enabled',
+        requireProposals: true,
+        allowSelfApprovals: false,
+      },
+    );
 
     expect(response.status).toBe(201);
     const data = await response.json();
@@ -72,36 +84,31 @@ describe('Admin API - Create Project', () => {
     });
 
     // Create first project
-    await fixture.adminApiRequest('POST', '/projects', token, {
-      name: 'Duplicate Test',
-      description: 'First project',
-      workspaceId: fixture.workspaceId,
-    });
+    await fixture.adminApiRequest(
+      'POST',
+      `/workspaces/${fixture.workspaceId}/projects`,
+      token,
+      {
+        name: 'Duplicate Test',
+        description: 'First project',
+      },
+    );
 
     // Try to create duplicate
-    const response = await fixture.adminApiRequest('POST', '/projects', token, {
-      name: 'Duplicate Test',
-      description: 'Second project',
-      workspaceId: fixture.workspaceId,
-    });
+    const response = await fixture.adminApiRequest(
+      'POST',
+      `/workspaces/${fixture.workspaceId}/projects`,
+      token,
+      {
+        name: 'Duplicate Test',
+        description: 'Second project',
+      },
+    );
 
     expect(response.status).toBe(400);
     const data = await response.json();
     // Error message could be in different formats depending on the error type
     const errorString = typeof data.error === 'string' ? data.error : JSON.stringify(data);
     expect(errorString.toLowerCase()).toContain('already exists');
-  });
-
-  it('should return 400 when workspaceId is missing', async () => {
-    const {token} = await fixture.createAdminApiKey({
-      scopes: ['project:write'],
-    });
-
-    const response = await fixture.adminApiRequest('POST', '/projects', token, {
-      name: 'Missing Workspace',
-      description: 'Test project without workspaceId',
-    });
-
-    expect(response.status).toBe(400);
   });
 });
