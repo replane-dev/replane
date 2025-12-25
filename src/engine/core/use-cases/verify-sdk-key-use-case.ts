@@ -1,8 +1,8 @@
 import {LRUCache} from 'lru-cache';
 import type {SdkKeyInfo} from '../../engine';
-import type {HashingService} from '../hashing-service';
 import type {ReplicaService} from '../replica';
 import {extractSdkKeyId} from '../sdk-key-utils';
+import type {SecureHashingService} from '../secure-hashing-service';
 import type {UseCase} from '../use-case';
 
 export interface VerifySdkKeyRequest {
@@ -13,7 +13,7 @@ export type VerifySdkKeyResponse = SdkKeyInfo | null;
 
 export interface VerifySdkKeyUseCaseDeps {
   replicaService: ReplicaService;
-  hasher: HashingService;
+  hasher: SecureHashingService;
 }
 
 export function createVerifySdkKeyUseCase(

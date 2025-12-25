@@ -1,6 +1,6 @@
-// Use Web Crypto API (available in modern browsers and Node.js >= 18)
+import {timingSafeEqual} from 'node:crypto';
 
-export interface HashingService {
+export interface SecureHashingService {
   hash(source: string): Promise<string>;
   verify(hash: string, source: string): Promise<boolean>;
 }
@@ -8,7 +8,7 @@ export interface HashingService {
 // Simple SHA-256 hashing service (unsalted, deterministic).
 // NOTE: This is weaker than Argon2 (no memory hardness). Consider reintroducing
 // a stronger KDF if tokens need resistance against offline brute-force.
-export function createSha256HashingService(): HashingService {
+export function createSha256HashingService(): SecureHashingService {
   function toHex(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     let hex = '';
@@ -29,7 +29,13 @@ export function createSha256HashingService(): HashingService {
       return sha256(token);
     },
     async verify(hash: string, token: string) {
-      return (await sha256(token)) === hash;
+      return timingSafeEqualString(await sha256(token), hash);
     },
   };
+}
+
+export function timingSafeEqualString(a: string, b: string): boolean {
+  const aBuffer = Buffer.from(a);
+  const bBuffer = Buffer.from(b);
+  return aBuffer.length === bBuffer.length && timingSafeEqual(aBuffer, bBuffer);
 }

@@ -1,8 +1,8 @@
 import {LRUCache} from 'lru-cache';
 import type {SdkKeyInfo} from '../engine';
-import type {HashingService} from './hashing-service';
 import type {ReplicaService} from './replica';
 import {extractSdkKeyId} from './sdk-key-utils';
+import type {SecureHashingService} from './secure-hashing-service';
 import type {Service} from './service';
 
 export class SdkKeyService implements Service {
@@ -16,7 +16,7 @@ export class SdkKeyService implements Service {
 
   constructor(
     private readonly replicaService: ReplicaService,
-    private readonly hasher: HashingService,
+    private readonly hasher: SecureHashingService,
   ) {}
   async start(): Promise<void> {}
 

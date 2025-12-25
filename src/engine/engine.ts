@@ -9,13 +9,13 @@ import {type DateProvider, DefaultDateProvider} from './core/date-provider';
 import type {DB} from './core/db';
 import {type EmailService, PreferencesAwareEmailService} from './core/email-service';
 import {EventHubPublisher} from './core/event-hub';
-import {createSha256HashingService} from './core/hashing-service';
 import {createLogger, type Logger, type LogLevel} from './core/logger';
 import {PermissionService} from './core/permission-service';
 import {prepareDb} from './core/prepare-db';
 import {ProjectQueryService} from './core/project-query-service';
 import {ProposalService} from './core/proposal-service';
 import {type AppHubEvents} from './core/replica';
+import {createSha256HashingService} from './core/secure-hashing-service';
 import {AdminApiKeyStore} from './core/stores/admin-api-key-store';
 import {AuditLogStore} from './core/stores/audit-log-store';
 import {ConfigProposalStore} from './core/stores/config-proposal-store';
@@ -272,7 +272,7 @@ export async function createEngine(options: EngineOptions) {
 
   const dateProvider = options.dateProvider ?? new DefaultDateProvider();
 
-  const hasher = createSha256HashingService();
+  const secureHasher = createSha256HashingService();
 
   const transactionalUseCases = {
     getConfigList: createGetConfigListUseCase({}),
@@ -313,7 +313,7 @@ export async function createEngine(options: EngineOptions) {
     updateProjectEnvironmentsOrder: createUpdateProjectEnvironmentsOrderUseCase({dateProvider}),
     deleteProjectEnvironment: createDeleteProjectEnvironmentUseCase({dateProvider}),
     restoreConfigVersion: createRestoreConfigVersionUseCase(),
-    createSdkKey: createCreateSdkKeyUseCase({hasher: hasher}),
+    createSdkKey: createCreateSdkKeyUseCase({secureHasher}),
     // Combined use cases for page data
     getConfigPageData: createGetConfigPageDataUseCase(),
     getNewConfigPageData: createGetNewConfigPageDataUseCase(),
@@ -374,7 +374,7 @@ export async function createEngine(options: EngineOptions) {
     useCases: {
       ...engineUseCases,
       getHealth: createGetHealthUseCase(),
-      verifyAdminApiKey: createVerifyAdminApiKeyUseCase({db}),
+      verifyAdminApiKey: createVerifyAdminApiKeyUseCase({db, secureHasher}),
     },
     mail: options.emailService,
     stores: {

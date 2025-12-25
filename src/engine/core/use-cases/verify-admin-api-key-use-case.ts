@@ -1,8 +1,7 @@
 import {getSuperuserApiKey} from '@/environment';
-import {timingSafeEqual} from 'crypto';
 import type {Kysely} from 'kysely';
 import {LRUCache} from 'lru-cache';
-import {extractAdminApiKeyId, hashAdminApiKey} from '../admin-api-key-utils';
+import {extractAdminApiKeyId} from '../admin-api-key-utils';
 import type {AdminApiKeyScope, DB} from '../db';
 import {
   createApiKeyIdentity,
@@ -10,6 +9,7 @@ import {
   type ApiKeyIdentity,
   type SuperuserIdentity,
 } from '../identity';
+import {timingSafeEqualString, type SecureHashingService} from '../secure-hashing-service';
 import type {UseCase} from '../use-case';
 
 export interface VerifyAdminApiKeyRequest {
@@ -26,6 +26,7 @@ export type VerifyAdminApiKeyResponse =
 
 export interface VerifyAdminApiKeyUseCaseDeps {
   db: Kysely<DB>;
+  secureHasher: SecureHashingService;
 }
 
 export function createVerifyAdminApiKeyUseCase(
@@ -45,12 +46,7 @@ export function createVerifyAdminApiKeyUseCase(
     // Check if this is the superuser API key using constant-time comparison
     const superuserKey = getSuperuserApiKey();
     if (superuserKey) {
-      const keyBuffer = Buffer.from(key);
-      const superuserKeyBuffer = Buffer.from(superuserKey);
-      if (
-        superuserKeyBuffer.length === keyBuffer.length &&
-        timingSafeEqual(keyBuffer, superuserKeyBuffer)
-      ) {
+      if (timingSafeEqualString(superuserKey, key)) {
         return {status: 'valid', identity: createSuperuserIdentity()};
       }
     }
@@ -65,9 +61,6 @@ export function createVerifyAdminApiKeyUseCase(
         return {status: 'invalid', reason: 'invalid_format'};
       }
 
-      // Hash the key for verification
-      const keyHash = await hashAdminApiKey(key);
-
       // Fetch the key by hash
       const adminKey = await db
         .selectFrom('admin_api_keys')
@@ -79,7 +72,7 @@ export function createVerifyAdminApiKeyUseCase(
         return {status: 'invalid', reason: 'invalid_key'};
       }
 
-      if (adminKey.key_hash !== keyHash) {
+      if (!(await deps.secureHasher.verify(adminKey.key_hash, key))) {
         return {status: 'invalid', reason: 'invalid_key'};
       }
 

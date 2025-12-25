@@ -1,7 +1,7 @@
 import {BadRequestError} from '../errors';
-import type {HashingService} from '../hashing-service';
 import {getUserIdFromIdentity, type Identity} from '../identity';
 import {buildRawSdkKey, getSdkKeyPrefix, getSdkKeySuffix} from '../sdk-key-utils';
+import type {SecureHashingService} from '../secure-hashing-service';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
@@ -25,7 +25,7 @@ export interface CreateSdkKeyResponse {
 }
 
 export function createCreateSdkKeyUseCase(deps: {
-  hasher: HashingService;
+  secureHasher: SecureHashingService;
 }): TransactionalUseCase<CreateSdkKeyRequest, CreateSdkKeyResponse> {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanManageSdkKeys(ctx, {
@@ -44,7 +44,7 @@ export function createCreateSdkKeyUseCase(deps: {
     const sdkKeyId = createUuidV7();
     // Embed apiTokenId into token for future extraction
     const sdkKey = buildRawSdkKey(sdkKeyId);
-    const sdkKeyHash = await deps.hasher.hash(sdkKey);
+    const sdkKeyHash = await deps.secureHasher.hash(sdkKey);
     const keyPrefix = getSdkKeyPrefix(sdkKey);
     const keySuffix = getSdkKeySuffix(sdkKey);
     const now = new Date();
