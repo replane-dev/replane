@@ -287,3 +287,14 @@ export function isRegistrationDisabled(): boolean {
 export function getSuperuserApiKey(): string | undefined {
   return process.env.SUPERUSER_API_KEY;
 }
+
+/**
+ * Checks if testing mode is enabled.
+ * When enabled, additional testing endpoints become available (e.g., /testing/sync).
+ * Controlled by TESTING_MODE environment variable.
+ *
+ * @returns true if testing mode is enabled, false otherwise
+ */
+export function isTestingModeEnabled(): boolean {
+  return process.env.TESTING_MODE === 'true';
+}

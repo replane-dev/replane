@@ -3,6 +3,7 @@ import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import {ConfigName} from '@/engine/core/stores/config-store';
 import {createUuidV4} from '@/engine/core/uuid';
 import {getEdgeSingleton} from '@/engine/edge-singleton';
+import {isTestingModeEnabled} from '@/environment';
 import {OpenAPIHono} from '@hono/zod-openapi';
 import * as Sentry from '@sentry/nextjs';
 import {cors} from 'hono/cors';
@@ -64,6 +65,10 @@ sdkApi.use('*', async (c, next) => {
 
   const path = new URL(c.req.url).pathname;
   if (path.endsWith('/openapi.json')) {
+    return next();
+  }
+  // Skip auth for testing endpoints when TESTING_MODE is enabled
+  if (path.endsWith('/testing/sync') && isTestingModeEnabled()) {
     return next();
   }
   const authHeader = c.req.header('authorization');
@@ -176,12 +181,15 @@ sdkApi.openapi(
     const onAbort = () => abortController.abort();
     c.req.raw.signal.addEventListener('abort', onAbort);
 
-    // Parse optional stream timeout header
-    const timeoutHeader = c.req.header('x-stream-timeout-ms');
-    let streamTimeoutMs = timeoutHeader ? parseInt(timeoutHeader, 10) : null;
-    if (Number.isNaN(streamTimeoutMs)) {
-      console.warn('Invalid stream timeout header:', timeoutHeader);
-      streamTimeoutMs = null;
+    // Parse optional stream timeout header (only in testing mode)
+    let streamTimeoutMs: number | null = null;
+    if (isTestingModeEnabled()) {
+      const timeoutHeader = c.req.header('x-stream-timeout-ms');
+      streamTimeoutMs = timeoutHeader ? parseInt(timeoutHeader, 10) : null;
+      if (Number.isNaN(streamTimeoutMs)) {
+        console.warn('Invalid stream timeout header:', timeoutHeader);
+        streamTimeoutMs = null;
+      }
     }
 
     const rawBody = await c.req.json().catch(() => ({}));
@@ -299,6 +307,41 @@ sdkApi.openapi(
         'X-Accel-Buffering': 'no',
       },
     });
+  },
+);
+
+// Testing endpoint - only available when TESTING_MODE=true
+sdkApi.openapi(
+  {
+    method: 'post',
+    path: '/testing/sync',
+    operationId: 'syncReplica',
+    responses: {
+      200: {
+        description: 'Replica sync completed',
+        content: {
+          'application/json': {
+            schema: z.object({status: z.literal('synced')}),
+          },
+        },
+      },
+      403: {
+        description: 'Testing mode not enabled',
+        content: {
+          'application/json': {
+            schema: z.object({msg: z.string()}),
+          },
+        },
+      },
+    },
+  },
+  async c => {
+    if (!isTestingModeEnabled()) {
+      return c.json({msg: 'Testing mode not enabled'}, 403);
+    }
+    const edge = await getEdge();
+    await edge.testing.replicaService.sync();
+    return c.json({status: 'synced' as const}, 200);
   },
 );
 
