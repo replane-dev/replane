@@ -1,9 +1,11 @@
-import {combineConfigAndProjectRoles} from '../role-utils';
+import type {Identity} from '../identity';
+import {isUserIdentity} from '../identity';
+import {getHighestRole} from '../role-utils';
 import type {TransactionalUseCase} from '../use-case';
-import type {ConfigInfo, NormalizedEmail} from '../zod';
+import type {ConfigInfo} from '../zod';
 
 export interface GetConfigListRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -18,30 +20,41 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
   GetConfigListResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadConfigs(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const myProjectRole = await tx.projectUsers.getByProjectIdAndEmail({
+    const currentUserEmail = isUserIdentity(req.identity) ? req.identity.user.email : undefined;
+
+    // Get user's effective project role (combines explicit role + workspace admin status)
+    const myProjectRole = await tx.permissionService.inferUserProjectRole(ctx, {
       projectId: req.projectId,
-      userEmail: req.currentUserEmail,
+      identity: req.identity,
+    });
+
+    const configs = await tx.configs.getProjectConfigs({
+      currentUserEmail,
+      projectId: req.projectId,
     });
 
     return {
-      configs: await tx.configs
-        .getProjectConfigs({
-          currentUserEmail: req.currentUserEmail,
-          projectId: req.projectId,
-        })
-        .then(configs =>
-          configs.map(config => ({
-            ...config,
-            myRole: myProjectRole
-              ? combineConfigAndProjectRoles(myProjectRole.role, config.myRole)
-              : config.myRole,
-          })),
-        ),
+      configs: configs.map(config => {
+        const myRole = getHighestRole([
+          myProjectRole ?? 'viewer',
+          config.myConfigUserRole ?? 'viewer',
+        ]);
+        return {
+          id: config.id,
+          name: config.name,
+          descriptionPreview: config.descriptionPreview,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+          version: config.version,
+          projectId: config.projectId,
+          myRole: myRole === 'admin' ? 'maintainer' : myRole,
+        };
+      }),
     };
   };
 }

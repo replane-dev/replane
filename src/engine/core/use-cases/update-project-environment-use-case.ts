@@ -1,15 +1,15 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectEnvironmentRequest {
   environmentId: string;
   projectId: string;
   name: string;
   requireProposals: boolean;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface UpdateProjectEnvironmentResponse {}
@@ -22,12 +22,15 @@ export function createUpdateProjectEnvironmentUseCase(
   deps: UpdateProjectEnvironmentUseCaseDeps,
 ): TransactionalUseCase<UpdateProjectEnvironmentRequest, UpdateProjectEnvironmentResponse> {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     const environment = await tx.projectEnvironments.getById({
@@ -41,7 +44,7 @@ export function createUpdateProjectEnvironmentUseCase(
     // Check if user has admin permission
     await tx.permissionService.ensureCanManageProjectEnvironments(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Validate environment name

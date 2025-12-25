@@ -91,7 +91,8 @@ export function ConfigDetailView({
     if (!config) return;
 
     await updateConfig.mutateAsync({
-      configId: config.config.id,
+      projectId,
+      configName,
       prevVersion: config.config.version,
       description: data.description,
       editorEmails: data.editorEmails,
@@ -102,7 +103,7 @@ export function ConfigDetailView({
         value: v.value,
         schema: v.schema,
         overrides: v.overrides,
-        useDefaultSchema: v.useDefaultSchema,
+        useBaseSchema: v.useBaseSchema,
       })),
     });
 
@@ -258,7 +259,7 @@ export function ConfigDetailView({
           value: v.value,
           schema: v.schema,
           overrides: v.overrides as Override[],
-          useDefaultSchema: v.useDefaultSchema,
+          useBaseSchema: v.useBaseSchema,
         }))}
         defaultDescription={config.config?.description ?? ''}
         defaultMaintainerEmails={config.maintainerEmails}

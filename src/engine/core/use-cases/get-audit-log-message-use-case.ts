@@ -1,11 +1,11 @@
 import {BadRequestError} from '../errors';
+import type {Identity} from '../identity';
 import type {AuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetAuditLogMessageRequest {
   id: AuditLogId;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetAuditLogMessageResponse {
@@ -31,7 +31,7 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
     if (base.projectId) {
       await tx.permissionService.ensureIsWorkspaceMember(ctx, {
         projectId: base.projectId,
-        currentUserEmail: req.currentUserEmail,
+        identity: req.identity,
       });
     } else {
       throw new BadRequestError('Audit log does not belong to a project');

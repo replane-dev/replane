@@ -23,7 +23,7 @@ export interface ConfigVersionVariant {
   value: ConfigValue;
   schema: ConfigSchema | null;
   overrides: Override[];
-  useDefaultSchema: boolean;
+  useBaseSchema: boolean;
 }
 
 export interface ConfigVersionMember {
@@ -82,7 +82,7 @@ export class ConfigVersionStore {
         value: serializeJson(v.value),
         schema: v.schema !== null ? serializeJson(v.schema) : null,
         overrides: serializeJson(v.overrides),
-        use_default_schema: v.useDefaultSchema,
+        use_base_schema: v.useBaseSchema,
       }));
 
       await this.db.insertInto('config_version_variants').values(variantsToInsert).execute();
@@ -237,7 +237,7 @@ export class ConfigVersionStore {
         value: deserializeJson(v.value),
         schema: v.schema !== null ? deserializeJson(v.schema) : null,
         overrides: deserializeJson(v.overrides) ?? [],
-        useDefaultSchema: v.use_default_schema,
+        useBaseSchema: v.use_base_schema,
       })),
       members: (membersByVersionId.get(versionRow.id) ?? []).map(m => ({
         id: m.id,

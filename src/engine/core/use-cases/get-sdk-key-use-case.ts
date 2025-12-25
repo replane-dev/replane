@@ -1,9 +1,9 @@
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetSdkKeyRequest {
   id: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -25,7 +25,7 @@ export function createGetSdkKeyUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const sdkKey = await tx.sdkKeys.getById({sdkKeyId: req.id, projectId: req.projectId});

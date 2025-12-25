@@ -1,11 +1,9 @@
-import type {
-  UserNotificationPreferences,
-} from '../stores/user-notification-preferences-store';
+import {requireUserEmail, type Identity} from '../identity';
+import type {UserNotificationPreferences} from '../stores/user-notification-preferences-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetNotificationPreferencesRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export type GetNotificationPreferencesResponse = Omit<
@@ -18,8 +16,11 @@ export function createGetNotificationPreferencesUseCase(): TransactionalUseCase<
   GetNotificationPreferencesResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     // Get the current user
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     if (!user) {
       // Return defaults for unauthenticated or unknown users
       return {
@@ -39,4 +40,3 @@ export function createGetNotificationPreferencesUseCase(): TransactionalUseCase<
     };
   };
 }
-

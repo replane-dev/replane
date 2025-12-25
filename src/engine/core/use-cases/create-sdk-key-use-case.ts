@@ -1,13 +1,13 @@
 import {BadRequestError} from '../errors';
 import type {HashingService} from '../hashing-service';
-import {buildRawSdkKey} from '../sdk-key-utils';
+import {getUserIdFromIdentity, type Identity} from '../identity';
+import {buildRawSdkKey, getSdkKeyPrefix, getSdkKeySuffix} from '../sdk-key-utils';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
-import type {NormalizedEmail} from '../zod';
 
 export interface CreateSdkKeyRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: string;
   description: string;
   projectId: string;
@@ -30,12 +30,8 @@ export function createCreateSdkKeyUseCase(deps: {
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanManageSdkKeys(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
-    const user = await tx.users.getByEmail(req.currentUserEmail);
-    if (!user) {
-      throw new Error('User not found');
-    }
 
     const env = await tx.projectEnvironments.getById({
       environmentId: req.environmentId,
@@ -49,12 +45,16 @@ export function createCreateSdkKeyUseCase(deps: {
     // Embed apiTokenId into token for future extraction
     const sdkKey = buildRawSdkKey(sdkKeyId);
     const sdkKeyHash = await deps.hasher.hash(sdkKey);
+    const keyPrefix = getSdkKeyPrefix(sdkKey);
+    const keySuffix = getSdkKeySuffix(sdkKey);
     const now = new Date();
 
     await tx.sdkKeys.create(ctx, {
       id: sdkKeyId,
       createdAt: now,
       keyHash: sdkKeyHash,
+      keyPrefix,
+      keySuffix,
       projectId: req.projectId,
       environmentId: req.environmentId,
       name: req.name,
@@ -64,7 +64,7 @@ export function createCreateSdkKeyUseCase(deps: {
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: now,
-      userId: user.id,
+      userId: getUserIdFromIdentity(req.identity),
       projectId: req.projectId,
       configId: null,
       payload: {

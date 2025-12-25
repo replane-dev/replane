@@ -1,12 +1,12 @@
 import assert from 'assert';
 import {ForbiddenError, NotFoundError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteWorkspaceRequest {
   workspaceId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface DeleteWorkspaceResponse {
@@ -18,11 +18,14 @@ export function createDeleteWorkspaceUseCase(): TransactionalUseCase<
   DeleteWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
+    // Deleting workspaces requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const now = new Date();
 
     const workspace = await tx.workspaces.getById({
       id: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
 
     if (!workspace) {
@@ -34,7 +37,7 @@ export function createDeleteWorkspaceUseCase(): TransactionalUseCase<
       throw new ForbiddenError('Only workspace admins can delete the workspace');
     }
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     await tx.auditLogs.create({

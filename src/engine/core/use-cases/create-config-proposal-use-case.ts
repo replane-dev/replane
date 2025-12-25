@@ -1,6 +1,7 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import type {Override} from '../override-evaluator';
 import {createAuditLogId} from '../stores/audit-log-store';
 import {
@@ -27,10 +28,10 @@ export interface CreateConfigProposalRequest {
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
   message: string | null;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface CreateConfigProposalResponse {
@@ -46,9 +47,12 @@ export function createCreateConfigProposalUseCase(
   deps: CreateConfigProposalUseCaseDeps,
 ): TransactionalUseCase<CreateConfigProposalRequest, CreateConfigProposalResponse> {
   return async (ctx, tx, req) => {
+    // Creating proposals requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.isWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const config = await tx.configs.getById(req.configId);
@@ -71,7 +75,7 @@ export function createCreateConfigProposalUseCase(
       environmentVariants: req.environmentVariants,
     });
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     const configProposalId = createConfigProposalId();
@@ -101,7 +105,7 @@ export function createCreateConfigProposalUseCase(
           value: x.value,
           schema: x.schema,
           overrides: x.overrides,
-          useDefaultSchema: x.useDefaultSchema,
+          useBaseSchema: x.useBaseSchema,
         })),
         members: currentMembers.map(m => ({
           id: createConfigProposalMemberId(),
@@ -156,7 +160,7 @@ export function createCreateConfigProposalUseCase(
           value: v.value,
           schema: v.schema ?? null,
           overrides: v.overrides,
-          useDefaultSchema: v.useDefaultSchema ?? false,
+          useBaseSchema: v.useBaseSchema ?? false,
         })),
         members: proposedMembers.map(m => ({
           id: createConfigProposalMemberId(),
@@ -194,6 +198,7 @@ export function createCreateConfigProposalUseCase(
       deps,
       config,
       currentUser,
+      currentUserEmail,
       configProposalId,
       req,
     });
@@ -209,10 +214,11 @@ async function scheduleProposalCreatedNotification(params: {
   deps: CreateConfigProposalUseCaseDeps;
   config: {id: string; name: string; description: string};
   currentUser: {name: string | null; email: string | null};
+  currentUserEmail: NormalizedEmail;
   configProposalId: ConfigProposalId;
   req: CreateConfigProposalRequest;
 }): Promise<void> {
-  const {tx, deps, config, currentUser, configProposalId, req} = params;
+  const {tx, deps, config, currentUser, currentUserEmail, configProposalId, req} = params;
 
   if (!tx.emailService || !deps.baseUrl) {
     return;
@@ -220,7 +226,7 @@ async function scheduleProposalCreatedNotification(params: {
 
   const project = await tx.projects.getById({
     id: req.projectId,
-    currentUserEmail: req.currentUserEmail,
+    currentUserEmail,
   });
   if (!project) {
     return;
@@ -260,7 +266,7 @@ async function scheduleProposalCreatedNotification(params: {
   }
 
   // Remove the author from the approver list
-  approverEmails = approverEmails.filter(email => email !== req.currentUserEmail);
+  approverEmails = approverEmails.filter(email => email !== currentUserEmail);
 
   if (approverEmails.length > 0) {
     const proposalUrl = `${deps.baseUrl}/app/projects/${project.id}/configs/${config.name}/proposals/${configProposalId}`;

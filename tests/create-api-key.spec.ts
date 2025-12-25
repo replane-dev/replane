@@ -1,7 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keycreate@example.com');
 
@@ -10,7 +10,7 @@ describe('createSdkKey', () => {
 
   it('creates an sdk key and returns one-time token', async () => {
     const result = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'Primary Key',
       description: 'Main key',
       projectId: fixture.projectId,
@@ -25,14 +25,14 @@ describe('createSdkKey', () => {
 
   it('returns different tokens for each creation and persists only metadata', async () => {
     const first = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'K1',
       description: '',
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
     });
     const second = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'K2',
       description: '',
       projectId: fixture.projectId,
@@ -41,7 +41,7 @@ describe('createSdkKey', () => {
     expect(first.sdkKey.token).not.toBe(second.sdkKey.token);
 
     const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
     // list entries never include full token
@@ -51,7 +51,7 @@ describe('createSdkKey', () => {
 
   it('creates audit message (api_key_created)', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'Audit Key',
       description: 'audit',
       projectId: fixture.projectId,

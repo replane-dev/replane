@@ -3,7 +3,7 @@ import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -17,7 +17,7 @@ describe('Default Variant', () => {
         {
           name: 'default-only-config',
           description: 'Config with only default variant',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -59,7 +59,7 @@ describe('Default Variant', () => {
         {
           name: 'mixed-variants-config',
           description: 'Config with mixed variants',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -74,7 +74,7 @@ describe('Default Variant', () => {
               value: asConfigValue({limit: 1000}), // Production has higher limit
               schema: asConfigSchema({type: 'object', properties: {limit: {type: 'number'}}}),
               overrides: [],
-              useDefaultSchema: true,
+              useBaseSchema: true,
             },
           ],
         },
@@ -117,7 +117,7 @@ describe('Default Variant', () => {
         {
           name: 'all-envs-config',
           description: 'Config with all environments covered',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -133,14 +133,14 @@ describe('Default Variant', () => {
               value: asConfigValue({env: 'production'}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: asConfigValue({env: 'development'}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
         },
@@ -181,7 +181,7 @@ describe('Default Variant', () => {
       const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'partial-env-with-default',
         description: 'Should succeed with default fallback',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -192,7 +192,7 @@ describe('Default Variant', () => {
             value: asConfigValue({test: true}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
         defaultVariant: {
@@ -211,7 +211,7 @@ describe('Default Variant', () => {
       const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'default-only-config',
         description: 'Should succeed with only default',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -231,7 +231,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-default-schema',
           description: 'Should fail schema validation',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -249,7 +249,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-env-schema',
           description: 'Should fail schema validation',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -264,7 +264,7 @@ describe('Default Variant', () => {
               value: asConfigValue('not-an-object'), // Should be an object per schema
               schema: asConfigSchema({type: 'object'}),
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
         }),
@@ -276,7 +276,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-env-schema',
           description: 'Should fail schema validation',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -291,7 +291,7 @@ describe('Default Variant', () => {
               value: asConfigValue('not-an-object'), // Should be an object per schema
               schema: asConfigSchema({type: 'string'}),
               overrides: [],
-              useDefaultSchema: true,
+              useBaseSchema: true,
             },
           ],
         }),
@@ -303,7 +303,7 @@ describe('Default Variant', () => {
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'invalid-env-id',
           description: 'Should fail',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -318,7 +318,7 @@ describe('Default Variant', () => {
               value: asConfigValue({test: false}),
               schema: null,
               overrides: [],
-              useDefaultSchema: true,
+              useBaseSchema: true,
             },
           ],
         }),
@@ -334,7 +334,7 @@ describe('Default Variant', () => {
         {
           name: 'fallback-test-config',
           description: 'Test fallback',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -357,7 +357,7 @@ describe('Default Variant', () => {
       const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'override-test-config',
         description: 'Test override',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -372,7 +372,7 @@ describe('Default Variant', () => {
             value: asConfigValue({source: 'production-specific'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
       });
@@ -388,13 +388,13 @@ describe('Default Variant', () => {
     });
   });
 
-  describe('schema inheritance (useDefaultSchema)', () => {
-    it('should validate environment variant value against default schema when useDefaultSchema is true', async () => {
+  describe('schema inheritance (useBaseSchema)', () => {
+    it('should validate environment variant value against default schema when useBaseSchema is true', async () => {
       // Create config with default schema and env variant using default schema
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'schema-inherit-config',
         description: 'Test schema inheritance',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -413,7 +413,7 @@ describe('Default Variant', () => {
             value: asConfigValue({count: 500}), // This should validate against default schema
             schema: null, // No specific schema
             overrides: [],
-            useDefaultSchema: true, // Inherit from default
+            useBaseSchema: true, // Inherit from default
           },
         ],
       });
@@ -433,12 +433,12 @@ describe('Default Variant', () => {
       expect(prodVariant?.schema).toBeNull();
     });
 
-    it('should fail validation when useDefaultSchema is true but value does not match default schema', async () => {
+    it('should fail validation when useBaseSchema is true but value does not match default schema', async () => {
       await expect(
         fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
           name: 'schema-inherit-fail-config',
           description: 'Test schema inheritance failure',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [],
           projectId: fixture.projectId,
@@ -457,20 +457,20 @@ describe('Default Variant', () => {
               value: asConfigValue({count: 'not-a-number'}), // Should fail validation
               schema: null,
               overrides: [],
-              useDefaultSchema: true,
+              useBaseSchema: true,
             },
           ],
         }),
       ).rejects.toThrow(BadRequestError);
     });
 
-    it('should allow useDefaultSchema when default variant has null schema', async () => {
-      // When useDefaultSchema is true and default variant has null schema,
+    it('should allow useBaseSchema when default variant has null schema', async () => {
+      // When useBaseSchema is true and default variant has null schema,
       // no validation is performed (like skipping schema validation)
       const result = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'schema-inherit-null-schema-config',
         description: 'Test schema inheritance with null schema',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -480,14 +480,14 @@ describe('Default Variant', () => {
             value: asConfigValue({count: 100}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({count: 200}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
         defaultVariant: {
@@ -500,12 +500,12 @@ describe('Default Variant', () => {
       expect(result.configId).toBeDefined();
     });
 
-    it('should allow useDefaultSchema with null default schema (no validation)', async () => {
+    it('should allow useBaseSchema with null default schema (no validation)', async () => {
       // Default variant without schema, env variant uses default schema (so no validation)
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'schema-inherit-null-config',
         description: 'Test schema inheritance with null',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -520,7 +520,7 @@ describe('Default Variant', () => {
             value: asConfigValue({completely: 'different'}), // Should pass because no schema
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
       });
@@ -539,7 +539,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'api-response-test',
         description: 'Test API response',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -569,7 +569,7 @@ describe('Default Variant', () => {
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'mixed-api-response-test',
         description: 'Test mixed API response',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -584,14 +584,14 @@ describe('Default Variant', () => {
             value: asConfigValue({base: 'production'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({base: 'development'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
       });
@@ -621,13 +621,13 @@ describe('Default Variant', () => {
     });
   });
 
-  describe('patchConfig with schema inheritance (useDefaultSchema)', () => {
-    it('should validate patched value against default schema when useDefaultSchema is true', async () => {
+  describe('patchConfig with schema inheritance (useBaseSchema)', () => {
+    it('should validate patched value against default schema when useBaseSchema is true', async () => {
       // Create config with default schema and env variant with its own schema
       const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'patch-schema-inherit-config',
         description: 'Test patch schema inheritance',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -646,14 +646,14 @@ describe('Default Variant', () => {
             value: asConfigValue({count: 200}),
             schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}), // Own schema
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({count: 300}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
       });
@@ -671,7 +671,8 @@ describe('Default Variant', () => {
 
       // Update the production variant to use default schema
       await fixture.trpc.updateConfig({
-        configId,
+        projectId: fixture.projectId,
+        configName: 'patch-schema-inherit-config',
         description: 'Test patch schema inheritance',
         editorEmails: [],
         maintainerEmails: [],
@@ -690,14 +691,14 @@ describe('Default Variant', () => {
             value: asConfigValue({count: 500}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({count: 300}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
         prevVersion: beforeConfig!.config.version,
@@ -716,11 +717,11 @@ describe('Default Variant', () => {
       expect(prodVariant?.schema).toBeNull();
     });
 
-    it('should fail patch validation when useDefaultSchema is true but value does not match default schema', async () => {
+    it('should fail patch validation when useBaseSchema is true but value does not match default schema', async () => {
       const {configVariantIds} = await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'patch-schema-inherit-fail-config',
         description: 'Test patch schema inheritance failure',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -739,14 +740,14 @@ describe('Default Variant', () => {
             value: asConfigValue({count: 200}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({count: 300}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
       });
@@ -764,7 +765,8 @@ describe('Default Variant', () => {
       // Try to update with invalid value (count should be number but is string)
       await expect(
         fixture.trpc.updateConfig({
-          configId,
+          projectId: fixture.projectId,
+          configName: 'patch-schema-inherit-fail-config',
           description: 'Test patch schema inheritance failure',
           editorEmails: [],
           maintainerEmails: [],
@@ -783,14 +785,14 @@ describe('Default Variant', () => {
               value: asConfigValue({count: 'not-a-number'}),
               schema: null,
               overrides: [],
-              useDefaultSchema: true,
+              useBaseSchema: true,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: asConfigValue({count: 300}),
               schema: null,
               overrides: [],
-              useDefaultSchema: true,
+              useBaseSchema: true,
             },
           ],
           prevVersion: config!.config.version,
@@ -798,12 +800,12 @@ describe('Default Variant', () => {
       ).rejects.toThrow(/does not match schema/);
     });
 
-    it('should successfully update when useDefaultSchema is true and default has schema', async () => {
+    it('should successfully update when useBaseSchema is true and default has schema', async () => {
       // Create config with default variant with schema
       await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
         name: 'patch-with-default-config',
         description: 'Test patch with default',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -818,14 +820,14 @@ describe('Default Variant', () => {
             value: asConfigValue({key: 'prod'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({key: 'dev'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
       });
@@ -836,9 +838,10 @@ describe('Default Variant', () => {
       });
       const configId = config!.config.id;
 
-      // Update with useDefaultSchema - should succeed since default has schema
+      // Update with useBaseSchema - should succeed since default has schema
       await fixture.trpc.updateConfig({
-        configId,
+        projectId: fixture.projectId,
+        configName: 'patch-with-default-config',
         description: 'Test patch with default - updated',
         editorEmails: [],
         maintainerEmails: [],
@@ -853,14 +856,14 @@ describe('Default Variant', () => {
             value: asConfigValue({key: 'updated-prod'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({key: 'updated-dev'}),
             schema: null,
             overrides: [],
-            useDefaultSchema: true,
+            useBaseSchema: true,
           },
         ],
         prevVersion: config!.config.version,

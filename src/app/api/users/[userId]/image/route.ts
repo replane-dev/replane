@@ -1,5 +1,6 @@
 import {getAuthOptions} from '@/app/auth-options';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
+import {createUserIdentity} from '@/engine/core/identity';
 import {normalizeEmail} from '@/engine/core/utils';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {getServerSession} from 'next-auth';
@@ -32,7 +33,11 @@ export async function GET(
   try {
     const engine = await getEngineSingleton();
     const userProfile = await engine.useCases.getUserProfile(GLOBAL_CONTEXT, {
-      currentUserEmail: normalizeEmail(currentUserEmail),
+      identity: createUserIdentity({
+        email: normalizeEmail(currentUserEmail),
+        id: currentUserId,
+        name: null,
+      }),
     });
 
     if (!userProfile?.image) {

@@ -1,5 +1,6 @@
 import type {ConfigService} from './config-service';
 import type {Context} from './context';
+import type {Identity} from './identity';
 import type {AuditLogStore} from './stores/audit-log-store';
 import type {ConfigStore} from './stores/config-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
@@ -9,7 +10,6 @@ import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {WorkspaceInfo, WorkspaceStore} from './stores/workspace-store';
 import {createWorkspace} from './use-cases/create-workspace-use-case';
 import type {UserStore} from './user-store';
-import type {NormalizedEmail} from './zod';
 
 export type WorkspaceListItem = WorkspaceInfo;
 
@@ -28,16 +28,22 @@ export class WorkspaceQueryService {
 
   async getOrCreateUserWorkspaces(opts: {
     ctx: Context;
-    currentUserEmail: NormalizedEmail;
+    identity: Identity;
   }): Promise<WorkspaceListItem[]> {
+    // This operation requires a user identity
+    if (opts.identity.type !== 'user') {
+      throw new Error('API keys cannot create workspaces');
+    }
+    const currentUserEmail = opts.identity.user.email;
+
     const workspaces = await this.workspaces.getAllTheUserMemberOf({
-      currentUserEmail: opts.currentUserEmail,
+      currentUserEmail,
     });
 
     if (workspaces.length === 0) {
       await createWorkspace({
         ctx: opts.ctx,
-        currentUserEmail: opts.currentUserEmail,
+        identity: opts.identity,
         name: {type: 'personal'},
         workspaceStore: this.workspaces,
         workspaceMemberStore: this.workspaceMembers,
@@ -46,13 +52,12 @@ export class WorkspaceQueryService {
         projectEnvironmentStore: this.projectEnvironments,
         configs: this.configs,
         configService: this.configService,
-        users: this.users,
         auditLogs: this.auditLogs,
         now: new Date(),
         exampleProject: true,
       });
     }
 
-    return this.workspaces.getAllTheUserMemberOf({currentUserEmail: opts.currentUserEmail});
+    return this.workspaces.getAllTheUserMemberOf({currentUserEmail});
   }
 }

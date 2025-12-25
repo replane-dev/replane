@@ -84,6 +84,7 @@ export class ProjectStore {
         'projects.allow_self_approvals',
         'projects.updated_at',
         'project_users.role as myRole',
+        'workspace_members.role as workspaceRole',
       ]);
 
     const rows = await projectsQuery.execute();
@@ -97,7 +98,8 @@ export class ProjectStore {
       allowSelfApprovals: p.allow_self_approvals,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
-      myRole: p.myRole ?? undefined,
+      // Workspace admins get admin role on all projects in their workspace
+      myRole: p.workspaceRole === 'admin' ? 'admin' : (p.myRole ?? undefined),
     }));
   }
 
@@ -113,6 +115,30 @@ export class ProjectStore {
     }
 
     return undefined;
+  }
+
+  /**
+   * Get all projects in a workspace (without user-specific role info).
+   * Used for API key access.
+   */
+  async getByWorkspaceId(workspaceId: string): Promise<ProjectInfo[]> {
+    const rows = await this.db
+      .selectFrom('projects')
+      .selectAll()
+      .where('workspace_id', '=', workspaceId)
+      .orderBy('name')
+      .execute();
+
+    return rows.map(p => ({
+      id: p.id,
+      name: p.name,
+      descriptionPreview: p.description.substring(0, 100),
+      workspaceId: p.workspace_id,
+      requireProposals: p.require_proposals,
+      allowSelfApprovals: p.allow_self_approvals,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
   }
 
   async getById(params: {
@@ -197,6 +223,25 @@ export class ProjectStore {
 
   async deleteById(id: string): Promise<void> {
     await this.db.deleteFrom('projects').where('id', '=', id).execute();
+  }
+
+  /**
+   * Get a project by ID without checking user permissions.
+   * Used internally for permission checks where we need project info
+   * before we can verify user access.
+   */
+  async getByIdWithoutPermissionCheck(id: string): Promise<Project | undefined> {
+    const row = await this.db
+      .selectFrom('projects')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
+
+    if (!row) {
+      return undefined;
+    }
+
+    return mapProject(row);
   }
 
   async countByWorkspace(workspaceId: string): Promise<number> {

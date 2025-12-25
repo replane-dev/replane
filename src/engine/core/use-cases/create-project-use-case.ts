@@ -1,14 +1,13 @@
-import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {getUserIdFromIdentity, isUserIdentity, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectEnvironment} from '../stores/project-environment-store';
 import {createProjectId} from '../stores/project-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
-import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   workspaceId: string;
   name: string;
   description: string;
@@ -37,13 +36,10 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
     });
     if (existing) throw new BadRequestError('Project with this name already exists');
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
-    assert(user, 'Current user not found');
-
-    // Ensure user is a member of the workspace
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    // Check permission to create projects in this workspace
+    await tx.permissionService.ensureCanCreateProject(ctx, {
       workspaceId: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const projectId = createProjectId();
@@ -87,7 +83,7 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       id: createAuditLogId(),
       createdAt: now,
       projectId,
-      userId: user.id,
+      userId: getUserIdFromIdentity(req.identity),
       configId: null,
       payload: {
         type: 'project_created',
@@ -95,15 +91,18 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       },
     });
 
-    await tx.projectUsers.create([
-      {
-        projectId,
-        email: req.currentUserEmail,
-        role: 'admin',
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
+    // Add user as project admin (only for user identities)
+    if (isUserIdentity(req.identity)) {
+      await tx.projectUsers.create([
+        {
+          projectId,
+          email: req.identity.user.email,
+          role: 'admin',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]);
+    }
 
     return {projectId, environments: [production, dev].map(e => ({id: e.id, name: e.name}))};
   };

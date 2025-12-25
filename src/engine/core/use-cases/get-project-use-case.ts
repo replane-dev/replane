@@ -1,12 +1,12 @@
+import type {Identity} from '../identity';
 import type {ProjectDetails} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export type {ProjectDetails};
 
 export interface GetProjectRequest {
   id: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetProjectResponse {
@@ -18,14 +18,14 @@ export function createGetProjectUseCase(): TransactionalUseCase<
   GetProjectResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadProject(ctx, {
       projectId: req.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const project = await tx.projectQueryService.getProject({
+    const project = await tx.projectQueryService.getProject(ctx, {
       id: req.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     return {project};

@@ -1,17 +1,17 @@
-import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import type {Override} from '../override-condition-schemas';
 import {createConfigId, type ConfigId} from '../stores/config-store';
 import type {TransactionalUseCase} from '../use-case';
 import {validateAgainstJsonSchema} from '../utils';
 import {validateOverrideReferences} from '../validate-override-references';
-import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export interface CreateConfigRequest {
   name: string;
   description: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   editorEmails: string[];
   maintainerEmails: string[];
   projectId: string;
@@ -25,7 +25,7 @@ export interface CreateConfigRequest {
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
 }
 
@@ -44,7 +44,7 @@ export function createCreateConfigUseCase(
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureCanCreateConfig(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Validate no user appears with multiple roles
@@ -112,7 +112,7 @@ export function createCreateConfigUseCase(
 
       // Determine which schema to use for validation
       let schemaToValidate: unknown = null;
-      if (envVariant.useDefaultSchema) {
+      if (envVariant.useBaseSchema) {
         // Use default schema for validation
         if (!req.defaultVariant) {
           throw new BadRequestError(
@@ -138,9 +138,6 @@ export function createCreateConfigUseCase(
       });
     }
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
     const configId = createConfigId();
 
     // Use the config service to create the config with all related records
@@ -152,7 +149,7 @@ export function createCreateConfigUseCase(
       defaultVariant: req.defaultVariant,
       environmentVariants,
       members: allMembers,
-      authorId: currentUser.id,
+      authorId: getUserIdFromIdentity(req.identity),
     });
 
     return {

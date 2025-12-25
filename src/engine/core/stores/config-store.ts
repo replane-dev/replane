@@ -9,7 +9,6 @@ import type {AppHubEvents} from '../replica';
 import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
 import {
-  ConfigInfo,
   ConfigSchema,
   ConfigValue,
   Uuid,
@@ -133,22 +132,19 @@ export class ConfigStore {
     }));
   }
 
-  async getProjectConfigs(params: {
-    currentUserEmail: NormalizedEmail;
-    projectId: string;
-  }): Promise<ConfigInfo[]> {
-    const configsQuery = this.db
+  async getProjectConfigs(params: {currentUserEmail?: NormalizedEmail; projectId: string}) {
+    const result = await this.db
       .selectFrom('configs')
       .orderBy('configs.name')
+      .where('configs.project_id', '=', params.projectId)
       .leftJoin('config_users', jb =>
         jb.on(eb =>
           eb.and([
             eb('config_users.config_id', '=', eb.ref('configs.id')),
-            eb('config_users.user_email_normalized', '=', params.currentUserEmail),
+            eb('config_users.user_email_normalized', '=', params.currentUserEmail ?? '_'),
           ]),
         ),
       )
-      .where('configs.project_id', '=', params.projectId)
       .select([
         'configs.created_at',
         'configs.updated_at',
@@ -156,18 +152,17 @@ export class ConfigStore {
         'configs.name',
         'configs.description',
         'configs.version',
-        'config_users.role as myRole',
         'configs.project_id',
-      ]);
+        'config_users.role as configUserRole',
+      ])
+      .execute();
 
-    const configs = await configsQuery.execute();
-
-    return configs.map(c => ({
+    return result.map(c => ({
       name: c.name,
       createdAt: c.created_at,
       updatedAt: c.updated_at,
       descriptionPreview: c.description.substring(0, 100),
-      myRole: c.myRole ?? 'viewer',
+      myConfigUserRole: c.configUserRole,
       version: c.version,
       id: c.id,
       projectId: c.project_id,
@@ -270,7 +265,7 @@ export class ConfigStore {
       .select([
         'c.name',
         'c.schema as default_schema',
-        'cv.use_default_schema as use_default_schema',
+        'cv.use_base_schema as use_base_schema',
         'cv.schema as environment_schema',
       ])
       .where('c.project_id', '=', params.projectId)
@@ -279,7 +274,7 @@ export class ConfigStore {
 
     return rows.map(row => {
       // If no environment variant or using default schema, use the config's schema
-      if (!row.environment_schema || row.use_default_schema !== false) {
+      if (!row.environment_schema || row.use_base_schema !== false) {
         return {
           name: row.name,
           schema: row.default_schema ? JSON.parse(row.default_schema) : null,

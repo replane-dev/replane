@@ -1,8 +1,11 @@
+import {createAdminApi} from '@/admin-api';
 import {type Context, GLOBAL_CONTEXT} from '@/engine/core/context';
 import {MockDateProvider} from '@/engine/core/date-provider';
+import type {AdminApiKeyScope} from '@/engine/core/db';
+import {createUserIdentity, type Identity} from '@/engine/core/identity';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {asConfigSchema, asConfigValue, type NormalizedEmail} from '@/engine/core/zod';
 import {createEdge, type Edge} from '@/engine/edge';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/environment';
@@ -10,7 +13,7 @@ import {createCallerFactory, type TrpcContext} from '@/trpc/init';
 import {appRouter} from '@/trpc/routers/_app';
 import {afterEach, beforeEach} from 'vitest';
 
-export interface TrpcFixtureOptions {
+export interface AppFixtureOptions {
   authEmail: string;
   logLevel?: LogLevel;
   onConflictRetriesCount?: number;
@@ -33,13 +36,15 @@ export class AppFixture {
   private _trpc: TrpcCaller | undefined;
   private _engine: Engine | undefined;
   private _edge: Edge | undefined;
+  private _adminApi: ReturnType<typeof createAdminApi> | undefined;
   private overrideNow: Date = new Date();
   private _workspaceId: string | undefined;
   private _projectId: string | undefined;
   private _productionEnvironmentId: string | undefined;
   private _developmentEnvironmentId: string | undefined;
+  private _identity: Identity | undefined;
 
-  constructor(private options: TrpcFixtureOptions) {}
+  constructor(private options: AppFixtureOptions) {}
 
   async init() {
     this.overrideNow = new Date('2020-01-01T00:00:00Z');
@@ -74,25 +79,33 @@ export class AppFixture {
         `INSERT INTO users(id, name, email, "emailVerified") VALUES ($1, 'Test User', $2, NOW())`,
         [TEST_USER_ID, this.options.authEmail],
       );
+      // Reset the sequence so subsequent auto-generated IDs don't conflict
+      await connection.query(`SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))`);
     } finally {
       connection.release();
     }
 
     const createCaller = createCallerFactory(appRouter);
+    this._identity = createUserIdentity({
+      email: normalizeEmail(this.options.authEmail),
+      id: TEST_USER_ID,
+      name: 'Test User',
+    });
 
-    this._trpc = createCaller({engine, currentUserEmail: normalizeEmail(this.options.authEmail)});
+    this._trpc = createCaller({engine, identity: this._identity});
     this._engine = engine;
     this._edge = edge;
+    this._adminApi = createAdminApi(engine);
 
     // Create test workspace
     const {workspaceId} = await engine.useCases.createWorkspace(GLOBAL_CONTEXT, {
-      currentUserEmail: normalizeEmail(this.options.authEmail),
+      identity: this._identity,
       name: 'Test Workspace',
     });
     this._workspaceId = workspaceId;
 
     const {projectId, environments} = await engine.useCases.createProject(GLOBAL_CONTEXT, {
-      currentUserEmail: normalizeEmail(this.options.authEmail),
+      identity: this._identity,
       workspaceId,
       name: 'Test Project',
       description: 'Default project for tests',
@@ -109,6 +122,13 @@ export class AppFixture {
 
   setNow(date: Date) {
     this.overrideNow = date;
+  }
+
+  get identity(): Identity {
+    if (!this._identity) {
+      throw new Error('identity is not initialized');
+    }
+    return this._identity;
   }
 
   get trpc(): TrpcCaller {
@@ -160,6 +180,60 @@ export class AppFixture {
     ];
   }
 
+  get adminApi(): ReturnType<typeof createAdminApi> {
+    if (!this._adminApi) {
+      throw new Error('adminApi is not initialized');
+    }
+    return this._adminApi;
+  }
+
+  /**
+   * Create an admin API key for testing
+   */
+  async createAdminApiKey(params: {
+    name?: string;
+    description?: string;
+    scopes: AdminApiKeyScope[];
+    projectIds?: string[] | null;
+    expiresAt?: Date | null;
+  }): Promise<{id: string; token: string}> {
+    const result = await this.engine.useCases.createAdminApiKey(GLOBAL_CONTEXT, {
+      identity: this.identity,
+      workspaceId: this.workspaceId,
+      name: params.name ?? 'Test API Key',
+      description: params.description ?? 'Test API key for testing',
+      scopes: params.scopes,
+      projectIds: params.projectIds ?? null,
+      expiresAt: params.expiresAt ?? null,
+    });
+
+    return {
+      id: result.adminApiKey.id,
+      token: result.adminApiKey.token,
+    };
+  }
+
+  /**
+   * Make an authenticated request to the Admin API
+   */
+  async adminApiRequest(
+    method: string,
+    path: string,
+    token: string,
+    body?: unknown,
+  ): Promise<Response> {
+    const request = new Request(`http://localhost${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    return this.adminApi.fetch(request);
+  }
+
   async syncReplica() {
     await this.edge.testing.replicaService.sync();
   }
@@ -174,7 +248,7 @@ export class AppFixture {
     schema: unknown | null;
     overrides: any[];
     description: string;
-    currentUserEmail: string;
+    identity: Identity;
     editorEmails: string[];
     maintainerEmails: string[];
     projectId: string;
@@ -182,13 +256,13 @@ export class AppFixture {
     // Fetch environments for the specific project
     const {environments} = await this.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
       projectId: params.projectId,
-      currentUserEmail: normalizeEmail(params.currentUserEmail),
+      identity: params.identity,
     });
 
     return this.engine.useCases.createConfig(GLOBAL_CONTEXT, {
       name: params.name,
       description: params.description,
-      currentUserEmail: normalizeEmail(params.currentUserEmail),
+      identity: params.identity,
       editorEmails: params.editorEmails,
       maintainerEmails: params.maintainerEmails,
       projectId: params.projectId,
@@ -202,9 +276,70 @@ export class AppFixture {
         value: asConfigValue(params.value),
         schema: params.schema !== null ? asConfigSchema(params.schema) : null,
         overrides: params.overrides,
-        useDefaultSchema: false,
+        useBaseSchema: false,
       })),
     });
+  }
+
+  async emailToIdentity(email: NormalizedEmail | string): Promise<Identity> {
+    const user = await this.engine.stores.users.getByEmail(normalizeEmail(email));
+    if (!user) {
+      throw new Error(`User not found for email: ${email}`);
+    }
+    return createUserIdentity({
+      email: normalizeEmail(email),
+      id: user.id,
+      name: user.name ?? null,
+    });
+  }
+
+  /**
+   * Register a new user and return their identity.
+   * Use this when you need to test with a second user who doesn't exist yet.
+   */
+  async registerUser(email: string, name = 'Test User'): Promise<Identity> {
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await this.engine.stores.users.getByEmail(normalizedEmail);
+    if (existingUser) {
+      return createUserIdentity({
+        email: normalizedEmail,
+        id: existingUser.id,
+        name: existingUser.name ?? null,
+      });
+    }
+
+    const connection = await this.engine.testing.pool.connect();
+    try {
+      const result = await connection.query<{id: number}>(
+        `INSERT INTO users(name, email, "emailVerified") VALUES ($1, $2, NOW()) RETURNING id`,
+        [name, normalizedEmail],
+      );
+      return createUserIdentity({
+        email: normalizedEmail,
+        id: result.rows[0].id,
+        name,
+      });
+    } finally {
+      connection.release();
+    }
+  }
+
+  /**
+   * Register a new user and add them to the workspace as a regular member (not admin).
+   * Use this when you need to test with a user who does NOT have workspace admin privileges.
+   */
+  async registerNonAdminWorkspaceMember(email: string, name = 'Non-Admin User'): Promise<Identity> {
+    const identity = await this.registerUser(email, name);
+
+    // Add as workspace member (not admin)
+    await this.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+      identity: this.identity, // Use fixture owner to add member
+      workspaceId: this.workspaceId,
+      memberEmail: normalizeEmail(email),
+      role: 'member',
+    });
+
+    return identity;
   }
 
   async destroy(ctx: Context) {
@@ -221,10 +356,11 @@ export class AppFixture {
     this._trpc = undefined;
     this._engine = undefined;
     this._edge = undefined;
+    this._adminApi = undefined;
   }
 }
 
-export function useAppFixture(options: TrpcFixtureOptions) {
+export function useAppFixture(options: AppFixtureOptions) {
   const fixture = new AppFixture(options);
 
   beforeEach(async () => {

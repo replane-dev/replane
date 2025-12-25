@@ -1,7 +1,7 @@
 import {getAuthOptions} from '@/app/auth-options';
 import {BadRequestError} from '@/engine/core/errors';
+import {createUserIdentity, type Identity} from '@/engine/core/identity';
 import {normalizeEmail} from '@/engine/core/utils';
-import type {NormalizedEmail} from '@/engine/core/zod';
 import type {Engine} from '@/engine/engine';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import * as Sentry from '@sentry/nextjs';
@@ -11,7 +11,7 @@ import {cache} from 'react';
 import superjson from 'superjson';
 
 export interface TrpcContext {
-  currentUserEmail: NormalizedEmail | undefined;
+  identity: Identity | undefined;
   engine: Engine;
 }
 
@@ -20,10 +20,33 @@ export interface TrpcContext {
  */
 export const createTrpcContext = cache(async (): Promise<TrpcContext> => {
   const session = await getServerSession(getAuthOptions());
+  const email = session?.user?.email ? normalizeEmail(session.user.email) : undefined;
+
+  const engine = await getEngineSingleton();
+
+  if (!email) {
+    return {
+      identity: undefined,
+      engine,
+    };
+  }
+
+  const user = await engine.stores.users.getByEmail(email);
+  if (!user) {
+    console.error(`User not found for email: ${email}`);
+    return {
+      identity: undefined,
+      engine,
+    };
+  }
 
   return {
-    currentUserEmail: session?.user?.email ? normalizeEmail(session.user.email) : undefined,
-    engine: await getEngineSingleton(),
+    identity: createUserIdentity({
+      email,
+      id: user.id,
+      name: user.name ?? null,
+    }),
+    engine,
   };
 });
 

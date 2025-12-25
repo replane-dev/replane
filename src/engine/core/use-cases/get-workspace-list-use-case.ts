@@ -1,11 +1,11 @@
+import {requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import type {WorkspaceListItem} from '../workspace-query-service';
-import type {NormalizedEmail} from '../zod';
 
 export type {WorkspaceListItem};
 
 export interface GetWorkspaceListRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export type GetWorkspaceListResponse = WorkspaceListItem[];
@@ -15,9 +15,12 @@ export function createGetWorkspaceListUseCase(): TransactionalUseCase<
   GetWorkspaceListResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity since workspaces are user-specific
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const workspaces = await tx.workspaceQueryService.getOrCreateUserWorkspaces({
       ctx,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     return workspaces;

@@ -1,14 +1,13 @@
-import assert from 'assert';
 import type {Context} from './context';
 import type {DateProvider} from './date-provider';
 import {BadRequestError} from './errors';
+import {getUserIdFromIdentity, type Identity} from './identity';
 import {diffMembers} from './member-diff';
 import type {Override} from './override-condition-schemas';
 import type {PermissionService} from './permission-service';
 import {isProposalRequired} from './proposal-requirement';
 import type {ProposalService} from './proposal-service';
 import {createAuditLogId, type AuditLogStore} from './stores/audit-log-store';
-import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigId, ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariantStore} from './stores/config-variant-store';
@@ -20,7 +19,7 @@ import {
 } from './stores/config-version-store';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {Project} from './stores/project-store';
-import type {User} from './user-store';
+import type {UserStore} from './user-store';
 import {normalizeEmail, validateAgainstJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {validateOverrideReferences} from './validate-override-references';
@@ -43,18 +42,17 @@ export interface UpdateConfigParams {
     value: ConfigValue;
     schema: ConfigSchema | null;
     overrides: Override[];
-    useDefaultSchema: boolean;
+    useBaseSchema: boolean;
   }>;
-  currentUser: User;
-  reviewer: User;
+  editAuthorId: number | null;
+  reviewer: Identity;
   prevVersion: number;
   originalProposalId?: string;
 }
 
 export interface DeleteConfigParams {
   configId: ConfigId;
-  deleteAuthor: User;
-  reviewer: User;
+  identity: Identity;
   originalProposalId?: string;
   prevVersion: number;
 }
@@ -62,7 +60,6 @@ export interface DeleteConfigParams {
 export class ConfigService {
   constructor(
     private readonly configs: ConfigStore,
-    private readonly configProposals: ConfigProposalStore,
     private readonly configUsers: ConfigUserStore,
     private readonly permissionService: PermissionService,
     private readonly auditLogs: AuditLogStore,
@@ -71,6 +68,7 @@ export class ConfigService {
     private readonly configVariants: ConfigVariantStore,
     private readonly configVersions: ConfigVersionStore,
     private readonly proposalService: ProposalService,
+    private readonly users: UserStore,
   ) {}
 
   /**
@@ -181,7 +179,7 @@ export class ConfigService {
         value: unknown;
         schema: unknown | null;
         overrides: Override[];
-        useDefaultSchema?: boolean;
+        useBaseSchema?: boolean;
       }>;
     },
   ): Promise<void> {
@@ -212,7 +210,7 @@ export class ConfigService {
       // Determine which schema to use for validation
       let schemaForValidation = envVariant.schema;
 
-      if (envVariant.useDefaultSchema) {
+      if (envVariant.useBaseSchema) {
         if (!config.defaultVariant) {
           throw new BadRequestError(
             'Cannot use default schema when no default variant is provided',
@@ -250,9 +248,7 @@ export class ConfigService {
       throw new BadRequestError('Config does not exist');
     }
 
-    const {currentUser, reviewer} = params;
-    assert(currentUser.email, 'Current user must have an email');
-    assert(reviewer.email, 'Reviewer must have an email');
+    const {reviewer, editAuthorId} = params;
 
     // Check version conflict
     if (existingConfig.version !== params.prevVersion) {
@@ -294,7 +290,7 @@ export class ConfigService {
       value: ConfigValue;
       schema: ConfigSchema | null;
       overrides: Override[];
-      useDefaultSchema: boolean;
+      useBaseSchema: boolean;
     }> = [];
     const variantsToDelete: string[] = [];
 
@@ -308,17 +304,16 @@ export class ConfigService {
         const schemaChanged = JSON.stringify(envVariant.schema) !== JSON.stringify(existing.schema);
         const overridesChanged =
           JSON.stringify(envVariant.overrides) !== JSON.stringify(existing.overrides);
-        const useDefaultSchemaChanged =
-          (envVariant.useDefaultSchema ?? false) !== existing.useDefaultSchema;
+        const useBaseSchemaChanged = envVariant.useBaseSchema !== existing.useBaseSchema;
 
-        if (valueChanged || schemaChanged || overridesChanged || useDefaultSchemaChanged) {
+        if (valueChanged || schemaChanged || overridesChanged || useBaseSchemaChanged) {
           variantsToUpdate.push({
             variantId: existing.id,
             environmentId: envVariant.environmentId,
             value: envVariant.value,
-            schema: envVariant.useDefaultSchema ? null : envVariant.schema,
+            schema: envVariant.useBaseSchema ? null : envVariant.schema,
             overrides: envVariant.overrides,
-            useDefaultSchema: envVariant.useDefaultSchema ?? false,
+            useBaseSchema: envVariant.useBaseSchema,
           });
         }
       }
@@ -355,7 +350,7 @@ export class ConfigService {
     if (schemaOrOverridesChanged || membersChanged) {
       await this.permissionService.ensureCanManageConfig(ctx, {
         configId: existingConfig.id,
-        currentUserEmail: normalizeEmail(reviewer.email),
+        identity: reviewer,
       });
     } else if (
       descriptionChanged ||
@@ -366,7 +361,7 @@ export class ConfigService {
     ) {
       await this.permissionService.ensureCanEditConfig(ctx, {
         configId: existingConfig.id,
-        currentUserEmail: normalizeEmail(reviewer.email),
+        identity: reviewer,
       });
     }
 
@@ -389,7 +384,7 @@ export class ConfigService {
 
     // Validate schema inheritance for environment variants
     for (const variant of [...variantsToCreate, ...variantsToUpdate]) {
-      if (variant.useDefaultSchema) {
+      if (variant.useBaseSchema) {
         if (!params.defaultVariant) {
           throw new BadRequestError(
             'Cannot use default schema when no default variant is provided',
@@ -458,7 +453,7 @@ export class ConfigService {
       await this.auditLogs.create({
         id: createAuditLogId(),
         createdAt: now,
-        userId: currentUser.id,
+        userId: editAuthorId,
         configId: existingConfig.id,
         projectId: existingConfig.projectId,
         payload: {
@@ -494,11 +489,11 @@ export class ConfigService {
         configId: params.configId,
         environmentId: variant.environmentId,
         value: variant.value,
-        schema: variant.useDefaultSchema ? null : variant.schema,
+        schema: variant.useBaseSchema ? null : variant.schema,
         overrides: variant.overrides,
         createdAt: now,
         updatedAt: now,
-        useDefaultSchema: variant.useDefaultSchema ?? false,
+        useBaseSchema: variant.useBaseSchema ?? false,
       });
     }
 
@@ -511,7 +506,7 @@ export class ConfigService {
         schema: variant.schema,
         overrides: variant.overrides,
         updatedAt: now,
-        useDefaultSchema: variant.useDefaultSchema,
+        useBaseSchema: variant.useBaseSchema,
       });
     }
 
@@ -550,15 +545,15 @@ export class ConfigService {
       schema: params.defaultVariant.schema,
       overrides: params.defaultVariant.overrides,
       proposalId: params.originalProposalId ?? null,
-      authorId: currentUser.id,
+      authorId: editAuthorId,
       createdAt: now,
       variants: params.environmentVariants.map(v => ({
         id: createConfigVersionVariantId(),
         environmentId: v.environmentId,
         value: v.value,
-        schema: v.useDefaultSchema ? null : v.schema,
+        schema: v.useBaseSchema ? null : v.schema,
         overrides: v.overrides,
-        useDefaultSchema: v.useDefaultSchema ?? false,
+        useBaseSchema: v.useBaseSchema ?? false,
       })),
       members: newMembers.map(m => ({
         id: createConfigVersionMemberId(),
@@ -567,52 +562,50 @@ export class ConfigService {
     });
 
     // Create audit log for config update
-    if (descriptionChanged) {
-      await this.auditLogs.create({
-        id: createAuditLogId(),
-        createdAt: now,
-        userId: currentUser.id,
-        configId: existingConfig.id,
-        projectId: existingConfig.projectId,
-        payload: {
-          type: 'config_updated',
-          before: {
-            id: existingConfig.id,
-            name: existingConfig.name,
-            projectId: existingConfig.projectId,
-            description: existingConfig.description,
-            createdAt: existingConfig.createdAt,
-            version: existingConfig.version,
-            value: existingConfig.value,
-            schema: existingConfig.schema,
-            overrides: existingConfig.overrides,
-            environmentVariants: currentEnvVariants.map(v => ({
-              environmentId: v.environmentId,
-              value: v.value,
-              schema: v.schema,
-              overrides: v.overrides,
-            })),
-          },
-          after: {
-            id: existingConfig.id,
-            name: existingConfig.name,
-            projectId: existingConfig.projectId,
-            description: params.description,
-            createdAt: existingConfig.createdAt,
-            version: nextVersion,
-            value: params.defaultVariant.value,
-            schema: params.defaultVariant.schema,
-            overrides: params.defaultVariant.overrides,
-            environmentVariants: params.environmentVariants.map(v => ({
-              environmentId: v.environmentId,
-              value: v.value,
-              schema: v.schema,
-              overrides: v.overrides,
-            })),
-          },
+    await this.auditLogs.create({
+      id: createAuditLogId(),
+      createdAt: now,
+      userId: editAuthorId,
+      configId: existingConfig.id,
+      projectId: existingConfig.projectId,
+      payload: {
+        type: 'config_updated',
+        before: {
+          id: existingConfig.id,
+          name: existingConfig.name,
+          projectId: existingConfig.projectId,
+          description: existingConfig.description,
+          createdAt: existingConfig.createdAt,
+          version: existingConfig.version,
+          value: existingConfig.value,
+          schema: existingConfig.schema,
+          overrides: existingConfig.overrides,
+          environmentVariants: currentEnvVariants.map(v => ({
+            environmentId: v.environmentId,
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
         },
-      });
-    }
+        after: {
+          id: existingConfig.id,
+          name: existingConfig.name,
+          projectId: existingConfig.projectId,
+          description: params.description,
+          createdAt: existingConfig.createdAt,
+          version: nextVersion,
+          value: params.defaultVariant.value,
+          schema: params.defaultVariant.schema,
+          overrides: params.defaultVariant.overrides,
+          environmentVariants: params.environmentVariants.map(v => ({
+            environmentId: v.environmentId,
+            value: v.value,
+            schema: v.schema,
+            overrides: v.overrides,
+          })),
+        },
+      },
+    });
 
     // Reject pending proposals
     if (params.originalProposalId) {
@@ -641,41 +634,25 @@ export class ConfigService {
     if (!existingConfig) {
       throw new BadRequestError('Config does not exist');
     }
-
-    if (existingConfig.version !== params.prevVersion) {
-      throw new BadRequestError(`Config was edited by another user. Please, refresh the page.`);
-    }
-
-    // Manage permission is required to delete a config
-    assert(params.reviewer.email, 'Reviewer must have an email');
     await this.permissionService.ensureCanManageConfig(ctx, {
       configId: existingConfig.id,
-      currentUserEmail: normalizeEmail(params.reviewer.email),
+      identity: params.identity,
     });
 
-    // Reject all pending CONFIG proposals
-    await this.proposalService.rejectConfigProposalsInternal({
-      configId: existingConfig.id,
-      originalProposalId: params.originalProposalId,
-      existingConfig,
-      reviewer: params.reviewer,
-      rejectionReason: params.originalProposalId ? 'another_proposal_approved' : 'config_deleted',
-    });
-
-    // Delete each variant (triggers notifications)
-    const variants = await this.configVariants.getByConfigId(existingConfig.id);
-    for (const variant of variants) {
-      await this.configVariants.delete({configId: variant.configId, variantId: variant.id});
+    if (existingConfig.version !== params.prevVersion) {
+      throw new BadRequestError('Config was edited by another user. Please refresh and try again.');
     }
+
+    const variants = await this.configVariants.getByConfigId(existingConfig.id);
 
     // Delete the config metadata
     await this.configs.deleteById(ctx, existingConfig.id);
 
-    // One audit log for config deletion (not per environment)
+    // Audit log for config deletion
     await this.auditLogs.create({
       id: createAuditLogId(),
       createdAt: this.dateProvider.now(),
-      userId: params.deleteAuthor.id ?? null,
+      userId: getUserIdFromIdentity(params.identity),
       configId: null,
       projectId: existingConfig.projectId,
       payload: {
@@ -702,14 +679,6 @@ export class ConfigService {
   }
 
   /**
-   * Rejects all pending proposals for a config.
-   * This is a public method that can be called directly from use cases.
-   */
-  async rejectAllPendingProposals(params: {configId: string; reviewer: User}): Promise<void> {
-    await this.proposalService.rejectAllPendingProposals(params);
-  }
-
-  /**
    * Creates a new config with all related records (variants, version history, members, audit log).
    * This is the core method for config creation used by both regular and example config creation.
    */
@@ -730,7 +699,7 @@ export class ConfigService {
         value: ConfigValue;
         schema: ConfigSchema | null;
         overrides: Override[];
-        useDefaultSchema: boolean;
+        useBaseSchema: boolean;
       }>;
       members?: Array<{email: string; role: 'editor' | 'maintainer'}>;
       authorId: number | null;
@@ -762,11 +731,11 @@ export class ConfigService {
         configId: params.id,
         environmentId: envVariant.environmentId,
         value: envVariant.value,
-        schema: envVariant.useDefaultSchema ? null : envVariant.schema,
+        schema: envVariant.useBaseSchema ? null : envVariant.schema,
         overrides: envVariant.overrides,
         createdAt: now,
         updatedAt: now,
-        useDefaultSchema: envVariant.useDefaultSchema ?? false,
+        useBaseSchema: envVariant.useBaseSchema ?? false,
       });
 
       variantIds.push({variantId, environmentId: envVariant.environmentId});
@@ -789,9 +758,9 @@ export class ConfigService {
         id: createConfigVersionVariantId(),
         environmentId: v.environmentId,
         value: v.value,
-        schema: v.useDefaultSchema ? null : v.schema,
+        schema: v.useBaseSchema ? null : v.schema,
         overrides: v.overrides,
-        useDefaultSchema: v.useDefaultSchema ?? false,
+        useBaseSchema: v.useBaseSchema ?? false,
       })),
       members: (params.members ?? []).map(m => ({
         id: createConfigVersionMemberId(),

@@ -1,13 +1,13 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectEnvironmentsOrderRequest {
   projectId: string;
   environmentOrders: Array<{environmentId: string; order: number}>;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface UpdateProjectEnvironmentsOrderResponse {}
@@ -23,12 +23,15 @@ export function createUpdateProjectEnvironmentsOrderUseCase(
   UpdateProjectEnvironmentsOrderResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureCanManageProjectEnvironments(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     // Verify all environments belong to this project

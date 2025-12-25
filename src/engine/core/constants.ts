@@ -34,3 +34,7 @@ export const ACCEPTED_IMAGE_TYPES_REGEX = /^data:image\/(png|jpeg|jpg|webp|gif);
 export const LOGO_SIZE = 128; // pixels
 
 export const PASSWORD_PROVIDER_NAME = 'Email';
+
+// API Key display constants
+export const API_KEY_PREFIX_LENGTH = 4; // Number of hex chars to show as prefix (after rp_/rpa_)
+export const API_KEY_SUFFIX_LENGTH = 4; // Number of hex chars to show as suffix

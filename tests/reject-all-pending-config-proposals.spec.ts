@@ -5,7 +5,7 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
 import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -55,7 +55,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: {enabled: false},
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL, THIRD_USER_EMAIL],
       projectId: fixture.projectId,
@@ -77,17 +77,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -109,17 +109,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: THIRD_USER_EMAIL,
+        identity: await fixture.emailToIdentity(THIRD_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -141,17 +141,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -167,7 +167,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Reject all pending proposals
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify all proposals are rejected
@@ -214,7 +214,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: {enabled: false},
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -235,17 +235,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -267,17 +267,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -286,7 +286,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify audit messages
@@ -331,7 +331,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: asConfigValue({enabled: false}),
       schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -351,18 +351,18 @@ describe('rejectAllPendingConfigProposals', () => {
             environmentId: fixture.productionEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
-            useDefaultSchema: false,
+            useBaseSchema: false,
             overrides: [],
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
-            useDefaultSchema: false,
+            useBaseSchema: false,
             overrides: [],
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -381,18 +381,18 @@ describe('rejectAllPendingConfigProposals', () => {
             environmentId: fixture.productionEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
-            useDefaultSchema: false,
+            useBaseSchema: false,
             overrides: [],
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
-            useDefaultSchema: false,
+            useBaseSchema: false,
             overrides: [],
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -405,7 +405,7 @@ describe('rejectAllPendingConfigProposals', () => {
         baseVersion: 1,
         configId,
         proposedDelete: true,
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         description: 'Original description',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
@@ -414,7 +414,7 @@ describe('rejectAllPendingConfigProposals', () => {
             environmentId: fixture.productionEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
-            useDefaultSchema: false,
+            useBaseSchema: false,
             overrides: [],
           },
         ],
@@ -425,7 +425,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify all proposals are rejected
@@ -487,7 +487,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: {enabled: false},
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -500,7 +500,7 @@ describe('rejectAllPendingConfigProposals', () => {
         baseVersion: 1,
         configId,
         proposedDelete: true,
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         description: 'Original description',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
@@ -510,14 +510,14 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
@@ -540,17 +540,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
-            useDefaultSchema: false,
+            useBaseSchema: false,
             overrides: [],
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -559,7 +559,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify both proposals are rejected
@@ -601,7 +601,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: {enabled: false},
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -610,7 +610,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Should not throw when there are no pending proposals
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify no audit messages were created for rejections
@@ -633,7 +633,7 @@ describe('rejectAllPendingConfigProposals', () => {
     await expect(
       fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
         configId: nonExistentConfigId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       }),
     ).rejects.toThrow(BadRequestError);
   });
@@ -645,7 +645,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: {enabled: false},
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -666,17 +666,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -698,17 +698,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -719,13 +719,13 @@ describe('rejectAllPendingConfigProposals', () => {
     await fixture.engine.useCases.approveConfigProposal(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       proposalId: proposal1Id,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Reject all pending proposals (should only reject proposal 2)
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify proposal 1 is still approved
@@ -754,7 +754,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: {enabled: false},
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -775,17 +775,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -807,17 +807,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -828,13 +828,13 @@ describe('rejectAllPendingConfigProposals', () => {
     await fixture.engine.useCases.rejectConfigProposal(GLOBAL_CONTEXT, {
       projectId: fixture.projectId,
       proposalId: proposal1Id,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Reject all pending proposals (should only reject proposal 2)
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Verify proposal 1 is still rejected (not double-rejected)
@@ -861,7 +861,7 @@ describe('rejectAllPendingConfigProposals', () => {
       value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL, OTHER_USER_EMAIL],
       projectId: fixture.projectId,
@@ -882,17 +882,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,
@@ -914,17 +914,17 @@ describe('rejectAllPendingConfigProposals', () => {
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: asConfigValue({enabled: false}),
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
-        currentUserEmail: OTHER_USER_EMAIL,
+        identity: await fixture.emailToIdentity(OTHER_USER_EMAIL),
         proposedDelete: false,
         defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
         message: null,

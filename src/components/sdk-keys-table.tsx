@@ -35,6 +35,8 @@ interface SdkKeyRow {
   id: string;
   name: string;
   description: string;
+  keyPrefix: string;
+  keySuffix: string;
   createdAt: string | Date;
   environmentId: string;
   environmentName: string;
@@ -105,6 +107,15 @@ export function SdkKeysTable({projectId, onSdkKeyClick, onNewSdkKeyClick}: SdkKe
         accessorKey: 'name',
         header: 'SDK key name',
         cell: ({row}) => <div>{row.getValue('name') || '—'}</div>,
+      },
+      {
+        id: 'keyToken',
+        header: 'Key',
+        cell: ({row}) => (
+          <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
+            {row.original.keyPrefix}...{row.original.keySuffix}
+          </code>
+        ),
       },
       {
         accessorKey: 'environmentName',

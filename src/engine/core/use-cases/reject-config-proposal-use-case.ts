@@ -1,13 +1,12 @@
-import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {type Identity} from '../identity';
 import type {ConfigProposalId} from '../stores/config-proposal-store';
 import type {ProjectId} from '../stores/project-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface RejectConfigProposalRequest {
   proposalId: ConfigProposalId;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: ProjectId;
 }
 
@@ -20,7 +19,7 @@ export function createRejectConfigProposalUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const proposal = await tx.configProposals.getById({
@@ -32,15 +31,11 @@ export function createRejectConfigProposalUseCase(): TransactionalUseCase<
       throw new BadRequestError('Proposal not found');
     }
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
     // Use proposalService to reject the proposal
     await tx.proposalService.rejectProposal({
       proposalId: req.proposalId,
       projectId: req.projectId,
-      reviewer: currentUser,
-      currentUserEmail: req.currentUserEmail,
+      reviewer: req.identity,
     });
 
     return {};

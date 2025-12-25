@@ -1,13 +1,12 @@
-import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteProjectRequest {
   id: string;
-  confirmName: string;
-  currentUserEmail: NormalizedEmail;
+  confirmName: string | null;
+  identity: Identity;
 }
 
 export interface DeleteProjectResponse {}
@@ -18,21 +17,18 @@ export function createDeleteProjectUseCase(
   deps: DeleteProjectUseCaseDeps,
 ): TransactionalUseCase<DeleteProjectRequest, DeleteProjectResponse> {
   return async (ctx, tx, req) => {
-    const project = await tx.projects.getById({
-      id: req.id,
-      currentUserEmail: req.currentUserEmail,
-    });
+    const project = await tx.projects.getByIdWithoutPermissionCheck(req.id);
     if (!project) throw new BadRequestError('Project not found');
 
     // confirm project name
-    if (project.name !== req.confirmName) {
+    if (project.name !== (req.confirmName ?? project.name)) {
       throw new BadRequestError('Project name confirmation does not match');
     }
 
     // Only owners/admins can delete a project
     await tx.permissionService.ensureCanDeleteProject(ctx, {
       projectId: project.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Prevent deleting the last remaining project within the workspace
@@ -41,16 +37,12 @@ export function createDeleteProjectUseCase(
       throw new BadRequestError('Cannot delete the last remaining project in this workspace');
     }
 
-    // Capture data for audit before deletion
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
     await tx.projects.deleteById(project.id);
 
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),
-      userId: currentUser.id,
+      userId: getUserIdFromIdentity(req.identity),
       configId: null,
       projectId: null,
       payload: {

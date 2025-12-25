@@ -2,13 +2,13 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {GetConfigListResponse} from '@/engine/core/use-cases/get-config-list-use-case';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
-import {convertLegacyCreateConfigParams} from "./helpers/create-config-helper";
+import {useAppFixture} from './fixtures/app-fixture';
 
+const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
 describe('getConfigList', () => {
-  const fixture = useAppFixture({authEmail: TEST_USER_EMAIL});
+  const fixture = useAppFixture({authEmail: ADMIN_USER_EMAIL});
 
   it('should return empty list when there are no configs', async () => {
     const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
@@ -17,13 +17,16 @@ describe('getConfigList', () => {
   });
 
   it('should return all existing configs', async () => {
+    // Register a non-admin user to test viewer role
+    const testUserIdentity = await fixture.registerNonAdminWorkspaceMember(TEST_USER_EMAIL);
+
     await fixture.createConfig({
       overrides: [],
       name: 'first-config',
       value: 'first-value',
       schema: {type: 'string'},
       description: 'The first config',
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -34,19 +37,17 @@ describe('getConfigList', () => {
       value: {nested: 42},
       schema: {type: 'object', properties: {nested: {type: 'number'}}},
       description: 'The second config',
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: TEST_USER_EMAIL,
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
+    // Fetch as the non-admin user
+    const {configs} = await fixture.engine.useCases.getConfigList(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: testUserIdentity,
     });
-
-    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
 
     expect(configs).toEqual([
       {
@@ -74,26 +75,29 @@ describe('getConfigList', () => {
   });
 
   it('should include myRole correctly for viewer, editor, owner and be name ordered', async () => {
-    // owner role
+    // Register a non-admin user to test different roles
+    const testUserIdentity = await fixture.registerNonAdminWorkspaceMember(TEST_USER_EMAIL);
+
+    // maintainer role - user is config maintainer
     await fixture.createConfig({
       overrides: [],
       name: 'z_owner_config',
       value: 1,
       schema: {type: 'number'},
       description: 'Owner config',
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [TEST_USER_EMAIL],
       projectId: fixture.projectId,
     });
-    // editor role
+    // editor role - user is config editor
     await fixture.createConfig({
       overrides: [],
       name: 'm_editor_config',
       value: 2,
       schema: {type: 'number'},
       description: 'Editor config',
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [TEST_USER_EMAIL],
       maintainerEmails: ['someone@example.com'],
       projectId: fixture.projectId,
@@ -105,19 +109,18 @@ describe('getConfigList', () => {
       value: 3,
       schema: {type: 'number'},
       description: 'Viewer config',
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: ['someoneelse@example.com'],
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: TEST_USER_EMAIL,
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
+    // Fetch as the non-admin user
+    const {configs} = await fixture.engine.useCases.getConfigList(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: testUserIdentity,
     });
 
-    const {configs} = await fixture.trpc.getConfigList({projectId: fixture.projectId});
     // Should be ordered by name ascending
     expect(configs.map(c => c.name)).toEqual([
       'a_viewer_config',
@@ -140,7 +143,7 @@ describe('getConfigList', () => {
       value: 'v',
       schema: {type: 'string'},
       description: longDescription,
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,

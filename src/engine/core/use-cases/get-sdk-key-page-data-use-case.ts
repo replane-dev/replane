@@ -1,17 +1,19 @@
+import type {Identity} from '../identity';
 import type {ProjectEnvironment} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetSdkKeyPageDataRequest {
   id: string;
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetSdkKeyPageDataResponse {
   sdkKey: {
     id: string;
     createdAt: Date;
+    keyPrefix: string;
+    keySuffix: string;
     name: string;
     description: string;
     environmentId: string;
@@ -27,7 +29,7 @@ export function createGetSdkKeyPageDataUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const [token, environments] = await Promise.all([
@@ -45,6 +47,8 @@ export function createGetSdkKeyPageDataUseCase(): TransactionalUseCase<
       sdkKey: {
         id: token.id,
         createdAt: token.createdAt,
+        keyPrefix: token.keyPrefix,
+        keySuffix: token.keySuffix,
         name: token.name,
         description: token.description,
         environmentId: token.environmentId,

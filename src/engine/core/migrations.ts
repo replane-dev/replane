@@ -1521,6 +1521,104 @@ export const migrations: Migration[] = [
         FOREIGN KEY (config_id) REFERENCES configs(id) ON DELETE SET NULL;
     `,
   },
+  {
+    name: 'Create admin API keys tables',
+    sql: /*sql*/ `
+      -- Create enum for admin API key scopes
+      CREATE TYPE admin_api_key_scope AS ENUM (
+        'project:read',
+        'project:write',
+        'config:read',
+        'config:write',
+        'environment:read',
+        'environment:write',
+        'sdk_key:read',
+        'sdk_key:write',
+        'member:read',
+        'member:write'
+      );
+
+      -- Admin API keys table
+      CREATE TABLE admin_api_keys (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        -- Key hash for verification (SHA-256 of the full key)
+        key_hash TEXT NOT NULL,
+        -- First chars of the key for identification (shown in UI)
+        key_prefix TEXT NOT NULL,
+        created_by_email TEXT NOT NULL,
+        created_at TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMPTZ(3) NULL,
+        expires_at TIMESTAMPTZ(3) NULL
+      );
+
+      -- Index for looking up keys by hash
+      CREATE INDEX admin_api_keys_key_hash_idx ON admin_api_keys(key_hash);
+      -- Index for listing keys by workspace
+      CREATE INDEX admin_api_keys_workspace_id_idx ON admin_api_keys(workspace_id);
+
+      -- Junction table for admin API key scopes
+      CREATE TABLE admin_api_key_scopes (
+        admin_api_key_id UUID NOT NULL REFERENCES admin_api_keys(id) ON DELETE CASCADE,
+        scope admin_api_key_scope NOT NULL,
+        PRIMARY KEY (admin_api_key_id, scope)
+      );
+
+      -- Junction table for admin API key project access
+      -- If no rows exist for a key, it has access to all projects in the workspace
+      CREATE TABLE admin_api_key_projects (
+        admin_api_key_id UUID NOT NULL REFERENCES admin_api_keys(id) ON DELETE CASCADE,
+        project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        PRIMARY KEY (admin_api_key_id, project_id)
+      );
+
+      -- Index for looking up keys by project
+      CREATE INDEX admin_api_key_projects_project_id_idx ON admin_api_key_projects(project_id);
+    `,
+  },
+  {
+    name: 'Rename use_default_schema to use_base_schema',
+    sql: /*sql*/ `
+      -- Rename column in config_variants
+      ALTER TABLE config_variants RENAME COLUMN use_default_schema TO use_base_schema;
+
+      -- Rename column in config_proposal_variants
+      ALTER TABLE config_proposal_variants RENAME COLUMN use_default_schema TO use_base_schema;
+
+      -- Rename column in config_version_variants
+      ALTER TABLE config_version_variants RENAME COLUMN use_default_schema TO use_base_schema;
+    `,
+  },
+  {
+    name: 'Add key_prefix and key_suffix to sdk_keys, add key_suffix to admin_api_keys',
+    sql: /*sql*/ `
+      -- Add key_prefix and key_suffix columns to sdk_keys
+      ALTER TABLE sdk_keys ADD COLUMN key_prefix TEXT;
+      ALTER TABLE sdk_keys ADD COLUMN key_suffix TEXT;
+
+      -- Add key_suffix column to admin_api_keys (key_prefix already exists)
+      ALTER TABLE admin_api_keys ADD COLUMN key_suffix TEXT;
+
+      -- Populate sdk_keys key_prefix and key_suffix from existing key_hash
+      -- Since we can't recover the original key, we use placeholder values
+      -- New keys will have proper prefix/suffix stored on creation
+      UPDATE sdk_keys SET key_prefix = 'rp_' || LEFT(id::text, 8), key_suffix = RIGHT(id::text, 4)
+      WHERE key_prefix IS NULL;
+
+      -- Populate admin_api_keys key_suffix from key_prefix (extract last 4 chars of the key)
+      -- Since we can't recover the full key, use a placeholder based on key_prefix
+      UPDATE admin_api_keys SET key_suffix = RIGHT(key_prefix, 4)
+      WHERE key_suffix IS NULL;
+
+      -- Make columns NOT NULL after population
+      ALTER TABLE sdk_keys ALTER COLUMN key_prefix SET NOT NULL;
+      ALTER TABLE sdk_keys ALTER COLUMN key_suffix SET NOT NULL;
+      ALTER TABLE admin_api_keys ALTER COLUMN key_suffix SET NOT NULL;
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';

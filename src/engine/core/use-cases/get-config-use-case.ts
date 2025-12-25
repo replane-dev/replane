@@ -3,14 +3,14 @@ import type {
   ConfigVariantWithEnvironmentName,
   PendingConfigProposalSummary,
 } from '../config-query-service';
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export type {ConfigDetails, ConfigVariantWithEnvironmentName, PendingConfigProposalSummary};
 
 export interface GetConfigRequest {
   name: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -25,15 +25,15 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
   GetConfigResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadConfigs(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const config = await tx.configQueryService.getConfigDetails({
+    const config = await tx.configQueryService.getConfigDetails(ctx, {
       name: req.name,
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     return {config};

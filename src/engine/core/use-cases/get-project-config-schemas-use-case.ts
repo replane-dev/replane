@@ -1,10 +1,10 @@
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetProjectConfigSchemasRequest {
   projectId: string;
   environmentId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface ConfigSchema {
@@ -24,7 +24,7 @@ export function createGetProjectConfigSchemasUseCase(): TransactionalUseCase<
     // Ensure user has access to the project
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Query configs with their schemas for the specified environment

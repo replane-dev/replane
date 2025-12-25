@@ -93,30 +93,27 @@ sdkApi.use('*', async (c, next) => {
   }
 });
 
-const ConfigDto = z
+const SdkConfigDto = z
   .object({
     name: ConfigName(),
     value: z.unknown(),
     overrides: z.array(RenderedOverrideSchema),
   })
-  .openapi('ConfigResponse');
+  .openapi('SdkConfigDto');
 
-export type ConfigDto = z.infer<typeof ConfigDto>;
+export type SdkConfigDto = z.infer<typeof SdkConfigDto>;
 
 const ReplicationStreamConfigChangeRecord = z
   .object({
     type: z.literal('config_change'),
-    config: ConfigDto,
-    overrides: z.array(RenderedOverrideSchema),
-    value: z.unknown(),
-    name: ConfigName(),
+    config: SdkConfigDto,
   })
   .openapi('ReplicationStreamConfigChangeRecord');
 
 const ReplicationStreamInitRecord = z
   .object({
     type: z.literal('init'),
-    configs: z.array(ConfigDto),
+    configs: z.array(SdkConfigDto),
   })
   .openapi('ReplicationStreamInitRecord');
 
@@ -128,10 +125,12 @@ const ReplicationStreamRecord = z
 
 type ReplicationStreamRecord = z.infer<typeof ReplicationStreamRecord>;
 
-const StartReplicationStreamBody = z.object({
-  currentConfigs: z.array(ConfigDto).optional(),
-  requiredConfigs: z.array(z.string()).optional(),
-});
+const StartReplicationStreamBody = z
+  .object({
+    currentConfigs: z.array(SdkConfigDto).optional(),
+    requiredConfigs: z.array(z.string()).optional(),
+  })
+  .openapi('StartReplicationStreamBody');
 
 export type StartReplicationStreamBody = z.infer<typeof StartReplicationStreamBody>;
 
@@ -151,6 +150,13 @@ sdkApi.openapi(
       },
     },
     request: {
+      headers: z.object({
+        'x-stream-timeout-ms': z.string().optional().openapi({
+          description:
+            'Maximum stream lifetime in milliseconds. Server will close the stream after this timeout.',
+          example: '60000',
+        }),
+      }),
       body: {
         content: {
           'application/json': {
@@ -166,16 +172,17 @@ sdkApi.openapi(
     const context = c.get('context');
     const edge = await getEdge();
 
-    const headers = {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    };
-
     const abortController = new AbortController();
     const onAbort = () => abortController.abort();
     c.req.raw.signal.addEventListener('abort', onAbort);
+
+    // Parse optional stream timeout header
+    const timeoutHeader = c.req.header('x-stream-timeout-ms');
+    let streamTimeoutMs = timeoutHeader ? parseInt(timeoutHeader, 10) : null;
+    if (Number.isNaN(streamTimeoutMs)) {
+      console.warn('Invalid stream timeout header:', timeoutHeader);
+      streamTimeoutMs = null;
+    }
 
     const rawBody = await c.req.json().catch(() => ({}));
     const parseResult = StartReplicationStreamBody.safeParse(rawBody);
@@ -192,12 +199,24 @@ sdkApi.openapi(
         // heartbeat to keep proxies from closing the connection due to inactivity
         const heartbeat = setInterval(() => {
           try {
-            controller.enqueue({type: 'ping'});
+            controller.enqueue({type: 'comment', comment: 'ping'});
           } catch {}
         }, 15_000);
 
+        // Optional stream timeout - close stream after specified duration
+        let streamTimeout: ReturnType<typeof setTimeout> | null = null;
+        if (streamTimeoutMs && streamTimeoutMs > 0) {
+          streamTimeout = setTimeout(() => {
+            try {
+              controller.enqueue({type: 'comment', comment: 'timeout'});
+            } catch {}
+            // Small delay to allow the timeout event to be sent before closing
+            setTimeout(() => abortController.abort(), 50);
+          }, streamTimeoutMs);
+        }
+
         try {
-          controller.enqueue({type: 'connected'});
+          controller.enqueue({type: 'comment', comment: 'connected'});
 
           // eager async iterable to subscribe to events immediately
           // required for client not to miss any updates to configs
@@ -239,9 +258,6 @@ sdkApi.openapi(
                   overrides: event.overrides,
                   value: event.value,
                 },
-                overrides: event.overrides,
-                value: event.value,
-                name: event.configName,
               } satisfies ReplicationStreamRecord),
             });
           }
@@ -257,6 +273,8 @@ sdkApi.openapi(
           controller.error(err);
         } finally {
           clearInterval(heartbeat);
+          if (streamTimeout) clearTimeout(streamTimeout);
+          abortController.abort();
           c.req.raw.signal.removeEventListener('abort', onAbort);
           if (!errored) {
             try {
@@ -267,13 +285,20 @@ sdkApi.openapi(
           }
         }
       },
-      async cancel() {
+      cancel() {
         abortController.abort();
         c.req.raw.signal.removeEventListener('abort', onAbort);
       },
     }).pipeThrough(new SseEncoderStream());
 
-    return new Response(stream, {headers});
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    });
   },
 );
 
@@ -287,7 +312,7 @@ sdkApi.get('/openapi.json', c =>
   ),
 );
 
-type SseEvent = {type: 'data'; data: string} | {type: 'ping'} | {type: 'connected'};
+type SseEvent = {type: 'data'; data: string} | {type: 'comment'; comment: string};
 
 class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
   constructor() {
@@ -297,10 +322,8 @@ class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
       transform(chunk, controller) {
         if (chunk.type === 'data') {
           controller.enqueue(encoder.encode(`data: ${chunk.data}\n\n`));
-        } else if (chunk.type === 'ping') {
-          controller.enqueue(encoder.encode(': ping\n\n'));
-        } else if (chunk.type === 'connected') {
-          controller.enqueue(encoder.encode(': connected\n\n'));
+        } else if (chunk.type === 'comment') {
+          controller.enqueue(encoder.encode(`: ${chunk.comment}\n\n`));
         } else {
           assertNever(chunk, 'Unknown SSE event type');
         }
@@ -310,9 +333,9 @@ class SseEncoderStream extends TransformStream<SseEvent, Uint8Array> {
 }
 
 export function createSdkState(
-  options: StartReplicationStreamBody & {serverConfigs: ConfigDto[]},
-): ConfigDto[] {
-  const configs = new Map<string, ConfigDto>();
+  options: StartReplicationStreamBody & {serverConfigs: SdkConfigDto[]},
+): SdkConfigDto[] {
+  const configs = new Map<string, SdkConfigDto>();
   for (const config of options.currentConfigs ?? []) {
     configs.set(config.name, config);
   }

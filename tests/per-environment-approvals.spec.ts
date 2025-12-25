@@ -3,7 +3,7 @@ import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail, toSettledResult} from '@/engine/core/utils';
 import {TRPCError} from '@trpc/server';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -21,7 +21,7 @@ describe('Per-Environment Approvals', () => {
           requireProposals: true,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
     });
 
@@ -49,7 +49,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -57,7 +57,8 @@ describe('Per-Environment Approvals', () => {
 
         // Update environment variants only - should succeed since no environments require approval
         await fixture.trpc.updateConfig({
-          configId,
+          projectId: fixture.projectId,
+          configName: 'direct_save_no_approval_required',
           description: 'Updated description',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
@@ -72,14 +73,14 @@ describe('Per-Environment Approvals', () => {
               value: {x: 2}, // Change environment variant
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: {x: 3}, // Change environment variant
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           prevVersion: 1,
@@ -120,7 +121,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -130,7 +131,8 @@ describe('Per-Environment Approvals', () => {
         // and production has no environment override (uses default value)
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
-            configId,
+            projectId: fixture.projectId,
+            configName: 'block_default_change',
             description: 'Updated description',
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
@@ -165,7 +167,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -173,7 +175,8 @@ describe('Per-Environment Approvals', () => {
 
         // Add a production environment override with a different value
         await fixture.trpc.updateConfig({
-          configId,
+          projectId: fixture.projectId,
+          configName: 'allow_default_change_with_override',
           description: 'Test config',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
@@ -188,7 +191,7 @@ describe('Per-Environment Approvals', () => {
               value: {x: 100}, // Production-specific value (different from default)
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           prevVersion: 1,
@@ -205,7 +208,8 @@ describe('Per-Environment Approvals', () => {
         // Now try to update the default value - should succeed because production has an override
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
-            configId,
+            projectId: fixture.projectId,
+            configName: 'allow_default_change_with_override',
             description: 'Updated description',
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
@@ -220,7 +224,7 @@ describe('Per-Environment Approvals', () => {
                 value: {x: 100}, // Same production value (unchanged)
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
             ],
             prevVersion: 2,
@@ -237,7 +241,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -246,7 +250,8 @@ describe('Per-Environment Approvals', () => {
         // Try to update production environment value - should fail
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
-            configId,
+            projectId: fixture.projectId,
+            configName: 'block_prod_change',
             description: 'Test config',
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
@@ -261,14 +266,14 @@ describe('Per-Environment Approvals', () => {
                 value: {x: 999}, // Changed production value
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
                 value: {x: 1}, // Same as before
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
             ],
             prevVersion: 1,
@@ -287,7 +292,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -295,7 +300,8 @@ describe('Per-Environment Approvals', () => {
 
         // Update only development environment value - should succeed
         await fixture.trpc.updateConfig({
-          configId,
+          projectId: fixture.projectId,
+          configName: 'allow_dev_change',
           description: 'Test config',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
@@ -310,14 +316,14 @@ describe('Per-Environment Approvals', () => {
               value: {x: 1}, // Same as before
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: {x: 999}, // Changed development value - should be allowed
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           prevVersion: 1,
@@ -343,7 +349,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Original description',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -351,7 +357,8 @@ describe('Per-Environment Approvals', () => {
 
         // Update only description - should succeed (no value changes)
         await fixture.trpc.updateConfig({
-          configId,
+          projectId: fixture.projectId,
+          configName: 'allow_description_change',
           description: 'Updated description',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
@@ -366,14 +373,14 @@ describe('Per-Environment Approvals', () => {
               value: {x: 1}, // Same as before
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: {x: 1}, // Same as before
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           prevVersion: 1,
@@ -413,7 +420,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -422,7 +429,8 @@ describe('Per-Environment Approvals', () => {
         // Try to update development environment value - should fail because both require approval
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
-            configId,
+            projectId: fixture.projectId,
+            configName: 'block_any_env_change',
             description: 'Test config',
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
@@ -437,14 +445,14 @@ describe('Per-Environment Approvals', () => {
                 value: {x: 1}, // Same as before
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
                 value: {x: 999}, // Changed development value
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
             ],
             prevVersion: 1,
@@ -463,7 +471,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -474,7 +482,8 @@ describe('Per-Environment Approvals', () => {
         // Try to add an editor - should fail
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
-            configId,
+            projectId: fixture.projectId,
+            configName: 'block_add_editor',
             description: 'Test config',
             editorEmails: [newEditorEmail],
             maintainerEmails: [CURRENT_USER_EMAIL],
@@ -489,14 +498,14 @@ describe('Per-Environment Approvals', () => {
                 value: {x: 1}, // Same as before
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
                 value: {x: 1}, // Same as before
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
             ],
             prevVersion: 1,
@@ -517,7 +526,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Test config',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL, otherMaintainerEmail],
           projectId: fixture.projectId,
@@ -526,7 +535,8 @@ describe('Per-Environment Approvals', () => {
         // Try to remove a maintainer - should fail
         const result = await toSettledResult(
           fixture.trpc.updateConfig({
-            configId,
+            projectId: fixture.projectId,
+            configName: 'block_remove_maintainer',
             description: 'Test config',
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL], // Removed otherMaintainerEmail
@@ -541,14 +551,14 @@ describe('Per-Environment Approvals', () => {
                 value: {x: 1}, // Same as before
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
                 value: {x: 1}, // Same as before
                 schema: null,
                 overrides: [],
-                useDefaultSchema: false,
+                useBaseSchema: false,
               },
             ],
             prevVersion: 1,
@@ -567,7 +577,7 @@ describe('Per-Environment Approvals', () => {
           value: {x: 1},
           schema: null,
           description: 'Original description',
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           projectId: fixture.projectId,
@@ -575,7 +585,8 @@ describe('Per-Environment Approvals', () => {
 
         // Update only description - should succeed (no value or member changes)
         await fixture.trpc.updateConfig({
-          configId,
+          projectId: fixture.projectId,
+          configName: 'allow_description_change',
           description: 'Updated description',
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
@@ -590,14 +601,14 @@ describe('Per-Environment Approvals', () => {
               value: {x: 1}, // Same as before
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: {x: 1}, // Same as before
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
           prevVersion: 1,
@@ -630,7 +641,7 @@ describe('Per-Environment Approvals', () => {
         value: {x: 1},
         schema: null,
         description: 'Test config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -638,7 +649,8 @@ describe('Per-Environment Approvals', () => {
 
       // Update the config - should succeed since project doesn't require proposals
       await fixture.trpc.updateConfig({
-        configId,
+        projectId: fixture.projectId,
+        configName: 'direct_save_proposals_disabled',
         description: 'Updated description',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
@@ -653,14 +665,14 @@ describe('Per-Environment Approvals', () => {
             value: {x: 999},
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: {x: 999},
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
         prevVersion: 1,
@@ -753,7 +765,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
           requireProposals: true,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Set requireProposals=true on production
@@ -772,7 +784,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
         value: {x: 1},
         schema: null,
         description: 'Version 1',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -787,12 +799,13 @@ describe('restoreConfigVersion with per-environment approvals', () => {
           requireProposals: false,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Update the config to version 2
       await fixture.trpc.updateConfig({
-        configId,
+        projectId: fixture.projectId,
+        configName: 'block_restore',
         description: 'Version 2',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
@@ -807,14 +820,14 @@ describe('restoreConfigVersion with per-environment approvals', () => {
             value: {x: 2}, // Changed production value
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: {x: 2}, // Changed development value
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
         prevVersion: 1,
@@ -829,7 +842,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
           requireProposals: true,
           allowSelfApprovals: true,
         },
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       // Try to restore to version 1 - should fail because production values would change
@@ -862,7 +875,7 @@ describe('Schema and override changes with per-environment approvals', () => {
         requireProposals: true,
         allowSelfApprovals: true,
       },
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
     // Set requireProposals=true on production only
@@ -889,7 +902,7 @@ describe('Schema and override changes with per-environment approvals', () => {
       value: {x: 1},
       schema: null,
       description: 'Test config',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -898,7 +911,8 @@ describe('Schema and override changes with per-environment approvals', () => {
     // Try to add a schema to production environment - should fail
     const result = await toSettledResult(
       fixture.trpc.updateConfig({
-        configId,
+        projectId: fixture.projectId,
+        configName: 'block_schema_change',
         description: 'Test config',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
@@ -913,14 +927,14 @@ describe('Schema and override changes with per-environment approvals', () => {
             value: {x: 1},
             schema: {type: 'object'}, // Adding schema to production
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: {x: 1},
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
         prevVersion: 1,
@@ -939,7 +953,7 @@ describe('Schema and override changes with per-environment approvals', () => {
       value: {x: 1},
       schema: null,
       description: 'Test config',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -949,7 +963,8 @@ describe('Schema and override changes with per-environment approvals', () => {
 
     const result = await toSettledResult(
       fixture.trpc.updateConfig({
-        configId,
+        projectId: fixture.projectId,
+        configName: 'block_override_change',
         description: 'Test config',
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
@@ -970,14 +985,14 @@ describe('Schema and override changes with per-environment approvals', () => {
                 conditions: [],
               },
             ], // Adding override to production
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
             value: {x: 1},
             schema: null,
             overrides: [],
-            useDefaultSchema: false,
+            useBaseSchema: false,
           },
         ],
         prevVersion: 1,
@@ -995,7 +1010,7 @@ describe('Schema and override changes with per-environment approvals', () => {
       value: {x: 1},
       schema: null,
       description: 'Test config',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       projectId: fixture.projectId,
@@ -1003,7 +1018,8 @@ describe('Schema and override changes with per-environment approvals', () => {
 
     // Add schema and overrides to development environment - should succeed
     await fixture.trpc.updateConfig({
-      configId,
+      projectId: fixture.projectId,
+      configName: 'allow_dev_schema_change',
       description: 'Test config',
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
@@ -1018,7 +1034,7 @@ describe('Schema and override changes with per-environment approvals', () => {
           value: {x: 1},
           schema: null,
           overrides: [],
-          useDefaultSchema: false,
+          useBaseSchema: false,
         },
         {
           environmentId: fixture.developmentEnvironmentId,
@@ -1031,7 +1047,7 @@ describe('Schema and override changes with per-environment approvals', () => {
               conditions: [],
             },
           ], // Adding override to development
-          useDefaultSchema: false,
+          useBaseSchema: false,
         },
       ],
       prevVersion: 1,

@@ -3,7 +3,7 @@ import {ForbiddenError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {asConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OUTSIDER_USER_EMAIL = normalizeEmail('outsider@example.com');
@@ -33,7 +33,7 @@ describe('Read Use Cases - Permission Checks', () => {
         schema: null,
         overrides: [],
         description: 'Secret config',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -43,7 +43,7 @@ describe('Read Use Cases - Permission Checks', () => {
         fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
           name: 'secret_config',
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -54,7 +54,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getConfigList(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -65,7 +65,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -76,7 +76,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getProjectUsers(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -87,7 +87,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -101,14 +101,14 @@ describe('Read Use Cases - Permission Checks', () => {
         description: 'Test',
         projectId: fixture.projectId,
         environmentId: fixture.productionEnvironmentId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       });
 
       await expect(
         fixture.engine.useCases.getSdkKey(GLOBAL_CONTEXT, {
           id: sdkKey.id,
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -119,7 +119,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getAuditLog(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
           from: new Date('2020-01-01'),
           to: new Date('2030-01-01'),
           limit: 10,
@@ -133,7 +133,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getConfigProposalList(GLOBAL_CONTEXT, {
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -148,7 +148,7 @@ describe('Read Use Cases - Permission Checks', () => {
         schema: null,
         overrides: [],
         description: 'Test',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -169,17 +169,17 @@ describe('Read Use Cases - Permission Checks', () => {
               value: asConfigValue({test: true}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
               value: asConfigValue({test: true}),
               schema: null,
               overrides: [],
-              useDefaultSchema: false,
+              useBaseSchema: false,
             },
           ],
-          currentUserEmail: CURRENT_USER_EMAIL,
+          identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
           proposedDelete: false,
           defaultVariant: {value: asConfigValue({x: 1}), schema: null, overrides: []},
           message: null,
@@ -190,7 +190,7 @@ describe('Read Use Cases - Permission Checks', () => {
         fixture.engine.useCases.getConfigProposal(GLOBAL_CONTEXT, {
           proposalId: configProposalId,
           projectId: fixture.projectId,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });
@@ -205,7 +205,7 @@ describe('Read Use Cases - Permission Checks', () => {
         schema: null,
         overrides: [],
         description: 'Test',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         projectId: fixture.projectId,
@@ -214,7 +214,7 @@ describe('Read Use Cases - Permission Checks', () => {
       // Get an audit log entry
       const auditLogs = await fixture.engine.useCases.getAuditLog(GLOBAL_CONTEXT, {
         projectId: fixture.projectId,
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
         from: new Date('2020-01-01'),
         to: new Date('2030-01-01'),
         limit: 10,
@@ -228,7 +228,7 @@ describe('Read Use Cases - Permission Checks', () => {
       await expect(
         fixture.engine.useCases.getAuditLogMessage(GLOBAL_CONTEXT, {
           id: firstLog.id,
-          currentUserEmail: OUTSIDER_USER_EMAIL,
+          identity: await fixture.emailToIdentity(OUTSIDER_USER_EMAIL),
         }),
       ).rejects.toThrow(ForbiddenError);
     });

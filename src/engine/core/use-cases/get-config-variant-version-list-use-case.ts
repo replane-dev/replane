@@ -1,10 +1,10 @@
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetConfigVariantVersionListRequest {
   configId: string;
   environmentId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -28,7 +28,7 @@ export function createGetConfigVariantVersionListUseCase(): TransactionalUseCase
     // Check permissions - viewing version history requires edit access
     await tx.permissionService.ensureCanEditConfig(ctx, {
       configId: req.configId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Get the config to verify it exists and belongs to the project

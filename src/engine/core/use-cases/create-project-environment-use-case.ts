@@ -1,16 +1,16 @@
 import assert from 'assert';
 import type {DateProvider} from '../date-provider';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {createUuidV7} from '../uuid';
-import type {NormalizedEmail} from '../zod';
 
 export interface CreateProjectEnvironmentRequest {
   projectId: string;
   name: string;
   copyFromEnvironmentId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface CreateProjectEnvironmentResponse {
@@ -25,13 +25,16 @@ export function createCreateProjectEnvironmentUseCase(
   deps: CreateProjectEnvironmentUseCaseDeps,
 ): TransactionalUseCase<CreateProjectEnvironmentRequest, CreateProjectEnvironmentResponse> {
   return async (ctx, tx, req) => {
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     // Check if user has admin permission
     await tx.permissionService.ensureCanManageProjectUsers(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Validate environment name
@@ -96,7 +99,7 @@ export function createCreateProjectEnvironmentUseCase(
         overrides: sourceVariant.overrides,
         createdAt: now,
         updatedAt: now,
-        useDefaultSchema: sourceVariant.useDefaultSchema,
+        useBaseSchema: sourceVariant.useBaseSchema,
       });
     }
 

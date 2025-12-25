@@ -83,5 +83,5 @@ jobs:
             ${{ steps.meta.outputs.tags }}
 
             Pull the image:
-              docker pull replane/replane:${{ github.ref_name }}
-              docker pull ghcr.io/replane-dev/replane:${{ github.ref_name }}
+            - `docker pull replane/replane:${{ steps.meta.outputs.version }}` ([Docker Hub](https://hub.docker.com/r/replane/replane))
+            - `docker pull ghcr.io/replane-dev/replane:${{ steps.meta.outputs.version }}` ([GitHub Container Registry](https://github.com/replane-dev/replane/pkgs/container/replane))

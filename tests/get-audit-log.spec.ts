@@ -1,7 +1,7 @@
 import {createAuditLogId} from '@/engine/core/stores/audit-log-store';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
 const TEST_USER_EMAIL = normalizeEmail('auditor@example.com');
 
@@ -31,7 +31,7 @@ describe('getAuditLog', () => {
       value: 1,
       description: 'A',
       schema: {type: 'number'},
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -43,7 +43,7 @@ describe('getAuditLog', () => {
       value: 2,
       description: 'B',
       schema: {type: 'number'},
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -100,7 +100,7 @@ describe('getAuditLog', () => {
       value: 3,
       description: 'C',
       schema: {type: 'number'},
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -121,7 +121,7 @@ describe('getAuditLog', () => {
       value: 3,
       description: 'C',
       schema: {type: 'number'},
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -132,7 +132,7 @@ describe('getAuditLog', () => {
       value: 4,
       description: 'D',
       schema: {type: 'number'},
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -152,7 +152,7 @@ describe('getAuditLog', () => {
       value: 5,
       description: 'E',
       schema: {type: 'number'},
-      currentUserEmail: TEST_USER_EMAIL,
+      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,

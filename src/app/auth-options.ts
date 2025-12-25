@@ -1,6 +1,7 @@
 import {JWT_MAX_AGE_SECONDS, PASSWORD_PROVIDER_NAME} from '@/engine/core/constants';
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {TooManyRequestsError} from '@/engine/core/errors';
+import {createUserIdentity} from '@/engine/core/identity';
 import {createLogger} from '@/engine/core/logger';
 import {getPgPool} from '@/engine/core/pg-pool-cache';
 import {ensureDefined, normalizeEmail} from '@/engine/core/utils';
@@ -275,9 +276,16 @@ export function getAuthOptions(): AuthOptions {
         try {
           // TODO: don't create user if initUser fails
           const userEmail = normalizeEmail(user.email ?? 'unknown@replane.dev');
+          if (!Number.isInteger(user.id)) {
+            throw new Error('User ID is not an integer');
+          }
           const engine = await getEngineSingleton();
           await engine.useCases.initUser(GLOBAL_CONTEXT, {
-            userEmail,
+            identity: createUserIdentity({
+              email: userEmail,
+              id: Number(user.id),
+              name: user.name ?? null,
+            }),
             exampleProject: true,
           });
         } catch (error) {

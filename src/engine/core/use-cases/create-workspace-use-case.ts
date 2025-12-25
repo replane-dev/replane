@@ -1,6 +1,7 @@
 import assert from 'assert';
 import {ConfigService} from '../config-service';
 import {type Context} from '../context';
+import {requireUserEmail, type Identity} from '../identity';
 import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
 import {ConfigStore} from '../stores/config-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
@@ -9,13 +10,11 @@ import type {ProjectUserStore} from '../stores/project-user-store';
 import type {WorkspaceMemberStore} from '../stores/workspace-member-store';
 import {createWorkspaceId, Workspace, WorkspaceStore} from '../stores/workspace-store';
 import type {TransactionalUseCase} from '../use-case';
-import type {UserStore} from '../user-store';
 import {createUuidV7} from '../uuid';
-import {type NormalizedEmail} from '../zod';
 import {createExampleConfigs} from './add-example-configs-use-case';
 
 export interface CreateWorkspaceRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: string;
 }
 
@@ -29,14 +28,17 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
   CreateWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
+    // Creating workspaces requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     const now = new Date();
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     const {workspace, project} = await createWorkspace({
       ctx,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
       name: {type: 'custom', name: req.name},
       workspaceStore: tx.workspaces,
       workspaceMemberStore: tx.workspaceMembers,
@@ -45,7 +47,6 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
       projectEnvironmentStore: tx.projectEnvironments,
       configs: tx.configs,
       configService: tx.configService,
-      users: tx.users,
       auditLogs: tx.auditLogs,
       now,
       exampleProject: false,
@@ -56,14 +57,13 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
 
 export async function createWorkspace(params: {
   ctx: Context;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   name: {type: 'personal'} | {type: 'custom'; name: string};
   workspaceStore: WorkspaceStore;
   workspaceMemberStore: WorkspaceMemberStore;
   projectStore: ProjectStore;
   projectUserStore: ProjectUserStore;
   projectEnvironmentStore: ProjectEnvironmentStore;
-  users: UserStore;
   auditLogs: AuditLogStore;
   configs: ConfigStore;
   configService: ConfigService;
@@ -72,7 +72,7 @@ export async function createWorkspace(params: {
 }) {
   const {
     ctx,
-    currentUserEmail,
+    identity,
     name,
     workspaceStore,
     workspaceMemberStore,
@@ -83,15 +83,18 @@ export async function createWorkspace(params: {
     configs,
     configService,
     now,
-    users,
     exampleProject,
   } = params;
 
-  const user = await users.getByEmail(currentUserEmail);
-  assert(user, 'Current user not found');
+  // This function requires a user identity
+  if (identity.type !== 'user') {
+    throw new Error('Only users can create workspaces');
+  }
+  const currentUserEmail = identity.user.email;
+
   const workspaceName =
-    name.type === 'personal' && user.name
-      ? `${user.name}'s Replane`
+    name.type === 'personal' && identity.user.name
+      ? `${identity.user.name}'s Replane`
       : name.type === 'custom'
         ? name.name
         : 'Personal';
@@ -155,14 +158,11 @@ export async function createWorkspace(params: {
     id: developmentId,
   });
 
-  const currentUser = await users.getByEmail(currentUserEmail);
-  assert(currentUser, 'Current user not found');
-
   await auditLogs.create({
     id: createAuditLogId(),
     createdAt: now,
     projectId: null,
-    userId: currentUser.id,
+    userId: identity.user.id,
     configId: null,
     payload: {
       type: 'workspace_created',
@@ -180,7 +180,7 @@ export async function createWorkspace(params: {
       configs: configs,
       configService: configService,
       projectEnvironments: projectEnvironmentStore,
-      currentUser: currentUser,
+      userId: identity.user.id,
     });
   }
 

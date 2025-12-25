@@ -8,6 +8,8 @@ export interface SdkKeyRow {
   id: string;
   createdAt: Date;
   keyHash: string;
+  keyPrefix: string;
+  keySuffix: string;
   name: string;
   description: string;
   projectId: string;
@@ -29,6 +31,8 @@ export class SdkKeyStore {
         't.id as id',
         't.created_at as created_at',
         't.key_hash as key_hash',
+        't.key_prefix as key_prefix',
+        't.key_suffix as key_suffix',
         't.name as name',
         't.description as description',
         't.environment_id as environment_id',
@@ -45,6 +49,8 @@ export class SdkKeyStore {
       id: r.id,
       createdAt: r.created_at,
       keyHash: r.key_hash,
+      keyPrefix: r.key_prefix,
+      keySuffix: r.key_suffix,
       name: r.name,
       description: r.description,
       environmentId: r.environment_id,
@@ -58,6 +64,8 @@ export class SdkKeyStore {
       id: string;
       createdAt: Date;
       keyHash: string;
+      keyPrefix: string;
+      keySuffix: string;
       name: string;
       description: string;
       projectId: string;
@@ -70,6 +78,8 @@ export class SdkKeyStore {
         id: key.id,
         created_at: key.createdAt,
         key_hash: key.keyHash,
+        key_prefix: key.keyPrefix,
+        key_suffix: key.keySuffix,
         name: key.name,
         description: key.description,
         project_id: key.projectId,
@@ -90,6 +100,8 @@ export class SdkKeyStore {
         't.id as id',
         't.created_at as created_at',
         't.key_hash as key_hash',
+        't.key_prefix as key_prefix',
+        't.key_suffix as key_suffix',
         't.name as name',
         't.description as description',
         't.project_id as project_id',
@@ -104,6 +116,8 @@ export class SdkKeyStore {
       id: row.id,
       createdAt: row.created_at,
       keyHash: row.key_hash,
+      keyPrefix: row.key_prefix,
+      keySuffix: row.key_suffix,
       name: row.name,
       description: row.description,
       projectId: row.project_id,

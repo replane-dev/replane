@@ -1,8 +1,8 @@
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetConfigProposalListRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
   configIds?: string[];
   proposalIds?: string[];
@@ -40,7 +40,7 @@ export function createGetConfigProposalListUseCase(): TransactionalUseCase<
   return async (ctx, tx, req) => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const rows = await tx.configProposals.listFiltered({

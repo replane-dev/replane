@@ -1,10 +1,9 @@
-import assert from 'assert';
+import {type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface RejectAllPendingConfigProposalsRequest {
   configId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface RejectAllPendingConfigProposalsResponse {}
@@ -14,12 +13,9 @@ export function createRejectAllPendingConfigProposalsUseCase(): TransactionalUse
   RejectAllPendingConfigProposalsResponse
 > {
   return async (ctx, tx, req) => {
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
     await tx.proposalService.rejectAllPendingProposals({
       configId: req.configId,
-      reviewer: currentUser,
+      reviewer: req.identity,
     });
 
     return {};

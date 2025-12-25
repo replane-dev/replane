@@ -323,6 +323,24 @@ export interface UserAccountDeletedAuditLogPayload extends BaseAuditLogPayload<'
   };
 }
 
+export interface AdminApiKeyCreatedAuditLogPayload extends BaseAuditLogPayload<'admin_api_key_created'> {
+  adminApiKey: {
+    id: string;
+    name: string;
+    workspaceId: string;
+    scopes: string[];
+    projectIds: string[] | null;
+  };
+}
+
+export interface AdminApiKeyDeletedAuditLogPayload extends BaseAuditLogPayload<'admin_api_key_deleted'> {
+  adminApiKey: {
+    id: string;
+    name: string;
+    workspaceId: string;
+  };
+}
+
 export type AuditLogPayload =
   | ConfigCreatedAuditLogPayload
   | ConfigUpdatedAuditLogPayload
@@ -351,7 +369,9 @@ export type AuditLogPayload =
   | WorkspaceMemberAddedAuditLogPayload
   | WorkspaceMemberRemovedAuditLogPayload
   | WorkspaceMemberRoleChangedAuditLogPayload
-  | UserAccountDeletedAuditLogPayload;
+  | UserAccountDeletedAuditLogPayload
+  | AdminApiKeyCreatedAuditLogPayload
+  | AdminApiKeyDeletedAuditLogPayload;
 
 export interface AuditLog {
   id: AuditLogId;

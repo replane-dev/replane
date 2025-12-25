@@ -47,7 +47,7 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
         value: v.value,
         schema: v.schema,
         overrides: v.overrides as Override[],
-        useDefaultSchema: v.useDefaultSchema,
+        useBaseSchema: v.useBaseSchema,
       })),
     });
 

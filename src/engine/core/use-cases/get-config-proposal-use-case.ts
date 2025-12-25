@@ -1,13 +1,14 @@
 import assert from 'assert';
 import type {ConfigProposalRejectionReason} from '../db';
 import {BadRequestError} from '../errors';
+import type {Identity} from '../identity';
 import type {Override} from '../override-evaluator';
 import type {TransactionalUseCase} from '../use-case';
-import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export interface GetConfigProposalRequest {
   proposalId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -68,7 +69,7 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
   return async (ctx, tx, req): Promise<GetConfigProposalResponse> => {
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const proposal = await tx.configProposals.getById({

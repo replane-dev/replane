@@ -1,14 +1,15 @@
 import assert from 'assert';
 import type {Context} from '../context';
 import {BadRequestError} from '../errors';
+import {getUserIdFromIdentity, requireUserEmail, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {ConfigSchema, ConfigValue, NormalizedEmail} from '../zod';
+import type {ConfigSchema, ConfigValue} from '../zod';
 
 export interface RestoreConfigVersionRequest {
   configId: string;
   versionToRestore: number;
   expectedCurrentVersion: number;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -21,9 +22,12 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
   RestoreConfigVersionResponse
 > {
   return async (ctx: Context, tx, req) => {
+    // Restoring config versions requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Get the config to verify it exists and belongs to the project
@@ -38,7 +42,7 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     // TODO: if the restore operation doesn't change schema, we might relax permissions to edit config only
     await tx.permissionService.ensureCanManageConfig(ctx, {
       configId: config.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     // Check config version
@@ -56,7 +60,7 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       throw new BadRequestError('Version snapshot not found');
     }
 
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
+    const currentUser = await tx.users.getByEmail(currentUserEmail);
     assert(currentUser, 'Current user not found');
 
     // Reconstruct environment variants from version snapshot
@@ -65,7 +69,7 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       value: variant.value as ConfigValue,
       schema: variant.schema as ConfigSchema | null,
       overrides: variant.overrides,
-      useDefaultSchema: variant.useDefaultSchema,
+      useBaseSchema: variant.useBaseSchema,
     }));
 
     // Default variant comes from version snapshot
@@ -87,7 +91,7 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     // Get the project to check requireProposals setting
     const project = await tx.projects.getById({
       id: config.projectId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
     if (!project) {
       throw new BadRequestError('Project not found');
@@ -139,8 +143,8 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
       maintainerEmails: currentMaintainerEmails,
       defaultVariant,
       environmentVariants,
-      currentUser,
-      reviewer: currentUser,
+      editAuthorId: getUserIdFromIdentity(req.identity),
+      reviewer: req.identity,
       prevVersion: config.version,
     });
 

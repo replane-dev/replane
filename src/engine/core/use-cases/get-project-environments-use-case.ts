@@ -1,12 +1,12 @@
+import type {Identity} from '../identity';
 import type {ProjectEnvironment} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export type {ProjectEnvironment};
 
 export interface GetProjectEnvironmentsRequest {
   projectId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface GetProjectEnvironmentsResponse {
@@ -18,9 +18,9 @@ export function createGetProjectEnvironmentsUseCase(): TransactionalUseCase<
   GetProjectEnvironmentsResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadEnvironments(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const environments = await tx.projectQueryService.getEnvironments({

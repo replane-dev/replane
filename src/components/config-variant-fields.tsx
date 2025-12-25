@@ -89,7 +89,7 @@ export function ConfigVariantFields({
   };
 
   // Determine which schema to use for the JSON editor
-  const effectiveSchema = watchedVariant?.useDefaultSchema ? defaultSchema : liveSchema;
+  const effectiveSchema = watchedVariant?.useBaseSchema ? defaultSchema : liveSchema;
 
   // Handler for schema enabled toggle
   const handleSchemaEnabledChange = (checked: boolean, fieldOnChange: (value: boolean) => void) => {
@@ -282,7 +282,7 @@ export function ConfigVariantFields({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Label className="text-sm font-medium">Schema Validation</Label>
+              <Label className="text-sm font-medium">Validation</Label>
               <Help>
                 <p>
                   Control how this configuration value is validated using{' '}
@@ -298,38 +298,37 @@ export function ConfigVariantFields({
                 <div className="mt-2 space-y-1">
                   {isEnvironmentVariant && hasDefaultVariant && (
                     <p>
-                      <strong>Base:</strong> Use base configuration&apos;s schema
+                      <strong>Use base schema:</strong> Use base configuration&apos;s schema
                     </p>
                   )}
                   <p>
                     <strong>None:</strong> No validation
                   </p>
                   <p>
-                    <strong>Custom:</strong> Define custom schema
+                    <strong>{isEnvironmentVariant ? 'Custom JSON Schema' : 'JSON Schema'}:</strong>{' '}
+                    Define custom schema
                   </p>
                 </div>
               </Help>
             </div>
 
             <div className="flex items-center gap-2">
-              {canEditSchema &&
-                watchedVariant?.schemaEnabled &&
-                !watchedVariant?.useDefaultSchema && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleInferSchema}
-                    className="h-7 text-xs"
-                  >
-                    <Sparkles className="h-3 w-3 mr-1.5" />
-                    Infer Schema from Value
-                  </Button>
-                )}
+              {canEditSchema && watchedVariant?.schemaEnabled && !watchedVariant?.useBaseSchema && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleInferSchema}
+                  className="h-7 text-xs"
+                >
+                  <Sparkles className="h-3 w-3 mr-1.5" />
+                  Infer Schema from Value
+                </Button>
+              )}
 
               <Tabs
                 value={
-                  watchedVariant?.useDefaultSchema
+                  watchedVariant?.useBaseSchema
                     ? 'inherit'
                     : watchedVariant?.schemaEnabled
                       ? 'custom'
@@ -338,18 +337,18 @@ export function ConfigVariantFields({
                 onValueChange={mode => {
                   if (!canEditSchema) return;
 
-                  const useDefaultSchemaField = getFieldName('useDefaultSchema') as any;
+                  const useBaseSchemaField = getFieldName('useBaseSchema') as any;
                   const schemaEnabledField = getFieldName('schemaEnabled') as any;
                   const schemaField = getFieldName('schema') as any;
 
                   if (mode === 'inherit') {
-                    setValue(useDefaultSchemaField, true);
+                    setValue(useBaseSchemaField, true);
                     setValue(schemaEnabledField, false);
                   } else if (mode === 'none') {
-                    setValue(useDefaultSchemaField, false);
+                    setValue(useBaseSchemaField, false);
                     setValue(schemaEnabledField, false);
                   } else if (mode === 'custom') {
-                    setValue(useDefaultSchemaField, false);
+                    setValue(useBaseSchemaField, false);
                     setValue(schemaEnabledField, true);
                     // If enabling custom schema and current schema is empty, set default empty schema
                     if (!watchedVariant?.schema?.trim()) {
@@ -359,24 +358,24 @@ export function ConfigVariantFields({
                 }}
               >
                 <TabsList className="h-8">
+                  <TabsTrigger value="none" disabled={!canEditSchema} className="h-7 text-xs px-3">
+                    None
+                  </TabsTrigger>
                   {isEnvironmentVariant && hasDefaultVariant && (
                     <TabsTrigger
                       value="inherit"
                       disabled={!canEditSchema}
                       className="h-7 text-xs px-3"
                     >
-                      Base
+                      Use base schema
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="none" disabled={!canEditSchema} className="h-7 text-xs px-3">
-                    None
-                  </TabsTrigger>
                   <TabsTrigger
                     value="custom"
                     disabled={!canEditSchema}
                     className="h-7 text-xs px-3"
                   >
-                    Custom
+                    {isEnvironmentVariant ? 'Custom JSON Schema' : 'JSON Schema'}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -391,7 +390,7 @@ export function ConfigVariantFields({
         </div>
 
         {/* Schema editor - shown when schema is enabled and not using inherited schema */}
-        {watchedVariant?.schemaEnabled && !watchedVariant?.useDefaultSchema && (
+        {watchedVariant?.schemaEnabled && !watchedVariant?.useBaseSchema && (
           <FormField
             control={control}
             name={getFieldName('schema')}

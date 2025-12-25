@@ -1,8 +1,8 @@
+import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface GetSdkKeyListRequest {
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   projectId: string;
 }
 
@@ -10,6 +10,8 @@ export interface GetSdkKeyListResponse {
   sdkKeys: Array<{
     id: string;
     createdAt: Date;
+    keyPrefix: string;
+    keySuffix: string;
     name: string;
     description: string;
     environmentId: string;
@@ -22,9 +24,9 @@ export function createGetSdkKeyListUseCase(): TransactionalUseCase<
   GetSdkKeyListResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    await tx.permissionService.ensureCanReadSdkKeys(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const tokens = await tx.sdkKeys.list({projectId: req.projectId});
@@ -32,6 +34,8 @@ export function createGetSdkKeyListUseCase(): TransactionalUseCase<
       sdkKeys: tokens.map(t => ({
         id: t.id,
         createdAt: t.createdAt,
+        keyPrefix: t.keyPrefix,
+        keySuffix: t.keySuffix,
         name: t.name,
         description: t.description,
         environmentId: t.environmentId,

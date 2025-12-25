@@ -1,5 +1,6 @@
 import assert from 'assert';
 import {BadRequestError, ForbiddenError, NotFoundError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {WorkspaceMemberRole} from '../stores/workspace-member-store';
 import type {TransactionalUseCase} from '../use-case';
@@ -7,7 +8,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface UpdateWorkspaceMemberRoleRequest {
   workspaceId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   memberEmail: string;
   role: WorkspaceMemberRole;
 }
@@ -21,16 +22,19 @@ export function createUpdateWorkspaceMemberRoleUseCase(): TransactionalUseCase<
   UpdateWorkspaceMemberRoleResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureIsWorkspaceAdmin(ctx, {
       workspaceId: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const now = new Date();
 
     const workspace = await tx.workspaces.getById({
       id: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
 
     if (!workspace) {
@@ -62,7 +66,7 @@ export function createUpdateWorkspaceMemberRoleUseCase(): TransactionalUseCase<
       }
     }
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     await tx.workspaceMembers.updateRole({

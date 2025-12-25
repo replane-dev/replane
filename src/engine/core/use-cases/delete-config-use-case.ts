@@ -1,58 +1,53 @@
-import assert from 'assert';
-import {BadRequestError} from '../errors';
-import type {ConfigId} from '../stores/config-store';
+import {BadRequestError, NotFoundError} from '../errors';
+import {isApiKeyIdentity, type Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
-import type {NormalizedEmail} from '../zod';
 
 export interface DeleteConfigRequest {
-  configId: ConfigId;
-  currentUserEmail: NormalizedEmail;
-  prevVersion: number;
+  projectId: string;
+  configName: string;
+  identity: Identity;
+  /** Previous version for optimistic locking. If not provided, uses current config version. */
+  prevVersion?: number;
 }
 
 export interface DeleteConfigResponse {}
 
-export interface DeleteConfigUseCaseDeps {}
-
-export function createDeleteConfigUseCase(
-  deps: DeleteConfigUseCaseDeps,
-): TransactionalUseCase<DeleteConfigRequest, DeleteConfigResponse> {
+export function createDeleteConfigUseCase(): TransactionalUseCase<
+  DeleteConfigRequest,
+  DeleteConfigResponse
+> {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureCanManageConfig(ctx, {
-      configId: req.configId,
-      currentUserEmail: req.currentUserEmail,
+    const config = await tx.configs.getByName({
+      projectId: req.projectId,
+      name: req.configName,
     });
-
-    const currentUser = await tx.users.getByEmail(req.currentUserEmail);
-    assert(currentUser, 'Current user not found');
-
-    // Get the config to find the project
-    const config = await tx.configs.getById(req.configId);
     if (!config) {
-      throw new BadRequestError('Config not found');
+      throw new NotFoundError('Config not found');
     }
 
-    const project = await tx.projects.getById({
-      id: config.projectId,
-      currentUserEmail: req.currentUserEmail,
+    // Check permission
+    await tx.permissionService.ensureCanManageConfig(ctx, {
+      configId: config.id,
+      identity: req.identity,
     });
+
+    const project = await tx.projects.getByIdWithoutPermissionCheck(config.projectId);
     if (!project) {
       throw new BadRequestError('Project not found');
     }
 
-    // When requireProposals is enabled, forbid direct deletions.
-    // Users should use the proposal workflow instead of deleting configs outright.
-    if (project.requireProposals) {
+    // When requireProposals is enabled, forbid direct deletions for user identities.
+    // API key identities bypass the proposal requirement.
+    if (project.requireProposals && !isApiKeyIdentity(req.identity)) {
       throw new BadRequestError(
         'Direct config deletion is disabled. Please use the proposal workflow instead.',
       );
     }
 
     await tx.configService.deleteConfig(ctx, {
-      configId: req.configId,
-      reviewer: currentUser,
-      deleteAuthor: currentUser,
-      prevVersion: req.prevVersion,
+      configId: config.id,
+      identity: req.identity,
+      prevVersion: req.prevVersion ?? config.version,
     });
 
     return {};

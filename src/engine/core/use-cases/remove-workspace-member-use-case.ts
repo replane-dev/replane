@@ -1,5 +1,6 @@
 import assert from 'assert';
 import {BadRequestError, ForbiddenError, NotFoundError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {normalizeEmail} from '../utils';
@@ -7,7 +8,7 @@ import type {NormalizedEmail} from '../zod';
 
 export interface RemoveWorkspaceMemberRequest {
   workspaceId: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   memberEmail: string;
 }
 
@@ -20,16 +21,19 @@ export function createRemoveWorkspaceMemberUseCase(): TransactionalUseCase<
   RemoveWorkspaceMemberResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureIsWorkspaceAdmin(ctx, {
       workspaceId: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const now = new Date();
 
     const workspace = await tx.workspaces.getById({
       id: req.workspaceId,
-      currentUserEmail: req.currentUserEmail,
+      currentUserEmail,
     });
 
     if (!workspace) {
@@ -59,7 +63,7 @@ export function createRemoveWorkspaceMemberUseCase(): TransactionalUseCase<
       throw new BadRequestError('Cannot remove the last admin from the workspace');
     }
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     // Remove member from workspace and all its projects

@@ -1,18 +1,17 @@
-import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import {diffMembers} from '../member-diff';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {ProjectUserRole} from '../stores/project-user-store';
 import type {TransactionalUseCase} from '../use-case';
 import {normalizeEmail} from '../utils';
-import type {NormalizedEmail} from '../zod';
 
 export interface PatchProjectRequest {
   id: string;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
   details?: {
-    name: string;
-    description: string;
+    name?: string;
+    description?: string;
     requireProposals?: boolean;
     allowSelfApprovals?: boolean;
   };
@@ -28,48 +27,49 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
   PatchProjectResponse
 > {
   return async (ctx, tx, req) => {
-    await tx.permissionService.ensureIsWorkspaceMember(ctx, {
+    // Check permission to manage this project (includes scope check for API keys)
+    await tx.permissionService.ensureCanManageProject(ctx, {
       projectId: req.id,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
-    const existing = await tx.projects.getById({
-      currentUserEmail: req.currentUserEmail,
-      id: req.id,
-    });
+    const existing = await tx.projects.getByIdWithoutPermissionCheck(req.id);
     if (!existing) throw new BadRequestError('Project not found');
 
     const now = new Date();
-    const user = await tx.users.getByEmail(req.currentUserEmail);
-    assert(user, 'Current user not found');
 
     // Patch details
     if (req.details) {
-      const canManage = await tx.permissionService.canManageProject(ctx, {
-        projectId: req.id,
-        currentUserEmail: req.currentUserEmail,
-      });
-      if (!canManage) throw new BadRequestError('You are not allowed to manage this project');
-
       const {name, description, requireProposals, allowSelfApprovals} = req.details;
-      if (name !== existing.name) {
-        const same = await tx.projects.getByName({name, workspaceId: existing.workspaceId});
+
+      // Use existing values if not provided
+      const newName = name ?? existing.name;
+      const newDescription = description ?? existing.description;
+      const newRequireProposals = requireProposals ?? existing.requireProposals;
+      const newAllowSelfApprovals = allowSelfApprovals ?? existing.allowSelfApprovals;
+
+      // Check for duplicate name if name is being changed
+      if (newName !== existing.name) {
+        const same = await tx.projects.getByName({
+          name: newName,
+          workspaceId: existing.workspaceId,
+        });
         if (same) throw new BadRequestError('Project with this name already exists');
       }
 
       await tx.projects.updateById({
         id: req.id,
-        name,
-        description,
-        requireProposals: requireProposals ?? existing.requireProposals,
-        allowSelfApprovals: allowSelfApprovals ?? existing.allowSelfApprovals,
+        name: newName,
+        description: newDescription,
+        requireProposals: newRequireProposals,
+        allowSelfApprovals: newAllowSelfApprovals,
         updatedAt: now,
       });
 
       await tx.auditLogs.create({
         id: createAuditLogId(),
         createdAt: now,
-        userId: user.id,
+        userId: getUserIdFromIdentity(req.identity),
         projectId: existing.id,
         configId: null,
         payload: {
@@ -85,10 +85,10 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
           },
           after: {
             id: existing.id,
-            name,
-            description,
-            requireProposals: requireProposals ?? existing.requireProposals,
-            allowSelfApprovals: allowSelfApprovals ?? existing.allowSelfApprovals,
+            name: newName,
+            description: newDescription,
+            requireProposals: newRequireProposals,
+            allowSelfApprovals: newAllowSelfApprovals,
             createdAt: existing.createdAt,
             updatedAt: now,
           },
@@ -100,7 +100,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
     if (req.members) {
       await tx.permissionService.ensureCanManageProjectUsers(ctx, {
         projectId: req.id,
-        currentUserEmail: req.currentUserEmail,
+        identity: req.identity,
       });
 
       const prevUsers = await tx.projectUsers.getByProjectId(req.id);
@@ -130,7 +130,7 @@ export function createPatchProjectUseCase(): TransactionalUseCase<
         await tx.auditLogs.create({
           id: createAuditLogId(),
           createdAt: now,
-          userId: user.id,
+          userId: getUserIdFromIdentity(req.identity),
           configId: null,
           projectId: req.id,
           payload: {

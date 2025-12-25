@@ -2,12 +2,13 @@ import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {useAppFixture} from './fixtures/app-fixture';
 
-const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
+const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
+const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 
 describe('createConfig', () => {
-  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
+  const fixture = useAppFixture({authEmail: ADMIN_USER_EMAIL});
 
   it('should create a new config', async () => {
     const {configId} = await fixture.createConfig({
@@ -16,7 +17,7 @@ describe('createConfig', () => {
       value: {flag: true},
       schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
       description: 'A new config for testing',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -39,7 +40,10 @@ describe('createConfig', () => {
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
     expect(productionVariant).toBeDefined();
     expect(productionVariant?.value).toEqual({flag: true});
-    expect(productionVariant?.schema).toEqual({type: 'object', properties: {flag: {type: 'boolean'}}});
+    expect(productionVariant?.schema).toEqual({
+      type: 'object',
+      properties: {flag: {type: 'boolean'}},
+    });
     expect(productionVariant?.overrides).toEqual([]);
   });
 
@@ -51,7 +55,7 @@ describe('createConfig', () => {
       value: {enabled: true},
       schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
       description: 'Mixed case + digits + hyphen',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -68,7 +72,7 @@ describe('createConfig', () => {
       value: 'v1',
       schema: {type: 'string'},
       description: 'A duplicate config for testing v1',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -81,7 +85,7 @@ describe('createConfig', () => {
         value: 'v2',
         schema: {type: 'string'},
         description: 'A duplicate config for testing v2',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: fixture.identity,
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -106,7 +110,7 @@ describe('createConfig', () => {
       value: 'v1',
       schema: null,
       description: 'A config without a schema',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -131,7 +135,7 @@ describe('createConfig', () => {
         value: {flag: 'not_boolean'},
         schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
         description: 'Invalid create schema',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: fixture.identity,
         editorEmails: [],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -146,9 +150,9 @@ describe('createConfig', () => {
       value: 1,
       schema: {type: 'number'},
       description: 'Members test owner',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: ['editor1@example.com', 'editor2@example.com'],
-      maintainerEmails: [CURRENT_USER_EMAIL, 'owner2@example.com'],
+      maintainerEmails: [ADMIN_USER_EMAIL, 'owner2@example.com'],
       projectId: fixture.projectId,
     });
 
@@ -158,9 +162,11 @@ describe('createConfig', () => {
     });
     expect(config).toBeDefined();
     expect(config?.config.name).toBe('config_with_members_owner');
-    expect(config?.editorEmails).toEqual(['editor1@example.com', 'editor2@example.com'].map(normalizeEmail));
+    expect(config?.editorEmails).toEqual(
+      ['editor1@example.com', 'editor2@example.com'].map(normalizeEmail),
+    );
     expect(config?.maintainerEmails.sort()).toEqual(
-      [CURRENT_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
+      [ADMIN_USER_EMAIL, normalizeEmail('owner2@example.com')].sort(),
     );
     expect(config?.myRole).toBe('maintainer');
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
@@ -168,30 +174,29 @@ describe('createConfig', () => {
   });
 
   it('should set myRole=editor when current user only an editor', async () => {
+    // Register a non-admin user as editor
+    const testUserIdentity = await fixture.registerNonAdminWorkspaceMember(TEST_USER_EMAIL);
+
     await fixture.createConfig({
       overrides: [],
       name: 'config_with_editor_role',
       value: 'x',
       schema: {type: 'string'},
       description: 'Members test editor',
-      currentUserEmail: CURRENT_USER_EMAIL,
-      editorEmails: [CURRENT_USER_EMAIL],
+      identity: fixture.identity,
+      editorEmails: [TEST_USER_EMAIL],
       maintainerEmails: ['other-owner@example.com'],
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-
-    const {config} = await fixture.trpc.getConfig({
+    // Fetch as the non-admin user who is an editor
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
       name: 'config_with_editor_role',
       projectId: fixture.projectId,
+      identity: testUserIdentity,
     });
     expect(config?.config.name).toBe('config_with_editor_role');
-    expect(config?.editorEmails).toEqual([CURRENT_USER_EMAIL]);
+    expect(config?.editorEmails).toEqual([TEST_USER_EMAIL]);
     expect(config?.maintainerEmails).toEqual([normalizeEmail('other-owner@example.com')]);
     expect(config?.myRole).toBe('editor');
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
@@ -205,7 +210,7 @@ describe('createConfig', () => {
       value: 123,
       schema: {type: 'number'},
       description: 'audit test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
@@ -237,7 +242,7 @@ describe('createConfig', () => {
         value: {x: 1},
         schema: null,
         description: 'Test duplicate user',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: fixture.identity,
         editorEmails: [duplicateEmail, 'editor@example.com'],
         maintainerEmails: [duplicateEmail, 'owner@example.com'],
         projectId: fixture.projectId,
@@ -253,7 +258,7 @@ describe('createConfig', () => {
         value: {x: 1},
         schema: null,
         description: 'Test case insensitive duplicate',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: fixture.identity,
         editorEmails: ['User@Example.com'],
         maintainerEmails: ['user@example.com'],
         projectId: fixture.projectId,
@@ -269,7 +274,7 @@ describe('createConfig', () => {
         value: {x: 1},
         schema: null,
         description: 'Test case insensitive duplicate',
-        currentUserEmail: CURRENT_USER_EMAIL,
+        identity: fixture.identity,
         editorEmails: ['User@Example.com', 'User@Example.com'],
         maintainerEmails: [],
         projectId: fixture.projectId,
@@ -284,9 +289,9 @@ describe('createConfig', () => {
       value: {x: 1},
       schema: null,
       description: 'Test',
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: fixture.identity,
       editorEmails: [],
-      maintainerEmails: [CURRENT_USER_EMAIL],
+      maintainerEmails: [ADMIN_USER_EMAIL],
       projectId: fixture.projectId,
     });
 
@@ -294,8 +299,12 @@ describe('createConfig', () => {
     const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
     expect(variants).toHaveLength(2); // Production and Development
 
-    const productionVariant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
-    const developmentVariant = variants.find(v => v.environmentId === fixture.developmentEnvironmentId);
+    const productionVariant = variants.find(
+      v => v.environmentId === fixture.productionEnvironmentId,
+    );
+    const developmentVariant = variants.find(
+      v => v.environmentId === fixture.developmentEnvironmentId,
+    );
 
     expect(productionVariant).toBeDefined();
     expect(developmentVariant).toBeDefined();

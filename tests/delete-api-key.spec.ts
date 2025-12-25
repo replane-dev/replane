@@ -1,7 +1,7 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
-import {TEST_USER_ID, useAppFixture} from './fixtures/trpc-fixture';
+import {TEST_USER_ID, useAppFixture} from './fixtures/app-fixture';
 
 const CURRENT_USER_EMAIL = normalizeEmail('keydel@example.com');
 
@@ -10,7 +10,7 @@ describe('deleteSdkKey', () => {
 
   it('creator can delete their key', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'DeleteMe',
       description: '',
       projectId: fixture.projectId,
@@ -19,12 +19,12 @@ describe('deleteSdkKey', () => {
 
     await fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
       id: created.sdkKey.id,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
 
     const list = await fixture.engine.useCases.getSdkKeyList(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
     expect(list.sdkKeys).toHaveLength(0);
@@ -32,7 +32,7 @@ describe('deleteSdkKey', () => {
 
   it('non-creator cannot delete key', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'ProtectMe',
       description: '',
       projectId: fixture.projectId,
@@ -54,7 +54,7 @@ describe('deleteSdkKey', () => {
     await expect(
       fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
         id: created.sdkKey.id,
-        currentUserEmail: otherEmail,
+        identity: await fixture.emailToIdentity(otherEmail),
         projectId: fixture.projectId,
       }),
     ).rejects.toBeInstanceOf(Error);
@@ -62,7 +62,7 @@ describe('deleteSdkKey', () => {
 
   it('creates audit messages (sdk_key_created & sdk_key_deleted)', async () => {
     const created = await fixture.engine.useCases.createSdkKey(GLOBAL_CONTEXT, {
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       name: 'ToDeleteAudit',
       description: '',
       projectId: fixture.projectId,
@@ -70,7 +70,7 @@ describe('deleteSdkKey', () => {
     });
     await fixture.engine.useCases.deleteSdkKey(GLOBAL_CONTEXT, {
       id: created.sdkKey.id,
-      currentUserEmail: CURRENT_USER_EMAIL,
+      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       projectId: fixture.projectId,
     });
 

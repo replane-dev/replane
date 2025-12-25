@@ -1,14 +1,14 @@
 import assert from 'assert';
 import {BadRequestError} from '../errors';
+import {requireUserEmail, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 import {normalizeEmail} from '../utils';
-import type {NormalizedEmail} from '../zod';
 
 export interface UpdateProjectUsersRequest {
   projectId: string;
   users: Array<{email: string; role: 'admin' | 'maintainer'}>;
-  currentUserEmail: NormalizedEmail;
+  identity: Identity;
 }
 
 export interface UpdateProjectUsersResponse {
@@ -20,9 +20,12 @@ export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
   UpdateProjectUsersResponse
 > {
   return async (ctx, tx, req) => {
+    // This operation requires a user identity
+    const currentUserEmail = requireUserEmail(req.identity);
+
     await tx.permissionService.ensureCanManageProjectUsers(ctx, {
       projectId: req.projectId,
-      currentUserEmail: req.currentUserEmail,
+      identity: req.identity,
     });
 
     const existing = await tx.projectUsers.getByProjectId(req.projectId);
@@ -63,7 +66,7 @@ export function createUpdateProjectUsersUseCase(): TransactionalUseCase<
       })),
     );
 
-    const user = await tx.users.getByEmail(req.currentUserEmail);
+    const user = await tx.users.getByEmail(currentUserEmail);
     assert(user, 'Current user not found');
 
     await tx.auditLogs.create({
