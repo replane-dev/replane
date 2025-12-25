@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build Docker image
+        run: docker compose -f docker-compose.e2e.yml build
+
       - name: Start services
         run: |
           docker compose -f docker-compose.e2e.yml up -d

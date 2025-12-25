@@ -11,7 +11,9 @@
 #   docker compose -f docker-compose.e2e.yml down
 
 x-replane-common: &replane-common
-  image: replane/replane:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
   depends_on:
     postgres:
       condition: service_healthy
