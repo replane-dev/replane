@@ -1636,8 +1636,22 @@ export async function migrateStep(
   schema: string,
 ): Promise<MigrateStepResult> {
   try {
-    // Begin transaction and acquire transaction-level advisory lock
-    await client.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+    // Begin transaction and acquire transaction-level advisory lock.
+    //
+    // IMPORTANT:
+    // We intentionally do NOT use SERIALIZABLE here.
+    //
+    // When multiple Replane instances start concurrently, they will all try to migrate.
+    // The first statement after BEGIN is `pg_advisory_xact_lock(...)`, which can block
+    // while another instance is migrating. In SERIALIZABLE mode, Postgres takes a
+    // consistent snapshot for the transaction at the beginning of the first statement,
+    // and keeping that snapshot while waiting can lead to spurious 40001 serialization
+    // failures once the lock is acquired.
+    //
+    // The advisory lock already provides mutual exclusion for migrations, so the extra
+    // SERIALIZABLE isolation is unnecessary and can actively hurt reliability in
+    // multi-instance deployments.
+    await client.query('BEGIN');
     await client.query(/*sql*/ `SELECT pg_advisory_xact_lock(hashtext('migrations_${schema}'));`);
 
     // Ensure migrations table exists
