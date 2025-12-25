@@ -68,7 +68,7 @@ export default async function RootLayout({
               options={{
                 baseUrl: process.env.REPLANE_BASE_URL!,
                 sdkKey: process.env.REPLANE_SDK_KEY!,
-                fallbacks: DEFAULT_CONFIGS,
+                defaults: DEFAULT_CONFIGS,
               }}
             >
               <AuthSession>
