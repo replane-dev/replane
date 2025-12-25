@@ -25,7 +25,7 @@ import type {WorkspaceMemberStore} from './stores/workspace-member-store';
 import type {WorkspaceStore} from './stores/workspace-store';
 import type {UserStore} from './user-store';
 import type {WorkspaceMemberService} from './workspace-member-service';
-import type {WorkspaceQueryService} from './workspace-query-service';
+import type {WorkspaceService} from './workspace-service';
 
 export interface ProjectRequest {
   projectId: string;
@@ -74,7 +74,7 @@ export interface UseCaseTransaction {
   // Query services
   configQueryService: ConfigQueryService;
   projectQueryService: ProjectQueryService;
-  workspaceQueryService: WorkspaceQueryService;
+  workspaceService: WorkspaceService;
   // Needed for permission checks
   db: Kysely<DB>;
 }

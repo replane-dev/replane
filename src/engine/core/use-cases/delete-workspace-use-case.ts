@@ -1,6 +1,5 @@
-import assert from 'assert';
-import {ForbiddenError, NotFoundError} from '../errors';
-import {requireUserEmail, type Identity} from '../identity';
+import {NotFoundError} from '../errors';
+import {getUserIdFromIdentity, type Identity} from '../identity';
 import {createAuditLogId} from '../stores/audit-log-store';
 import type {TransactionalUseCase} from '../use-case';
 
@@ -18,33 +17,24 @@ export function createDeleteWorkspaceUseCase(): TransactionalUseCase<
   DeleteWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
-    // Deleting workspaces requires a user identity
-    const currentUserEmail = requireUserEmail(req.identity);
+    await tx.permissionService.ensureIsWorkspaceAdmin(ctx, {
+      workspaceId: req.workspaceId,
+      identity: req.identity,
+    });
 
     const now = new Date();
 
-    const workspace = await tx.workspaces.getById({
-      id: req.workspaceId,
-      currentUserEmail,
-    });
+    const workspace = await tx.workspaces.getByIdSimple(req.workspaceId);
 
     if (!workspace) {
       throw new NotFoundError('Workspace not found');
     }
 
-    // Only admins can delete workspaces
-    if (workspace.myRole !== 'admin') {
-      throw new ForbiddenError('Only workspace admins can delete the workspace');
-    }
-
-    const user = await tx.users.getByEmail(currentUserEmail);
-    assert(user, 'Current user not found');
-
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: now,
       projectId: null,
-      userId: user.id,
+      userId: getUserIdFromIdentity(req.identity),
       configId: null,
       payload: {
         type: 'workspace_deleted',

@@ -99,7 +99,7 @@ import {createVerifyPasswordCredentialsUseCase} from './core/use-cases/verify-pa
 import {UserStore} from './core/user-store';
 import {runTransactional} from './core/utils';
 import {WorkspaceMemberService} from './core/workspace-member-service';
-import {WorkspaceQueryService} from './core/workspace-query-service';
+import {WorkspaceService} from './core/workspace-service';
 
 export interface EngineOptions {
   logLevel: LogLevel;
@@ -205,7 +205,7 @@ function toUseCase<TReq, TRes>(
           projectUsers,
           permissionService,
         );
-        const workspaceQueryService = new WorkspaceQueryService(
+        const workspaceService = new WorkspaceService(
           workspaces,
           workspaceMembers,
           projects,
@@ -213,7 +213,6 @@ function toUseCase<TReq, TRes>(
           projectEnvironments,
           configs,
           configService,
-          users,
           auditLogs,
         );
 
@@ -242,7 +241,7 @@ function toUseCase<TReq, TRes>(
           dateProvider: options.dateProvider,
           configQueryService,
           projectQueryService,
-          workspaceQueryService,
+          workspaceService,
           db: dbTx,
         };
         const result = await useCase(ctx, tx, req);
@@ -381,6 +380,8 @@ export async function createEngine(options: EngineOptions) {
     mail: options.emailService,
     stores: {
       users: new UserStore(db),
+      workspaces: new WorkspaceStore(db),
+      projects: new ProjectStore(db),
     },
     testing: {
       pool,

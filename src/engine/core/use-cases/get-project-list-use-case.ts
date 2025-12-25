@@ -3,6 +3,7 @@ import {
   hasProjectAccess,
   hasScope,
   isApiKeyIdentity,
+  isSuperuserIdentity,
   isUserIdentity,
   type Identity,
 } from '../identity';
@@ -29,6 +30,24 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
         currentUserEmail: req.identity.user.email,
       });
       return {projects};
+    }
+
+    if (isSuperuserIdentity(req.identity)) {
+      // Superuser: return all projects in the instance
+      const allProjects = await tx.projects.getAll();
+
+      return {
+        projects: allProjects.map(p => ({
+          id: p.id,
+          name: p.name,
+          workspaceId: p.workspaceId,
+          descriptionPreview: p.descriptionPreview,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          requireProposals: p.requireProposals,
+          allowSelfApprovals: p.allowSelfApprovals,
+        })),
+      };
     }
 
     if (isApiKeyIdentity(req.identity)) {

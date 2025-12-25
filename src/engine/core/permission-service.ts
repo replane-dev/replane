@@ -1,7 +1,7 @@
 import type {Context} from './context';
 import {ForbiddenError} from './errors';
 import type {ApiKeyIdentity, Identity, UserIdentity} from './identity';
-import {hasProjectAccess, hasScope, isUserIdentity} from './identity';
+import {hasProjectAccess, hasScope, isSuperuserIdentity, isUserIdentity} from './identity';
 import type {Logger} from './logger';
 import {getHighestRole, type Role} from './role-utils';
 import type {ConfigStore} from './stores/config-store';
@@ -427,6 +427,7 @@ export class PermissionService {
     ctx: Context,
     params: {configId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserEditConfig(ctx, {
         configId: params.configId,
@@ -449,6 +450,7 @@ export class PermissionService {
     ctx: Context,
     params: {configId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserManageConfig(ctx, {
         configId: params.configId,
@@ -471,6 +473,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserManageProjectSdkKeys(ctx, {
         projectId: params.projectId,
@@ -490,6 +493,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserManageProject(ctx, {
         projectId: params.projectId,
@@ -509,6 +513,7 @@ export class PermissionService {
     ctx: Context,
     params: {workspaceId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       // Users can create projects if they're workspace members
       return this.isUserWorkspaceMember(ctx, {
@@ -529,6 +534,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserDeleteProject(ctx, {
         projectId: params.projectId,
@@ -548,6 +554,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserEditProjectConfigs(ctx, {
         projectId: params.projectId,
@@ -567,6 +574,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserManageProjectConfigs(ctx, {
         projectId: params.projectId,
@@ -586,6 +594,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserManageProjectUsers(ctx, {
         projectId: params.projectId,
@@ -605,6 +614,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserManageProjectEnvironments(ctx, {
         projectId: params.projectId,
@@ -624,6 +634,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.canUserCreateConfig(ctx, {
         projectId: params.projectId,
@@ -639,10 +650,21 @@ export class PermissionService {
     return this.canApiKeyAccessProject(ctx, params.identity, params.projectId);
   }
 
+  async canCreateWorkspace(ctx: Context, params: {identity: Identity}): Promise<boolean> {
+    if (params.identity.type === 'superuser') {
+      return true;
+    } else if (params.identity.type === 'api_key') {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   async isWorkspaceMember(
     ctx: Context,
     params: {projectId: string; identity: Identity} | {workspaceId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       if ('projectId' in params) {
         return this.isUserWorkspaceMember(ctx, {
@@ -670,6 +692,7 @@ export class PermissionService {
     ctx: Context,
     params: {workspaceId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.isUserWorkspaceAdmin(ctx, {
         workspaceId: params.workspaceId,
@@ -677,7 +700,7 @@ export class PermissionService {
       });
     }
 
-    // API keys cannot be workspace admins - admin operations require user identity
+    // API keys cannot be workspace admins
     return false;
   }
 
@@ -689,6 +712,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       return this.isUserWorkspaceAdminForProject(ctx, {
         projectId: params.projectId,
@@ -711,6 +735,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<Role | null> {
+    if (isSuperuserIdentity(params.identity)) return 'admin';
     if (!isUserIdentity(params.identity)) {
       // API keys don't have project roles
       return null;
@@ -734,6 +759,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       // Users can read projects if they're workspace members
       return this.isUserWorkspaceMember(ctx, {
@@ -754,6 +780,7 @@ export class PermissionService {
     ctx: Context,
     params: {configId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     const projectId = await this.getConfigProjectId(params.configId);
     if (!projectId) return false;
 
@@ -778,6 +805,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       // Users can read configs if they're workspace members
       return this.isUserWorkspaceMember(ctx, {
@@ -799,6 +827,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       // Users can read SDK keys if they're workspace members
       return this.isUserWorkspaceMember(ctx, {
@@ -819,6 +848,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       // Users can read environments if they're workspace members
       return this.isUserWorkspaceMember(ctx, {
@@ -843,6 +873,7 @@ export class PermissionService {
     ctx: Context,
     params: {projectId: string; identity: Identity},
   ): Promise<boolean> {
+    if (isSuperuserIdentity(params.identity)) return true;
     if (isUserIdentity(params.identity)) {
       // Users can read members if they're workspace members
       return this.isUserWorkspaceMember(ctx, {
@@ -862,6 +893,13 @@ export class PermissionService {
   // ============================================================================
   // Ensure methods (throw on failure)
   // ============================================================================
+
+  async ensureCanCreateWorkspace(ctx: Context, params: {identity: Identity}): Promise<void> {
+    const canCreate = await this.canCreateWorkspace(ctx, params);
+    if (!canCreate) {
+      throw new ForbiddenError('User does not have permission to create workspaces');
+    }
+  }
 
   async ensureCanEditConfig(
     ctx: Context,

@@ -130,6 +130,15 @@ export class WorkspaceStore {
     return undefined;
   }
 
+  /**
+   * Get all workspaces in the system (for superuser access).
+   */
+  async getAll(): Promise<Workspace[]> {
+    const rows = await this.db.selectFrom('workspaces').selectAll().orderBy('name').execute();
+
+    return rows.map(mapWorkspace);
+  }
+
   async create(workspace: Workspace): Promise<void> {
     await this.db
       .insertInto('workspaces')

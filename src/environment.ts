@@ -277,3 +277,13 @@ export function isDevelopment(): boolean {
 export function isRegistrationDisabled(): boolean {
   return process.env.DISABLE_REGISTRATION === 'true';
 }
+
+/**
+ * Gets the superuser API key from environment variables.
+ * The superuser API key bypasses all permission checks and allows any operation.
+ *
+ * @returns the superuser API key, or undefined if not configured
+ */
+export function getSuperuserApiKey(): string | undefined {
+  return process.env.SUPERUSER_API_KEY;
+}

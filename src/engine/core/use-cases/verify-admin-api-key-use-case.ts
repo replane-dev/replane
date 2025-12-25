@@ -1,8 +1,15 @@
+import {getSuperuserApiKey} from '@/environment';
+import {timingSafeEqual} from 'crypto';
 import type {Kysely} from 'kysely';
 import {LRUCache} from 'lru-cache';
 import {extractAdminApiKeyId, hashAdminApiKey} from '../admin-api-key-utils';
 import type {AdminApiKeyScope, DB} from '../db';
-import {createApiKeyIdentity, type ApiKeyIdentity} from '../identity';
+import {
+  createApiKeyIdentity,
+  createSuperuserIdentity,
+  type ApiKeyIdentity,
+  type SuperuserIdentity,
+} from '../identity';
 import type {UseCase} from '../use-case';
 
 export interface VerifyAdminApiKeyRequest {
@@ -10,11 +17,11 @@ export interface VerifyAdminApiKeyRequest {
 }
 
 export interface VerifyAdminApiKeyResult {
-  identity: ApiKeyIdentity;
+  identity: ApiKeyIdentity | SuperuserIdentity;
 }
 
 export type VerifyAdminApiKeyResponse =
-  | {status: 'valid'; identity: ApiKeyIdentity}
+  | {status: 'valid'; identity: ApiKeyIdentity | SuperuserIdentity}
   | {status: 'invalid'; reason: 'invalid_format' | 'invalid_key' | 'expired'};
 
 export interface VerifyAdminApiKeyUseCaseDeps {
@@ -34,6 +41,16 @@ export function createVerifyAdminApiKeyUseCase(
 
   return async (_ctx, req) => {
     const {key} = req;
+
+    // Check if this is the superuser API key using constant-time comparison
+    const superuserKey = getSuperuserApiKey();
+    if (superuserKey) {
+      const keyBuffer = Buffer.from(key);
+      const superuserKeyBuffer = Buffer.from(superuserKey);
+      if (timingSafeEqual(keyBuffer, superuserKeyBuffer)) {
+        return {status: 'valid', identity: createSuperuserIdentity()};
+      }
+    }
 
     const cached = keyCache.get(key);
     if (cached) return await cached;

@@ -1,12 +1,10 @@
-import assert from 'assert';
 import {ConfigService} from '../config-service';
 import {type Context} from '../context';
-import {requireUserEmail, type Identity} from '../identity';
+import {getUserIdFromIdentity, isUserIdentity, type Identity} from '../identity';
 import {AuditLogStore, createAuditLogId} from '../stores/audit-log-store';
 import {ConfigStore} from '../stores/config-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import {createProjectId, Project, ProjectStore} from '../stores/project-store';
-import type {ProjectUserStore} from '../stores/project-user-store';
 import type {WorkspaceMemberStore} from '../stores/workspace-member-store';
 import {createWorkspaceId, Workspace, WorkspaceStore} from '../stores/workspace-store';
 import type {TransactionalUseCase} from '../use-case';
@@ -28,13 +26,11 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
   CreateWorkspaceResponse
 > {
   return async (ctx, tx, req) => {
-    // Creating workspaces requires a user identity
-    const currentUserEmail = requireUserEmail(req.identity);
+    await tx.permissionService.ensureCanCreateWorkspace(ctx, {
+      identity: req.identity,
+    });
 
     const now = new Date();
-
-    const user = await tx.users.getByEmail(currentUserEmail);
-    assert(user, 'Current user not found');
 
     const {workspace, project} = await createWorkspace({
       ctx,
@@ -43,7 +39,6 @@ export function createCreateWorkspaceUseCase(): TransactionalUseCase<
       workspaceStore: tx.workspaces,
       workspaceMemberStore: tx.workspaceMembers,
       projectStore: tx.projects,
-      projectUserStore: tx.projectUsers,
       projectEnvironmentStore: tx.projectEnvironments,
       configs: tx.configs,
       configService: tx.configService,
@@ -62,7 +57,6 @@ export async function createWorkspace(params: {
   workspaceStore: WorkspaceStore;
   workspaceMemberStore: WorkspaceMemberStore;
   projectStore: ProjectStore;
-  projectUserStore: ProjectUserStore;
   projectEnvironmentStore: ProjectEnvironmentStore;
   auditLogs: AuditLogStore;
   configs: ConfigStore;
@@ -77,7 +71,6 @@ export async function createWorkspace(params: {
     workspaceStore,
     workspaceMemberStore,
     projectStore,
-    projectUserStore,
     projectEnvironmentStore,
     auditLogs,
     configs,
@@ -86,14 +79,8 @@ export async function createWorkspace(params: {
     exampleProject,
   } = params;
 
-  // This function requires a user identity
-  if (identity.type !== 'user') {
-    throw new Error('Only users can create workspaces');
-  }
-  const currentUserEmail = identity.user.email;
-
   const workspaceName =
-    name.type === 'personal' && identity.user.name
+    name.type === 'personal' && isUserIdentity(identity) && identity.user.name
       ? `${identity.user.name}'s Replane`
       : name.type === 'custom'
         ? name.name
@@ -108,15 +95,17 @@ export async function createWorkspace(params: {
   };
 
   await workspaceStore.create(workspace);
-  await workspaceMemberStore.create([
-    {
-      workspaceId: workspace.id,
-      email: currentUserEmail,
-      role: 'admin',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
+  if (isUserIdentity(identity)) {
+    await workspaceMemberStore.create([
+      {
+        workspaceId: workspace.id,
+        email: identity.user.email,
+        role: 'admin',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+  }
   const project: Project = {
     id: createProjectId(),
     name: 'First project',
@@ -128,15 +117,6 @@ export async function createWorkspace(params: {
     updatedAt: new Date(),
   };
   await projectStore.create(project);
-  await projectUserStore.create([
-    {
-      projectId: project.id,
-      email: currentUserEmail,
-      role: 'admin',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
   const productionId = createUuidV7();
   await projectEnvironmentStore.create({
     projectId: project.id,
@@ -162,7 +142,7 @@ export async function createWorkspace(params: {
     id: createAuditLogId(),
     createdAt: now,
     projectId: null,
-    userId: identity.user.id,
+    userId: getUserIdFromIdentity(identity),
     configId: null,
     payload: {
       type: 'workspace_created',
@@ -180,7 +160,7 @@ export async function createWorkspace(params: {
       configs: configs,
       configService: configService,
       projectEnvironments: projectEnvironmentStore,
-      userId: identity.user.id,
+      userId: getUserIdFromIdentity(identity),
     });
   }
 

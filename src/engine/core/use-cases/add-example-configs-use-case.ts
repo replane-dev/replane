@@ -49,7 +49,7 @@ export async function createExampleConfigs(params: {
   configs: ConfigStore;
   configService: ConfigService;
   projectEnvironments: ProjectEnvironmentStore;
-  userId: number;
+  userId: number | null;
 }) {
   const {ctx, projectId, configs, configService, projectEnvironments, userId} = params;
 

@@ -28,6 +28,12 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
   CreateProjectResponse
 > {
   return async (ctx, tx, req) => {
+    // Check permission to create projects in this workspace
+    await tx.permissionService.ensureCanCreateProject(ctx, {
+      workspaceId: req.workspaceId,
+      identity: req.identity,
+    });
+
     const now = new Date();
 
     const existing = await tx.projects.getByName({
@@ -35,12 +41,6 @@ export function createCreateProjectUseCase(): TransactionalUseCase<
       workspaceId: req.workspaceId,
     });
     if (existing) throw new BadRequestError('Project with this name already exists');
-
-    // Check permission to create projects in this workspace
-    await tx.permissionService.ensureCanCreateProject(ctx, {
-      workspaceId: req.workspaceId,
-      identity: req.identity,
-    });
 
     const projectId = createProjectId();
 

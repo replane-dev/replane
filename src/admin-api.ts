@@ -7,14 +7,14 @@ import * as Sentry from '@sentry/nextjs';
 import {cors} from 'hono/cors';
 import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
-import type {ApiKeyIdentity} from './engine/core/identity';
+import {type ApiKeyIdentity, type SuperuserIdentity} from './engine/core/identity';
 import {OverrideSchema} from './engine/core/override-condition-schemas';
 import {ConfigSchema, ConfigValue} from './engine/core/zod';
 
 interface HonoEnv {
   Variables: {
     context: Context;
-    identity: ApiKeyIdentity;
+    identity: ApiKeyIdentity | SuperuserIdentity;
   };
 }
 
@@ -35,6 +35,21 @@ const ProjectListResponse = z
     projects: z.array(ProjectDto),
   })
   .openapi('ProjectListResponse');
+
+const WorkspaceDto = z
+  .object({
+    id: z.uuid(),
+    name: z.string(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .openapi('Workspace');
+
+const WorkspaceListResponse = z
+  .object({
+    workspaces: z.array(WorkspaceDto),
+  })
+  .openapi('WorkspaceListResponse');
 
 const ConfigVariantDto = z
   .object({
@@ -310,6 +325,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
               schema: z.object({
                 name: z.string().min(1).max(100),
                 description: z.string().max(10000),
+                workspaceId: z.uuid(),
               }),
             },
           },
@@ -335,7 +351,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
 
       const {projectId} = await engine.useCases.createProject(ctx, {
         identity,
-        workspaceId: identity.workspaceId,
+        workspaceId: body.workspaceId,
         name: body.name,
         description: body.description,
       });
@@ -424,6 +440,166 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         identity,
         id: projectId,
         confirmName: null,
+      });
+
+      return c.body(null, 204);
+    },
+  );
+
+  // ===== Workspace endpoints =====
+
+  adminApi.openapi(
+    {
+      method: 'get',
+      path: '/workspaces',
+      operationId: 'listWorkspaces',
+      responses: {
+        200: {
+          description: 'List of workspaces accessible to the identity',
+          content: {
+            'application/json': {
+              schema: WorkspaceListResponse,
+            },
+          },
+        },
+      },
+    },
+    async c => {
+      const identity = c.get('identity');
+      const ctx = c.get('context');
+
+      const workspaces = await engine.useCases.getWorkspaceList(ctx, {identity});
+
+      return c.json({
+        workspaces: workspaces.map(w => ({
+          id: w.id,
+          name: w.name,
+          createdAt: w.createdAt.toISOString(),
+          updatedAt: w.updatedAt.toISOString(),
+        })),
+      });
+    },
+  );
+
+  adminApi.openapi(
+    {
+      method: 'get',
+      path: '/workspaces/{workspaceId}',
+      operationId: 'getWorkspace',
+      request: {
+        params: z.object({
+          workspaceId: z.uuid(),
+        }),
+      },
+      responses: {
+        200: {
+          description: 'Workspace details',
+          content: {
+            'application/json': {
+              schema: WorkspaceDto,
+            },
+          },
+        },
+        404: {
+          description: 'Workspace not found',
+        },
+      },
+    },
+    async c => {
+      const identity = c.get('identity');
+      const {workspaceId} = c.req.valid('param');
+      const ctx = c.get('context');
+
+      const workspace = await engine.useCases.getWorkspace(ctx, {
+        identity,
+        workspaceId,
+      });
+
+      return c.json({
+        id: workspace.id,
+        name: workspace.name,
+        createdAt: workspace.createdAt.toISOString(),
+        updatedAt: workspace.updatedAt.toISOString(),
+      });
+    },
+  );
+
+  adminApi.openapi(
+    {
+      method: 'post',
+      path: '/workspaces',
+      operationId: 'createWorkspace',
+      request: {
+        body: {
+          content: {
+            'application/json': {
+              schema: z.object({
+                name: z.string().min(1).max(100),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Workspace created',
+          content: {
+            'application/json': {
+              schema: z.object({
+                id: z.uuid(),
+              }),
+            },
+          },
+        },
+        403: {
+          description: 'Forbidden - requires superuser access',
+        },
+      },
+    },
+    async c => {
+      const identity = c.get('identity');
+      const body = c.req.valid('json');
+      const ctx = c.get('context');
+
+      const {workspaceId} = await engine.useCases.createWorkspace(ctx, {
+        identity,
+        name: body.name,
+      });
+
+      return c.json({id: workspaceId}, 201);
+    },
+  );
+
+  adminApi.openapi(
+    {
+      method: 'delete',
+      path: '/workspaces/{workspaceId}',
+      operationId: 'deleteWorkspace',
+      request: {
+        params: z.object({
+          workspaceId: z.uuid(),
+        }),
+      },
+      responses: {
+        204: {
+          description: 'Workspace deleted',
+        },
+        403: {
+          description: 'Forbidden - requires superuser access',
+        },
+        404: {
+          description: 'Workspace not found',
+        },
+      },
+    },
+    async c => {
+      const identity = c.get('identity');
+      const {workspaceId} = c.req.valid('param');
+      const ctx = c.get('context');
+
+      await engine.useCases.deleteWorkspace(ctx, {
+        identity,
+        workspaceId,
       });
 
       return c.body(null, 204);

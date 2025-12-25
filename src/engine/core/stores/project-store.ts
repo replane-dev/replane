@@ -141,6 +141,25 @@ export class ProjectStore {
     }));
   }
 
+  /**
+   * Get all projects in the system (without user-specific role info).
+   * Used for superuser access.
+   */
+  async getAll(): Promise<ProjectInfo[]> {
+    const rows = await this.db.selectFrom('projects').selectAll().orderBy('name').execute();
+
+    return rows.map(p => ({
+      id: p.id,
+      name: p.name,
+      descriptionPreview: p.description.substring(0, 100),
+      workspaceId: p.workspace_id,
+      requireProposals: p.require_proposals,
+      allowSelfApprovals: p.allow_self_approvals,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
+  }
+
   async getById(params: {
     id: string;
     currentUserEmail: NormalizedEmail;

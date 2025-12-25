@@ -61,10 +61,19 @@ export interface ApiKeyIdentity {
 }
 
 /**
- * Discriminated union representing who is making a request.
- * Can be either a user (authenticated via session) or an API key.
+ * Identity representing a superuser with full access to all operations.
+ * This bypasses all permission checks.
  */
-export type Identity = UserIdentity | ApiKeyIdentity;
+export interface SuperuserIdentity {
+  type: 'superuser';
+  identityName: string;
+}
+
+/**
+ * Discriminated union representing who is making a request.
+ * Can be a user (authenticated via session), an API key, or a superuser.
+ */
+export type Identity = UserIdentity | ApiKeyIdentity | SuperuserIdentity;
 
 /**
  * Helper to check if an identity is a user.
@@ -78,6 +87,13 @@ export function isUserIdentity(identity: Identity): identity is UserIdentity {
  */
 export function isApiKeyIdentity(identity: Identity): identity is ApiKeyIdentity {
   return identity.type === 'api_key';
+}
+
+/**
+ * Helper to check if an identity is a superuser.
+ */
+export function isSuperuserIdentity(identity: Identity): identity is SuperuserIdentity {
+  return identity.type === 'superuser';
 }
 
 /**
@@ -107,6 +123,16 @@ export function createApiKeyIdentity(params: {
     workspaceId: params.workspaceId,
     projectIds: params.projectIds,
     scopes: params.scopes,
+  };
+}
+
+/**
+ * Create a superuser identity.
+ */
+export function createSuperuserIdentity(): SuperuserIdentity {
+  return {
+    type: 'superuser',
+    identityName: 'Superuser',
   };
 }
 

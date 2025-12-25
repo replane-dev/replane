@@ -14,6 +14,7 @@ describe('Admin API - Create Project', () => {
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'API Created Project',
       description: 'Created via Admin API',
+      workspaceId: fixture.workspaceId,
     });
 
     expect(response.status).toBe(201);
@@ -35,6 +36,7 @@ describe('Admin API - Create Project', () => {
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Should Fail',
       description: 'Test project',
+      workspaceId: fixture.workspaceId,
     });
 
     expect(response.status).toBe(403);
@@ -48,6 +50,7 @@ describe('Admin API - Create Project', () => {
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Custom Settings Project',
       description: 'With proposals enabled',
+      workspaceId: fixture.workspaceId,
       requireProposals: true,
       allowSelfApprovals: false,
     });
@@ -72,12 +75,14 @@ describe('Admin API - Create Project', () => {
     await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Duplicate Test',
       description: 'First project',
+      workspaceId: fixture.workspaceId,
     });
 
     // Try to create duplicate
     const response = await fixture.adminApiRequest('POST', '/projects', token, {
       name: 'Duplicate Test',
       description: 'Second project',
+      workspaceId: fixture.workspaceId,
     });
 
     expect(response.status).toBe(400);
@@ -85,5 +90,18 @@ describe('Admin API - Create Project', () => {
     // Error message could be in different formats depending on the error type
     const errorString = typeof data.error === 'string' ? data.error : JSON.stringify(data);
     expect(errorString.toLowerCase()).toContain('already exists');
+  });
+
+  it('should return 400 when workspaceId is missing', async () => {
+    const {token} = await fixture.createAdminApiKey({
+      scopes: ['project:write'],
+    });
+
+    const response = await fixture.adminApiRequest('POST', '/projects', token, {
+      name: 'Missing Workspace',
+      description: 'Test project without workspaceId',
+    });
+
+    expect(response.status).toBe(400);
   });
 });
