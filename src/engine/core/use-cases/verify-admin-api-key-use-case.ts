@@ -44,7 +44,7 @@ export function createVerifyAdminApiKeyUseCase(
 
     // Check if this is the superuser API key using constant-time comparison
     const superuserKey = getSuperuserApiKey();
-    if (superuserKey) {
+    if (superuserKey && superuserKey.length === key.length) {
       const keyBuffer = Buffer.from(key);
       const superuserKeyBuffer = Buffer.from(superuserKey);
       if (timingSafeEqual(keyBuffer, superuserKeyBuffer)) {
