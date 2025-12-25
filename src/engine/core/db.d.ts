@@ -6,16 +6,16 @@
 import type {ColumnType} from 'kysely';
 
 export type AdminApiKeyScope =
-  | 'project:read'
-  | 'project:write'
   | 'config:read'
   | 'config:write'
   | 'environment:read'
   | 'environment:write'
-  | 'sdk_key:read'
-  | 'sdk_key:write'
   | 'member:read'
-  | 'member:write';
+  | 'member:write'
+  | 'project:read'
+  | 'project:write'
+  | 'sdk_key:read'
+  | 'sdk_key:write';
 
 export type ConfigProposalRejectionReason =
   | 'another_proposal_approved'
@@ -58,11 +58,6 @@ export interface AdminApiKeyProjects {
   project_id: string;
 }
 
-export interface AdminApiKeyScopes {
-  admin_api_key_id: string;
-  scope: AdminApiKeyScope;
-}
-
 export interface AdminApiKeys {
   created_at: Generated<Timestamp>;
   created_by_email: string;
@@ -71,10 +66,16 @@ export interface AdminApiKeys {
   id: Generated<string>;
   key_hash: string;
   key_prefix: string;
+  key_suffix: string;
   last_used_at: Timestamp | null;
   name: string;
   updated_at: Generated<Timestamp>;
   workspace_id: string;
+}
+
+export interface AdminApiKeyScopes {
+  admin_api_key_id: string;
+  scope: AdminApiKeyScope;
 }
 
 export interface AuditLogs {
@@ -242,6 +243,8 @@ export interface SdkKeys {
   environment_id: string;
   id: string;
   key_hash: string;
+  key_prefix: string;
+  key_suffix: string;
   name: string;
   project_id: string;
 }
