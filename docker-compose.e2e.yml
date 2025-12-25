@@ -1,0 +1,54 @@
+# Docker Compose for E2E tests
+#
+# This setup runs multiple Replane instances to test replication scenarios:
+# - replane-1: Admin API endpoint
+# - replane-2: Edge/SDK API endpoint
+# - replane-3: Extra instance for replication testing
+#
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up -d
+#   SUPERUSER_API_KEY=<key> REPLANE_ADMIN_API_BASE_URL=http://localhost:8084 REPLANE_EDGE_API_BASE_URL=http://localhost:8085 pnpm test:e2e
+#   docker compose -f docker-compose.e2e.yml down
+
+x-replane-common: &replane-common
+  image: replane/replane:latest
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &replane-env
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/replane
+    BASE_URL: http://localhost:8080
+    SECRET_KEY: test-secret-key-for-e2e
+    SUPERUSER_API_KEY: ${SUPERUSER_API_KEY:-test-superuser-api-key-for-e2e}
+    TESTING_MODE: "true"
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: replane
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Replane instance for admin API
+  replane-1:
+    <<: *replane-common
+    ports:
+      - "${REPLANE_ADMIN_API_PORT:-8084}:8080"
+
+  # Replane instance for edge/SDK API
+  replane-2:
+    <<: *replane-common
+    ports:
+      - "${REPLANE_EDGE_API_PORT:-8085}:8080"
+
+  # Extra Replane instance for replication testing
+  replane-3:
+    <<: *replane-common
+
+

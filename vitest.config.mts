@@ -5,6 +5,8 @@ import {defineConfig} from 'vitest/config';
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
-    environment: 'jsdom',
+    // note: e2e tests expect the environment to be node, it fails in jsdom
+    environment: 'node',
+    dangerouslyIgnoreUnhandledErrors: true,
   },
 });

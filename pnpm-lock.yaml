@@ -268,6 +268,15 @@ importers:
       '@hono/zod-openapi':
         specifier: ^1.1.5
         version: 1.1.5(hono@4.10.7)(zod@4.1.13)
+      '@replanejs/admin':
+        specifier: ^0.8.19
+        version: 0.8.19
+      '@replanejs/sdk':
+        specifier: ^0.8.19
+        version: 0.8.19
+      '@replanejs/test-suite':
+        specifier: ^0.8.20
+        version: 0.8.20(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@tailwindcss/postcss':
         specifier: ^4.1.17
         version: 4.1.17
@@ -2176,6 +2185,14 @@ packages:
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
 
+  '@replanejs/admin@0.8.19':
+    resolution: {integrity: sha512-E6bcfRvT/KkWB5bYKTOd0libdf6CStnAumD/AjoOQ1USLcQwtBmLTyCkq/Z+6OpoeU4LdLdA5JTogABFmmzzhg==}
+    engines: {node: '>=18.0.0'}
+
+  '@replanejs/admin@0.8.20':
+    resolution: {integrity: sha512-WZfVZWxidHUCVx+qS8Ps6I1cXqX759pE3ALCjI/6a16tVSW6Ng05Ink4VCQwLifDYX5EP1thbN242Yh8MLGUcA==}
+    engines: {node: '>=18.0.0'}
+
   '@replanejs/next@0.8.8':
     resolution: {integrity: sha512-r/LiNVcPK5O56dh7+r9SKZ0IkR/Y4pamEJsSvo/ovgIVHNoPsXZTa2sG350iLZXbbM7DFhhhyhvKxAGshCHCCQ==}
     engines: {node: '>=18.0.0'}
@@ -2189,9 +2206,19 @@ packages:
     peerDependencies:
       react: '>=18.0.0'
 
-  '@replanejs/sdk@0.8.8':
-    resolution: {integrity: sha512-PKM5VsEhDFBwmlDAqTbA9M0VgsCrEw9mp8nHxtbmpgbxz9tIUa+5auohnvarI/j2OokUKtbtqKQF0D1K7FqS+w==}
+  '@replanejs/sdk@0.8.19':
+    resolution: {integrity: sha512-FpAzvAJqaZJjsuA3GowoTQKV6Gh98zLwm3inAWe5ZPvStxb77pIRx6YKp/+IbErHO/uHcy8TmOkSbXJwOuUO2Q==}
     engines: {node: '>=18.0.0'}
+
+  '@replanejs/sdk@0.8.20':
+    resolution: {integrity: sha512-ZDTpCgGYjo6UK/cRruWpIrtxtF7imOtBtTu18s2ZYAnlOyp2NBuTDicLEGZcQhQpU5ikZqH37AOPVNvJa2hneQ==}
+    engines: {node: '>=18.0.0'}
+
+  '@replanejs/test-suite@0.8.20':
+    resolution: {integrity: sha512-M0WakU8AS4rE3Nq1h7aJ4r7f3V4l9l6inANpY0WcHKWY/18H7JsJfseaGf3PT78pVkXywiF3QZdlQ6RD6fTiRg==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      vitest: '>=2.0.0'
 
   '@rolldown/pluginutils@1.0.0-beta.47':
     resolution: {integrity: sha512-8QagwMH3kNCuzD8EWL8R2YPW5e4OrHNSAHRFDdmFqEwEaD/KcNKjVoumo+gP2vW5eKB2UPbM6vTYiGZX0ixLnw==}
@@ -8232,19 +8259,31 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
+  '@replanejs/admin@0.8.19': {}
+
+  '@replanejs/admin@0.8.20': {}
+
   '@replanejs/next@0.8.8(next@16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)':
     dependencies:
       '@replanejs/react': 0.8.8(react@19.2.1)
-      '@replanejs/sdk': 0.8.8
+      '@replanejs/sdk': 0.8.19
       next: 16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react: 19.2.1
 
   '@replanejs/react@0.8.8(react@19.2.1)':
     dependencies:
-      '@replanejs/sdk': 0.8.8
+      '@replanejs/sdk': 0.8.19
       react: 19.2.1
 
-  '@replanejs/sdk@0.8.8': {}
+  '@replanejs/sdk@0.8.19': {}
+
+  '@replanejs/sdk@0.8.20': {}
+
+  '@replanejs/test-suite@0.8.20(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+    dependencies:
+      '@replanejs/admin': 0.8.20
+      '@replanejs/sdk': 0.8.20
+      vitest: 3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@rolldown/pluginutils@1.0.0-beta.47': {}
 
