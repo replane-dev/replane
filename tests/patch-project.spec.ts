@@ -4,13 +4,14 @@ import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
 
-const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
+const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
+const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_OWNER_EMAIL = normalizeEmail('other-owner@example.com');
 
 // We test patching details and members. For permission negative test we remove the only owner membership.
 
 describe('patchProject', () => {
-  const fixture = useAppFixture({authEmail: CURRENT_USER_EMAIL});
+  const fixture = useAppFixture({authEmail: ADMIN_USER_EMAIL});
 
   async function getProject(projectId: string) {
     const res = await fixture.engine.testing.pool.query(`SELECT * FROM projects WHERE id = $1`, [
@@ -32,7 +33,7 @@ describe('patchProject', () => {
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       details: {name: 'Renamed Project', description: 'Updated description'},
     });
 
@@ -54,7 +55,7 @@ describe('patchProject', () => {
     // create second project
     await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       name: 'SecondProj',
       description: 'desc',
     });
@@ -62,7 +63,7 @@ describe('patchProject', () => {
     await expect(
       fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
         id: fixture.projectId,
-        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+        identity: fixture.identity,
         details: {name: 'SecondProj', description: 'x'}, // already existing name from previous test
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
@@ -71,7 +72,7 @@ describe('patchProject', () => {
   it('updates members (add/remove) and emits audit message', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       name: 'MembersProj',
       description: 'members',
     });
@@ -79,10 +80,10 @@ describe('patchProject', () => {
     // add another owner
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       members: {
         users: [
-          {email: CURRENT_USER_EMAIL, role: 'admin'},
+          {email: ADMIN_USER_EMAIL, role: 'admin'},
           {email: OTHER_OWNER_EMAIL, role: 'admin'},
         ],
       },
@@ -90,13 +91,13 @@ describe('patchProject', () => {
 
     let members = await getMembers(projectId);
     expect(members.map((m: any) => m.user_email_normalized).sort()).toEqual(
-      [CURRENT_USER_EMAIL, OTHER_OWNER_EMAIL].sort(),
+      [ADMIN_USER_EMAIL, OTHER_OWNER_EMAIL].sort(),
     );
 
     // now remove current user (leave OTHER_OWNER_EMAIL only) -> should succeed since at least one owner remains
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
@@ -116,7 +117,7 @@ describe('patchProject', () => {
   it('fails when removing all owners', async () => {
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       name: 'NoOwnerRemoval',
       description: 'members',
     });
@@ -124,44 +125,35 @@ describe('patchProject', () => {
     await expect(
       fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
         id: projectId,
-        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+        identity: fixture.identity,
         members: {users: []},
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
   });
 
   it('forbids member edit by non-owner', async () => {
-    // Create project with two owners then remove current user, leaving OTHER_OWNER_EMAIL only. After removal current user loses owner role.
+    // Register a non-admin user who will have no project permissions
+    const testUserIdentity = await fixture.registerNonAdminWorkspaceMember(TEST_USER_EMAIL);
+
+    // Create project with only OTHER_OWNER as owner
     const {projectId} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
       workspaceId: fixture.workspaceId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       name: 'ForbiddenMembersEdit',
       description: 'x',
     });
 
     await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
       id: projectId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
-      members: {
-        users: [
-          {email: CURRENT_USER_EMAIL, role: 'admin'},
-          {email: OTHER_OWNER_EMAIL, role: 'admin'},
-        ],
-      },
-    });
-
-    // Remove CURRENT_USER_EMAIL (performed while still owner)
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      id: projectId,
-      identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+      identity: fixture.identity,
       members: {users: [{email: OTHER_OWNER_EMAIL, role: 'admin'}]},
     });
 
-    // Now attempt member change again -> should be forbidden
+    // Attempt member change as non-owner -> should be forbidden
     await expect(
       fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
         id: projectId,
-        identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
+        identity: testUserIdentity,
         members: {
           users: [
             {email: OTHER_OWNER_EMAIL, role: 'admin'},

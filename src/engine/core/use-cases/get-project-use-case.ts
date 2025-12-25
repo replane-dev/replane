@@ -23,7 +23,7 @@ export function createGetProjectUseCase(): TransactionalUseCase<
       identity: req.identity,
     });
 
-    const project = await tx.projectQueryService.getProject({
+    const project = await tx.projectQueryService.getProject(ctx, {
       id: req.id,
       identity: req.identity,
     });

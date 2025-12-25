@@ -197,12 +197,13 @@ function toUseCase<TReq, TRes>(
           configUsers,
           configVariants,
           configProposals,
-          projectUsers,
+          permissionService,
         );
         const projectQueryService = new ProjectQueryService(
           projects,
           projectEnvironments,
           projectUsers,
+          permissionService,
         );
         const workspaceQueryService = new WorkspaceQueryService(
           workspaces,

@@ -3,6 +3,7 @@ import {ForbiddenError} from './errors';
 import type {ApiKeyIdentity, Identity, UserIdentity} from './identity';
 import {hasProjectAccess, hasScope, isUserIdentity} from './identity';
 import type {Logger} from './logger';
+import {getHighestRole, type Role} from './role-utils';
 import type {ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ProjectStore} from './stores/project-store';
@@ -78,6 +79,13 @@ export class PermissionService {
     });
     if (!isWorkspaceMember) return false;
 
+    // Workspace admins can edit any config in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: config.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
+
     const configUser = await this.configUserStore.getByConfigIdAndEmail({
       configId: params.configId,
       userEmail: params.currentUserEmail,
@@ -105,6 +113,13 @@ export class PermissionService {
     });
     if (!isWorkspaceMember) return false;
 
+    // Workspace admins can manage any config in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: config.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
+
     const user = await this.configUserStore.getByConfigIdAndEmail({
       configId: params.configId,
       userEmail: params.currentUserEmail,
@@ -128,6 +143,13 @@ export class PermissionService {
     });
     if (!isWorkspaceMember) return false;
 
+    // Workspace admins can manage SDK keys for any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
       userEmail: params.currentUserEmail,
@@ -145,6 +167,13 @@ export class PermissionService {
       currentUserEmail: params.currentUserEmail,
     });
     if (!isWorkspaceMember) return false;
+
+    // Workspace admins can manage any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -164,6 +193,13 @@ export class PermissionService {
     });
     if (!isWorkspaceMember) return false;
 
+    // Workspace admins can delete any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
       userEmail: params.currentUserEmail,
@@ -181,6 +217,13 @@ export class PermissionService {
       currentUserEmail: params.currentUserEmail,
     });
     if (!isWorkspaceMember) return false;
+
+    // Workspace admins can edit configs in any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -200,6 +243,13 @@ export class PermissionService {
     });
     if (!isWorkspaceMember) return false;
 
+    // Workspace admins can manage configs in any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
       userEmail: params.currentUserEmail,
@@ -217,6 +267,13 @@ export class PermissionService {
       currentUserEmail: params.currentUserEmail,
     });
     if (!isWorkspaceMember) return false;
+
+    // Workspace admins can manage users in any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
 
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
@@ -236,6 +293,13 @@ export class PermissionService {
     });
     if (!isWorkspaceMember) return false;
 
+    // Workspace admins can manage environments in any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
+
     const user = await this.projectUserStore.getByProjectIdAndEmail({
       projectId: params.projectId,
       userEmail: params.currentUserEmail,
@@ -253,6 +317,13 @@ export class PermissionService {
       currentUserEmail: params.currentUserEmail,
     });
     if (!isWorkspaceMember) return false;
+
+    // Workspace admins can create configs in any project in their workspace
+    const isWorkspaceAdmin = await this.isUserWorkspaceAdminForProject(ctx, {
+      projectId: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (isWorkspaceAdmin) return true;
 
     return await this.canUserManageProjectConfigs(ctx, params);
   }
@@ -309,6 +380,26 @@ export class PermissionService {
       userEmail: params.currentUserEmail,
     });
     return member?.role === 'admin';
+  }
+
+  /**
+   * Check if user is a workspace admin for the workspace that contains this project.
+   * Workspace admins have full access to all projects in their workspace.
+   */
+  private async isUserWorkspaceAdminForProject(
+    ctx: Context,
+    params: {projectId: string; currentUserEmail: NormalizedEmail},
+  ): Promise<boolean> {
+    const project = await this.projectStore.getById({
+      id: params.projectId,
+      currentUserEmail: params.currentUserEmail,
+    });
+    if (!project) return false;
+
+    return this.isUserWorkspaceAdmin(ctx, {
+      workspaceId: project.workspaceId,
+      currentUserEmail: params.currentUserEmail,
+    });
   }
 
   // ============================================================================
@@ -588,6 +679,55 @@ export class PermissionService {
 
     // API keys cannot be workspace admins - admin operations require user identity
     return false;
+  }
+
+  /**
+   * Check if user is a workspace admin for the workspace that contains the given project.
+   * Workspace admins have full access to all projects and configs in their workspace.
+   */
+  async isWorkspaceAdminForProject(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<boolean> {
+    if (isUserIdentity(params.identity)) {
+      return this.isUserWorkspaceAdminForProject(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.user.email,
+      });
+    }
+
+    // API keys cannot be workspace admins - admin operations require user identity
+    return false;
+  }
+
+  /**
+   * Infer the user's effective role on a project by combining:
+   * - Their explicit project role (from project_users table)
+   * - Their workspace admin status (workspace admins get admin role on all projects)
+   *
+   * Returns null for API key identities (they don't have project roles).
+   */
+  async inferUserProjectRole(
+    ctx: Context,
+    params: {projectId: string; identity: Identity},
+  ): Promise<Role | null> {
+    if (!isUserIdentity(params.identity)) {
+      // API keys don't have project roles
+      return null;
+    }
+
+    const [projectUser, isWorkspaceAdmin] = await Promise.all([
+      this.projectUserStore.getByProjectIdAndEmail({
+        projectId: params.projectId,
+        userEmail: params.identity.user.email,
+      }),
+      this.isUserWorkspaceAdminForProject(ctx, {
+        projectId: params.projectId,
+        currentUserEmail: params.identity.user.email,
+      }),
+    ]);
+
+    return getHighestRole([projectUser?.role ?? 'viewer', isWorkspaceAdmin ? 'admin' : 'viewer']);
   }
 
   async canReadProject(

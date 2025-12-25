@@ -1,7 +1,7 @@
 import type {ConfigUserRole, ProjectUserRole} from './db';
 import {assertNever} from './utils';
 
-type Role = ConfigUserRole | 'viewer' | ProjectUserRole;
+export type Role = ConfigUserRole | 'viewer' | ProjectUserRole;
 
 function rolePriority(role: Role): number {
   if (role === 'admin') {

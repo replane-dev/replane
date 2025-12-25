@@ -1,10 +1,11 @@
-import {getEmailFromIdentity2, isUserIdentity, type Identity} from './identity';
+import type {Context} from './context';
+import {getEmailFromIdentity2, type Identity} from './identity';
+import type {PermissionService} from './permission-service';
 import {getHighestRole} from './role-utils';
 import type {ConfigProposalStore} from './stores/config-proposal-store';
 import type {Config, ConfigStore} from './stores/config-store';
 import type {ConfigUserStore} from './stores/config-user-store';
 import type {ConfigVariant, ConfigVariantStore} from './stores/config-variant-store';
-import type {ProjectUserStore} from './stores/project-user-store';
 
 export interface PendingConfigProposalSummary {
   id: string;
@@ -33,21 +34,17 @@ export class ConfigQueryService {
     private configUsers: ConfigUserStore,
     private configVariants: ConfigVariantStore,
     private configProposals: ConfigProposalStore,
-    private projectUsers: ProjectUserStore,
+    private permissionService: PermissionService,
   ) {}
 
-  async getConfigDetails(opts: {
-    name: string;
-    projectId: string;
-    identity: Identity;
-  }): Promise<ConfigDetails | undefined> {
-    const myProjectRole = isUserIdentity(opts.identity)
-      ? await this.projectUsers.getByProjectIdAndEmail({
-          projectId: opts.projectId,
-          userEmail: opts.identity.user.email,
-        })
-      : null;
-
+  async getConfigDetails(
+    ctx: Context,
+    opts: {
+      name: string;
+      projectId: string;
+      identity: Identity;
+    },
+  ): Promise<ConfigDetails | undefined> {
     const config = await this.configs.getByName({
       name: opts.name,
       projectId: opts.projectId,
@@ -70,7 +67,13 @@ export class ConfigQueryService {
       configId: config.id,
     });
 
-    const myRole = getHighestRole([myProjectRole?.role ?? 'viewer', myConfigRole]);
+    // Get user's effective project role (combines explicit role + workspace admin status)
+    const myProjectRole = await this.permissionService.inferUserProjectRole(ctx, {
+      projectId: opts.projectId,
+      identity: opts.identity,
+    });
+
+    const myRole = getHighestRole([myProjectRole ?? 'viewer', myConfigRole]);
 
     return {
       config,

@@ -324,6 +324,24 @@ export class AppFixture {
     }
   }
 
+  /**
+   * Register a new user and add them to the workspace as a regular member (not admin).
+   * Use this when you need to test with a user who does NOT have workspace admin privileges.
+   */
+  async registerNonAdminWorkspaceMember(email: string, name = 'Non-Admin User'): Promise<Identity> {
+    const identity = await this.registerUser(email, name);
+
+    // Add as workspace member (not admin)
+    await this.engine.useCases.addWorkspaceMember(GLOBAL_CONTEXT, {
+      identity: this.identity, // Use fixture owner to add member
+      workspaceId: this.workspaceId,
+      memberEmail: normalizeEmail(email),
+      role: 'member',
+    });
+
+    return identity;
+  }
+
   async destroy(ctx: Context) {
     if (this._edge) {
       await this._edge.stop();

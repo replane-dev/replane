@@ -150,6 +150,13 @@ sdkApi.openapi(
       },
     },
     request: {
+      headers: z.object({
+        'x-stream-timeout-ms': z.string().optional().openapi({
+          description:
+            'Maximum stream lifetime in milliseconds. Server will close the stream after this timeout.',
+          example: '60000',
+        }),
+      }),
       body: {
         content: {
           'application/json': {
@@ -169,6 +176,14 @@ sdkApi.openapi(
     const onAbort = () => abortController.abort();
     c.req.raw.signal.addEventListener('abort', onAbort);
 
+    // Parse optional stream timeout header
+    const timeoutHeader = c.req.header('x-stream-timeout-ms');
+    let streamTimeoutMs = timeoutHeader ? parseInt(timeoutHeader, 10) : null;
+    if (Number.isNaN(streamTimeoutMs)) {
+      console.warn('Invalid stream timeout header:', timeoutHeader);
+      streamTimeoutMs = null;
+    }
+
     const rawBody = await c.req.json().catch(() => ({}));
     const parseResult = StartReplicationStreamBody.safeParse(rawBody);
     if (!parseResult.success) {
@@ -187,6 +202,14 @@ sdkApi.openapi(
             controller.enqueue({type: 'ping'});
           } catch {}
         }, 15_000);
+
+        // Optional stream timeout - close stream after specified duration
+        let streamTimeout: ReturnType<typeof setTimeout> | null = null;
+        if (streamTimeoutMs && streamTimeoutMs > 0) {
+          streamTimeout = setTimeout(() => {
+            abortController.abort();
+          }, streamTimeoutMs);
+        }
 
         try {
           controller.enqueue({type: 'connected'});
@@ -246,6 +269,7 @@ sdkApi.openapi(
           controller.error(err);
         } finally {
           clearInterval(heartbeat);
+          if (streamTimeout) clearTimeout(streamTimeout);
           c.req.raw.signal.removeEventListener('abort', onAbort);
           if (!errored) {
             try {
@@ -256,7 +280,7 @@ sdkApi.openapi(
           }
         }
       },
-      async cancel() {
+      cancel() {
         abortController.abort();
         c.req.raw.signal.removeEventListener('abort', onAbort);
       },

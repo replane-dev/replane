@@ -52,20 +52,18 @@ describe('getConfig', () => {
       value: 'test-value',
       schema: {type: 'string'},
       description: 'A test config',
-      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: [],
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-    const {config} = await fixture.trpc.getConfig({
+    // Fetch as OTHER_USER who is a non-admin workspace member (viewer role)
+    const otherUserIdentity = await fixture.emailToIdentity(OTHER_USER_EMAIL);
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
       name: 'test-config',
       projectId: fixture.projectId,
+      identity: otherUserIdentity,
     });
 
     expect(config).toBeDefined();
@@ -124,52 +122,50 @@ describe('getConfig', () => {
   });
 
   it('should reflect editor role', async () => {
+    // Create config with OTHER_USER as editor
     await fixture.createConfig({
       overrides: [],
       name: 'editor-role-config',
       value: 'x',
       schema: {type: 'string'},
       description: 'Editor role',
-      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
-      editorEmails: [TEST_USER_EMAIL],
+      identity: fixture.identity,
+      editorEmails: [OTHER_USER_EMAIL],
       maintainerEmails: ['another-owner@example.com'],
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-    const {config} = await fixture.trpc.getConfig({
+    // Fetch as OTHER_USER who is a non-admin workspace member and config editor
+    const otherUserIdentity = await fixture.emailToIdentity(OTHER_USER_EMAIL);
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
       name: 'editor-role-config',
       projectId: fixture.projectId,
+      identity: otherUserIdentity,
     });
     expect(config?.myRole).toBe('editor');
-    expect(config?.editorEmails).toContain(TEST_USER_EMAIL);
+    expect(config?.editorEmails).toContain(OTHER_USER_EMAIL);
   });
 
   it('should reflect viewer role when not a member', async () => {
+    // Create config with no role for OTHER_USER
     await fixture.createConfig({
       overrides: [],
       name: 'viewer-role-config',
       value: 'x',
       schema: {type: 'string'},
       description: 'Viewer role',
-      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
+      identity: fixture.identity,
       editorEmails: [],
       maintainerEmails: ['different-owner@example.com'],
       projectId: fixture.projectId,
     });
 
-    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
-      identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
-      id: fixture.projectId,
-      members: {users: [{email: 'some-other-user@example.com', role: 'admin'}]},
-    });
-    const {config} = await fixture.trpc.getConfig({
+    // Fetch as OTHER_USER who is a non-admin workspace member (no config membership = viewer)
+    const otherUserIdentity = await fixture.emailToIdentity(OTHER_USER_EMAIL);
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
       name: 'viewer-role-config',
       projectId: fixture.projectId,
+      identity: otherUserIdentity,
     });
     expect(config?.myRole).toBe('viewer');
   });

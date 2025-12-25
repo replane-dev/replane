@@ -1,4 +1,6 @@
-import {isUserIdentity, type Identity} from './identity';
+import type {Context} from './context';
+import type {Identity} from './identity';
+import type {PermissionService} from './permission-service';
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {ProjectStore} from './stores/project-store';
 import type {ProjectUserStore} from './stores/project-user-store';
@@ -45,31 +47,22 @@ export class ProjectQueryService {
     private projects: ProjectStore,
     private projectEnvironments: ProjectEnvironmentStore,
     private projectUsers: ProjectUserStore,
+    private permissionService: PermissionService,
   ) {}
 
-  async getProject(opts: {id: string; identity: Identity}): Promise<ProjectDetails | null> {
-    // If no user email provided (e.g., API key access), use the simple lookup
-    if (!isUserIdentity(opts.identity)) {
-      const project = await this.projects.getByIdWithoutPermissionCheck(opts.id);
-      if (!project) return null;
-      return {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        workspaceId: project.workspaceId,
-        requireProposals: project.requireProposals,
-        allowSelfApprovals: project.allowSelfApprovals,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-        myRole: null,
-      };
-    }
-
-    const project = await this.projects.getById({
-      id: opts.id,
-      currentUserEmail: opts.identity.user.email,
-    });
+  async getProject(
+    ctx: Context,
+    opts: {id: string; identity: Identity},
+  ): Promise<ProjectDetails | null> {
+    const project = await this.projects.getByIdWithoutPermissionCheck(opts.id);
     if (!project) return null;
+
+    // Get user's effective project role (combines explicit role + workspace admin status)
+    const myRole = await this.permissionService.inferUserProjectRole(ctx, {
+      projectId: opts.id,
+      identity: opts.identity,
+    });
+
     return {
       id: project.id,
       name: project.name,
@@ -79,7 +72,7 @@ export class ProjectQueryService {
       allowSelfApprovals: project.allowSelfApprovals,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
-      myRole: project.myRole ?? null,
+      myRole: myRole === 'viewer' || myRole === 'editor' ? null : myRole,
     };
   }
 

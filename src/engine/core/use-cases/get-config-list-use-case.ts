@@ -27,13 +27,11 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
 
     const currentUserEmail = isUserIdentity(req.identity) ? req.identity.user.email : undefined;
 
-    // For API keys, we don't have project/config roles
-    const myProjectRole = currentUserEmail
-      ? await tx.projectUsers.getByProjectIdAndEmail({
-          projectId: req.projectId,
-          userEmail: currentUserEmail,
-        })
-      : null;
+    // Get user's effective project role (combines explicit role + workspace admin status)
+    const myProjectRole = await tx.permissionService.inferUserProjectRole(ctx, {
+      projectId: req.projectId,
+      identity: req.identity,
+    });
 
     const configs = await tx.configs.getProjectConfigs({
       currentUserEmail,
@@ -43,7 +41,7 @@ export function createGetConfigListUseCase({}: GetConfigListUseCasesDeps): Trans
     return {
       configs: configs.map(config => {
         const myRole = getHighestRole([
-          myProjectRole?.role ?? 'viewer',
+          myProjectRole ?? 'viewer',
           config.myConfigUserRole ?? 'viewer',
         ]);
         return {

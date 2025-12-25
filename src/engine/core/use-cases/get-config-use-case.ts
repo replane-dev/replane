@@ -30,7 +30,7 @@ export function createGetConfigUseCase({}: GetConfigUseCasesDeps): Transactional
       identity: req.identity,
     });
 
-    const config = await tx.configQueryService.getConfigDetails({
+    const config = await tx.configQueryService.getConfigDetails(ctx, {
       name: req.name,
       projectId: req.projectId,
       identity: req.identity,

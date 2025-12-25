@@ -84,6 +84,7 @@ export class ProjectStore {
         'projects.allow_self_approvals',
         'projects.updated_at',
         'project_users.role as myRole',
+        'workspace_members.role as workspaceRole',
       ]);
 
     const rows = await projectsQuery.execute();
@@ -97,7 +98,8 @@ export class ProjectStore {
       allowSelfApprovals: p.allow_self_approvals,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
-      myRole: p.myRole ?? undefined,
+      // Workspace admins get admin role on all projects in their workspace
+      myRole: p.workspaceRole === 'admin' ? 'admin' : (p.myRole ?? undefined),
     }));
   }
 

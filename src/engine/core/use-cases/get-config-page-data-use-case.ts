@@ -27,12 +27,12 @@ export function createGetConfigPageDataUseCase(): TransactionalUseCase<
     });
 
     const [config, project, environments, projectUsers] = await Promise.all([
-      tx.configQueryService.getConfigDetails({
+      tx.configQueryService.getConfigDetails(ctx, {
         name: req.configName,
         projectId: req.projectId,
         identity: req.identity,
       }),
-      tx.projectQueryService.getProject({
+      tx.projectQueryService.getProject(ctx, {
         id: req.projectId,
         identity: req.identity,
       }),
