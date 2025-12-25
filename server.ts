@@ -1,6 +1,7 @@
 import {getHealthcheckPath, getPort, isDevelopment} from '@/environment';
 import './src/init-node-environment';
 
+import {trimEnd} from '@/engine/core/utils';
 import {sdkApi} from '@/sdk-api';
 import * as Sentry from '@sentry/nextjs';
 import {createServer, IncomingMessage, ServerResponse} from 'http';
@@ -201,7 +202,10 @@ app
           return;
         }
 
-        if (HEALTHCHECK_PATH && parsedUrl.pathname === HEALTHCHECK_PATH) {
+        if (
+          HEALTHCHECK_PATH &&
+          trimEnd(parsedUrl.pathname ?? '<malformed_url>', '/') === trimEnd(HEALTHCHECK_PATH, '/')
+        ) {
           res.statusCode = 200;
           res.setHeader('content-type', 'application/json');
           res.end(JSON.stringify({status: 'ok'}));
@@ -209,7 +213,7 @@ app
         }
 
         // Prometheus metrics endpoint
-        if (parsedUrl.pathname === METRICS_PATH) {
+        if (trimEnd(parsedUrl.pathname ?? '<malformed_url>', '/') === trimEnd(METRICS_PATH, '/')) {
           res.statusCode = 200;
           res.setHeader('content-type', register.contentType);
           res.end(await register.metrics());

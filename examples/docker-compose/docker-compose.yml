@@ -9,7 +9,7 @@ services:
       - replane-data:/var/lib/postgresql/data
 
   replane:
-    image: replane/replane:v0.1.43
+    image: replane/replane:0.1.43
     depends_on:
       - postgres
     ports:
