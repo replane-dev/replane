@@ -4,9 +4,6 @@ type AuthProvider = 'credentials' | 'email' | 'github' | 'gitlab' | 'google' | '
 
 export function getEnabledAuthProviders(): AuthProvider[] {
   const providers: AuthProvider[] = [];
-  if (isPasswordAuthEnabled()) {
-    providers.push('credentials');
-  }
   if (isMagicLinkAuthEnabled()) {
     providers.push('email');
   }
@@ -24,8 +21,9 @@ export function getEnabledAuthProviders(): AuthProvider[] {
   }
 
   if (
-    providers.length === 0 &&
-    !['false', 'no', '0'].includes(process.env.PASSWORD_AUTH_ENABLED?.toLowerCase() ?? '')
+    (providers.length === 0 &&
+      !['false', 'no', '0'].includes(process.env.PASSWORD_AUTH_ENABLED?.toLowerCase() ?? '')) ||
+    process.env.PASSWORD_AUTH_ENABLED === 'true'
   ) {
     providers.push('credentials');
   }
@@ -35,12 +33,11 @@ export function getEnabledAuthProviders(): AuthProvider[] {
 
 /**
  * Checks if password-based authentication is enabled.
- * Controlled by PASSWORD_AUTH_ENABLED environment variable.
  *
  * @returns true if email/password authentication should be enabled
  */
 export function isPasswordAuthEnabled(): boolean {
-  return process.env.PASSWORD_AUTH_ENABLED === 'true';
+  return getEnabledAuthProviders().includes('credentials');
 }
 
 /**
