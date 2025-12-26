@@ -31,15 +31,11 @@ export const edgeLazy = new Lazy(async () => {
     databaseUrl: getDatabaseUrl(),
     dbSchema: process.env.DB_SCHEMA || 'public',
     logLevel: 'info',
-    // replicaStorage: {
-    //   type: 'file',
-    //   path: replicaStoragePath,
-    //   cacheSizeKb: replicaStorageCacheSizeKb,
-    //   unsynced: process.env.REPLICA_STORAGE_UNSYNCED === 'true',
-    // },
-    // using memory for now to avoid disk I/O
     replicaStorage: {
-      type: 'memory',
+      type: 'file',
+      path: replicaStoragePath,
+      cacheSizeKb: replicaStorageCacheSizeKb,
+      unsynced: process.env.REPLICA_STORAGE_UNSYNCED === 'true',
     },
     onFatalError: async error => {
       Sentry.captureException(error);
