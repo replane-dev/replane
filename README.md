@@ -268,6 +268,19 @@ environment:
 
 All state is stored in PostgreSQL when `DATABASE_URL` is set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
 
+## Benchmarks
+
+Replane includes a load testing suite in the [`bench/`](./bench) directory. Results on Apple M2 Pro (32 GB):
+
+| Metric                   | Result              |
+| ------------------------ | ------------------- |
+| Concurrent clients       | 5,000               |
+| Config change throughput | ~4,000 messages/sec |
+| Node.js CPU usage        | ~2 cores            |
+| Node.js memory usage     | < 550 MB            |
+
+See [`bench/README.md`](./bench/README.md) for details on running benchmarks.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on building from source and contributing to Replane.

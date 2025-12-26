@@ -1,182 +1,158 @@
-# Replane k6 Load Testing
+# Replane Benchmark Suite
 
-Load testing suite for Replane using [k6](https://k6.io/) with [xk6-sse](https://github.com/phymbert/xk6-sse) extension.
+Load testing suite for Replane using [k6](https://k6.io/) with the [xk6-sse](https://github.com/phymbert/xk6-sse) extension.
+
+## Performance Results
+
+Tested on **macOS Tahoe, Apple M2 Pro, 32 GB RAM**:
+
+| Metric                   | Result                                       |
+| ------------------------ | -------------------------------------------- |
+| Concurrent clients       | **5,000**                                    |
+| Config change throughput | **~4,000 messages/sec** to connected clients |
+| Node.js CPU usage        | ~2 cores (out of available cores)            |
+| Node.js memory usage     | < 550 MB                                     |
 
 ## Features
 
-- **Admin API Tests** - CRUD operations on configs
-- **SSE Streaming Tests** - SDK streaming connections
-- **Combined Tests** - Both scenarios running in parallel
-- **k6 Web Dashboard** - Real-time test visualization
+- **Admin API Tests** - Config update operations under load
+- **SSE Streaming Tests** - Concurrent SDK streaming connections
+- **Combined Scenario** - Both running in parallel (simulates real-world usage)
 - **Prometheus Metrics** - Real-time metrics export
 - **Grafana Dashboards** - Pre-configured visualization
+
+## Prerequisites
+
+- [k6](https://k6.io/docs/get-started/installation/) with [xk6-sse](https://github.com/phymbert/xk6-sse) extension
+- Docker and Docker Compose
+- Node.js 22+ and pnpm
+
+### Installing k6 with xk6-sse
+
+```bash
+# Using xk6 to build k6 with SSE extension
+go install go.k6.io/xk6/cmd/xk6@latest
+xk6 build --with github.com/phymbert/xk6-sse
+
+# Or use the pre-built binary from releases
+```
 
 ## Quick Start
 
 ### 1. Start Infrastructure
 
-```bash
-# Start Replane + Prometheus + Grafana
-docker compose up -d prometheus grafana replane
-
-# Wait for services to be ready
-docker compose ps
-```
-
-### 2. Setup Test Data
+From the `bench` directory:
 
 ```bash
-# Create test project and SDK key
-./scripts/setup.sh
-
-# Or with docker
-docker compose run --rm \
-  -v $(pwd)/scripts:/scripts \
-  --entrypoint /bin/sh \
-  k6 -c "apk add --no-cache curl jq && /scripts/setup.sh"
+docker compose up -d
 ```
 
-### 3. Run Tests
+This starts:
+
+- **Replane** (built from source) on port 8091
+- **PostgreSQL** database
+- **Prometheus** on port 9090
+- **Grafana** on port 3001
+
+### 2. Run Benchmark
+
+From the repository root:
 
 ```bash
-# Admin API test only
-docker compose run --rm --service-ports k6 run \
-  --out experimental-prometheus-rw \
-  /scripts/admin-api.js
-
-# SSE streaming test only (requires xk6-sse)
-docker compose run --rm --service-ports k6 run \
-  --out experimental-prometheus-rw \
-  /scripts/sse-stream.js
-
-# Combined test (Admin + SSE in parallel)
-docker compose run --rm --service-ports k6 run \
-  --out experimental-prometheus-rw \
-  /scripts/combined.js
+pnpm test:bench
 ```
 
-### 4. View Results
+Customize test parameters by editing [`.env`](./.env).
 
-- **k6 Web Dashboard**: http://localhost:5665 (available during test runs)
+### 3. View Results
 
-- **Grafana Dashboard**: http://localhost:3001
-  - Username: `admin`
-  - Password: `admin`
-  - Dashboard: "Replane k6 Load Test"
-
+- **Grafana**: http://localhost:3001 (admin/admin)
 - **Prometheus**: http://localhost:9090
 
 ## Configuration
 
-### Environment Variables
+Environment variables (configured in `.env`):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REPLANE_ADMIN_URL` | `http://localhost:8080` | Admin API URL |
-| `REPLANE_EDGE_URL` | `http://localhost:8080` | Edge/SDK API URL |
-| `REPLANE_API_KEY` | `rp_admin_dev_key` | Admin API key |
-| `REPLANE_SDK_KEY` | (required) | SDK key for SSE tests |
-| `REPLANE_PROJECT_ID` | (auto-created) | Project ID |
-| `TEST_DURATION` | `2m` | Test duration |
-| `RAMP_UP_TIME` | `30s` | Ramp up duration |
-| `RAMP_DOWN_TIME` | `30s` | Ramp down duration |
-| `ADMIN_VUS` | `10` | Admin API virtual users |
-| `SSE_VUS` | `100` | SSE connection virtual users |
-| `OP_CREATE_WEIGHT` | `1` | Create operation weight |
-| `OP_READ_WEIGHT` | `3` | Read operation weight |
-| `OP_UPDATE_WEIGHT` | `2` | Update operation weight |
-| `OP_DELETE_WEIGHT` | `0` | Delete operation weight |
+| Variable                     | Default                 | Description                       |
+| ---------------------------- | ----------------------- | --------------------------------- |
+| `REPLANE_ADMIN_URL`          | `http://localhost:8091` | Admin API URL                     |
+| `REPLANE_EDGE_URL`           | `http://localhost:8091` | Edge/SDK API URL                  |
+| `REPLANE_SUPERADMIN_API_KEY` | (see .env)              | Superadmin API key                |
+| `TEST_DURATION`              | `2m`                    | Test duration                     |
+| `RAMP_UP_TIME`               | `5s`                    | Ramp up duration                  |
+| `RAMP_DOWN_TIME`             | `5s`                    | Ramp down duration                |
+| `ADMIN_VUS`                  | `5`                     | Admin API virtual users           |
+| `SSE_VUS`                    | `1000`                  | SSE connection virtual users      |
+| `PROJECTS_COUNT`             | `100`                   | Number of test projects to create |
+| `ADMIN_REQUEST_DELAY_MS`     | `100`                   | Delay between admin requests      |
+| `SSE_TIMEOUT_MS`             | `30000`                 | SSE connection timeout            |
 
-### Running with Custom Settings
+## Test Scenario
 
-```bash
-# Short test with more VUs
-docker compose run --rm --service-ports \
-  -e TEST_DURATION=1m \
-  -e ADMIN_VUS=50 \
-  -e SSE_VUS=500 \
-  k6 run --out experimental-prometheus-rw /scripts/combined.js
+The benchmark runs two scenarios in parallel:
 
-# Heavy update workload
-docker compose run --rm --service-ports \
-  -e OP_CREATE_WEIGHT=1 \
-  -e OP_READ_WEIGHT=1 \
-  -e OP_UPDATE_WEIGHT=8 \
-  -e OP_DELETE_WEIGHT=0 \
-  k6 run --out experimental-prometheus-rw /scripts/admin-api.js
-```
+### Admin API Scenario
 
-## Test Scenarios
+- Updates config values across multiple projects
+- Simulates admin dashboard activity
+- Measures API latency and error rates
 
-### Admin API (`admin-api.js`)
+### SSE Streaming Scenario
 
-Tests CRUD operations on the Admin API:
-- Creates, reads, updates, and deletes configs
-- Weighted operation distribution
-- Tracks latency percentiles and error rates
-
-### SSE Streaming (`sse-stream.js`)
-
-Tests SDK streaming connections:
-- Opens SSE connections to `/api/sdk/v1/replication/stream`
-- Measures time to first message
-- Tracks connection success rate
-- Simulates connection churn
-
-### Combined (`combined.js`)
-
-Runs both scenarios simultaneously:
-- Admin API modifications
-- SSE clients receiving updates
-- Tests real-world concurrent load
-
-## k6 Cloud
-
-For k6 cloud, use the scripts directly (SSE tests require local k6 with xk6-sse):
-
-```bash
-# Admin API only (works in k6 cloud)
-k6 cloud scripts/admin-api.js
-
-# Set environment variables for cloud
-K6_CLOUD_TOKEN=xxx k6 cloud \
-  -e REPLANE_ADMIN_URL=https://your-replane.com \
-  -e REPLANE_API_KEY=your_key \
-  scripts/admin-api.js
-```
-
-Note: SSE tests require the xk6-sse extension which is not available in k6 cloud.
-
-## Building k6 with xk6-sse Locally
-
-```bash
-# Build custom k6
-docker build -t k6-sse .
-
-# Run with custom build
-docker run --rm -v $(pwd)/scripts:/scripts \
-  --network host \
-  k6-sse run /scripts/sse-stream.js
-```
+- Opens concurrent SSE connections (SDK clients)
+- Receives real-time config updates
+- Measures connection establishment and message delivery times
 
 ## Thresholds
 
-Default pass/fail thresholds:
+Pass/fail thresholds for CI:
 
-| Metric | Threshold |
-|--------|-----------|
-| Admin API p95 latency | < 500ms |
-| Admin API p99 latency | < 1000ms |
-| Admin API error rate | < 1% |
-| SSE connection success | > 95% |
-| SSE time to first message p95 | < 5000ms |
+| Metric                        | Threshold |
+| ----------------------------- | --------- |
+| Admin API p95 latency         | < 100ms   |
+| Admin API p99 latency         | < 200ms   |
+| Admin API success rate        | > 99%     |
+| SSE connection success        | > 99%     |
+| SSE time to open p95          | < 200ms   |
+| SSE time to first message p95 | < 200ms   |
+| SSE time to init message p95  | < 200ms   |
+
+## Project Structure
+
+```
+bench/
+├── scripts/
+│   ├── spec.ts           # Main test specification
+│   └── lib/
+│       ├── admin-client.ts   # Admin API client
+│       ├── config.ts         # Test configuration
+│       ├── result.ts         # Result type utilities
+│       └── utils.ts          # Helper functions
+├── dashboards/           # Grafana dashboard JSON
+├── grafana/              # Grafana provisioning
+├── prometheus/           # Prometheus configuration
+├── docker-compose.yml    # Infrastructure stack
+├── tsconfig.json         # TypeScript configuration
+└── .env                  # Environment variables
+```
 
 ## Cleanup
 
 ```bash
-# Stop all services
+# Stop services
 docker compose down
 
-# Remove volumes (data)
+# Remove volumes (database data)
 docker compose down -v
+```
+
+## CI Integration
+
+The benchmark runs automatically in CI via GitHub Actions. See `.github/workflows/bench.yml`.
+
+To run manually:
+
+```bash
+# From repository root
+pnpm test:bench
 ```
