@@ -51,6 +51,11 @@ export default async function RootLayout({
     tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1',
   };
 
+  const replaneConnection =
+    process.env.REPLANE_BASE_URL && process.env.REPLANE_SDK_KEY
+      ? {baseUrl: process.env.REPLANE_BASE_URL, sdkKey: process.env.REPLANE_SDK_KEY}
+      : null;
+
   return (
     <TRPCReactProvider>
       <html lang="en" suppressHydrationWarning>
@@ -64,13 +69,7 @@ export default async function RootLayout({
         </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <ReplaneRoot<ReplaneConfigs>
-              options={{
-                baseUrl: process.env.REPLANE_BASE_URL!,
-                sdkKey: process.env.REPLANE_SDK_KEY!,
-                defaults: DEFAULT_CONFIGS,
-              }}
-            >
+            <ReplaneRoot<ReplaneConfigs> connection={replaneConnection} defaults={DEFAULT_CONFIGS}>
               <AuthSession>
                 <HydrateClient>
                   <ErrorBoundary FallbackComponent={ErrorFallback}>
