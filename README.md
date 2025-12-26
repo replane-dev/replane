@@ -272,12 +272,12 @@ All state is stored in PostgreSQL when `DATABASE_URL` is set. For the integrated
 
 Replane includes a load testing suite in the [`bench/`](./bench) directory. Results on Apple M2 Pro (32 GB):
 
-| Metric                   | Result              |
-| ------------------------ | ------------------- |
-| Concurrent clients       | 5,000               |
-| Config change throughput | ~4,000 messages/sec |
-| Node.js CPU usage        | ~2 cores            |
-| Node.js memory usage     | < 550 MB            |
+| Metric                   | Result                                      |
+| ------------------------ | ------------------------------------------- |
+| Concurrent clients       | 5,000 (can be higher with proper os tuning) |
+| Config change throughput | ~4,000 messages/sec                         |
+| Node.js CPU usage        | ~1.5 cores                                  |
+| Node.js memory usage     | ~2.7 GB (RSS)                               |
 
 Replane scales horizontally—add more instances behind a load balancer to increase throughput linearly. See [`bench/README.md`](./bench/README.md) for details.
 
