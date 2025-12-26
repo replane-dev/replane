@@ -279,7 +279,7 @@ Replane includes a load testing suite in the [`bench/`](./bench) directory. Resu
 | Node.js CPU usage        | ~2 cores            |
 | Node.js memory usage     | < 550 MB            |
 
-See [`bench/README.md`](./bench/README.md) for details on running benchmarks.
+Replane scales horizontally—add more instances behind a load balancer to increase throughput linearly. See [`bench/README.md`](./bench/README.md) for details.
 
 ## Contributing
 

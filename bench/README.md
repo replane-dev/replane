@@ -13,6 +13,8 @@ Tested on **macOS Tahoe, Apple M2 Pro, 32 GB RAM**:
 | Node.js CPU usage        | ~2 cores (out of available cores)            |
 | Node.js memory usage     | < 550 MB                                     |
 
+Replane scales horizontally—add more instances behind a load balancer to increase throughput linearly.
+
 ## Features
 
 - **Admin API Tests** - Config update operations under load
