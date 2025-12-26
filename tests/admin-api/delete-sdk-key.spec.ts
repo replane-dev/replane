@@ -36,7 +36,9 @@ describe('Admin API - Delete SDK Key', () => {
       token,
     );
     const listData = await listResponse.json();
-    expect(listData.sdkKeys.find((k: {id: string}) => k.id === createResult.sdkKey.id)).toBeUndefined();
+    expect(
+      listData.sdkKeys.find((k: {id: string}) => k.id === createResult.sdkKey.id),
+    ).toBeUndefined();
   });
 
   it('should return 403 without sdk_key:write scope', async () => {
@@ -140,8 +142,3 @@ describe('Admin API - Delete SDK Key', () => {
     expect(response.status).toBe(204);
   });
 });
-
-
-
-
-

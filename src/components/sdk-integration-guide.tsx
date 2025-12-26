@@ -1,6 +1,5 @@
 'use client';
 
-import {useProject} from '@/app/app/projects/[projectId]/utils';
 import {CodeSnippet} from '@/components/code-snippet';
 import {Button} from '@/components/ui/button';
 import {Label} from '@/components/ui/label';
@@ -83,8 +82,6 @@ export function SdkIntegrationGuide({
     }
   };
 
-  const project = useProject();
-
   const sdkKeyValue = sdkKey || 'your-project-sdk-key-here';
   const baseUrl =
     typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
@@ -94,11 +91,14 @@ export function SdkIntegrationGuide({
   const defineTypesSnippet = typesData?.types ?? '';
 
   const exampleConfigName = typesData?.exampleConfigName ?? 'your-config';
-  const usageSnippet = `import { createReplaneClient } from '@replanejs/sdk';
+  const usageSnippet = `import { Replane } from '@replanejs/sdk';
 import { type Configs } from './types';
 
-// Create client (fetches project's configs during initialization)
-const replane = await createReplaneClient<Configs>({
+// Create client
+const replane = new Replane<Configs>();
+
+// Connect to the server (fetches project's configs during initialization)
+await replane.connect({
     sdkKey: '${sdkKeyValue}',
     baseUrl: '${baseUrl}',
 });
@@ -118,7 +118,7 @@ const userConfig = replane.get('${exampleConfigName}', {
 // No need to refetch or reload - just call get() again
 
 // Clean up when your application shuts down
-replane.close();`;
+replane.disconnect();`;
 
   const showEnvironmentSelector = !initialEnvironmentId;
 
