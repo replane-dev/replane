@@ -22,3 +22,12 @@ if (process.env.MAGIC_LINK_ENABLED === 'true') {
 
 process.env.NEXTAUTH_SECRET = process.env.SECRET_KEY;
 process.env.NEXTAUTH_URL = process.env.BASE_URL;
+
+['SIGINT', 'SIGTERM'].forEach(signal => {
+  process.on(signal, () => {
+    console.log('Received signal', signal);
+    setTimeout(() => {
+      process.exit(0);
+    }, 5000).unref();
+  });
+});

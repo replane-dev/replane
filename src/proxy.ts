@@ -1,11 +1,20 @@
+import {trimEnd} from '@/engine/core/utils';
+import {getHealthcheckPath} from '@/environment';
 import {withAuth} from 'next-auth/middleware';
 import {NextRequest, NextResponse} from 'next/server';
 
 // Auth middleware instance for non-healthcheck routes
 const auth = withAuth({});
 
+const HEALTHCHECK_PATH = getHealthcheckPath();
+
 export default async function proxy(req: NextRequest, event: any) {
   const {pathname} = req.nextUrl;
+
+  // Handle healthcheck directly in middleware (no downstream route)
+  if (HEALTHCHECK_PATH && trimEnd(pathname, '/') === trimEnd(HEALTHCHECK_PATH, '/')) {
+    return NextResponse.json({status: 'ok'});
+  }
 
   // Apply internal matcher logic: bypass auth for excluded paths
   if (
@@ -13,8 +22,6 @@ export default async function proxy(req: NextRequest, event: any) {
     pathname.startsWith('/_next/static') ||
     pathname.startsWith('/_next/image') ||
     pathname.startsWith('/auth') ||
-    pathname.startsWith('/health') ||
-    pathname.startsWith('/status') ||
     pathname.startsWith('/favicon') ||
     pathname === '/favicon.ico' ||
     pathname === '/terms' ||
