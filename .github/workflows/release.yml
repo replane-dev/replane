@@ -2,6 +2,11 @@ name: Release Docker Image
 
 on:
   workflow_call:
+    inputs:
+      benchmark_results:
+        description: 'Benchmark results from k6'
+        required: false
+        type: string
     secrets:
       DOCKERHUB_USERNAME:
         required: true
@@ -74,6 +79,13 @@ jobs:
         run: |
           echo "Published image tags:" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.benchmark_results }}" ]; then
+            echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${{ inputs.benchmark_results }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -88,3 +100,12 @@ jobs:
             Pull the image:
             - `docker pull replane/replane:${{ steps.meta.outputs.version }}` ([Docker Hub](https://hub.docker.com/r/replane/replane))
             - `docker pull ghcr.io/replane-dev/replane:${{ steps.meta.outputs.version }}` ([GitHub Container Registry](https://github.com/replane-dev/replane/pkgs/container/replane))
+
+            <details>
+            <summary>📊 Benchmark Results</summary>
+
+            ```
+            ${{ inputs.benchmark_results }}
+            ```
+
+            </details>

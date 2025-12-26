@@ -2,6 +2,10 @@ name: Benchmark Tests
 
 on:
   workflow_call:
+    outputs:
+      results:
+        description: 'Benchmark results from k6'
+        value: ${{ jobs.bench.outputs.results }}
   workflow_dispatch:
 
 env:
@@ -14,6 +18,8 @@ jobs:
     name: Benchmark Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      results: ${{ steps.benchmark.outputs.results }}
 
     steps:
       - name: Checkout
@@ -46,7 +52,17 @@ jobs:
         run: docker compose -f bench/docker-compose.yml up -d --wait postgres replane prometheus
 
       - name: Run benchmark tests
-        run: pnpm bench
+        id: benchmark
+        run: |
+          # Run benchmark and capture output
+          pnpm bench 2>&1 | tee benchmark-output.txt
+
+          # Extract the results section (from THRESHOLDS to the end)
+          {
+            echo "results<<EOF"
+            sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -50
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Show logs on failure
         if: failure()
