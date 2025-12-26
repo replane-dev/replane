@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Scrape k6 metrics (when running with --out experimental-prometheus-rw)
+  - job_name: 'k6'
+    static_configs:
+      - targets: ['k6:5656']
+
+  # Scrape Replane app metrics
+  - job_name: 'replane'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['replane:8080']
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape Docker container metrics via cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+# Enable remote write receiver for k6
+# k6 will push metrics to this endpoint
+remote_write: []
