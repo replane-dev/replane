@@ -1,4 +1,4 @@
-import {ensureDefined, joinUndefined} from './engine/core/utils';
+import {ensureDefined, joinUndefined, trimEnd} from './engine/core/utils';
 
 type AuthProvider = 'credentials' | 'email' | 'github' | 'gitlab' | 'google' | 'okta';
 
@@ -240,11 +240,12 @@ export function hasEmailDomainRestrictions(): boolean {
  * @returns the healthcheck path, or undefined if not configured
  */
 export function getHealthcheckPath(): string | undefined {
-  const path = process.env.HEALTHCHECK_PATH;
+  let path = process.env.HEALTHCHECK_PATH;
   if (!path) {
     return '/api/health';
   }
-  return path.startsWith('/') ? path : `/${path}`;
+  path = path.startsWith('/') ? path : `/${path}`;
+  return trimEnd(path, '/');
 }
 
 /**

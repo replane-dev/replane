@@ -171,7 +171,6 @@ export function setup(): TestContext {
         base: config.base,
         variants: config.variants,
         editors: config.editors,
-        maintainers: [],
         projectId,
         name: config.name,
         description: config.description ?? '',

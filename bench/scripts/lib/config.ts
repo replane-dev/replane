@@ -25,6 +25,8 @@ function getEnv(name: string): string {
   return value;
 }
 
+const sseDurationMs = parseInt(getEnv('SSE_DURATION_MS'));
+
 // Environment-based configuration
 export const config: Config = {
   // Replane endpoints
@@ -35,8 +37,8 @@ export const config: Config = {
   superadminApiKey: getEnv('REPLANE_SUPERADMIN_API_KEY'),
 
   // Test parameters
+  rampUpTime: `${sseDurationMs}ms`,
   testDuration: getEnv('TEST_DURATION'),
-  rampUpTime: getEnv('RAMP_UP_TIME'),
   rampDownTime: getEnv('RAMP_DOWN_TIME'),
 
   // Admin API settings
@@ -45,8 +47,8 @@ export const config: Config = {
 
   // SSE settings
   sseVUs: parseInt(getEnv('SSE_VUS')),
-  sseDurationMs: parseInt(getEnv('SSE_DURATION_MS')),
 
+  sseDurationMs,
   // Number of independent projects to create (each gets its own SDK key)
   projectsCount: parseInt(getEnv('PROJECTS_COUNT')),
 };

@@ -9,10 +9,9 @@ const auth = withAuth({});
 const HEALTHCHECK_PATH = getHealthcheckPath();
 
 export default async function proxy(req: NextRequest, event: any) {
-  const {pathname} = req.nextUrl;
+  const pathname = trimEnd(req.nextUrl.pathname, '/');
 
-  // Handle healthcheck directly in middleware (no downstream route)
-  if (HEALTHCHECK_PATH && trimEnd(pathname, '/') === trimEnd(HEALTHCHECK_PATH, '/')) {
+  if (pathname === HEALTHCHECK_PATH) {
     return NextResponse.json({status: 'ok'});
   }
 
@@ -25,7 +24,8 @@ export default async function proxy(req: NextRequest, event: any) {
     pathname.startsWith('/favicon') ||
     pathname === '/favicon.ico' ||
     pathname === '/terms' ||
-    pathname === '/privacy'
+    pathname === '/privacy' ||
+    pathname === '/metrics'
   ) {
     return NextResponse.next();
   }
