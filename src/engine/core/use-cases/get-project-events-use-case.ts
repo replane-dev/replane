@@ -1,10 +1,27 @@
 import {Channel} from 'async-channel';
+import {Counter, Gauge} from 'prom-client';
 import type {Context} from '../context';
 import type {RenderedOverride} from '../override-condition-schemas';
 import type {ReplicaEvent, ReplicaService} from '../replica';
 import type {ReplicaEventBus} from '../replica-event-bus';
 import type {ConfigReplica} from '../stores/replica-store';
 import {assertNever} from '../utils';
+
+// Prometheus metrics for project event subscriptions
+const projectEventSubscriptionsStarted = new Counter({
+  name: 'replane_project_event_subscriptions_started_total',
+  help: 'Total number of project event subscriptions started',
+});
+
+const projectEventSubscriptionsStopped = new Counter({
+  name: 'replane_project_event_subscriptions_stopped_total',
+  help: 'Total number of project event subscriptions stopped',
+});
+
+const projectEventSubscriptionsActive = new Gauge({
+  name: 'replane_project_event_subscriptions_active',
+  help: 'Number of currently active project event subscriptions',
+});
 
 export interface GetProjectEventsRequest {
   projectId: string;
@@ -63,6 +80,10 @@ export function createGetProjectEventsUseCase(
   return async function* (ctx, request) {
     // permissions must be checked by the caller
 
+    // Track subscription metrics
+    projectEventSubscriptionsStarted.inc();
+    projectEventSubscriptionsActive.inc();
+
     const channel = new Channel<ReplicaEvent>();
 
     const unsubscribe = deps.replicaEventsBus.subscribe(request.projectId, {
@@ -104,6 +125,9 @@ export function createGetProjectEventsUseCase(
     const cleanUp = () => {
       if (isCleanedUp) return;
       isCleanedUp = true;
+
+      projectEventSubscriptionsStopped.inc();
+      projectEventSubscriptionsActive.dec();
 
       unsubscribe();
       channel.close();

@@ -263,7 +263,6 @@ export function sseTest(data: TestContext): void {
       Accept: 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Content-Type': 'application/json',
-      'x-stream-timeout-ms': String(testConfig.sseTimeoutMs),
     },
     body: JSON.stringify({}),
   };
@@ -294,6 +293,10 @@ export function sseTest(data: TestContext): void {
         } else {
           sseConfigUpdateMessages.add(1);
         }
+      }
+
+      if (openedAt && Date.now() - openedAt > testConfig.sseDurationMs) {
+        client.close();
       }
     });
 

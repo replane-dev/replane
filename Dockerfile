@@ -7,6 +7,8 @@ ENV PGDATA=/data/postgresql
 
 ENV PORT=8080
 ENV NODE_OPTIONS="--enable-source-maps"
+ENV ENABLE_NODE_INSPECT="0"
+ENV NODE_INSPECT_PORT=9229
 
 # # Install PostgreSQL to allow running Replane without an external database
 RUN apt-get update \
@@ -29,6 +31,7 @@ COPY . .
 RUN pnpm build
 
 EXPOSE $PORT
+EXPOSE 9229
 
 RUN ls -la && ls -la scripts && chmod +x scripts/entrypoint.sh
 

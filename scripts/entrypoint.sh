@@ -93,6 +93,15 @@ term_handler() {
 
 trap term_handler SIGTERM SIGINT
 
+# ---------- OPTIONAL NODE INSPECTOR ----------
+# Enable by setting ENABLE_NODE_INSPECT=1/true/yes (any non-empty except "0")
+# This swaps start-self-hosted -> start-self-hosted:inspect to pass --inspect directly to tsx
+INSPECT_ENABLED=0
+if [ -n "${ENABLE_NODE_INSPECT:-}" ] && [ "${ENABLE_NODE_INSPECT}" != "0" ]; then
+  INSPECT_ENABLED=1
+  log "Node inspector enabled (will use start-self-hosted:inspect)"
+fi
+
 # ---------- START APP ----------
 if [ "$#" -eq 0 ]; then
   log "No command provided to run. Exiting."
@@ -100,8 +109,19 @@ if [ "$#" -eq 0 ]; then
   exit 1
 fi
 
-log "Starting app: $*"
-"$@" &
+# Swap command to use inspect variant if enabled
+CMD_ARGS=("$@")
+if [ "$INSPECT_ENABLED" -eq 1 ]; then
+  for i in "${!CMD_ARGS[@]}"; do
+    if [ "${CMD_ARGS[$i]}" = "start-self-hosted" ]; then
+      CMD_ARGS[$i]="start-self-hosted:inspect"
+      log "Swapped start-self-hosted -> start-self-hosted:inspect"
+    fi
+  done
+fi
+
+log "Starting app: ${CMD_ARGS[*]}"
+"${CMD_ARGS[@]}" &
 APP_PID=$!
 
 # If app exits, shut everything down

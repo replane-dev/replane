@@ -73,6 +73,14 @@ export class Replicator<TSource, TTarget> {
     return replicator;
   }
 
+  async status(): Promise<'lagging' | 'up-to-date'> {
+    const events = await this.consumer.pullEvents(1);
+    if (events.length === 0) {
+      return 'up-to-date';
+    }
+    return 'lagging';
+  }
+
   private static async createLagging<TSource, TTarget>(
     source: ReplicatorSource<TSource>,
     target: ReplicatorTarget<TTarget>,
@@ -269,6 +277,10 @@ export class ReplicatorService<TSource, TTarget> implements Service {
       throw new Error('Replicator not started');
     }
     await this.replicator.sync();
+  }
+
+  async status(): Promise<'lagging' | 'up-to-date'> {
+    return (await this.replicator?.status()) ?? 'up-to-date';
   }
 
   async start(ctx: Context) {

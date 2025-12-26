@@ -46,7 +46,7 @@ jobs:
         run: docker compose -f bench/docker-compose.yml up -d --wait postgres replane prometheus
 
       - name: Run benchmark tests
-        run: pnpm test:bench
+        run: pnpm bench
 
       - name: Show logs on failure
         if: failure()

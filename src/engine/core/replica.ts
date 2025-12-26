@@ -147,6 +147,17 @@ export class Replica {
     await Promise.all([this.configsReplicator.sync(), this.sdkKeysReplicator.sync()]);
   }
 
+  async status(): Promise<'lagging' | 'up-to-date'> {
+    const statuses = await Promise.all([
+      this.configsReplicator.status(),
+      this.sdkKeysReplicator.status(),
+    ]);
+    if (statuses.some(status => status === 'lagging')) {
+      return 'lagging';
+    }
+    return 'up-to-date';
+  }
+
   async getConfigReplicaById(configId: string): Promise<ConfigReplica | undefined> {
     return this.replicaStore.getConfigReplicaById(configId);
   }
@@ -371,6 +382,13 @@ export class ReplicaService implements Service {
     }
 
     return await this.replica.renderConfig(config);
+  }
+
+  async status(): Promise<'lagging' | 'up-to-date'> {
+    if (!this.replica) {
+      throw new Error('Replica not started');
+    }
+    return await this.replica.status();
   }
 
   async start(ctx: Context) {

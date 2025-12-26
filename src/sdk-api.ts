@@ -8,9 +8,26 @@ import {OpenAPIHono} from '@hono/zod-openapi';
 import * as Sentry from '@sentry/nextjs';
 import {cors} from 'hono/cors';
 import {HTTPException} from 'hono/http-exception';
+import {Counter, Gauge} from 'prom-client';
 import {z} from 'zod';
 import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
-import {assertNever, toEagerAsyncIterable} from './engine/core/utils';
+import {assertNever, toEagerAsyncIterable, wait} from './engine/core/utils';
+
+// Prometheus metrics for replication streams
+const replicationStreamsStarted = new Counter({
+  name: 'replane_replication_streams_started_total',
+  help: 'Total number of replication streams started',
+});
+
+const replicationStreamsStopped = new Counter({
+  name: 'replane_replication_streams_stopped_total',
+  help: 'Total number of replication streams stopped',
+});
+
+const replicationStreamsActive = new Gauge({
+  name: 'replane_replication_streams_active',
+  help: 'Number of currently active replication streams',
+});
 
 async function getEdge() {
   return getEdgeSingleton();
@@ -155,13 +172,6 @@ sdkApi.openapi(
       },
     },
     request: {
-      headers: z.object({
-        'x-stream-timeout-ms': z.string().optional().openapi({
-          description:
-            'Maximum stream lifetime in milliseconds. Server will close the stream after this timeout.',
-          example: '60000',
-        }),
-      }),
       body: {
         content: {
           'application/json': {
@@ -178,19 +188,10 @@ sdkApi.openapi(
     const edge = await getEdge();
 
     const abortController = new AbortController();
-    const onAbort = () => abortController.abort();
+    const onAbort = () => {
+      abortController.abort();
+    };
     c.req.raw.signal.addEventListener('abort', onAbort);
-
-    // Parse optional stream timeout header (only in testing mode)
-    let streamTimeoutMs: number | null = null;
-    if (isTestingModeEnabled()) {
-      const timeoutHeader = c.req.header('x-stream-timeout-ms');
-      streamTimeoutMs = timeoutHeader ? parseInt(timeoutHeader, 10) : null;
-      if (Number.isNaN(streamTimeoutMs)) {
-        console.warn('Invalid stream timeout header:', timeoutHeader);
-        streamTimeoutMs = null;
-      }
-    }
 
     const rawBody = await c.req.json().catch(() => ({}));
     const parseResult = StartReplicationStreamBody.safeParse(rawBody);
@@ -201,6 +202,10 @@ sdkApi.openapi(
     }
     const clientState = parseResult.data;
 
+    // Track stream metrics
+    replicationStreamsStarted.inc();
+    replicationStreamsActive.inc();
+
     const stream = new ReadableStream<SseEvent>({
       async start(controller) {
         let errored = false;
@@ -210,18 +215,6 @@ sdkApi.openapi(
             controller.enqueue({type: 'comment', comment: 'ping'});
           } catch {}
         }, 15_000);
-
-        // Optional stream timeout - close stream after specified duration
-        let streamTimeout: ReturnType<typeof setTimeout> | null = null;
-        if (streamTimeoutMs && streamTimeoutMs > 0) {
-          streamTimeout = setTimeout(() => {
-            try {
-              controller.enqueue({type: 'comment', comment: 'timeout'});
-            } catch {}
-            // Small delay to allow the timeout event to be sent before closing
-            setTimeout(() => abortController.abort(), 50);
-          }, streamTimeoutMs);
-        }
 
         try {
           controller.enqueue({type: 'comment', comment: 'connected'});
@@ -281,9 +274,10 @@ sdkApi.openapi(
           controller.error(err);
         } finally {
           clearInterval(heartbeat);
-          if (streamTimeout) clearTimeout(streamTimeout);
           abortController.abort();
           c.req.raw.signal.removeEventListener('abort', onAbort);
+          replicationStreamsStopped.inc();
+          replicationStreamsActive.dec();
           if (!errored) {
             try {
               controller.close();
@@ -340,7 +334,14 @@ sdkApi.openapi(
       return c.json({msg: 'Testing mode not enabled'}, 403);
     }
     const edge = await getEdge();
-    await edge.testing.replicaService.sync();
+    while (true) {
+      // we don't call replicaService.sync() to not affect how it works, we only check if it's up to date
+      const status = await edge.testing.replicaService.status();
+      if (status === 'up-to-date') {
+        break;
+      }
+      await wait(10);
+    }
     return c.json({status: 'synced' as const}, 200);
   },
 );

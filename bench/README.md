@@ -61,7 +61,7 @@ This starts:
 From the repository root:
 
 ```bash
-pnpm test:bench
+pnpm bench
 ```
 
 Customize test parameters by editing [`.env`](./.env).
@@ -87,7 +87,7 @@ Environment variables (configured in `.env`):
 | `SSE_VUS`                    | `1000`                  | SSE connection virtual users      |
 | `PROJECTS_COUNT`             | `100`                   | Number of test projects to create |
 | `ADMIN_REQUEST_DELAY_MS`     | `100`                   | Delay between admin requests      |
-| `SSE_TIMEOUT_MS`             | `30000`                 | SSE connection timeout            |
+| `SSE_DURATION_MS`            | `30000`                 | SSE connection duration           |
 
 ## Test Scenario
 
@@ -156,5 +156,5 @@ To run manually:
 
 ```bash
 # From repository root
-pnpm test:bench
+pnpm bench
 ```
