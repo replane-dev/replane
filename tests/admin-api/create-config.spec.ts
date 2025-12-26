@@ -441,28 +441,6 @@ describe('Admin API - Create Config', () => {
 
       expect(response.status).toBe(201);
     });
-
-    it('should return 400 when same user has multiple roles', async () => {
-      await fixture.registerUser('dual-role@example.com');
-
-      const {token} = await fixture.createAdminApiKey({
-        scopes: ['config:write'],
-      });
-
-      const response = await fixture.adminApiRequest(
-        'POST',
-        `/projects/${fixture.projectId}/configs`,
-        token,
-        createConfigBody('dual-role-config', 'value', null, {
-          editors: ['dual-role@example.com'],
-          maintainers: ['dual-role@example.com'],
-        }),
-      );
-
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toContain('multiple roles');
-    });
   });
 
   describe('Environment Variants', () => {

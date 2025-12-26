@@ -68,7 +68,7 @@ jobs:
         run: pnpm exec tsc --noEmit
 
   test:
-    name: Run Tests
+    name: Integration Tests
     runs-on: ubuntu-latest
 
     services:
