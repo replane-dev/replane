@@ -275,7 +275,7 @@ Replane includes a load testing suite in the [`bench/`](./bench) directory. Resu
 | Metric                   | Result                                      |
 | ------------------------ | ------------------------------------------- |
 | Concurrent clients       | 5,000 (can be higher with proper os tuning) |
-| Config change throughput | ~4,000 messages/sec                         |
+| Config change throughput | ~4,500 messages/sec                         |
 | Node.js CPU usage        | ~1.5 cores                                  |
 | Node.js memory usage     | ~2.7 GB (RSS)                               |
 
