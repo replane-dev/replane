@@ -35,7 +35,7 @@ jobs:
         run: docker compose -f docker-compose.e2e.yml build
 
       - name: Start services
-        run: docker compose -f docker-compose.e2e.yml up -d
+        run: docker compose -f docker-compose.e2e.yml up -d --wait
 
       - name: Run E2E tests
         env:

@@ -43,7 +43,7 @@ jobs:
         run: docker compose -f bench/docker-compose.yml build
 
       - name: Start services
-        run: docker compose -f bench/docker-compose.yml up -d postgres replane prometheus && sleep 30
+        run: docker compose -f bench/docker-compose.yml up -d --wait postgres replane prometheus
 
       - name: Run benchmark tests
         run: pnpm test:bench
