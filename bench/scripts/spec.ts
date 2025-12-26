@@ -83,9 +83,12 @@ export const options: Options = {
     // Admin API thresholds
     admin_latency: ['p(95)<100', 'p(99)<200'],
     admin_success: ['rate>0.99'],
+    admin_errors: ['rate<0.01'],
 
     // SSE connection thresholds
     sse_connection_success: ['rate>0.99'],
+    sse_connection_errors: ['rate<0.01'],
+    sse_connection_failures: ['rate<0.01'],
 
     // SSE timing thresholds
     sse_time_to_opened: ['p(95)<200', 'p(99)<500'],
@@ -312,6 +315,9 @@ export function sseTest(data: TestContext): void {
 
   const success = check(response, {
     'SSE connection status is 200': r => r && r.status === 200,
+    'SSE opened': () => openedAt !== null,
+    'SSE first message': () => firstMessageTime !== null,
+    'SSE init message': () => initMessageTime !== null,
   });
 
   sseConnectionSuccess.add(success ? 1 : 0);
