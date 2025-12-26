@@ -35,28 +35,7 @@ jobs:
         run: docker compose -f docker-compose.e2e.yml build
 
       - name: Start services
-        run: |
-          docker compose -f docker-compose.e2e.yml up -d
-          # Wait for services to be healthy
-          echo "Waiting for services to be ready..."
-          sleep 10
-          # Check if services are up
-          for i in {1..30}; do
-            if curl -sf http://localhost:$REPLANE_ADMIN_API_PORT/api/health > /dev/null 2>&1; then
-              echo "Admin API is ready"
-              break
-            fi
-            echo "Waiting for Admin API... ($i/30)"
-            sleep 2
-          done
-          for i in {1..30}; do
-            if curl -sf http://localhost:$REPLANE_EDGE_API_PORT/api/health > /dev/null 2>&1; then
-              echo "Edge API is ready"
-              break
-            fi
-            echo "Waiting for Edge API... ($i/30)"
-            sleep 2
-          done
+        run: docker compose -f docker-compose.e2e.yml up -d
 
       - name: Run E2E tests
         env:

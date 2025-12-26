@@ -43,18 +43,7 @@ jobs:
         run: docker compose -f bench/docker-compose.yml build
 
       - name: Start services
-        run: |
-          docker compose -f bench/docker-compose.yml up -d postgres replane prometheus
-          echo "Waiting for services to be ready..."
-          sleep 10
-          for i in {1..30}; do
-            if curl -sf http://localhost:8091/api/health > /dev/null 2>&1; then
-              echo "Replane is ready"
-              break
-            fi
-            echo "Waiting for Replane... ($i/30)"
-            sleep 2
-          done
+        run: docker compose -f bench/docker-compose.yml up -d postgres replane prometheus
 
       - name: Run benchmark tests
         run: pnpm test:bench
