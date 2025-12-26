@@ -6,12 +6,12 @@ Load testing suite for Replane using [k6](https://k6.io/) with the [xk6-sse](htt
 
 Tested on **macOS Tahoe, Apple M2 Pro, 32 GB RAM**:
 
-| Metric                   | Result                                       |
-| ------------------------ | -------------------------------------------- |
-| Concurrent clients       | **5,000**                                    |
-| Config change throughput | **~4,000 messages/sec** to connected clients |
-| Node.js CPU usage        | ~2 cores (out of available cores)            |
-| Node.js memory usage     | < 550 MB                                     |
+| Metric                   | Result                                          |
+| ------------------------ | ----------------------------------------------- |
+| Concurrent clients       | **5,000** (can be higher with proper os tuning) |
+| Config change throughput | **~4,000 messages/sec** to connected clients    |
+| Node.js CPU usage        | ~1.5 cores                                      |
+| Node.js memory usage     | ~2.7 GB (RSS)                                   |
 
 Replane scales horizontally—add more instances behind a load balancer to increase throughput linearly.
 
@@ -81,7 +81,6 @@ Environment variables (configured in `.env`):
 | `REPLANE_EDGE_URL`           | `http://localhost:8091` | Edge/SDK API URL                  |
 | `REPLANE_SUPERADMIN_API_KEY` | (see .env)              | Superadmin API key                |
 | `TEST_DURATION`              | `2m`                    | Test duration                     |
-| `RAMP_UP_TIME`               | `5s`                    | Ramp up duration                  |
 | `RAMP_DOWN_TIME`             | `5s`                    | Ramp down duration                |
 | `ADMIN_VUS`                  | `5`                     | Admin API virtual users           |
 | `SSE_VUS`                    | `1000`                  | SSE connection virtual users      |

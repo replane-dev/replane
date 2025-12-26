@@ -6,7 +6,7 @@ ENV REPLICA_STORAGE_PATH=/data/replica/replica.db
 ENV PGDATA=/data/postgresql
 
 ENV PORT=8080
-ENV NODE_OPTIONS="--enable-source-maps"
+ENV NODE_OPTIONS="--enable-source-maps --max-old-space-size=4096"
 ENV ENABLE_NODE_INSPECT="0"
 ENV NODE_INSPECT_PORT=9229
 
