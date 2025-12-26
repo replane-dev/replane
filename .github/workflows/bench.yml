@@ -60,7 +60,7 @@ jobs:
           # Extract the results section (from THRESHOLDS to the end)
           {
             echo "results<<EOF"
-            sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -50
+            sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -200
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
