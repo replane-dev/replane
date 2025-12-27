@@ -48,14 +48,14 @@ Open your browser at http://localhost:8080.
 
 ## Official SDKs
 
-| Technology | Package             | Links                                                                                                                |
-| ---------- | ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| JavaScript | `@replanejs/sdk`    | [npm](https://www.npmjs.com/package/@replanejs/sdk) · [GitHub](https://github.com/replane-dev/replane-javascript)    |
-| React      | `@replanejs/react`  | [npm](https://www.npmjs.com/package/@replanejs/react) · [GitHub](https://github.com/replane-dev/replane-javascript)  |
-| Next.js    | `@replanejs/next`   | [npm](https://www.npmjs.com/package/@replanejs/next) · [GitHub](https://github.com/replane-dev/replane-javascript)   |
-| Svelte     | `@replanejs/svelte` | [npm](https://www.npmjs.com/package/@replanejs/svelte) · [GitHub](https://github.com/replane-dev/replane-javascript) |
-| Python     | `replane`           | [PyPI](https://pypi.org/project/replane/) · [GitHub](https://github.com/replane-dev/replane-python)                  |
-| .NET       | `Replane`           | [NuGet](https://www.nuget.org/packages/Replane) · [GitHub](https://github.com/replane-dev/replane-dotnet)            |
+| Technology | Package             | Links                                                                                                                                                 |
+| ---------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JavaScript | `@replanejs/sdk`    | [npm](https://www.npmjs.com/package/@replanejs/sdk) · [GitHub](https://github.com/replane-dev/replane-javascript/tree/main/packages/sdk#readme)       |
+| React      | `@replanejs/react`  | [npm](https://www.npmjs.com/package/@replanejs/react) · [GitHub](https://github.com/replane-dev/replane-javascript/tree/main/packages/react#readme)   |
+| Next.js    | `@replanejs/next`   | [npm](https://www.npmjs.com/package/@replanejs/next) · [GitHub](https://github.com/replane-dev/replane-javascript/tree/main/packages/next#readme)     |
+| Svelte     | `@replanejs/svelte` | [npm](https://www.npmjs.com/package/@replanejs/svelte) · [GitHub](https://github.com/replane-dev/replane-javascript/tree/main/packages/svelte#readme) |
+| Python     | `replane`           | [PyPI](https://pypi.org/project/replane/) · [GitHub](https://github.com/replane-dev/replane-python)                                                   |
+| .NET       | `Replane`           | [NuGet](https://www.nuget.org/packages/Replane) · [GitHub](https://github.com/replane-dev/replane-dotnet)                                             |
 
 ## Self‑hosting with Docker
 
