@@ -38,6 +38,9 @@ primary_region = 'iad'
   SENTRY_ENVIRONMENT = "production"
   SENTRY_TRACES_SAMPLE_RATE = "0.1"
 
+  REPLANE_BASE_URL = "https://cloud.replane.dev"
+  REPLANE_SDK_KEY = "rp_bc00ae4689b434600899a6f244f286608ba357ad740b3126019b62195e6877b99b6476a2cbe16ad2"
+
   # we also use fly.io secrets for variables like EMAIL_SERVER/GITHUB_CLIENT_SECRET/etc
 
 [[vm]]
