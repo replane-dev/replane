@@ -20,7 +20,13 @@ export default async function proxy(req: NextRequest, event: any) {
   // Fly.io: for non-SDK API calls, replay the request in the primary region if configured
   // for performance reasons (we have PostgreSQL in this region)
   const PRIMARY_REGION = process.env.PRIMARY_REGION;
-  if (PRIMARY_REGION && EDGE_URL_PREFIXES.every(prefix => !pathname.startsWith(prefix))) {
+  const FLY_REGION = process.env.FLY_REGION;
+  if (
+    PRIMARY_REGION &&
+    FLY_REGION &&
+    FLY_REGION !== PRIMARY_REGION &&
+    EDGE_URL_PREFIXES.every(prefix => !pathname.startsWith(prefix))
+  ) {
     return new NextResponse(null, {
       status: 307,
       headers: {
