@@ -8,7 +8,14 @@ const auth = withAuth({});
 
 const HEALTHCHECK_PATH = getHealthcheckPath();
 
-const EDGE_URL_PREFIXES = ['/api/sdk/', '/_next/static', '/_next/image', '/favicon', '/metrics'];
+const EDGE_URL_PREFIXES = [
+  '/api/sdk/',
+  '/_next/static',
+  '/_next/image',
+  '/favicon',
+  '/metrics',
+  '/api/health',
+];
 
 export default async function proxy(req: NextRequest, event: any) {
   const pathname = trimEnd(req.nextUrl.pathname, '/');
