@@ -35,6 +35,7 @@ export function AppProvider({children}: {children: React.ReactNode}) {
   const queryClient = useQueryClient();
   const appLayoutQuery = trpc.getAppLayoutData.queryOptions();
   const {data: appLayoutData} = useSuspenseQuery(appLayoutQuery);
+  console.log('appLayoutData', appLayoutData);
   const projects: ProjectSummary[] = React.useMemo(
     () =>
       appLayoutData.projects.map(p => ({

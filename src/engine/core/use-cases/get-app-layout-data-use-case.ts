@@ -12,6 +12,8 @@ export interface GetAppLayoutDataResponse {
   projects: ProjectListItem[];
   workspaces: WorkspaceListItem[];
   isEmailServerConfigured: boolean;
+  region: string;
+  primaryRegion: string;
 }
 
 export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
@@ -35,6 +37,8 @@ export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
       projects,
       workspaces,
       isEmailServerConfigured: isEmailServerConfigured(),
+      region: process.env.FLY_REGION ?? '',
+      primaryRegion: process.env.PRIMARY_REGION ?? '',
     };
   };
 }
