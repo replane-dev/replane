@@ -13,6 +13,10 @@ primary_region = 'iad'
   auto_start_machines = false
   processes = ['app']
 
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 1000
+
   [[http_service.checks]]
     interval = "15s"
     timeout = "2s"
