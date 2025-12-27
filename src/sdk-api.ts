@@ -13,8 +13,6 @@ import {z} from 'zod';
 import {RenderedOverrideSchema} from './engine/core/override-condition-schemas';
 import {assertNever, toEagerAsyncIterable, wait} from './engine/core/utils';
 
-const activeClients = new Map<{}, string>();
-
 // Prometheus metrics for replication streams
 const replicationStreamsStarted = new Counter({
   name: 'replane_replication_streams_started_total',
@@ -158,11 +156,6 @@ const StartReplicationStreamBody = z
 
 export type StartReplicationStreamBody = z.infer<typeof StartReplicationStreamBody>;
 
-// get active clients
-sdkApi.get('/replication/active-clients', c => {
-  return c.json({activeClients: Array.from(activeClients.values())});
-});
-
 sdkApi.openapi(
   {
     method: 'post',
@@ -208,9 +201,6 @@ sdkApi.openapi(
       });
     }
     const clientState = parseResult.data;
-
-    const clientId = {};
-    activeClients.set(clientId, c.req.header('user-agent') ?? '');
 
     // Track stream metrics
     replicationStreamsStarted.inc();
@@ -288,7 +278,6 @@ sdkApi.openapi(
           c.req.raw.signal.removeEventListener('abort', onAbort);
           replicationStreamsStopped.inc();
           replicationStreamsActive.dec();
-          activeClients.delete(clientId);
           if (!errored) {
             try {
               controller.close();
