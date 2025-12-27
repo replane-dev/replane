@@ -75,10 +75,10 @@ export class UserStore {
 
   async updateById(params: {
     id: number;
-    name?: string;
+    name?: string | null;
     image?: string | null;
   }): Promise<User | undefined> {
-    const updates: Partial<{name: string; image: string | null}> = {};
+    const updates: Partial<{name: string | null; image: string | null}> = {};
     if (params.name !== undefined) updates.name = params.name;
     if (params.image !== undefined) updates.image = params.image;
 

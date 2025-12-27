@@ -122,6 +122,8 @@ export const appRouter = createTRPCRouter({
   updateUserProfile: baseProcedure
     .input(
       z.object({
+        /** New user name, null to clear, undefined to keep unchanged */
+        name: z.string().min(1).max(200).nullable().optional(),
         /** Base64 data URL for new image, null to remove, undefined to keep unchanged */
         image: z
           .string()
@@ -139,6 +141,7 @@ export const appRouter = createTRPCRouter({
       }
       return await opts.ctx.engine.useCases.updateUserProfile(GLOBAL_CONTEXT, {
         identity: opts.ctx.identity,
+        name: opts.input.name,
         image: opts.input.image,
       });
     }),

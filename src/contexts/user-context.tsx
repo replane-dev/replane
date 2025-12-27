@@ -1,6 +1,8 @@
 'use client';
 
 import {getUserImageUrl} from '@/lib/user-image';
+import {useTRPC} from '@/trpc/client';
+import {useQuery} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
 import {createContext, useCallback, useContext, useMemo, useState, type ReactNode} from 'react';
 
@@ -26,19 +28,26 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({children}: {children: ReactNode}) {
+  const trpc = useTRPC();
   const {data: session, status} = useSession();
   const [imageVersion, setImageVersion] = useState(0);
 
   const sessionUser = session?.user;
   const userId = (sessionUser as any)?.id;
 
+  // Fetch profile (non-suspense!) so username reflects updates without relying on session/JWT.
+  const {data: userProfile} = useQuery({
+    ...trpc.getUserProfile.queryOptions(),
+    enabled: status === 'authenticated',
+  });
+
   const user = useMemo<UserData>(
     () => ({
       id: userId,
-      email: sessionUser?.email ?? undefined,
-      name: sessionUser?.name ?? undefined,
+      email: userProfile?.email ?? sessionUser?.email ?? undefined,
+      name: userProfile?.name ?? sessionUser?.name ?? undefined,
     }),
-    [userId, sessionUser?.email, sessionUser?.name],
+    [userId, userProfile?.email, userProfile?.name, sessionUser?.email, sessionUser?.name],
   );
 
   const userImageUrl = useMemo(() => {

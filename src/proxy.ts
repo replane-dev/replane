@@ -29,6 +29,7 @@ export default async function proxy(req: NextRequest, event: any) {
   const PRIMARY_REGION = process.env.PRIMARY_REGION;
   const FLY_REGION = process.env.FLY_REGION;
   if (
+    (false as any) &&
     PRIMARY_REGION &&
     FLY_REGION &&
     FLY_REGION !== PRIMARY_REGION &&

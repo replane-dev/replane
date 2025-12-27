@@ -26,10 +26,15 @@ export function AccountGeneralSettings() {
   const {invalidateUserImage} = useUser();
 
   // Fetch user profile from TRPC
-  const {data: userProfile} = useSuspenseQuery(trpc.getUserProfile.queryOptions());
+  const userProfileQuery = trpc.getUserProfile.queryOptions();
+  const {data: userProfile} = useSuspenseQuery(userProfileQuery);
 
   const userEmail = userProfile?.email ?? '';
+  const currentName = userProfile?.name ?? '';
   const currentImage = userProfile?.image ?? null;
+
+  const [nameDraft, setNameDraft] = React.useState('');
+  const [nameTouched, setNameTouched] = React.useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [confirmEmail, setConfirmEmail] = React.useState('');
@@ -47,6 +52,13 @@ export function AccountGeneralSettings() {
     setImageToUpload(undefined);
   }, [currentImage]);
 
+  // Keep name draft in sync with server value unless user has started editing.
+  React.useEffect(() => {
+    if (!nameTouched) {
+      setNameDraft(currentName);
+    }
+  }, [currentName, nameTouched]);
+
   // The actual image to display
   const currentImageSrc = React.useMemo(() => {
     if (imagePreview !== undefined) return imagePreview;
@@ -55,6 +67,24 @@ export function AccountGeneralSettings() {
 
   const deleteAccount = useMutation(trpc.deleteUserAccount.mutationOptions());
   const updateProfile = useMutation(trpc.updateUserProfile.mutationOptions());
+
+  const handleSaveName = async () => {
+    const nextName = nameDraft.trim();
+    if (!nextName) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+
+    try {
+      await updateProfile.mutateAsync({name: nextName});
+      await queryClient.invalidateQueries({queryKey: userProfileQuery.queryKey});
+      await queryClient.refetchQueries({queryKey: userProfileQuery.queryKey});
+      setNameTouched(false);
+      toast.success('Username updated');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Unable to update username — please try again');
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -98,6 +128,8 @@ export function AccountGeneralSettings() {
       await updateProfile.mutateAsync({image: imageToUpload});
       // Clear pending changes and refetch user profile
       setImageToUpload(undefined);
+      await queryClient.invalidateQueries({queryKey: userProfileQuery.queryKey});
+      await queryClient.refetchQueries({queryKey: userProfileQuery.queryKey});
       invalidateUserImage(); // Update nav-user avatar as well
       toast.success('Profile image updated');
     } catch (e: any) {
@@ -127,12 +159,40 @@ export function AccountGeneralSettings() {
   };
 
   const hasImageChanges = imageToUpload !== undefined;
+  const hasNameChanges = nameDraft.trim() !== currentName.trim();
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h3 className="text-lg font-semibold">Account settings</h3>
         <p className="text-sm text-muted-foreground">Manage your account settings</p>
+      </div>
+
+      {/* Username */}
+      <div>
+        <Label htmlFor="account-username">Username</Label>
+        <p className="text-xs text-muted-foreground mb-2">
+          This is how you’ll appear in the navigation and comments.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            id="account-username"
+            value={nameDraft}
+            onChange={e => {
+              setNameTouched(true);
+              setNameDraft(e.target.value);
+            }}
+            placeholder="Your name"
+            autoComplete="name"
+          />
+          <Button
+            type="button"
+            onClick={handleSaveName}
+            disabled={!hasNameChanges || updateProfile.isPending}
+          >
+            {updateProfile.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
       </div>
 
       {/* Profile Image */}
