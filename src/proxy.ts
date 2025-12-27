@@ -8,11 +8,25 @@ const auth = withAuth({});
 
 const HEALTHCHECK_PATH = getHealthcheckPath();
 
+const EDGE_URL_PREFIXES = ['/api/sdk/', '/_next/static', '/_next/image', '/favicon', '/metrics'];
+
 export default async function proxy(req: NextRequest, event: any) {
   const pathname = trimEnd(req.nextUrl.pathname, '/');
 
   if (pathname === HEALTHCHECK_PATH) {
     return NextResponse.json({status: 'ok'});
+  }
+
+  // Fly.io: for non-SDK API calls, replay the request in the primary region if configured
+  // for performance reasons (we have PostgreSQL in this region)
+  const PRIMARY_REGION = process.env.PRIMARY_REGION;
+  if (PRIMARY_REGION && EDGE_URL_PREFIXES.every(prefix => !pathname.startsWith(prefix))) {
+    return new NextResponse(null, {
+      status: 307,
+      headers: {
+        'Fly-Replay': `region=${PRIMARY_REGION}`,
+      },
+    });
   }
 
   // Apply internal matcher logic: bypass auth for excluded paths
