@@ -256,12 +256,17 @@ export function getAuthOptions(): AuthOptions {
         }
       },
       async jwt({token, user}) {
-        if (user) {
-          token.id = user.id;
-          token.email = user.email;
-          token.name = user.name;
-        }
-        return token;
+        // Return only the minimal fields needed to keep cookie size small
+        // NextAuth adds a lot of profile data from OAuth providers by default
+        return {
+          id: user?.id ?? token.id,
+          email: user?.email ?? token.email,
+          name: user?.name ?? token.name,
+          // Required NextAuth fields for token management
+          iat: token.iat,
+          exp: token.exp,
+          jti: token.jti,
+        };
       },
       async session({session, token}) {
         if (token && session.user) {
