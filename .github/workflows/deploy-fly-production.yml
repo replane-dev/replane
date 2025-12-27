@@ -1,0 +1,27 @@
+name: Deploy (Fly.io) - Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    environment: Production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          fly deploy \
+            --remote-only \
+            --config fly.toml \
+            --app replane-cloud-prod

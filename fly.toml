@@ -1,0 +1,40 @@
+# fly.toml app configuration file generated for replane-cloud-prod on 2025-12-27T20:41:29+03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'replane-cloud-prod'
+primary_region = 'iad'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/api/health"
+
+[env]
+  REPLANE_MODE = "$REPLANE_MODE"
+  BASE_URL = "https://cloud.replane.dev"
+  PORT = "8080"
+
+  DATABASE_MAX_CONNECTIONS = "100"
+
+  EMAIL_FROM = "noreply@replane.dev"
+
+  MAGIC_LINK_ENABLED = "true"
+
+  # we also use fly.io secrets for variables like EMAIL_SERVER/GITHUB_CLIENT_SECRET/etc
+
+[[vm]]
+  memory = '1gb'
+  cpus = 1
+  memory_mb = 1024

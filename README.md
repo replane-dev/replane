@@ -65,6 +65,12 @@ You can launch a Replane container for trying it out with:
 docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=xxx replane/replane
 ```
 
+Generate a secure `SECRET_KEY`:
+
+```bash
+openssl rand -base64 48
+```
+
 Replane will now be reachable at http://localhost:8080/.
 
 Example docker‑compose.yml:

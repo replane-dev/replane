@@ -30,7 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-.env
+.env*
+!.env.example
 
 # vercel
 .vercel
@@ -41,3 +42,6 @@ next-env.d.ts
 
 # replica data
 /data
+
+# deployment (generated Fly config)
+/deployment/fly.replane.toml

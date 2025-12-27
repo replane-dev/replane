@@ -27,20 +27,20 @@ export function getPgPool(databaseUrl: string) {
       }
     }
 
-    poolCache.set(
-      databaseUrl,
-      new Pool({
-        connectionString: databaseUrl,
-        max: maxConnections,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 2000,
-        statement_timeout: 30000, // 30 seconds
-        lock_timeout: 30000, // 30 seconds
-        query_timeout: 60000, // 60 seconds
-        idle_in_transaction_session_timeout: 60000, // 60 seconds
-        ssl,
-      }),
-    );
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      max: maxConnections,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+      // NOTE:
+      // Do NOT pass `statement_timeout` / `lock_timeout` / `idle_in_transaction_session_timeout`
+      // as connection options. Some Postgres poolers (e.g. PgBouncer) reject these startup
+      // parameters, causing boot/migrations to fail.
+      query_timeout: 60000, // 60 seconds (client-side timeout in node-postgres)
+      ssl,
+    });
+
+    poolCache.set(databaseUrl, pool);
   }
 
   poolCounter.set(databaseUrl, (poolCounter.get(databaseUrl) ?? 0) + 1);
