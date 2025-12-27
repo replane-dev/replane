@@ -22,7 +22,6 @@ primary_region = 'iad'
     path = "/api/health"
 
 [env]
-  REPLANE_MODE = "$REPLANE_MODE"
   BASE_URL = "https://cloud.replane.dev"
   PORT = "8080"
 
@@ -31,6 +30,10 @@ primary_region = 'iad'
   EMAIL_FROM = "noreply@replane.dev"
 
   MAGIC_LINK_ENABLED = "true"
+
+  SENTRY_DSN = "https://91b9a5d0d1dca2615d6f3fbc085d1dc8@o4510523200503808.ingest.de.sentry.io/4510523212431440"
+  SENTRY_ENVIRONMENT = "production"
+  SENTRY_TRACES_SAMPLE_RATE = "0.1"
 
   # we also use fly.io secrets for variables like EMAIL_SERVER/GITHUB_CLIENT_SECRET/etc
 
