@@ -18,18 +18,7 @@ Replane is a dynamic configuration manager. Store feature flags, app settings, a
 
 ## Quick Start
 
-### Option 1: Replane Cloud (Recommended)
-
-The fastest way to get started — no infrastructure required.
-
-1. Sign up at [cloud.replane.dev](https://cloud.replane.dev)
-2. Create a workspace and project
-3. Generate an SDK key
-4. Connect your app with `baseUrl: 'https://cloud.replane.dev'`
-
-### Option 2: Self-Hosted
-
-Run Replane on your own infrastructure:
+[Use Replane Cloud](https://cloud.replane.dev) or run Replane on your own infrastructure:
 
 ```sh
 docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=xxx replane/replane
