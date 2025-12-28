@@ -1,6 +1,6 @@
 'use client';
 
-import {ChevronsUpDown, History, LogOut, Monitor, Moon, Sun} from 'lucide-react';
+import {ChevronsUpDown, History, LogOut, Monitor, Moon, Settings, Sun} from 'lucide-react';
 import {signOut} from 'next-auth/react';
 import {useTheme} from 'next-themes';
 
@@ -21,11 +21,13 @@ import {
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from '@/components/ui/sidebar';
 import {useUser} from '@/contexts/user-context';
 import Link from 'next/link';
+import {useSettings} from './settings-context';
 
 export function NavUser() {
   const {isMobile} = useSidebar();
   const {user: currentUser, userImageUrl} = useUser();
   const {theme, setTheme} = useTheme();
+  const {showSettings} = useSettings();
   const projectId = useProjectId();
   const user = {
     name: currentUser.name || '—',
@@ -98,6 +100,10 @@ export function NavUser() {
                   <History />
                   My activity
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => showSettings('account-general')}>
+                <Settings />
+                Settings
               </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
