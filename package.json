@@ -18,6 +18,7 @@
     "test:watch": "dotenv -- vitest --exclude '**/e2e/**'",
     "test:e2e": "dotenv -- vitest run tests/e2e/",
     "bench": "dotenv -e bench/.env -- k6 run --out experimental-prometheus-rw bench/scripts/spec.ts",
+    "soak": "TEST_DURATION=1h SSE_VUS=500 ADMIN_VUS=3 dotenv -e bench/.env -- k6 run --out experimental-prometheus-rw bench/scripts/spec.ts",
     "release": "bumpp",
     "migrate": "pnpm run migrate:migrate && pnpm run migrate:codegen",
     "migrate:migrate": "dotenv -- tsx ./src/engine/scripts/migrate.ts",

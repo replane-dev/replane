@@ -2,11 +2,48 @@ name: Benchmark Tests
 
 on:
   workflow_call:
+    inputs:
+      test_duration:
+        description: 'Test duration (e.g., 2m, 1h)'
+        required: false
+        type: string
+        default: '2m'
+      sse_vus:
+        description: 'Number of SSE virtual users'
+        required: false
+        type: number
+        default: 1000
+      admin_vus:
+        description: 'Number of Admin API virtual users'
+        required: false
+        type: number
+        default: 5
+      timeout_minutes:
+        description: 'Job timeout in minutes'
+        required: false
+        type: number
+        default: 20
     outputs:
       results:
         description: 'Benchmark results from k6'
         value: ${{ jobs.bench.outputs.results }}
   workflow_dispatch:
+    inputs:
+      test_duration:
+        description: 'Test duration (e.g., 2m, 1h)'
+        required: false
+        type: string
+        default: '2m'
+      sse_vus:
+        description: 'Number of SSE virtual users'
+        required: false
+        type: number
+        default: 1000
+      admin_vus:
+        description: 'Number of Admin API virtual users'
+        required: false
+        type: number
+        default: 5
 
 env:
   REPLANE_SUPERADMIN_API_KEY: 'test-superadmin-api-key-for-bench'
@@ -17,7 +54,7 @@ jobs:
   bench:
     name: Benchmark Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: ${{ inputs.timeout_minutes || 20 }}
     outputs:
       results: ${{ steps.benchmark.outputs.results }}
 
@@ -53,9 +90,22 @@ jobs:
 
       - name: Run benchmark tests
         id: benchmark
+        env:
+          TEST_DURATION: ${{ inputs.test_duration || '2m' }}
+          SSE_VUS: ${{ inputs.sse_vus || 1000 }}
+          ADMIN_VUS: ${{ inputs.admin_vus || 5 }}
+          RAMP_DOWN_TIME: '5s'
+          PROJECTS_COUNT: '100'
+          ADMIN_REQUEST_DELAY_MS: '100'
+          SSE_DURATION_MS: '30000'
         run: |
+          echo "Running benchmark with:"
+          echo "  Duration: $TEST_DURATION"
+          echo "  SSE VUs: $SSE_VUS"
+          echo "  Admin VUs: $ADMIN_VUS"
+
           # Run benchmark and capture output
-          pnpm bench 2>&1 | tee benchmark-output.txt
+          k6 run --out experimental-prometheus-rw bench/scripts/spec.ts 2>&1 | tee benchmark-output.txt
 
           # Extract the results section (from THRESHOLDS to the end)
           {

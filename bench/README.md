@@ -66,6 +66,24 @@ pnpm bench
 
 Customize test parameters by editing [`.env`](./.env).
 
+### 2b. Run Soak Test (Extended Duration)
+
+Soak testing runs the benchmark suite for an extended period (1 hour by default) to detect:
+- Memory leaks
+- Resource exhaustion
+- Connection pool depletion
+- Stability issues under sustained load
+
+```bash
+pnpm soak
+```
+
+Or customize the duration:
+
+```bash
+TEST_DURATION=2h pnpm soak
+```
+
 ### 3. View Results
 
 - **Grafana**: http://localhost:3001 (admin/admin)
@@ -151,9 +169,19 @@ docker compose down -v
 
 The benchmark runs automatically in CI via GitHub Actions. See `.github/workflows/bench.yml`.
 
-To run manually:
+### Soak Testing in Releases
+
+Soak tests run automatically before Docker image releases (on version tags). This ensures the release
+candidate can handle sustained load for 1 hour without issues.
+
+Soak testing reuses the benchmark workflow with extended duration parameters.
+
+### Running Manually
 
 ```bash
-# From repository root
+# Benchmark (quick, ~2 minutes)
 pnpm bench
+
+# Soak test (extended, ~1 hour)
+pnpm soak
 ```
