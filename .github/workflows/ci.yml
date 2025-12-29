@@ -128,8 +128,6 @@ jobs:
     uses: ./.github/workflows/bench.yml
     with:
       test_duration: '1h'
-      sse_vus: 500
-      admin_vus: 3
       timeout_minutes: 90
 
   release:
