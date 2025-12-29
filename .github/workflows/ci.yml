@@ -119,8 +119,6 @@ jobs:
     name: Benchmark Tests
     uses: ./.github/workflows/bench.yml
 
-  # Soak testing runs for releases only - 1 hour sustained load test
-  # to detect memory leaks, resource exhaustion, and stability issues
   soak:
     name: Soak Tests
     needs: [lint-and-build, typecheck, test, e2e, bench]
