@@ -1,7 +1,6 @@
 import {isEmailDomainAllowed} from '@/environment';
 import crypto from 'crypto';
 import {ForbiddenError} from '../errors';
-import {Lazy} from '../lazy';
 import type {Logger} from '../logger';
 import {hashPassword, verifyPassword} from '../password-utils';
 import {UserCredentialsStore} from '../stores/user-credentials-store';
@@ -26,10 +25,10 @@ export interface VerifyPasswordCredentialsUseCaseOptions {
 }
 
 // Pre-computed dummy hash for timing attack prevention
-const DUMMY_PASSWORD_HASH = new Lazy(async () => {
+const DUMMY_PASSWORD_HASH_PROMISE = (async () => {
   const random = crypto.getRandomValues(new Uint8Array(32));
   return await hashPassword(bytesToHex(random));
-});
+})();
 
 export function createVerifyPasswordCredentialsUseCase(
   options: VerifyPasswordCredentialsUseCaseOptions,
@@ -62,7 +61,7 @@ export function createVerifyPasswordCredentialsUseCase(
     // If user doesn't exist, verify against a dummy hash to maintain constant time
     const isValid = await verifyPassword(
       req.password,
-      userCredentials?.passwordHash ?? (await DUMMY_PASSWORD_HASH.get()),
+      userCredentials?.passwordHash ?? (await DUMMY_PASSWORD_HASH_PROMISE),
     );
 
     if (!userCredentials || !isValid) {

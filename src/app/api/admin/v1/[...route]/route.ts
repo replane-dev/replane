@@ -2,7 +2,6 @@
 // In production, this is served directly via Hono in server.ts
 
 import {createAdminApi} from '@/admin-api';
-import {Lazy} from '@/engine/core/lazy';
 import {getEngineSingleton} from '@/engine/engine-singleton';
 import {NextRequest, NextResponse} from 'next/server';
 
@@ -11,14 +10,13 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
 
-// Lazy singleton for the admin API
-const adminApiLazy = new Lazy(async () => {
-  const engine = await getEngineSingleton();
-  return createAdminApi(engine);
-});
+let adminApi: Promise<ReturnType<typeof createAdminApi>> | undefined = undefined;
 
 async function getAdminApi() {
-  return adminApiLazy.get();
+  if (!adminApi) {
+    adminApi = getEngineSingleton().then(engine => createAdminApi(engine));
+  }
+  return await adminApi;
 }
 
 export async function GET(req: NextRequest) {
