@@ -2,6 +2,8 @@ import {trimEnd} from '@/engine/core/utils';
 import {getHealthcheckPath} from '@/environment';
 import {withAuth} from 'next-auth/middleware';
 import {NextRequest, NextResponse} from 'next/server';
+import {getEdgeSingleton} from './engine/edge-singleton';
+import {getEngineSingleton} from './engine/engine-singleton';
 
 // Auth middleware instance for non-healthcheck routes
 const auth = withAuth({});
@@ -18,6 +20,10 @@ const EDGE_URL_PREFIXES = [
 ];
 
 export default async function proxy(req: NextRequest, event: any) {
+  // ensure that the engine and edge are initialized
+  await getEngineSingleton();
+  await getEdgeSingleton();
+
   const pathname = trimEnd(req.nextUrl.pathname, '/');
 
   if (pathname === HEALTHCHECK_PATH) {
