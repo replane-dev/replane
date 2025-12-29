@@ -5,7 +5,7 @@ import {useTheme} from 'next-themes';
 
 interface CodeSnippetProps {
   code: string;
-  language: 'typescript' | 'javascript' | 'shell' | 'json' | 'python';
+  language: 'typescript' | 'javascript' | 'shell' | 'json' | 'python' | 'csharp';
   tabSize?: number;
 }
 

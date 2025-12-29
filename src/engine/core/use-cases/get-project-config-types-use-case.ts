@@ -5,16 +5,20 @@ import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import {trimEnd} from '../utils';
 
+export type CodegenLanguage = 'typescript' | 'python' | 'csharp';
+
 export interface GetProjectConfigTypesRequest {
   projectId: string;
   environmentId: string;
   identity: Identity;
+  language?: CodegenLanguage;
 }
 
 export interface GetProjectConfigTypesResponse {
   configNames: string[];
   exampleConfigName: string;
   types: string;
+  language: CodegenLanguage;
 }
 
 interface ConfigSchema {
@@ -113,26 +117,73 @@ function buildCombinedConfigsSchema(schemas: ConfigSchema[]): Record<string, any
 }
 
 /**
- * Generates the header comment for the TypeScript types file.
+ * Language-specific configuration for quicktype.
+ */
+interface LanguageConfig {
+  lang: 'typescript' | 'python' | 'csharp';
+  rendererOptions: Record<string, string>;
+  commentPrefix: string;
+  commentSuffix: string;
+}
+
+const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
+  typescript: {
+    lang: 'typescript',
+    rendererOptions: {
+      'just-types': 'true',
+      'prefer-unions': 'true',
+      'prefer-const-values': 'true',
+    },
+    commentPrefix: '/**\n',
+    commentSuffix: '\n */',
+  },
+  python: {
+    lang: 'python',
+    rendererOptions: {
+      'python-version': '3.7',
+    },
+    commentPrefix: '"""\n',
+    commentSuffix: '\n"""',
+  },
+  csharp: {
+    lang: 'csharp',
+    rendererOptions: {
+      namespace: 'Replane.Generated',
+      framework: 'SystemTextJson',
+      'check-required': 'true',
+    },
+    commentPrefix: '/**\n',
+    commentSuffix: '\n */',
+  },
+};
+
+/**
+ * Generates the header comment for the types file.
  */
 function generateTypesHeader(params: {
   workspaceName: string;
   projectName: string;
   environmentName: string;
   codegenUrl: string;
+  language: CodegenLanguage;
 }): string {
-  return `/**
- * Auto-generated types for Replane configuration
- *
- * Workspace:   ${params.workspaceName}
- * Project:     ${params.projectName}
- * Environment: ${params.environmentName}
- *
- * These types are automatically generated from your config schemas.
- * Regenerate them whenever you update your schema definitions.
- *
- * @link ${params.codegenUrl}
- */`;
+  const config = LANGUAGE_CONFIGS[params.language];
+  const linePrefix = params.language === 'python' ? '' : ' * ';
+
+  const content = [
+    `${linePrefix}Auto-generated types for Replane configuration`,
+    `${linePrefix}`,
+    `${linePrefix}Workspace:   ${params.workspaceName}`,
+    `${linePrefix}Project:     ${params.projectName}`,
+    `${linePrefix}Environment: ${params.environmentName}`,
+    `${linePrefix}`,
+    `${linePrefix}These types are automatically generated from your config schemas.`,
+    `${linePrefix}Regenerate them whenever you update your schema definitions.`,
+    `${linePrefix}`,
+    `${linePrefix}@link ${params.codegenUrl}`,
+  ].join('\n');
+
+  return `${config.commentPrefix}${content}${config.commentSuffix}`;
 }
 
 export interface GetProjectConfigTypesUseCaseOptions {
@@ -143,6 +194,8 @@ export function createGetProjectConfigTypesUseCase(
   options: GetProjectConfigTypesUseCaseOptions,
 ): TransactionalUseCase<GetProjectConfigTypesRequest, GetProjectConfigTypesResponse> {
   return async (ctx, tx, req) => {
+    const language = req.language ?? 'typescript';
+
     // Ensure user has access to the project
     await tx.permissionService.ensureIsWorkspaceMember(ctx, {
       projectId: req.projectId,
@@ -186,7 +239,10 @@ export function createGetProjectConfigTypesUseCase(
       schemas as Array<{name: string; schema: Record<string, any> | null}>,
     );
 
-    // Use quicktype to generate TypeScript types
+    // Get language-specific configuration
+    const langConfig = LANGUAGE_CONFIGS[language];
+
+    // Use quicktype to generate types for the specified language
     const schemaInput = new JSONSchemaInput(undefined);
     await schemaInput.addSource({
       name: 'Configs',
@@ -198,12 +254,8 @@ export function createGetProjectConfigTypesUseCase(
 
     const result = await quicktype({
       inputData,
-      lang: 'typescript',
-      rendererOptions: {
-        'just-types': 'true',
-        'prefer-unions': 'true',
-        'prefer-const-values': 'true',
-      },
+      lang: langConfig.lang,
+      rendererOptions: langConfig.rendererOptions,
     });
 
     const projectEnvironment = await tx.projectEnvironments.getById({
@@ -228,12 +280,14 @@ export function createGetProjectConfigTypesUseCase(
       projectName: project.name,
       environmentName: projectEnvironment.name,
       codegenUrl,
+      language,
     });
 
     return {
       types: `${header}\n\n${result.lines.join('\n').trim()}`,
       configNames: schemas.map(schema => schema.name),
       exampleConfigName: exampleConfig.name,
+      language,
     };
   };
 }

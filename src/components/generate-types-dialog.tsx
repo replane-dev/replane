@@ -19,6 +19,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {Skeleton} from '@/components/ui/skeleton';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {
+  getTypesFileName,
+  SDK_LANGUAGE_LIST,
+  SDK_LANGUAGES,
+  type SdkLanguage,
+} from '@/lib/sdk-languages';
+import {SDK_STORAGE_KEYS, useLocalStorage} from '@/lib/use-local-storage';
 import {useTRPC} from '@/trpc/client';
 import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
 import {Suspense, useEffect, useRef, useState} from 'react';
@@ -34,10 +42,10 @@ export function GenerateTypesDialog({open, onOpenChange}: GenerateTypesDialogPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="md:max-w-2xl lg:max-w-4xl w-full max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Generate TypeScript Types</DialogTitle>
+          <DialogTitle>Generate Types</DialogTitle>
           <DialogDescription>
-            Generate TypeScript types for your configs. Select an environment to see the types based
-            on schemas for that environment.
+            Generate types for your configs. Select an environment and language to see the types
+            based on schemas for that environment.
           </DialogDescription>
         </DialogHeader>
         <Suspense fallback={<div className="text-sm text-muted-foreground">Loading...</div>}>
@@ -51,6 +59,10 @@ export function GenerateTypesDialog({open, onOpenChange}: GenerateTypesDialogPro
 function GenerateTypesContent() {
   const projectId = useProjectId();
   const trpc = useTRPC();
+  const [selectedLanguage, setSelectedLanguage] = useLocalStorage<SdkLanguage>(
+    SDK_STORAGE_KEYS.LANGUAGE,
+    'javascript',
+  );
 
   // Fetch environments
   const {data: environmentsData} = useSuspenseQuery(
@@ -67,13 +79,17 @@ function GenerateTypesContent() {
   // Track pending environment name for toast after fetch completes
   const pendingEnvNameRef = useRef<string | null>(null);
 
-  // Fetch generated types for selected environment
+  // Get the codegen language for the selected SDK language
+  const codegenLanguage = SDK_LANGUAGES[selectedLanguage].codegenLanguage;
+
+  // Fetch generated types for selected environment and language
   // Using useQuery instead of useSuspenseQuery to prevent unmounting the Monaco editor
   // when the environment changes (which would dispose the editor and cause errors)
   const {data, isLoading, isFetching, error} = useQuery(
     trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId: selectedEnvironmentId,
+      language: codegenLanguage,
     }),
   );
 
@@ -91,72 +107,96 @@ function GenerateTypesContent() {
       toast.success('Copied to clipboard');
     } catch (e) {
       console.error(e);
-      const errorMessage = e instanceof Error ? e.message : String(e);
       toast.error('Unable to copy to clipboard', {
         description: 'Please try selecting and copying the code manually.',
       });
     }
   };
 
+  const langConfig = SDK_LANGUAGES[selectedLanguage];
+
   return (
     <div className="space-y-4">
-      {/* Environment selector */}
-      <div className="space-y-2">
-        <Label htmlFor="environment-select" className="text-sm font-medium">
-          Environment
-        </Label>
-        <Select
-          value={selectedEnvironmentId}
-          onValueChange={id => {
-            const env = environmentsData.environments.find(e => e.id === id);
-            if (env) {
-              pendingEnvNameRef.current = env.name;
-            }
-            setSelectedEnvironmentId(id);
-          }}
-        >
-          <SelectTrigger id="environment-select">
-            <SelectValue placeholder="Select environment" />
-          </SelectTrigger>
-          <SelectContent>
-            {environmentsData.environments.map(env => (
-              <SelectItem key={env.id} value={env.id}>
-                {env.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Language selector tabs */}
+      <Tabs
+        value={selectedLanguage}
+        onValueChange={value => setSelectedLanguage(value as SdkLanguage)}
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          {SDK_LANGUAGE_LIST.map(lang => (
+            <TabsTrigger key={lang} value={lang}>
+              {SDK_LANGUAGES[lang].displayName}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Generated code */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Generated Types</Label>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            className="h-7 text-xs"
-            disabled={isLoading || !data || !!error}
-          >
-            Copy
-          </Button>
-        </div>
-        {error ? (
-          <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
-            <p className="text-sm font-medium text-destructive">
-              Unable to generate types — please try again
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unknown error occurred'}
-            </p>
-          </div>
-        ) : isLoading || !data ? (
-          <Skeleton className="h-48 w-full rounded-lg" />
-        ) : (
-          <CodeSnippet code={data.types} language="typescript" />
-        )}
-      </div>
+        {SDK_LANGUAGE_LIST.map(lang => (
+          <TabsContent key={lang} value={lang} className="space-y-4 mt-4">
+            {/* Environment selector */}
+            <div className="space-y-2">
+              <Label htmlFor="environment-select" className="text-sm font-medium">
+                Environment
+              </Label>
+              <Select
+                value={selectedEnvironmentId}
+                onValueChange={id => {
+                  const env = environmentsData.environments.find(e => e.id === id);
+                  if (env) {
+                    pendingEnvNameRef.current = env.name;
+                  }
+                  setSelectedEnvironmentId(id);
+                }}
+              >
+                <SelectTrigger id="environment-select">
+                  <SelectValue placeholder="Select environment" />
+                </SelectTrigger>
+                <SelectContent>
+                  {environmentsData.environments.map(env => (
+                    <SelectItem key={env.id} value={env.id}>
+                      {env.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Generated code */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">
+                  Generated Types{' '}
+                  <span className="text-muted-foreground font-normal">
+                    ({getTypesFileName(selectedLanguage)})
+                  </span>
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="h-7 text-xs"
+                  disabled={isLoading || !data || !!error}
+                >
+                  Copy
+                </Button>
+              </div>
+              {error ? (
+                <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+                  <p className="text-sm font-medium text-destructive">
+                    Unable to generate types — please try again
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {error instanceof Error ? error.message : 'An unknown error occurred'}
+                  </p>
+                </div>
+              ) : isLoading || !data ? (
+                <Skeleton className="h-48 w-full rounded-lg" />
+              ) : (
+                <CodeSnippet code={data.types} language={langConfig.codeLanguage} />
+              )}
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }

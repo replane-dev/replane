@@ -197,7 +197,7 @@ export function NewSdkKeyView({projectId, onSuccess, onCancel, onDirtyChange}: N
       {createdToken && (
         <div className="rounded-lg border bg-card/50 overflow-hidden">
           <div className="border-b bg-muted/30 px-6 py-4">
-            <h3 className="text-base font-semibold text-foreground">JavaScript SDK Integration</h3>
+            <h3 className="text-base font-semibold text-foreground">SDK Integration</h3>
             <p className="text-sm text-muted-foreground mt-1">
               Use these code examples to integrate Replane into your application.
             </p>

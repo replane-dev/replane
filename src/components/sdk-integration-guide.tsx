@@ -11,6 +11,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {Skeleton} from '@/components/ui/skeleton';
+import {Switch} from '@/components/ui/switch';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {
+  generateUsageSnippet,
+  generateUsageSnippetWithCodegen,
+  getTypesFileName,
+  SDK_LANGUAGE_LIST,
+  SDK_LANGUAGES,
+  type SdkLanguage,
+} from '@/lib/sdk-languages';
+import {SDK_STORAGE_KEYS, useLocalStorage} from '@/lib/use-local-storage';
 import {useTRPC} from '@/trpc/client';
 import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
 import Link from 'next/link';
@@ -29,6 +40,14 @@ export function SdkIntegrationGuide({
   environmentId: initialEnvironmentId,
 }: SdkIntegrationGuideProps) {
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useLocalStorage<SdkLanguage>(
+    SDK_STORAGE_KEYS.LANGUAGE,
+    'javascript',
+  );
+  const [codegenEnabled, setCodegenEnabled] = useLocalStorage(
+    SDK_STORAGE_KEYS.CODEGEN_ENABLED,
+    false,
+  );
   const trpc = useTRPC();
 
   // Fetch environments if environmentId not provided
@@ -46,19 +65,22 @@ export function SdkIntegrationGuide({
   // Track pending environment name for toast after fetch completes
   const pendingEnvNameRef = useRef<string | null>(null);
 
-  // Fetch generated types for the project and environment
-  // Using useQuery instead of useSuspenseQuery to prevent unmounting Monaco editors
-  // when the environment changes (which would dispose the editor and cause errors)
+  // Get the codegen language for the selected SDK language
+  const codegenLanguage = SDK_LANGUAGES[selectedLanguage].codegenLanguage;
+
+  // Fetch generated types for the project and environment - only when codegen is enabled
   const {
     data: typesData,
     isLoading: isTypesLoading,
     isFetching: isTypesFetching,
-  } = useQuery(
-    trpc.getProjectConfigTypes.queryOptions({
+  } = useQuery({
+    ...trpc.getProjectConfigTypes.queryOptions({
       projectId,
       environmentId,
+      language: codegenLanguage,
     }),
-  );
+    enabled: codegenEnabled,
+  });
 
   // Show toast when fetch completes after environment change
   useEffect(() => {
@@ -86,151 +108,183 @@ export function SdkIntegrationGuide({
   const baseUrl =
     typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
 
-  const installSnippet = `npm install @replanejs/sdk`;
-
+  const langConfig = SDK_LANGUAGES[selectedLanguage];
+  const installSnippet = langConfig.installSnippet;
   const defineTypesSnippet = typesData?.types ?? '';
-
   const exampleConfigName = typesData?.exampleConfigName ?? 'your-config';
-  const usageSnippet = `import { Replane } from '@replanejs/sdk';
-import { type Configs } from './types';
+  const configNames = typesData?.configNames ?? ['your-config'];
 
-// Create client
-const replane = new Replane<Configs>();
-
-// Connect to the server (fetches project's configs during initialization)
-await replane.connect({
-    sdkKey: '${sdkKeyValue}',
-    baseUrl: '${baseUrl}',
-});
-
-// Get config value with full type safety
-const config = replane.get('${exampleConfigName}');
-
-// Use context for overrides (see https://replane.dev/docs/guides/override-rules)
-const userConfig = replane.get('${exampleConfigName}', {
-    context: {
-        userId: 'user-123',
-        country: 'US',
-    },
-});
-
-// Configs are automatically updated in realtime via SSE
-// No need to refetch or reload - just call get() again
-
-// Clean up when your application shuts down
-replane.disconnect();`;
+  // Generate usage snippet based on whether codegen is enabled
+  const usageSnippet =
+    codegenEnabled && typesData
+      ? generateUsageSnippetWithCodegen({
+          language: selectedLanguage,
+          sdkKey: sdkKeyValue,
+          baseUrl,
+          exampleConfigName,
+          configNames,
+        })
+      : generateUsageSnippet({
+          language: selectedLanguage,
+          sdkKey: sdkKeyValue,
+          baseUrl,
+          exampleConfigName,
+        });
 
   const showEnvironmentSelector = !initialEnvironmentId;
 
   return (
     <div className="space-y-6">
-      {/* Environment selector */}
-      {showEnvironmentSelector && (
-        <div className="space-y-2">
-          <Label htmlFor="sdk-environment-select" className="text-sm font-medium">
-            Environment
-          </Label>
-          <Select
-            value={environmentId}
-            onValueChange={id => {
-              const env = environmentsData.environments.find(e => e.id === id);
-              if (env) {
-                pendingEnvNameRef.current = env.name;
-              }
-              setEnvironmentId(id);
-            }}
-          >
-            <SelectTrigger id="sdk-environment-select">
-              <SelectValue placeholder="Select environment" />
-            </SelectTrigger>
-            <SelectContent>
-              {environmentsData.environments.map(env => (
-                <SelectItem key={env.id} value={env.id}>
-                  {env.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Types are generated based on the schemas for the selected environment.
-          </p>
-        </div>
-      )}
+      {/* Language selector tabs */}
+      <Tabs
+        value={selectedLanguage}
+        onValueChange={value => setSelectedLanguage(value as SdkLanguage)}
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          {SDK_LANGUAGE_LIST.map(lang => (
+            <TabsTrigger key={lang} value={lang}>
+              {SDK_LANGUAGES[lang].displayName}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Installation */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-foreground">1. Install the SDK</h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCopy(installSnippet, 'install')}
-            className="h-7 text-xs"
-          >
-            {copiedSnippet === 'install' ? 'Copied!' : 'Copy'}
-          </Button>
-        </div>
-        <CodeSnippet code={installSnippet} language="shell" />
-      </div>
+        {SDK_LANGUAGE_LIST.map(lang => (
+          <TabsContent key={lang} value={lang} className="space-y-6 mt-6">
+            {/* Installation */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-foreground">1. Install the SDK</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopy(installSnippet, `install-${lang}`)}
+                  className="h-7 text-xs"
+                >
+                  {copiedSnippet === `install-${lang}` ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
+              <CodeSnippet code={installSnippet} language="shell" />
+            </div>
 
-      {/* Define types */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">2. Define types</Label>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCopy(defineTypesSnippet, 'generated')}
-            className="h-7 text-xs"
-            disabled={isTypesLoading || !typesData}
-          >
-            Copy
-          </Button>
-        </div>
-        {isTypesLoading || !typesData ? (
-          <Skeleton className="h-48 w-full rounded-lg" />
-        ) : (
-          <CodeSnippet code={defineTypesSnippet} language="typescript" />
-        )}
-        <p className="text-xs text-muted-foreground">
-          This is the generated code for the selected environment. You can use this code to
-          integrate the Replane SDK into your application. You can also generate the code for
-          different environments by selecting a different environment in the selector above.
-        </p>
-      </div>
+            {/* Codegen toggle and section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    2. Generate types{' '}
+                    <span className="text-muted-foreground font-normal">(optional)</span>
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Generate typed definitions from your config schemas for better IDE support.
+                  </p>
+                </div>
+                <Switch
+                  id={`codegen-toggle-${lang}`}
+                  checked={codegenEnabled}
+                  onCheckedChange={setCodegenEnabled}
+                />
+              </div>
 
-      {/* Basic Usage */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-foreground">3. Use the client</h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCopy(usageSnippet, 'basic')}
-            className="h-7 text-xs"
-            disabled={isTypesLoading || !typesData}
-          >
-            {copiedSnippet === 'basic' ? 'Copied!' : 'Copy'}
-          </Button>
-        </div>
-        {isTypesLoading || !typesData ? (
-          <Skeleton className="h-64 w-full rounded-lg" />
-        ) : (
-          <CodeSnippet tabSize={4} code={usageSnippet} language="typescript" />
-        )}
-        {!sdkKey && (
-          <p className="text-xs text-muted-foreground italic">
-            Replace <code className="px-1 py-0.5 bg-muted rounded">your-project-sdk-key-here</code>{' '}
-            with your actual SDK key.{' '}
-            <Link
-              href={`/app/projects/${projectId}/sdk-keys?new`}
-              className="text-primary underline hover:no-underline"
-            >
-              Create a new SDK key
-            </Link>
-          </p>
-        )}
-      </div>
+              {codegenEnabled && (
+                <div className="space-y-4 pl-0 border-l-2 border-muted ml-0">
+                  {/* Environment selector */}
+                  {showEnvironmentSelector && (
+                    <div className="space-y-2">
+                      <Label htmlFor="sdk-environment-select" className="text-sm font-medium">
+                        Environment
+                      </Label>
+                      <Select
+                        value={environmentId}
+                        onValueChange={id => {
+                          const env = environmentsData.environments.find(e => e.id === id);
+                          if (env) {
+                            pendingEnvNameRef.current = env.name;
+                          }
+                          setEnvironmentId(id);
+                        }}
+                      >
+                        <SelectTrigger id="sdk-environment-select">
+                          <SelectValue placeholder="Select environment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {environmentsData.environments.map(env => (
+                            <SelectItem key={env.id} value={env.id}>
+                              {env.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Types are generated based on the schemas for the selected environment.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Generated types */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">
+                        Generated types{' '}
+                        <span className="text-muted-foreground font-normal">
+                          ({getTypesFileName(selectedLanguage)})
+                        </span>
+                      </Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCopy(defineTypesSnippet, `generated-${lang}`)}
+                        className="h-7 text-xs"
+                        disabled={isTypesLoading || !typesData}
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                    {isTypesLoading || !typesData ? (
+                      <Skeleton className="h-48 w-full rounded-lg" />
+                    ) : (
+                      <CodeSnippet code={defineTypesSnippet} language={langConfig.codeLanguage} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Basic Usage */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-foreground">3. Use the client</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopy(usageSnippet, `basic-${lang}`)}
+                  className="h-7 text-xs"
+                  disabled={codegenEnabled && isTypesLoading}
+                >
+                  {copiedSnippet === `basic-${lang}` ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
+              {codegenEnabled && isTypesLoading ? (
+                <Skeleton className="h-64 w-full rounded-lg" />
+              ) : (
+                <CodeSnippet tabSize={4} code={usageSnippet} language={langConfig.codeLanguage} />
+              )}
+              {!sdkKey && (
+                <p className="text-xs text-muted-foreground italic">
+                  Replace{' '}
+                  <code className="px-1 py-0.5 bg-muted rounded">your-project-sdk-key-here</code>{' '}
+                  with your actual SDK key.{' '}
+                  <Link
+                    href={`/app/projects/${projectId}/sdk-keys?new`}
+                    className="text-primary underline hover:no-underline"
+                  >
+                    Create a new SDK key
+                  </Link>
+                </p>
+              )}
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }
