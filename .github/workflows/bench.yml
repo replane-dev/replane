@@ -38,7 +38,7 @@ on:
         description: 'Number of SSE virtual users'
         required: false
         type: number
-        default: 1000
+        default: 2000
       admin_vus:
         description: 'Number of Admin API virtual users'
         required: false
