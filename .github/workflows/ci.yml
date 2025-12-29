@@ -136,7 +136,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/release.yml
     with:
-      benchmark_results: ${{ needs.bench.outputs.results }}
+      benchmark_results: ${{ needs.soak.outputs.results }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
