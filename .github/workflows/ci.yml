@@ -127,8 +127,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/bench.yml
     with:
-      test_duration: '1h'
-      timeout_minutes: 90
+      test_duration: '3h'
+      timeout_minutes: 240
 
   release:
     name: Release Docker Image
