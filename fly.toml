@@ -28,7 +28,8 @@ primary_region = 'iad'
   BASE_URL = "https://cloud.replane.dev"
   PORT = "8080"
 
-  DATABASE_MAX_CONNECTIONS = "100"
+  # pgbouncer allows 200 max connections, we deploy 6 replicas = 200 / 6 ~= 30
+  DATABASE_MAX_CONNECTIONS = "30"
 
   EMAIL_FROM = "noreply@replane.dev"
 
