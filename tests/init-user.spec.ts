@@ -1,5 +1,4 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {createUserIdentity} from '@/engine/core/identity';
 import {normalizeEmail} from '@/engine/core/utils';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
@@ -184,4 +183,3 @@ describe('initUser', () => {
     });
   });
 });
-

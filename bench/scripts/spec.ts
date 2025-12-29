@@ -18,11 +18,13 @@
  */
 
 import {check, sleep} from 'k6';
-import {Counter, Rate, Trend} from 'k6/metrics';
+import http from 'k6/http';
+import {Counter, Gauge, Rate, Trend} from 'k6/metrics';
 import {Options} from 'k6/options';
 import sse, {SSEClient, SSEError, SSEEvent, SSEParams} from 'k6/x/sse';
 import {createAdminClient} from './lib/admin-client.ts';
 import {config as testConfig} from './lib/config.ts';
+import {parsePrometheusMetrics} from './lib/prometheus-parser.ts';
 import {pickRandom, randomConfig} from './lib/utils.ts';
 
 // ============= Admin API Metrics =============
@@ -30,6 +32,60 @@ const adminRequests = new Counter('admin_requests');
 const adminErrors = new Counter('admin_errors');
 const adminSuccesses = new Rate('admin_success');
 const adminLatency = new Trend('admin_latency', true);
+
+// ============= Prometheus Metrics (scraped from /metrics) =============
+// CPU metrics
+const processCpuUserSecondsTotal = new Gauge('process_cpu_user_seconds_total');
+const processCpuSystemSecondsTotal = new Gauge('process_cpu_system_seconds_total');
+const processCpuSecondsTotal = new Gauge('process_cpu_seconds_total');
+
+// Replication stream metrics
+const replaneReplicationStreamsActive = new Gauge('replane_replication_streams_active');
+const replaneReplicationStreamsStoppedTotal = new Gauge(
+  'replane_replication_streams_stopped_total',
+);
+const replaneReplicationStreamsStartedTotal = new Gauge(
+  'replane_replication_streams_started_total',
+);
+
+// Memory metrics
+const processResidentMemoryBytes = new Gauge('process_resident_memory_bytes');
+const processVirtualMemoryBytes = new Gauge('process_virtual_memory_bytes');
+const nodejsHeapSizeTotalBytes = new Gauge('nodejs_heap_size_total_bytes');
+const nodejsHeapSizeUsedBytes = new Gauge('nodejs_heap_size_used_bytes');
+const nodejsExternalMemoryBytes = new Gauge('nodejs_external_memory_bytes');
+
+// Event loop metrics
+const nodejsEventloopLagSeconds = new Gauge('nodejs_eventloop_lag_seconds');
+const nodejsEventloopLagP90Seconds = new Gauge('nodejs_eventloop_lag_p90_seconds');
+const nodejsEventloopLagP99Seconds = new Gauge('nodejs_eventloop_lag_p99_seconds');
+
+// Handle/request metrics
+const nodejsActiveHandlesTotal = new Gauge('nodejs_active_handles_total');
+const nodejsActiveRequestsTotal = new Gauge('nodejs_active_requests_total');
+
+// Metrics scrape errors
+const metricsScrapeErrors = new Counter('metrics_scrape_errors');
+
+// Map of metric names to their k6 Gauge instances
+const prometheusMetrics: Record<string, Gauge> = {
+  process_cpu_user_seconds_total: processCpuUserSecondsTotal,
+  process_cpu_system_seconds_total: processCpuSystemSecondsTotal,
+  process_cpu_seconds_total: processCpuSecondsTotal,
+  replane_replication_streams_active: replaneReplicationStreamsActive,
+  replane_replication_streams_stopped_total: replaneReplicationStreamsStoppedTotal,
+  replane_replication_streams_started_total: replaneReplicationStreamsStartedTotal,
+  process_resident_memory_bytes: processResidentMemoryBytes,
+  process_virtual_memory_bytes: processVirtualMemoryBytes,
+  nodejs_heap_size_total_bytes: nodejsHeapSizeTotalBytes,
+  nodejs_heap_size_used_bytes: nodejsHeapSizeUsedBytes,
+  nodejs_external_memory_bytes: nodejsExternalMemoryBytes,
+  nodejs_eventloop_lag_seconds: nodejsEventloopLagSeconds,
+  nodejs_eventloop_lag_p90_seconds: nodejsEventloopLagP90Seconds,
+  nodejs_eventloop_lag_p99_seconds: nodejsEventloopLagP99Seconds,
+  nodejs_active_handles_total: nodejsActiveHandlesTotal,
+  nodejs_active_requests_total: nodejsActiveRequestsTotal,
+};
 
 // ============= SSE Metrics =============
 const sseConnectionErrors = new Counter('sse_connection_errors');
@@ -78,6 +134,19 @@ export const options: Options = {
       exec: 'sseTest',
       tags: {scenario: 'sse'},
     },
+    // Metrics scraping scenario - collects Prometheus metrics from /metrics endpoint
+    metrics_scrape: {
+      executor: 'ramping-vus',
+      startVUs: 1,
+      stages: [
+        {duration: testConfig.rampUpTime, target: 1},
+        {duration: testConfig.testDuration, target: 1},
+        {duration: testConfig.rampDownTime, target: 0},
+      ],
+      gracefulRampDown: '30s',
+      exec: 'metricsTest',
+      tags: {scenario: 'metrics'},
+    },
   },
   thresholds: {
     // Admin API thresholds
@@ -95,6 +164,18 @@ export const options: Options = {
     sse_time_to_first_message: ['p(95)<200', 'p(99)<500'],
     sse_time_to_init_message: ['p(95)<200', 'p(99)<500'],
     sse_time_to_finished: ['p(95)>30000'],
+
+    // Prometheus metrics thresholds (scraped from /metrics)
+    nodejs_eventloop_lag_seconds: ['value<0.1'], // < 100ms avg lag
+    nodejs_eventloop_lag_p90_seconds: ['value<0.2'], // p90 < 200ms
+    nodejs_eventloop_lag_p99_seconds: ['value<0.5'], // p99 < 500ms
+
+    // Memory thresholds - prevent unbounded growth
+    nodejs_heap_size_used_bytes: ['value<1073741824'], // < 1GB heap used
+    process_resident_memory_bytes: ['value<2147483648'], // < 2GB RSS
+
+    // Metrics scraping reliability
+    metrics_scrape_errors: ['count<10'], // allow a few transient failures
   },
 };
 
@@ -329,6 +410,38 @@ export function sseTest(data: TestContext): void {
     console.error(`SSE connection failed: ${status}: ${response.body}`, response.error);
   }
   sseConnectionFailures.add(success ? 0 : 1);
+}
+
+// ============= Metrics Scraping Test =============
+export function metricsTest(data: TestContext): void {
+  const metricsUrl = `${data.edgeUrl}/metrics`;
+
+  const response = http.get(metricsUrl);
+
+  const success = check(response, {
+    'Metrics endpoint returns 200': r => r.status === 200,
+    'Metrics response is not empty': r => r.body !== null && (r.body as string).length > 0,
+  });
+
+  if (!success) {
+    metricsScrapeErrors.add(1);
+    console.error(`Failed to scrape metrics: ${response.status}`);
+    sleep(5);
+    return;
+  }
+
+  const parsedMetrics = parsePrometheusMetrics(response.body as string);
+
+  // Update each k6 gauge with the scraped value
+  for (const [metricName, gauge] of Object.entries(prometheusMetrics)) {
+    const value = parsedMetrics[metricName];
+    if (value !== undefined) {
+      gauge.add(value);
+    }
+  }
+
+  // Scrape every 5 seconds
+  sleep(5);
 }
 
 // ============= Teardown =============

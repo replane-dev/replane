@@ -19,8 +19,9 @@ Replane scales horizontally—add more instances behind a load balancer to incre
 
 - **Admin API Tests** - Config update operations under load
 - **SSE Streaming Tests** - Concurrent SDK streaming connections
-- **Combined Scenario** - Both running in parallel (simulates real-world usage)
-- **Prometheus Metrics** - Real-time metrics export
+- **Metrics Scraping** - Collects Prometheus metrics from `/metrics` endpoint during tests
+- **Combined Scenario** - All scenarios running in parallel (simulates real-world usage)
+- **Prometheus Metrics Export** - Real-time k6 metrics export to Prometheus
 - **Grafana Dashboards** - Pre-configured visualization
 
 ## Prerequisites
@@ -106,9 +107,9 @@ Environment variables (configured in `.env`):
 | `ADMIN_REQUEST_DELAY_MS`     | `100`                   | Delay between admin requests      |
 | `SSE_DURATION_MS`            | `30000`                 | SSE connection duration           |
 
-## Test Scenario
+## Test Scenarios
 
-The benchmark runs two scenarios in parallel:
+The benchmark runs three scenarios in parallel:
 
 ### Admin API Scenario
 
@@ -121,6 +122,16 @@ The benchmark runs two scenarios in parallel:
 - Opens concurrent SSE connections (SDK clients)
 - Receives real-time config updates
 - Measures connection establishment and message delivery times
+
+### Metrics Scraping Scenario
+
+Scrapes `/metrics` endpoint every 5 seconds and tracks:
+
+- **CPU**: `process_cpu_user_seconds_total`, `process_cpu_system_seconds_total`, `process_cpu_seconds_total`
+- **Memory**: `process_resident_memory_bytes`, `process_virtual_memory_bytes`, `nodejs_heap_size_total_bytes`, `nodejs_heap_size_used_bytes`, `nodejs_external_memory_bytes`
+- **Event Loop**: `nodejs_eventloop_lag_seconds`, `nodejs_eventloop_lag_p90_seconds`, `nodejs_eventloop_lag_p99_seconds`
+- **Handles**: `nodejs_active_handles_total`, `nodejs_active_requests_total`
+- **Replication**: `replane_replication_streams_active`, `replane_replication_streams_started_total`, `replane_replication_streams_stopped_total`
 
 ## Thresholds
 
