@@ -1,0 +1,13 @@
+name: CLA Assistant
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  cla:
+    uses: replane/.github/.github/workflows/cla.yml@main
+    secrets:
+      CLA_TOKEN: ${{ secrets.CLA_TOKEN }}
+
