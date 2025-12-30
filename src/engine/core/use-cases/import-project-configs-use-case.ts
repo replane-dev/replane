@@ -78,7 +78,7 @@ export function createImportProjectConfigsUseCase(): TransactionalUseCase<
 
     // Check if replacement would bypass review requirements
     // When onConflict is 'replace', we're deleting and recreating configs which bypasses the proposal workflow
-    if (req.onConflict === 'replace') {
+    if (req.onConflict === 'replace' && project.requireProposals) {
       const envsRequiringReview = environments.filter(e => e.requireProposals);
       if (envsRequiringReview.length > 0) {
         const envNames = envsRequiringReview.map(e => e.name).join(', ');
