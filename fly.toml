@@ -27,6 +27,7 @@ primary_region = 'iad'
 [env]
   BASE_URL = "https://cloud.replane.dev"
   PORT = "8080"
+  SWAP_SIZE = "2048M"
 
   # pgbouncer allows 200 max connections, we deploy 6 replicas = 200 / 6 ~= 30
   DATABASE_MAX_CONNECTIONS = "30"
@@ -48,7 +49,6 @@ primary_region = 'iad'
   memory = '1gb'
   cpus = 1
   memory_mb = 1024
-  swap_size_mb = 2048
 
 [metrics]
   port = 8080

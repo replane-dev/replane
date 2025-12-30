@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+if [ -n "${SWAP_SIZE}" ]; then
+  fallocate -l ${SWAP_SIZE} /swapfile
+  chmod 0600 /swapfile
+  mkswap /swapfile
+  echo 10 > /proc/sys/vm/swappiness
+  swapon /swapfile
+  echo 1 > /proc/sys/vm/overcommit_memory
+fi
+
 : "${PGDATA:=/var/lib/postgresql/data}"
 : "${PG_LOG:=$PGDATA/server.log}"
 
