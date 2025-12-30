@@ -121,6 +121,45 @@ jobs:
           # Exit with k6's exit code to fail the job if thresholds crossed
           exit $K6_EXIT_CODE
 
+      - name: Benchmark Results
+        if: always()
+        run: |
+          echo "═══════════════════════════════════════════════════════════════"
+          echo "                      BENCHMARK RESULTS                        "
+          echo "═══════════════════════════════════════════════════════════════"
+          echo ""
+          echo "Configuration:"
+          echo "  Duration:   ${{ inputs.test_duration || '2m' }}"
+          echo "  SSE VUs:    ${{ inputs.sse_vus || 1000 }}"
+          echo "  Admin VUs:  ${{ inputs.admin_vus || 5 }}"
+          echo ""
+          echo "───────────────────────────────────────────────────────────────"
+          echo ""
+          if [ -f benchmark-output.txt ]; then
+            cat benchmark-output.txt
+          else
+            echo "No benchmark output available"
+          fi
+          echo ""
+          echo "═══════════════════════════════════════════════════════════════"
+
+          # Also write to job summary for GitHub UI
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Duration | ${{ inputs.test_duration || '2m' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SSE VUs | ${{ inputs.sse_vus || 1000 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Admin VUs | ${{ inputs.admin_vus || 5 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f benchmark-output.txt ]; then
+            sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -100 >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No benchmark output available" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Show logs on failure
         if: failure()
         run: docker compose -f bench/docker-compose.yml logs
