@@ -7,6 +7,10 @@ on:
 
 jobs:
   cla:
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     uses: replane-dev/.github/.github/workflows/cla.yml@main
     secrets:
       CLA_ACCESS_TOKEN: ${{ secrets.CLA_ACCESS_TOKEN }}
