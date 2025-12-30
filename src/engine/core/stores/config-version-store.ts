@@ -103,11 +103,13 @@ export class ConfigVersionStore {
     return configVersion;
   }
 
-  async getById(id: string): Promise<ConfigVersion | null> {
+  async getById(params: {id: string; projectId: string}): Promise<ConfigVersion | null> {
     const versionRow = await this.db
       .selectFrom('config_versions')
-      .selectAll()
-      .where('id', '=', id)
+      .innerJoin('configs', 'configs.id', 'config_versions.config_id')
+      .selectAll('config_versions')
+      .where('config_versions.id', '=', params.id)
+      .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (!versionRow) return null;
@@ -115,12 +117,18 @@ export class ConfigVersionStore {
     return this.fetchOneVersionWithRelations(versionRow);
   }
 
-  async getByConfigIdAndVersion(configId: string, version: number): Promise<ConfigVersion | null> {
+  async getByConfigIdAndVersion(params: {
+    configId: string;
+    version: number;
+    projectId: string;
+  }): Promise<ConfigVersion | null> {
     const versionRow = await this.db
       .selectFrom('config_versions')
-      .selectAll()
-      .where('config_id', '=', configId)
-      .where('version', '=', version)
+      .innerJoin('configs', 'configs.id', 'config_versions.config_id')
+      .selectAll('config_versions')
+      .where('config_versions.config_id', '=', params.configId)
+      .where('config_versions.version', '=', params.version)
+      .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (!versionRow) return null;
@@ -128,23 +136,27 @@ export class ConfigVersionStore {
     return this.fetchOneVersionWithRelations(versionRow);
   }
 
-  async getByConfigId(configId: string): Promise<ConfigVersion[]> {
+  async getByConfigId(params: {configId: string; projectId: string}): Promise<ConfigVersion[]> {
     const versionRows = await this.db
       .selectFrom('config_versions')
-      .selectAll()
-      .where('config_id', '=', configId)
-      .orderBy('version', 'desc')
+      .innerJoin('configs', 'configs.id', 'config_versions.config_id')
+      .selectAll('config_versions')
+      .where('config_versions.config_id', '=', params.configId)
+      .where('configs.project_id', '=', params.projectId)
+      .orderBy('config_versions.version', 'desc')
       .execute();
 
     return this.fetchVersionsWithRelations(versionRows);
   }
 
-  async getLatestByConfigId(configId: string): Promise<ConfigVersion | null> {
+  async getLatestByConfigId(params: {configId: string; projectId: string}): Promise<ConfigVersion | null> {
     const versionRow = await this.db
       .selectFrom('config_versions')
-      .selectAll()
-      .where('config_id', '=', configId)
-      .orderBy('version', 'desc')
+      .innerJoin('configs', 'configs.id', 'config_versions.config_id')
+      .selectAll('config_versions')
+      .where('config_versions.config_id', '=', params.configId)
+      .where('configs.project_id', '=', params.projectId)
+      .orderBy('config_versions.version', 'desc')
       .limit(1)
       .executeTakeFirst();
 

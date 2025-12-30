@@ -46,6 +46,7 @@ export function createDeleteConfigUseCase(): TransactionalUseCase<
 
     await tx.configService.deleteConfig(ctx, {
       configId: config.id,
+      projectId: req.projectId,
       identity: req.identity,
       prevVersion: req.prevVersion ?? config.version,
     });

@@ -59,7 +59,10 @@ export function createExportProjectConfigsUseCase(): TransactionalUseCase<
     // For each config, get its variants
     const configs: ExportedConfig[] = [];
     for (const configRow of configRows) {
-      const variants = await tx.configVariants.getByConfigId(configRow.id);
+      const variants = await tx.configVariants.getByConfigId({
+        configId: configRow.id,
+        projectId: req.projectId,
+      });
 
       configs.push({
         name: configRow.name,

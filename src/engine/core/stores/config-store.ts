@@ -75,7 +75,7 @@ export class ConfigStore {
     private readonly hub: EventHubPublisher<AppHubEvents>,
   ) {}
 
-  async getDefaultVariant(configId: string): Promise<{
+  async getDefaultVariant(params: {configId: string; projectId: string}): Promise<{
     value: ConfigValue;
     schema: ConfigSchemaType | null;
     overrides: Override[];
@@ -84,7 +84,8 @@ export class ConfigStore {
     const row = await this.db
       .selectFrom('configs')
       .select(['value', 'schema', 'overrides', 'version'])
-      .where('id', '=', configId)
+      .where('id', '=', params.configId)
+      .where('project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (!row) {
@@ -99,7 +100,7 @@ export class ConfigStore {
     };
   }
 
-  async getVariantsByConfigId(configId: string): Promise<
+  async getVariantsByConfigId(params: {configId: string; projectId: string}): Promise<
     Array<{
       name: string;
       projectId: string;
@@ -120,7 +121,8 @@ export class ConfigStore {
         'cv.overrides',
         'c.version',
       ])
-      .where('cv.config_id', '=', configId)
+      .where('cv.config_id', '=', params.configId)
+      .where('c.project_id', '=', params.projectId)
       .execute();
     return rows.map(row => ({
       name: row.name,
@@ -183,7 +185,26 @@ export class ConfigStore {
     return undefined;
   }
 
-  async getById(id: string): Promise<Config | undefined> {
+  async getById(params: {id: string; projectId: string}): Promise<Config | undefined> {
+    const result = await this.db
+      .selectFrom('configs')
+      .selectAll()
+      .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
+      .executeTakeFirst();
+    if (result) {
+      return mapConfig(result);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Get config by ID without requiring projectId.
+   * WARNING: Only use this for internal permission/authorization checks where
+   * the projectId is not known upfront. For data retrieval, always use getById.
+   */
+  async getByIdUnsafe(id: string): Promise<Config | undefined> {
     const result = await this.db
       .selectFrom('configs')
       .selectAll()
@@ -219,6 +240,7 @@ export class ConfigStore {
   async update(params: {
     ctx: Context;
     id: string;
+    projectId: string;
     description: string;
     value: ConfigValue;
     schema: ConfigSchemaType | null;
@@ -237,15 +259,20 @@ export class ConfigStore {
         updated_at: params.updatedAt,
       })
       .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
       .execute();
 
     await this.hub.pushEvent(params.ctx, 'configs', {configId: params.id});
   }
 
-  async deleteById(ctx: Context, id: string): Promise<void> {
-    await this.db.deleteFrom('configs').where('id', '=', id).execute();
+  async deleteById(ctx: Context, params: {id: string; projectId: string}): Promise<void> {
+    await this.db
+      .deleteFrom('configs')
+      .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
+      .execute();
 
-    await this.hub.pushEvent(ctx, 'configs', {configId: id});
+    await this.hub.pushEvent(ctx, 'configs', {configId: params.id});
   }
 
   async getConfigSchemas(params: {

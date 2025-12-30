@@ -84,7 +84,10 @@ export function createCreateProjectEnvironmentUseCase(
     });
 
     // Get all config variants from the source environment
-    const sourceVariants = await tx.configVariants.getByEnvironmentId(req.copyFromEnvironmentId);
+    const sourceVariants = await tx.configVariants.getByEnvironmentId({
+      environmentId: req.copyFromEnvironmentId,
+      projectId: req.projectId,
+    });
 
     // Create config variants for all configs by copying from source environment
     for (const sourceVariant of sourceVariants) {

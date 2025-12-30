@@ -3,6 +3,7 @@ import type {TransactionalUseCase} from '../use-case';
 
 export interface RejectAllPendingConfigProposalsRequest {
   configId: string;
+  projectId: string;
   identity: Identity;
 }
 
@@ -15,6 +16,7 @@ export function createRejectAllPendingConfigProposalsUseCase(): TransactionalUse
   return async (ctx, tx, req) => {
     await tx.proposalService.rejectAllPendingProposals({
       configId: req.configId,
+      projectId: req.projectId,
       reviewer: req.identity,
     });
 

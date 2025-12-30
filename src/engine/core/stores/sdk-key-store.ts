@@ -126,11 +126,15 @@ export class SdkKeyStore {
     };
   }
 
-  async deleteById(ctx: Context, id: string) {
-    await this.db.deleteFrom('sdk_keys').where('id', '=', id).execute();
+  async deleteById(ctx: Context, params: {id: string; projectId: string}) {
+    await this.db
+      .deleteFrom('sdk_keys')
+      .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
+      .execute();
 
     this.hub.pushEvent(ctx, 'sdkKeys', {
-      sdkKeyId: id,
+      sdkKeyId: params.id,
     });
   }
 }

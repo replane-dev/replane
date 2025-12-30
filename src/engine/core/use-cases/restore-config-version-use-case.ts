@@ -31,12 +31,12 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     });
 
     // Get the config to verify it exists and belongs to the project
-    const config = await tx.configs.getById(req.configId);
+    const config = await tx.configs.getById({
+      id: req.configId,
+      projectId: req.projectId,
+    });
     if (!config) {
       throw new BadRequestError('Config does not exist');
-    }
-    if (config.projectId !== req.projectId) {
-      throw new BadRequestError('Config does not belong to the specified project');
     }
 
     // TODO: if the restore operation doesn't change schema, we might relax permissions to edit config only
@@ -51,10 +51,11 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     }
 
     // Fetch the version snapshot to restore
-    const versionSnapshot = await tx.configVersions.getByConfigIdAndVersion(
-      req.configId,
-      req.versionToRestore,
-    );
+    const versionSnapshot = await tx.configVersions.getByConfigIdAndVersion({
+      configId: req.configId,
+      version: req.versionToRestore,
+      projectId: req.projectId,
+    });
 
     if (!versionSnapshot) {
       throw new BadRequestError('Version snapshot not found');
@@ -80,7 +81,10 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     };
 
     // Get current members for comparison (restore doesn't change current members but uses version members)
-    const currentMembers = await tx.configUsers.getByConfigId(req.configId);
+    const currentMembers = await tx.configUsers.getByConfigId({
+      configId: req.configId,
+      projectId: req.projectId,
+    });
     const currentEditorEmails = currentMembers
       .filter(m => m.role === 'editor')
       .map(m => m.user_email_normalized);
@@ -98,7 +102,10 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     }
 
     // Get current variants for approval check
-    const currentVariants = await tx.configVariants.getByConfigId(req.configId);
+    const currentVariants = await tx.configVariants.getByConfigId({
+      configId: req.configId,
+      projectId: req.projectId,
+    });
 
     // Check if approval is required using the new per-environment logic
     if (project.requireProposals) {
@@ -138,6 +145,7 @@ export function createRestoreConfigVersionUseCase(): TransactionalUseCase<
     // Call updateConfig with the reconstructed state from version snapshot
     await tx.configService.updateConfig(ctx, {
       configId: req.configId,
+      projectId: req.projectId,
       description: versionSnapshot.description,
       editorEmails: currentEditorEmails,
       maintainerEmails: currentMaintainerEmails,

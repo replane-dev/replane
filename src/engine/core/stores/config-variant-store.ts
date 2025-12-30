@@ -19,11 +19,23 @@ export interface ConfigVariant {
 export class ConfigVariantStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getById(id: string): Promise<ConfigVariant | null> {
+  async getById(params: {id: string; projectId: string}): Promise<ConfigVariant | null> {
     const row = await this.db
       .selectFrom('config_variants')
-      .selectAll()
-      .where('id', '=', id)
+      .innerJoin('configs', 'configs.id', 'config_variants.config_id')
+      .select([
+        'config_variants.id',
+        'config_variants.config_id',
+        'config_variants.environment_id',
+        'config_variants.value',
+        'config_variants.schema',
+        'config_variants.overrides',
+        'config_variants.created_at',
+        'config_variants.updated_at',
+        'config_variants.use_base_schema',
+      ])
+      .where('config_variants.id', '=', params.id)
+      .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (!row) return null;
@@ -34,12 +46,25 @@ export class ConfigVariantStore {
   async getByConfigIdAndEnvironmentId(params: {
     configId: string;
     environmentId: string;
+    projectId: string;
   }): Promise<ConfigVariant | null> {
     const row = await this.db
       .selectFrom('config_variants')
-      .selectAll()
-      .where('config_id', '=', params.configId)
-      .where('environment_id', '=', params.environmentId)
+      .innerJoin('configs', 'configs.id', 'config_variants.config_id')
+      .select([
+        'config_variants.id',
+        'config_variants.config_id',
+        'config_variants.environment_id',
+        'config_variants.value',
+        'config_variants.schema',
+        'config_variants.overrides',
+        'config_variants.created_at',
+        'config_variants.updated_at',
+        'config_variants.use_base_schema',
+      ])
+      .where('config_variants.config_id', '=', params.configId)
+      .where('config_variants.environment_id', '=', params.environmentId)
+      .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
 
     if (!row) return null;
@@ -47,10 +72,14 @@ export class ConfigVariantStore {
     return this.mapRow(row);
   }
 
-  async getByConfigId(configId: string): Promise<(ConfigVariant & {environmentName: string})[]> {
+  async getByConfigId(params: {
+    configId: string;
+    projectId: string;
+  }): Promise<(ConfigVariant & {environmentName: string})[]> {
     const rows = await this.db
       .selectFrom('config_variants as cv')
       .innerJoin('project_environments as pe', 'pe.id', 'cv.environment_id')
+      .innerJoin('configs as c', 'c.id', 'cv.config_id')
       .select([
         'cv.id',
         'cv.config_id',
@@ -63,7 +92,8 @@ export class ConfigVariantStore {
         'cv.use_base_schema',
         'pe.name as environment_name',
       ])
-      .where('cv.config_id', '=', configId)
+      .where('cv.config_id', '=', params.configId)
+      .where('c.project_id', '=', params.projectId)
       .orderBy('pe.order', 'asc')
       .execute();
 
@@ -73,22 +103,47 @@ export class ConfigVariantStore {
     }));
   }
 
-  async deleteByEnvironmentId(params: {configId: string; environmentId: string}): Promise<void> {
+  async deleteByEnvironmentId(params: {
+    configId: string;
+    environmentId: string;
+    projectId: string;
+  }): Promise<void> {
     await this.db
       .deleteFrom('config_variants')
       .where('config_id', '=', params.configId)
       .where('environment_id', '=', params.environmentId)
+      .where(eb =>
+        eb.exists(
+          eb
+            .selectFrom('configs')
+            .select('configs.id')
+            .where('configs.id', '=', eb.ref('config_variants.config_id'))
+            .where('configs.project_id', '=', params.projectId),
+        ),
+      )
       .execute();
 
     // Note: We don't have a specific variant ID here, but the event bus will trigger a refresh
     // The caller should handle notifying the change
   }
 
-  async getByEnvironmentId(environmentId: string): Promise<ConfigVariant[]> {
+  async getByEnvironmentId(params: {environmentId: string; projectId: string}): Promise<ConfigVariant[]> {
     const rows = await this.db
       .selectFrom('config_variants')
-      .selectAll()
-      .where('environment_id', '=', environmentId)
+      .innerJoin('configs', 'configs.id', 'config_variants.config_id')
+      .select([
+        'config_variants.id',
+        'config_variants.config_id',
+        'config_variants.environment_id',
+        'config_variants.value',
+        'config_variants.schema',
+        'config_variants.overrides',
+        'config_variants.created_at',
+        'config_variants.updated_at',
+        'config_variants.use_base_schema',
+      ])
+      .where('config_variants.environment_id', '=', params.environmentId)
+      .where('configs.project_id', '=', params.projectId)
       .execute();
 
     return rows.map(this.mapRow);
@@ -114,6 +169,7 @@ export class ConfigVariantStore {
   async update(params: {
     id: string;
     configId: string;
+    projectId: string;
     value?: unknown;
     schema?: unknown | null;
     overrides?: Override[];
@@ -141,14 +197,32 @@ export class ConfigVariantStore {
       .updateTable('config_variants')
       .set(updateData)
       .where('id', '=', params.id)
+      .where(eb =>
+        eb.exists(
+          eb
+            .selectFrom('configs')
+            .select('configs.id')
+            .where('configs.id', '=', eb.ref('config_variants.config_id'))
+            .where('configs.project_id', '=', params.projectId),
+        ),
+      )
       .execute();
   }
 
-  async delete(params: {configId: string; variantId: string}): Promise<void> {
+  async delete(params: {configId: string; variantId: string; projectId: string}): Promise<void> {
     await this.db
       .deleteFrom('config_variants')
       .where('config_variants.id', '=', params.variantId)
       .where('config_variants.config_id', '=', params.configId)
+      .where(eb =>
+        eb.exists(
+          eb
+            .selectFrom('configs')
+            .select('configs.id')
+            .where('configs.id', '=', eb.ref('config_variants.config_id'))
+            .where('configs.project_id', '=', params.projectId),
+        ),
+      )
       .execute();
   }
 

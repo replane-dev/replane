@@ -13,10 +13,26 @@ fi
 : "${PGDATA:=/var/lib/postgresql/data}"
 : "${PG_LOG:=$PGDATA/server.log}"
 
+# Check if external database is configured
+has_external_db=0
+if [ -n "${DATABASE_URL}${DATABASE_USER}${DATABASE_PASSWORD}${DATABASE_HOST}${DATABASE_PORT}${DATABASE_NAME}" ]; then
+  has_external_db=1
+fi
+
 # Decide whether to use internal PostgreSQL
 use_internal_pg=0
-if [ -z "${DATABASE_URL}${DATABASE_USER}${DATABASE_PASSWORD}${DATABASE_HOST}${DATABASE_PORT}${DATABASE_NAME}" ]; then
+if [ "$EMBEDDED_POSTGRES" = "true" ] && [ "$has_external_db" -eq 0 ]; then
   use_internal_pg=1
+elif [ "$EMBEDDED_POSTGRES" != "true" ] && [ "$has_external_db" -eq 0 ]; then
+  echo "ERROR: This is a slim image without bundled database."
+  echo "You must provide DATABASE_URL or DATABASE_HOST/DATABASE_USER/DATABASE_PASSWORD/DATABASE_NAME environment variables."
+  echo ""
+  echo "Example:"
+  echo "  docker run -e DATABASE_URL=postgres://user:pass@host:5432/dbname replane/replane:slim"
+  echo ""
+  echo "If you need a standalone deployment with bundled database, use the full image:"
+  echo "  docker pull replane/replane:latest"
+  exit 1
 fi
 
 # Log function that only prints when using internal PostgreSQL
@@ -26,19 +42,21 @@ log() {
   fi
 }
 
-# Find PostgreSQL bin directory (Debian installs to /usr/lib/postgresql/<version>/bin)
-PG_BIN=$(find /usr/lib/postgresql -name bin -type d 2>/dev/null | head -n1)
-if [ -z "$PG_BIN" ]; then
-  # Fallback: check if pg_ctl is already in PATH
-  if command -v pg_ctl >/dev/null 2>&1; then
-    PG_BIN=$(dirname "$(command -v pg_ctl)")
-  else
-    log "ERROR: PostgreSQL binaries not found"
-    exit 1
+# Find PostgreSQL bin directory (only needed when using internal PostgreSQL)
+if [ "$use_internal_pg" -eq 1 ]; then
+  PG_BIN=$(find /usr/lib/postgresql -name bin -type d 2>/dev/null | head -n1)
+  if [ -z "$PG_BIN" ]; then
+    # Fallback: check if pg_ctl is already in PATH
+    if command -v pg_ctl >/dev/null 2>&1; then
+      PG_BIN=$(dirname "$(command -v pg_ctl)")
+    else
+      echo "ERROR: PostgreSQL binaries not found but EMBEDDED_POSTGRES=true"
+      exit 1
+    fi
   fi
+  export PATH="$PG_BIN:$PATH"
+  log "Using PostgreSQL binaries from: $PG_BIN"
 fi
-export PATH="$PG_BIN:$PATH"
-log "Using PostgreSQL binaries from: $PG_BIN"
 
 stop_postgres() {
   if [ "$use_internal_pg" -eq 1 ]; then

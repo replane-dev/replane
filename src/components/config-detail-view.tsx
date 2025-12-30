@@ -203,6 +203,7 @@ export function ConfigDetailView({
                             try {
                               await rejectAllPendingProposals.mutateAsync({
                                 configId: config.config.id,
+                                projectId,
                               });
                               setIsRejectDialogOpen(false);
                               router.refresh();

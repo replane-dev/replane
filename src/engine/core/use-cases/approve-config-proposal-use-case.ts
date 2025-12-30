@@ -38,7 +38,10 @@ export function createApproveConfigProposalUseCase(
     assert(currentUser, 'Current user not found');
 
     // Get the config to check allowSelfApprovals
-    const config = await tx.configs.getById(proposal.configId);
+    const config = await tx.configs.getById({
+      id: proposal.configId,
+      projectId: req.projectId,
+    });
     if (!config) {
       throw new BadRequestError('Config not found');
     }
@@ -73,6 +76,7 @@ export function createApproveConfigProposalUseCase(
     // Mark the proposal as approved BEFORE patching
     await tx.configProposals.updateById({
       id: proposal.id,
+      projectId: req.projectId,
       approvedAt: deps.dateProvider.now(),
       reviewerId: currentUser.id,
     });
@@ -98,6 +102,7 @@ export function createApproveConfigProposalUseCase(
     if (proposal.isDelete) {
       await tx.configService.deleteConfig(ctx, {
         configId: proposal.configId,
+        projectId: req.projectId,
         identity: req.identity,
         prevVersion: proposal.baseConfigVersion,
         originalProposalId: proposal.id,
@@ -112,6 +117,7 @@ export function createApproveConfigProposalUseCase(
       // Apply the full proposed state using updateConfig
       await tx.configService.updateConfig(ctx, {
         configId: proposal.configId,
+        projectId: req.projectId,
         description: proposal.description ?? config.description,
         editorEmails,
         maintainerEmails,

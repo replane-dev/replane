@@ -161,12 +161,14 @@ describe('rejectAllPendingConfigProposals', () => {
     // Verify all proposals are pending
     const pendingBefore = await fixture.engine.testing.configProposals.getPendingProposals({
       configId,
+      projectId: fixture.projectId,
     });
     expect(pendingBefore).toHaveLength(3);
 
     // Reject all pending proposals
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -203,6 +205,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Verify no pending proposals remain
     const pendingAfter = await fixture.engine.testing.configProposals.getPendingProposals({
       configId,
+      projectId: fixture.projectId,
     });
     expect(pendingAfter).toHaveLength(0);
   });
@@ -286,6 +289,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -425,6 +429,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -559,6 +564,7 @@ describe('rejectAllPendingConfigProposals', () => {
 
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -610,6 +616,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Should not throw when there are no pending proposals
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -633,6 +640,7 @@ describe('rejectAllPendingConfigProposals', () => {
     await expect(
       fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
         configId: nonExistentConfigId,
+        projectId: fixture.projectId,
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       }),
     ).rejects.toThrow(BadRequestError);
@@ -725,6 +733,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Reject all pending proposals (should only reject proposal 2)
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -834,6 +843,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Reject all pending proposals (should only reject proposal 2)
     await fixture.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
       configId,
+      projectId: fixture.projectId,
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
     });
 
@@ -934,6 +944,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Reject all via tRPC
     await fixture.trpc.rejectAllPendingConfigProposals({
       configId,
+      projectId: fixture.projectId,
     });
 
     // Verify all proposals are rejected
@@ -953,6 +964,7 @@ describe('rejectAllPendingConfigProposals', () => {
     // Verify no pending proposals remain
     const pendingAfter = await fixture.engine.testing.configProposals.getPendingProposals({
       configId,
+      projectId: fixture.projectId,
     });
     expect(pendingAfter).toHaveLength(0);
   });

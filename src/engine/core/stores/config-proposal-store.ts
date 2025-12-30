@@ -85,12 +85,14 @@ export interface PendingProposalWithAuthorEmail {
 export class ConfigProposalStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getAll(params: {configId: string}): Promise<ConfigProposalInfo[]> {
+  async getAll(params: {configId: string; projectId: string}): Promise<ConfigProposalInfo[]> {
     const proposals = await this.db
       .selectFrom('config_proposals')
-      .selectAll()
-      .where('config_id', '=', params.configId)
-      .orderBy('created_at', 'desc')
+      .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
+      .selectAll('config_proposals')
+      .where('config_proposals.config_id', '=', params.configId)
+      .where('configs.project_id', '=', params.projectId)
+      .orderBy('config_proposals.created_at', 'desc')
       .execute();
 
     return proposals.map(p => ({
@@ -227,9 +229,11 @@ export class ConfigProposalStore {
 
   async getRejectedByApprovalId(params: {
     approvalId: string;
+    projectId: string;
   }): Promise<Array<ConfigProposalInfo & {authorEmail: string | null}>> {
     const proposals = await this.db
       .selectFrom('config_proposals')
+      .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
       .leftJoin('users as author', 'author.id', 'config_proposals.author_id')
       .select(({ref}) => [
         'config_proposals.id',
@@ -244,6 +248,7 @@ export class ConfigProposalStore {
         ref('author.email').as('author_email'),
       ])
       .where('config_proposals.rejected_in_favor_of_proposal_id', '=', params.approvalId)
+      .where('configs.project_id', '=', params.projectId)
       .orderBy('config_proposals.created_at', 'desc')
       .execute();
 
@@ -262,14 +267,16 @@ export class ConfigProposalStore {
     }));
   }
 
-  async getPendingProposals(params: {configId: string}): Promise<ConfigProposalInfo[]> {
+  async getPendingProposals(params: {configId: string; projectId: string}): Promise<ConfigProposalInfo[]> {
     const proposals = await this.db
       .selectFrom('config_proposals')
-      .selectAll()
-      .where('config_id', '=', params.configId)
-      .where('approved_at', 'is', null)
-      .where('rejected_at', 'is', null)
-      .orderBy('created_at', 'desc')
+      .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
+      .selectAll('config_proposals')
+      .where('config_proposals.config_id', '=', params.configId)
+      .where('config_proposals.approved_at', 'is', null)
+      .where('config_proposals.rejected_at', 'is', null)
+      .where('configs.project_id', '=', params.projectId)
+      .orderBy('config_proposals.created_at', 'desc')
       .execute();
 
     return proposals.map(p => ({
@@ -288,9 +295,11 @@ export class ConfigProposalStore {
 
   async getPendingProposalsWithAuthorEmails(params: {
     configId: string;
+    projectId: string;
   }): Promise<PendingProposalWithAuthorEmail[]> {
     const proposals = await this.db
       .selectFrom('config_proposals')
+      .innerJoin('configs', 'configs.id', 'config_proposals.config_id')
       .leftJoin('users', 'users.id', 'config_proposals.author_id')
       .select([
         'config_proposals.id',
@@ -302,6 +311,7 @@ export class ConfigProposalStore {
       .where('config_proposals.config_id', '=', params.configId)
       .where('config_proposals.approved_at', 'is', null)
       .where('config_proposals.rejected_at', 'is', null)
+      .where('configs.project_id', '=', params.projectId)
       .orderBy('config_proposals.created_at', 'desc')
       .execute();
 
@@ -370,6 +380,7 @@ export class ConfigProposalStore {
 
   async updateById(params: {
     id: string;
+    projectId: string;
     description?: string;
     isDelete?: boolean;
     value?: unknown;
@@ -401,11 +412,32 @@ export class ConfigProposalStore {
         rejection_reason: params.rejectionReason,
       })
       .where('id', '=', params.id)
+      .where(eb =>
+        eb.exists(
+          eb
+            .selectFrom('configs')
+            .select('configs.id')
+            .where('configs.id', '=', eb.ref('config_proposals.config_id'))
+            .where('configs.project_id', '=', params.projectId),
+        ),
+      )
       .execute();
   }
 
-  async deleteById(id: string): Promise<void> {
-    await this.db.deleteFrom('config_proposals').where('id', '=', id).execute();
+  async deleteById(params: {id: string; projectId: string}): Promise<void> {
+    await this.db
+      .deleteFrom('config_proposals')
+      .where('id', '=', params.id)
+      .where(eb =>
+        eb.exists(
+          eb
+            .selectFrom('configs')
+            .select('configs.id')
+            .where('configs.id', '=', eb.ref('config_proposals.config_id'))
+            .where('configs.project_id', '=', params.projectId),
+        ),
+      )
+      .execute();
   }
 
   private async getVariantsByProposalId(

@@ -120,6 +120,7 @@ export function createImportProjectConfigsUseCase(): TransactionalUseCase<
         // For 'replace', delete existing config first
         await tx.configService.deleteConfig(ctx, {
           configId: existingConfig.id,
+          projectId: req.projectId,
           identity: req.identity,
           prevVersion: existingConfig.version,
         });

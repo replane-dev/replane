@@ -632,7 +632,10 @@ describe('approveConfigProposal', () => {
     });
 
     // Verify the variant value was updated
-    const updatedVariant = await fixture.engine.testing.configVariants.getById(prodVariantId!);
+    const updatedVariant = await fixture.engine.testing.configVariants.getById({
+      id: prodVariantId!,
+      projectId: fixture.projectId,
+    });
     expect(updatedVariant?.value).toEqual(asConfigValue({enabled: false}));
   });
 
@@ -697,7 +700,10 @@ describe('approveConfigProposal', () => {
     expect(config?.config.description).toBe('Updated description');
 
     // Verify variant value was updated
-    const updatedVariant = await fixture.engine.testing.configVariants.getById(prodVariantId!);
+    const updatedVariant = await fixture.engine.testing.configVariants.getById({
+      id: prodVariantId!,
+      projectId: fixture.projectId,
+    });
     expect(updatedVariant?.value).toEqual(asConfigValue({count: 20}));
   });
 

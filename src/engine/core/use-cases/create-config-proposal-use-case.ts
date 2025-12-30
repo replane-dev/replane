@@ -55,7 +55,10 @@ export function createCreateConfigProposalUseCase(
       identity: req.identity,
     });
 
-    const config = await tx.configs.getById(req.configId);
+    const config = await tx.configs.getById({
+      id: req.configId,
+      projectId: req.projectId,
+    });
     if (!config) {
       throw new BadRequestError('Config not found');
     }
@@ -79,7 +82,10 @@ export function createCreateConfigProposalUseCase(
     assert(currentUser, 'Current user not found');
 
     const configProposalId = createConfigProposalId();
-    const currentMembers = await tx.configUsers.getByConfigId(config.id);
+    const currentMembers = await tx.configUsers.getByConfigId({
+      configId: config.id,
+      projectId: req.projectId,
+    });
 
     if (req.proposedDelete) {
       await tx.configProposals.create({
@@ -243,7 +249,10 @@ async function scheduleProposalCreatedNotification(params: {
   } else {
     // For simple value changes, both editors and maintainers can approve
     // For schema/member/description changes, only maintainers can approve
-    const currentMembers = await tx.configUsers.getByConfigId(config.id);
+    const currentMembers = await tx.configUsers.getByConfigId({
+      configId: config.id,
+      projectId: req.projectId,
+    });
     const membersChanged =
       JSON.stringify(
         [

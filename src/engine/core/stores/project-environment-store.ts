@@ -74,6 +74,7 @@ export class ProjectEnvironmentStore {
 
   async update(params: {
     id: string;
+    projectId: string;
     name?: string;
     order?: number;
     requireProposals?: boolean;
@@ -99,11 +100,16 @@ export class ProjectEnvironmentStore {
       .updateTable('project_environments')
       .set(updates)
       .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
       .execute();
   }
 
-  async delete(id: string): Promise<void> {
-    await this.db.deleteFrom('project_environments').where('id', '=', id).execute();
+  async delete(params: {id: string; projectId: string}): Promise<void> {
+    await this.db
+      .deleteFrom('project_environments')
+      .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
+      .execute();
   }
 
   private mapRow(row: {

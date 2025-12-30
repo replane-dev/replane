@@ -13,20 +13,24 @@ export interface NewConfigUser {
 export class ConfigUserStore {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async getByConfigIdAndEmail(params: {configId: string; userEmail: string}) {
+  async getByConfigIdAndEmail(params: {configId: string; userEmail: string; projectId: string}) {
     return await this.db
       .selectFrom('config_users')
-      .selectAll()
-      .where('config_id', '=', params.configId)
-      .where('user_email_normalized', '=', normalizeEmail(params.userEmail))
+      .innerJoin('configs', 'configs.id', 'config_users.config_id')
+      .selectAll('config_users')
+      .where('config_users.config_id', '=', params.configId)
+      .where('config_users.user_email_normalized', '=', normalizeEmail(params.userEmail))
+      .where('configs.project_id', '=', params.projectId)
       .executeTakeFirst();
   }
 
-  async getByConfigId(configId: string) {
+  async getByConfigId(params: {configId: string; projectId: string}) {
     return await this.db
       .selectFrom('config_users')
-      .selectAll()
-      .where('config_id', '=', configId)
+      .innerJoin('configs', 'configs.id', 'config_users.config_id')
+      .selectAll('config_users')
+      .where('config_users.config_id', '=', params.configId)
+      .where('configs.project_id', '=', params.projectId)
       .execute();
   }
 
@@ -48,11 +52,20 @@ export class ConfigUserStore {
       .execute();
   }
 
-  async delete(configId: string, userEmail: string) {
+  async delete(params: {configId: string; userEmail: string; projectId: string}) {
     await this.db
       .deleteFrom('config_users')
-      .where('config_id', '=', configId)
-      .where('user_email_normalized', '=', normalizeEmail(userEmail))
+      .where('config_id', '=', params.configId)
+      .where('user_email_normalized', '=', normalizeEmail(params.userEmail))
+      .where(eb =>
+        eb.exists(
+          eb
+            .selectFrom('configs')
+            .select('configs.id')
+            .where('configs.id', '=', eb.ref('config_users.config_id'))
+            .where('configs.project_id', '=', params.projectId),
+        ),
+      )
       .execute();
   }
 }

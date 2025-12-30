@@ -1079,6 +1079,7 @@ export const appRouter = createTRPCRouter({
     .input(
       z.object({
         configId: Uuid(),
+        projectId: Uuid(),
       }),
     )
     .mutation(async opts => {
@@ -1087,6 +1088,7 @@ export const appRouter = createTRPCRouter({
       }
       await opts.ctx.engine.useCases.rejectAllPendingConfigProposals(GLOBAL_CONTEXT, {
         configId: opts.input.configId,
+        projectId: opts.input.projectId,
         identity: opts.ctx.identity,
       });
       return {};

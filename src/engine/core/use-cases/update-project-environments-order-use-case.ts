@@ -49,6 +49,7 @@ export function createUpdateProjectEnvironmentsOrderUseCase(
     for (const {environmentId, order} of req.environmentOrders) {
       await tx.projectEnvironments.update({
         id: environmentId,
+        projectId: req.projectId,
         order,
         updatedAt: now,
       });

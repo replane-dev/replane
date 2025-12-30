@@ -31,15 +31,18 @@ export function createGetConfigVersionListUseCase(): TransactionalUseCase<
     });
 
     // Get the config to verify it exists and belongs to the project
-    const config = await tx.configs.getById(req.configId);
+    const config = await tx.configs.getById({
+      id: req.configId,
+      projectId: req.projectId,
+    });
     if (!config) {
       throw new Error('Config not found');
     }
-    if (config.projectId !== req.projectId) {
-      throw new Error('Config does not belong to the specified project');
-    }
 
-    const versions = await tx.configVersions.getByConfigId(req.configId);
+    const versions = await tx.configVersions.getByConfigId({
+      configId: req.configId,
+      projectId: req.projectId,
+    });
 
     // Get unique author ids and fetch their emails
     const authorIds = [

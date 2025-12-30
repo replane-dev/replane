@@ -54,7 +54,10 @@ export class ProposalService {
     }
 
     // Get the config to check it exists
-    const config = await this.deps.configs.getById(proposal.configId);
+    const config = await this.deps.configs.getById({
+      id: proposal.configId,
+      projectId,
+    });
     if (!config) {
       throw new BadRequestError('Config not found');
     }
@@ -62,6 +65,7 @@ export class ProposalService {
     // Mark the proposal as rejected
     await this.deps.configProposals.updateById({
       id: proposal.id,
+      projectId,
       rejectedAt: this.deps.dateProvider.now(),
       reviewerId: getUserIdFromIdentity(reviewer) ?? undefined,
       rejectedInFavorOfProposalId: null,
@@ -98,8 +102,15 @@ export class ProposalService {
   /**
    * Rejects all pending proposals for a config.
    */
-  async rejectAllPendingProposals(params: {configId: string; reviewer: Identity}): Promise<void> {
-    const config = await this.deps.configs.getById(params.configId);
+  async rejectAllPendingProposals(params: {
+    configId: string;
+    projectId: string;
+    reviewer: Identity;
+  }): Promise<void> {
+    const config = await this.deps.configs.getById({
+      id: params.configId,
+      projectId: params.projectId,
+    });
     if (!config) {
       throw new BadRequestError('Config not found');
     }
@@ -148,6 +159,7 @@ export class ProposalService {
     // Get all pending config proposals for this config
     const pendingProposals = await this.deps.configProposals.getPendingProposals({
       configId: params.configId,
+      projectId: existingConfig.projectId,
     });
 
     // Reject all pending config proposals
@@ -166,6 +178,7 @@ export class ProposalService {
 
       await this.deps.configProposals.updateById({
         id: proposal.id,
+        projectId: existingConfig.projectId,
         rejectedAt: this.deps.dateProvider.now(),
         reviewerId: getUserIdFromIdentity(reviewer) ?? undefined,
         rejectedInFavorOfProposalId: params.originalProposalId ?? null,

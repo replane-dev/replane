@@ -81,14 +81,18 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     }
 
     // Get the config to retrieve its name
-    const config = await tx.configs.getById(proposal.configId);
+    const config = await tx.configs.getById({
+      id: proposal.configId,
+      projectId: req.projectId,
+    });
     assert(config, 'Config not found');
 
     // Get the base config version to retrieve original values
-    const baseVersion = await tx.configVersions.getByConfigIdAndVersion(
-      proposal.configId,
-      proposal.baseConfigVersion,
-    );
+    const baseVersion = await tx.configVersions.getByConfigIdAndVersion({
+      configId: proposal.configId,
+      version: proposal.baseConfigVersion,
+      projectId: req.projectId,
+    });
 
     assert(baseVersion, 'Base version not found');
 
@@ -167,6 +171,7 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
     if (status === 'approved') {
       const rejectedProposals = await tx.configProposals.getRejectedByApprovalId({
         approvalId: proposal.id,
+        projectId: req.projectId,
       });
       proposalsRejectedByThisApproval = rejectedProposals.map(p => ({
         id: p.id,

@@ -26,19 +26,20 @@ export function createGetConfigVariantVersionUseCase(): TransactionalUseCase<
     });
 
     // Get the config to verify it exists and belongs to the project
-    const config = await tx.configs.getById(req.configId);
+    const config = await tx.configs.getById({
+      id: req.configId,
+      projectId: req.projectId,
+    });
     if (!config) {
       throw new Error('Config not found');
     }
-    if (config.projectId !== req.projectId) {
-      throw new Error('Config does not belong to the specified project');
-    }
 
     // Get the specific version for this config
-    const configVersion = await tx.configVersions.getByConfigIdAndVersion(
-      req.configId,
-      req.version,
-    );
+    const configVersion = await tx.configVersions.getByConfigIdAndVersion({
+      configId: req.configId,
+      version: req.version,
+      projectId: req.projectId,
+    });
 
     if (!configVersion) {
       return {version: undefined};

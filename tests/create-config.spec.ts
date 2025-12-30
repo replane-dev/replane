@@ -296,7 +296,10 @@ describe('createConfig', () => {
     });
 
     // Verify variants were created for each environment
-    const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+    const variants = await fixture.engine.testing.configVariants.getByConfigId({
+      configId,
+      projectId: fixture.projectId,
+    });
     expect(variants).toHaveLength(2); // Production and Development
 
     const productionVariant = variants.find(

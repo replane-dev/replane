@@ -33,6 +33,7 @@ export interface ApprovalRequiredResult {
 
 export interface UpdateConfigParams {
   configId: string;
+  projectId: string;
   description: string;
   editorEmails: string[];
   maintainerEmails: string[];
@@ -52,6 +53,7 @@ export interface UpdateConfigParams {
 
 export interface DeleteConfigParams {
   configId: ConfigId;
+  projectId: string;
   identity: Identity;
   originalProposalId?: string;
   prevVersion: number;
@@ -243,7 +245,10 @@ export class ConfigService {
    * Creates/updates/deletes variants as needed.
    */
   async updateConfig(ctx: Context, params: UpdateConfigParams): Promise<void> {
-    const existingConfig = await this.configs.getById(params.configId);
+    const existingConfig = await this.configs.getById({
+      id: params.configId,
+      projectId: params.projectId,
+    });
     if (!existingConfig) {
       throw new BadRequestError('Config does not exist');
     }
@@ -256,13 +261,19 @@ export class ConfigService {
     }
 
     // Fetch all current environment variants (default is now in configs table)
-    const currentEnvVariants = await this.configVariants.getByConfigId(params.configId);
+    const currentEnvVariants = await this.configVariants.getByConfigId({
+      configId: params.configId,
+      projectId: params.projectId,
+    });
 
     // Determine what changed
     const descriptionChanged = params.description !== existingConfig.description;
 
     // Check if members changed
-    const currentMembers = await this.configUsers.getByConfigId(params.configId);
+    const currentMembers = await this.configUsers.getByConfigId({
+      configId: params.configId,
+      projectId: params.projectId,
+    });
     const currentEditors = currentMembers
       .filter(m => m.role === 'editor')
       .map(m => m.user_email_normalized);
@@ -435,7 +446,11 @@ export class ConfigService {
 
       // Remove old members
       for (const removed of membersDiff.removed) {
-        await this.configUsers.delete(params.configId, normalizeEmail(removed.email));
+        await this.configUsers.delete({
+          configId: params.configId,
+          userEmail: normalizeEmail(removed.email),
+          projectId: params.projectId,
+        });
       }
 
       // Add new members
@@ -502,6 +517,7 @@ export class ConfigService {
       await this.configVariants.update({
         id: variant.variantId,
         configId: params.configId,
+        projectId: params.projectId,
         value: variant.value,
         schema: variant.schema,
         overrides: variant.overrides,
@@ -515,12 +531,14 @@ export class ConfigService {
       await this.configVariants.delete({
         configId: params.configId,
         variantId,
+        projectId: params.projectId,
       });
     }
 
     await this.configs.update({
       ctx,
       id: existingConfig.id,
+      projectId: params.projectId,
       description: params.description,
       value: params.defaultVariant.value,
       schema: params.defaultVariant.schema,
@@ -630,7 +648,10 @@ export class ConfigService {
   }
 
   async deleteConfig(ctx: Context, params: DeleteConfigParams): Promise<void> {
-    const existingConfig = await this.configs.getById(params.configId);
+    const existingConfig = await this.configs.getById({
+      id: params.configId,
+      projectId: params.projectId,
+    });
     if (!existingConfig) {
       throw new BadRequestError('Config does not exist');
     }
@@ -643,10 +664,16 @@ export class ConfigService {
       throw new BadRequestError('Config was edited by another user. Please refresh and try again.');
     }
 
-    const variants = await this.configVariants.getByConfigId(existingConfig.id);
+    const variants = await this.configVariants.getByConfigId({
+      configId: existingConfig.id,
+      projectId: params.projectId,
+    });
 
     // Delete the config metadata
-    await this.configs.deleteById(ctx, existingConfig.id);
+    await this.configs.deleteById(ctx, {
+      id: existingConfig.id,
+      projectId: params.projectId,
+    });
 
     // Audit log for config deletion
     await this.auditLogs.create({

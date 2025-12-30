@@ -53,18 +53,25 @@ export class ConfigQueryService {
       return undefined;
     }
 
-    const configUsers = await this.configUsers.getByConfigId(config.id);
+    const configUsers = await this.configUsers.getByConfigId({
+      configId: config.id,
+      projectId: opts.projectId,
+    });
 
     const myConfigRole =
       configUsers.find(cu => cu.user_email_normalized === getEmailFromIdentity2(opts.identity))
         ?.role ?? 'viewer';
     // Get all environment-specific variants for this config
     // (default variant is now part of the config itself)
-    const variants = await this.configVariants.getByConfigId(config.id);
+    const variants = await this.configVariants.getByConfigId({
+      configId: config.id,
+      projectId: opts.projectId,
+    });
 
     // Get pending config-level proposals (deletion, members, description)
     const pendingConfigProposals = await this.configProposals.getPendingProposalsWithAuthorEmails({
       configId: config.id,
+      projectId: opts.projectId,
     });
 
     // Get user's effective project role (combines explicit role + workspace admin status)

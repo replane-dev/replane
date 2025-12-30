@@ -91,7 +91,7 @@ export function createGetAuditLogUseCase(): TransactionalUseCase<
     if (configIdSet.size > 0) {
       await Promise.all(
         Array.from(configIdSet).map(async id => {
-          const c = await tx.configs.getById(id);
+          const c = await tx.configs.getById({id, projectId: req.projectId});
           configNamesMap.set(id, c?.name ?? null);
         }),
       );

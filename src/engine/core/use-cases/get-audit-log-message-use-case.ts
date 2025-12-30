@@ -25,7 +25,10 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
   GetAuditLogMessageResponse
 > {
   return async (ctx, tx, req) => {
-    const base = await tx.auditLogs.getById(req.id);
+    // NOTE: We need projectId to look up the audit log. Adding projectId requirement to the request
+    // would be a breaking API change. For now, we use getByIdUnsafe to find the audit log's projectId,
+    // then verify permissions before returning data.
+    const base = await tx.auditLogs.getByIdUnsafe(req.id);
     if (!base) return {message: undefined};
 
     if (base.projectId) {
@@ -38,7 +41,9 @@ export function createGetAuditLogMessageUseCase(): TransactionalUseCase<
     }
 
     const user = base.userId ? await tx.users.getById(base.userId) : undefined;
-    const config = base.configId ? await tx.configs.getById(base.configId) : undefined;
+    const config = base.configId && base.projectId
+      ? await tx.configs.getById({id: base.configId, projectId: base.projectId})
+      : undefined;
 
     return {
       message: {

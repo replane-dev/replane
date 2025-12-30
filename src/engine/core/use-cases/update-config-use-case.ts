@@ -64,8 +64,14 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
       throw new BadRequestError('Config was edited by another user. Please refresh and try again.');
     }
 
-    const currentVariants = await tx.configVariants.getByConfigId(configId);
-    const currentMembers = await tx.configUsers.getByConfigId(configId);
+    const currentVariants = await tx.configVariants.getByConfigId({
+      configId,
+      projectId: req.projectId,
+    });
+    const currentMembers = await tx.configUsers.getByConfigId({
+      configId,
+      projectId: req.projectId,
+    });
     const currentEditorEmails = currentMembers
       .filter(m => m.role === 'editor')
       .map(m => m.user_email_normalized);
@@ -110,6 +116,7 @@ export function createUpdateConfigUseCase(): TransactionalUseCase<
     // Call configService.updateConfigDirect with full state
     await tx.configService.updateConfig(ctx, {
       configId,
+      projectId: req.projectId,
       description: req.description,
       editorEmails: req.editors,
       maintainerEmails: req.maintainers ?? currentMaintainerEmails,

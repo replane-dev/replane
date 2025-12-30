@@ -23,10 +23,13 @@ export class PermissionService {
   ) {}
 
   async getConfigMaintainers(configId: string): Promise<string[]> {
-    const config = await this.configStore.getById(configId);
+    const config = await this.configStore.getByIdUnsafe(configId);
     if (!config) return [];
 
-    const configUsers = await this.configUserStore.getByConfigId(configId);
+    const configUsers = await this.configUserStore.getByConfigId({
+      configId,
+      projectId: config.projectId,
+    });
     const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
 
     const configMaintainerEmails = configUsers
@@ -43,10 +46,13 @@ export class PermissionService {
   }
 
   async getConfigEditors(configId: string): Promise<string[]> {
-    const config = await this.configStore.getById(configId);
+    const config = await this.configStore.getByIdUnsafe(configId);
     if (!config) return [];
 
-    const configUsers = await this.configUserStore.getByConfigId(configId);
+    const configUsers = await this.configUserStore.getByConfigId({
+      configId,
+      projectId: config.projectId,
+    });
     const projectUsers = await this.projectUserStore.getByProjectId(config.projectId);
 
     const configEditorEmails = configUsers
@@ -70,7 +76,7 @@ export class PermissionService {
     ctx: Context,
     params: {configId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const config = await this.configStore.getById(params.configId);
+    const config = await this.configStore.getByIdUnsafe(params.configId);
     if (!config) return false;
 
     const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
@@ -89,6 +95,7 @@ export class PermissionService {
     const configUser = await this.configUserStore.getByConfigIdAndEmail({
       configId: params.configId,
       userEmail: params.currentUserEmail,
+      projectId: config.projectId,
     });
     return (
       configUser?.role === 'editor' ||
@@ -104,7 +111,7 @@ export class PermissionService {
     ctx: Context,
     params: {configId: string; currentUserEmail: NormalizedEmail},
   ): Promise<boolean> {
-    const config = await this.configStore.getById(params.configId);
+    const config = await this.configStore.getByIdUnsafe(params.configId);
     if (!config) return false;
 
     const isWorkspaceMember = await this.isUserWorkspaceMember(ctx, {
@@ -123,6 +130,7 @@ export class PermissionService {
     const user = await this.configUserStore.getByConfigIdAndEmail({
       configId: params.configId,
       userEmail: params.currentUserEmail,
+      projectId: config.projectId,
     });
 
     if (user?.role === 'maintainer') return true;
@@ -415,7 +423,7 @@ export class PermissionService {
   }
 
   private async getConfigProjectId(configId: string): Promise<string | null> {
-    const config = await this.configStore.getById(configId);
+    const config = await this.configStore.getByIdUnsafe(configId);
     return config?.projectId ?? null;
   }
 

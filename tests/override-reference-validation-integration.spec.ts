@@ -247,7 +247,10 @@ describe('Override Reference Validation - Integration Tests', () => {
       ];
 
       // Get variant for patching
-      const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+      const variants = await fixture.engine.testing.configVariants.getByConfigId({
+        configId,
+        projectId: fixture.projectId,
+      });
       const variant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
       assert(variant, 'Production variant should exist');
 
@@ -305,7 +308,10 @@ describe('Override Reference Validation - Integration Tests', () => {
       const configId = configResult.configId;
 
       // Get variant for patching
-      const variants = await fixture.engine.testing.configVariants.getByConfigId(configId);
+      const variants = await fixture.engine.testing.configVariants.getByConfigId({
+        configId,
+        projectId: fixture.projectId,
+      });
       const variant = variants.find(v => v.environmentId === fixture.productionEnvironmentId);
       assert(variant, 'Production variant should exist');
 

@@ -50,10 +50,17 @@ export function createDeleteProjectEnvironmentUseCase(
     }
 
     // Delete all config variants for this environment
-    const variantsToDelete = await tx.configVariants.getByEnvironmentId(req.environmentId);
+    const variantsToDelete = await tx.configVariants.getByEnvironmentId({
+      environmentId: req.environmentId,
+      projectId: req.projectId,
+    });
 
     for (const variant of variantsToDelete) {
-      await tx.configVariants.delete({configId: variant.configId, variantId: variant.id});
+      await tx.configVariants.delete({
+        configId: variant.configId,
+        variantId: variant.id,
+        projectId: req.projectId,
+      });
     }
 
     // Create audit log before deleting
@@ -75,7 +82,10 @@ export function createDeleteProjectEnvironmentUseCase(
     });
 
     // Delete the environment itself
-    await tx.projectEnvironments.delete(req.environmentId);
+    await tx.projectEnvironments.delete({
+      id: req.environmentId,
+      projectId: req.projectId,
+    });
 
     return {};
   };

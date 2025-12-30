@@ -29,7 +29,10 @@ export function createDeleteSdkKeyUseCase(): TransactionalUseCase<
       identity: req.identity,
     });
 
-    await tx.sdkKeys.deleteById(ctx, sdkKey.id);
+    await tx.sdkKeys.deleteById(ctx, {
+      id: sdkKey.id,
+      projectId: req.projectId,
+    });
     await tx.auditLogs.create({
       id: createAuditLogId(),
       createdAt: new Date(),

@@ -27,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Docker meta
+      - name: Docker meta (full)
         id: meta
         uses: docker/metadata-action@v3
         with:
@@ -38,6 +38,18 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+
+      - name: Docker meta (slim)
+        id: meta-slim
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            replane/replane
+            ghcr.io/replane-dev/replane
+          tags: |
+            type=semver,pattern={{version}}-slim
+            type=semver,pattern={{major}}.{{minor}}-slim
+            type=semver,pattern={{major}}-slim
 
       - name: Set up QEMU (multi-arch)
         uses: docker/setup-qemu-action@v3
@@ -61,7 +73,7 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - name: Build and push image
+      - name: Build and push image (full with bundled PostgreSQL)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -74,11 +86,32 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NEXT_PUBLIC_BUILD_SHA=${{ github.sha }}
+            EMBEDDED_POSTGRES=true
+
+      - name: Build and push image (slim without PostgreSQL)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta-slim.outputs.tags }}
+          labels: ${{ steps.meta-slim.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_BUILD_SHA=${{ github.sha }}
+            EMBEDDED_POSTGRES=false
 
       - name: Summary
         run: |
-          echo "Published image tags:" >> $GITHUB_STEP_SUMMARY
+          echo "## Published image tags" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Full (can start without an external database)" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Slim" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta-slim.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ inputs.benchmark_results }}" ]; then
             echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
@@ -94,12 +127,26 @@ jobs:
           name: Replane ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            Docker images published with this release:
-            ${{ steps.meta.outputs.tags }}
+            ## Docker Images
 
-            Pull the image:
-            - `docker pull replane/replane:${{ steps.meta.outputs.version }}` ([Docker Hub](https://hub.docker.com/r/replane/replane))
-            - `docker pull ghcr.io/replane-dev/replane:${{ steps.meta.outputs.version }}` ([GitHub Container Registry](https://github.com/replane-dev/replane/pkgs/container/replane))
+            ### Full (can start without an external database)
+            The default image includes PostgreSQL for easy single-container deployment.
+
+            ```bash
+            docker pull replane/replane:${{ steps.meta.outputs.version }}
+            ```
+
+            ### Slim (must connect to an external PostgreSQL database)
+            Use the slim image when connecting to an external PostgreSQL database.
+
+            ```bash
+            docker pull replane/replane:${{ steps.meta.outputs.version }}-slim
+            ```
+
+            ### All Published Tags
+            **Full:** ${{ steps.meta.outputs.tags }}
+
+            **Slim:** ${{ steps.meta-slim.outputs.tags }}
 
             <details>
             <summary>📊 Benchmark Results</summary>

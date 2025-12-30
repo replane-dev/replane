@@ -466,7 +466,22 @@ export class AuditLogStore {
       .execute();
   }
 
-  async getById(id: AuditLogId): Promise<AuditLog | undefined> {
+  async getById(params: {id: AuditLogId; projectId: string}): Promise<AuditLog | undefined> {
+    const row = await this.db
+      .selectFrom('audit_logs')
+      .selectAll()
+      .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
+      .executeTakeFirst();
+    return row ? toAuditLog(row) : undefined;
+  }
+
+  /**
+   * Get audit log by ID without requiring projectId.
+   * WARNING: Only use this for cases where you need to find the projectId
+   * to check permissions. Always verify permissions before returning data.
+   */
+  async getByIdUnsafe(id: AuditLogId): Promise<AuditLog | undefined> {
     const row = await this.db
       .selectFrom('audit_logs')
       .selectAll()

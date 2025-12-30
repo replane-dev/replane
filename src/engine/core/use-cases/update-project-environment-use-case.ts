@@ -66,6 +66,7 @@ export function createUpdateProjectEnvironmentUseCase(
 
     await tx.projectEnvironments.update({
       id: req.environmentId,
+      projectId: req.projectId,
       name: req.name,
       requireProposals: req.requireProposals,
       updatedAt: deps.dateProvider.now(),
