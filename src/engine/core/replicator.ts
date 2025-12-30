@@ -117,7 +117,11 @@ export class Replicator<TSource, TTarget> {
 
     // dump configs to the replica store
     for await (const entities of dump(source)) {
-      target.upsert(entities.map(mapper));
+      try {
+        target.upsert(entities.map(mapper));
+      } catch (error) {
+        throw new Error(`Failed to upsert entitiies: ${JSON.stringify(entities)}`, {cause: error});
+      }
     }
 
     const replicator = new Replicator<TSource, TTarget>(
@@ -201,7 +205,9 @@ export class Replicator<TSource, TTarget> {
   private async processEvents(events: {id: string; data: EntityChangeEvent}[]) {
     const entities = await this.source.getByIds(events.map(e => e.data.entityId));
 
-    const upsertResults = await this.target.upsert(entities.map(this.mapper));
+    const upsertResults = await this.target.upsert(entities.map(this.mapper)).catch(error => {
+      throw new Error(`Failed to upsert entitiies: ${JSON.stringify(entities)}`, {cause: error});
+    });
     for (let i = 0; i < upsertResults.length; i += 1) {
       const result = upsertResults[i];
       const entity = entities[i];

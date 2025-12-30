@@ -141,7 +141,10 @@ export class ReplicaStore {
     void
   >;
 
-  private getConfigVersionById: Statement<{id: string}, {version: number}>;
+  private getConfigByProjectIdAndNameStmt: Statement<
+    {projectId: string; configName: string},
+    {version: number; config_id: string}
+  >;
 
   private insertConfig: Statement<
     {
@@ -272,8 +275,11 @@ export class ReplicaStore {
       VALUES (@id, @configId, @environmentId, @value, @overrides)
     `);
 
-    this.getConfigVersionById = db.prepare<{id: string}, {version: number}>(/*sql*/ `
-      SELECT version FROM configs WHERE id = @id
+    this.getConfigByProjectIdAndNameStmt = db.prepare<
+      {projectId: string; configName: string},
+      {version: number; config_id: string}
+    >(/*sql*/ `
+      SELECT id as config_id, version FROM configs WHERE project_id = @projectId AND name = @configName
     `);
 
     this.insertConfig = db.prepare<
@@ -666,13 +672,20 @@ export class ReplicaStore {
   }
 
   private upsertConfigUnsafe(config: ConfigReplica): 'created' | 'updated' | 'ignored' {
-    const existingConfigVersion = this.getConfigVersionById.get({id: config.id});
+    const existingConfig = this.getConfigByProjectIdAndNameStmt.get({
+      projectId: config.projectId,
+      configName: config.name,
+    });
 
-    if (existingConfigVersion && existingConfigVersion.version >= config.version) {
+    if (
+      existingConfig &&
+      existingConfig.config_id === config.id &&
+      existingConfig.version >= config.version
+    ) {
       return 'ignored';
     }
 
-    if (existingConfigVersion) {
+    if (existingConfig) {
       // delete existing config
       this.deleteConfigStmt.run({id: config.id});
     }
@@ -718,7 +731,7 @@ export class ReplicaStore {
       });
     }
 
-    return existingConfigVersion ? 'updated' : 'created';
+    return existingConfig ? 'updated' : 'created';
   }
 
   private transaction<T>(callback: () => T): T {

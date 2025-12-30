@@ -123,6 +123,28 @@ function CopyButton({text}: {text: string}) {
   );
 }
 
+function EmailProviderLink({
+  href,
+  title,
+  icon,
+}: {
+  href: string;
+  title: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={title}
+      className="w-12 h-12 flex justify-center items-center border border-green-500/20 bg-green-500/5 rounded-xl transition-all hover:border-green-500/40 hover:bg-green-500/10 hover:scale-105 text-green-600 dark:text-green-400"
+    >
+      {icon}
+    </a>
+  );
+}
+
 
 // ============================================================================
 // Password Sign-In Form
@@ -320,6 +342,71 @@ function MagicLinkForm({callbackUrl, onInteraction}: MagicLinkFormProps) {
         <p className="text-xs text-muted-foreground">
           We sent a magic link to <strong>{sentEmail}</strong>
         </p>
+
+        {/* Email provider quick links */}
+        <div className="flex justify-center items-center gap-3 mt-4">
+          <EmailProviderLink
+            href="https://mail.google.com"
+            title="Open Gmail"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z"
+                  fill="currentColor"
+                />
+              </svg>
+            }
+          />
+          <EmailProviderLink
+            href="https://outlook.live.com"
+            title="Open Outlook"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M22 8.608V16.75C22 17.992 20.977 19 19.72 19H9.28C8.023 19 7 17.992 7 16.75V8.608L14.5 12.51L22 8.608Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M22 6.25V6.865L14.5 10.767L7 6.865V6.25C7 5.008 8.023 4 9.28 4H19.72C20.977 4 22 5.008 22 6.25Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M6 10.5C6 7.462 3.538 5 0.5 5C-2.538 5 -5 7.462 -5 10.5V13.5C-5 16.538 -2.538 19 0.5 19C3.538 19 6 16.538 6 13.5V10.5Z"
+                  fill="currentColor"
+                  transform="translate(5.5 0)"
+                />
+                <ellipse cx="5.5" cy="12" rx="4" ry="5.5" fill="currentColor" opacity="0.9" />
+                <ellipse cx="5.5" cy="12" rx="2.5" ry="3.5" fill="white" />
+              </svg>
+            }
+          />
+          <EmailProviderLink
+            href="https://mail.yahoo.com"
+            title="Open Yahoo Mail"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 2L8.5 9H2L6.5 14L4.5 22L12 17L19.5 22L17.5 14L22 9H15.5L12 2Z"
+                  fill="currentColor"
+                />
+              </svg>
+            }
+          />
+          <EmailProviderLink
+            href="https://proton.me/mail"
+            title="Open Proton Mail"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M3 6L12 12L21 6V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V6Z"
+                  fill="currentColor"
+                />
+                <path d="M21 6L12 12L3 6C3 4.9 3.9 4 5 4H19C20.1 4 21 4.9 21 6Z" fill="currentColor" />
+              </svg>
+            }
+          />
+        </div>
+
         <Button
           type="button"
           variant="link"
@@ -329,7 +416,7 @@ function MagicLinkForm({callbackUrl, onInteraction}: MagicLinkFormProps) {
             setSentEmail('');
             reset();
           }}
-          className="mt-2"
+          className="mt-3"
         >
           Use a different email
         </Button>
