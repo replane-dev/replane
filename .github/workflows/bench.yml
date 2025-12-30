@@ -99,13 +99,17 @@ jobs:
           ADMIN_REQUEST_DELAY_MS: '100'
           SSE_DURATION_MS: '30000'
         run: |
+          set -o pipefail
+
           echo "Running benchmark with:"
           echo "  Duration: $TEST_DURATION"
           echo "  SSE VUs: $SSE_VUS"
           echo "  Admin VUs: $ADMIN_VUS"
 
           # Run benchmark and capture output
+          # k6 exits with non-zero if thresholds fail, pipefail ensures we catch it
           k6 run --out experimental-prometheus-rw bench/scripts/spec.ts 2>&1 | tee benchmark-output.txt
+          K6_EXIT_CODE=${PIPESTATUS[0]}
 
           # Extract the results section (from THRESHOLDS to the end)
           {
@@ -113,6 +117,9 @@ jobs:
             sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -200
             echo "EOF"
           } >> $GITHUB_OUTPUT
+
+          # Exit with k6's exit code to fail the job if thresholds crossed
+          exit $K6_EXIT_CODE
 
       - name: Show logs on failure
         if: failure()
