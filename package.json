@@ -148,7 +148,7 @@
     "editorconfig": "^3.0.1",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.0.7",
-    "jsdom": "^26.1.0",
+    "jsdom": "^27.4.0",
     "kysely-codegen": "^0.18.5",
     "node-addon-api": "^8.5.0",
     "node-gyp": "^12.1.0",
