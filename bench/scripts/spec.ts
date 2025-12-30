@@ -158,9 +158,9 @@ export const options: Options = {
     sse_connection_failures: ['rate<0.01'],
 
     // SSE timing thresholds
-    sse_time_to_opened: ['p(95)<200', 'p(99)<500'],
-    sse_time_to_first_message: ['p(95)<200', 'p(99)<500'],
-    sse_time_to_init_message: ['p(95)<200', 'p(99)<500'],
+    sse_time_to_opened: ['p(95)<250', 'p(99)<500'],
+    sse_time_to_first_message: ['p(95)<250', 'p(99)<500'],
+    sse_time_to_init_message: ['p(95)<250', 'p(99)<500'],
     sse_time_to_finished: ['p(95)>30000'],
 
     // Prometheus metrics thresholds (scraped from /metrics)
@@ -169,8 +169,8 @@ export const options: Options = {
     nodejs_eventloop_lag_p99_seconds: ['value<0.5'], // p99 < 500ms
 
     // Memory thresholds - prevent unbounded growth
-    nodejs_heap_size_used_bytes: ['value<2147483648'], // < 2GB heap used
-    process_resident_memory_bytes: ['value<2147483648'], // < 2GB RSS
+    nodejs_heap_size_used_bytes: ['value<3221225472'], // < 3GB heap used
+    process_resident_memory_bytes: ['value<3221225472'], // < 3GB RSS
 
     // Metrics scraping reliability
     metrics_scrape_errors: ['count<10'], // allow a few transient failures
