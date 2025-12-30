@@ -1,14 +1,9 @@
-FROM node:22-slim
+FROM node:22-slim AS base
 
 VOLUME /data
 
 ENV REPLICA_STORAGE_PATH=/data/replica/replica.db
 ENV PGDATA=/data/postgresql
-
-ENV PORT=8080
-ENV NODE_OPTIONS="--enable-source-maps --max-old-space-size=4096"
-ENV ENABLE_NODE_INSPECT="0"
-ENV NODE_INSPECT_PORT=9229
 
 # # Install PostgreSQL to allow running Replane without an external database
 RUN apt-get update \
@@ -17,6 +12,8 @@ RUN apt-get update \
 
 RUN mkdir -p "$PGDATA" \
   && chown -R postgres:postgres "$PGDATA"
+
+FROM base AS builder
 
 # Build the app
 WORKDIR /app
@@ -30,10 +27,17 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
+FROM base AS runner
+WORKDIR /app
+COPY --from=builder /app/.next/standalone .next/standalone
+
+ENV PORT=8080
+
 EXPOSE $PORT
-EXPOSE 9229
 
-RUN ls -la && ls -la scripts && chmod +x scripts/entrypoint.sh
+COPY scripts/entrypoint.sh .
 
-ENTRYPOINT [ "scripts/entrypoint.sh" ]
-CMD ["pnpm", "start-self-hosted"]
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT [ "./entrypoint.sh" ]
+CMD [ "node", "--optimize-for-size", "--enable-source-maps", "--max-old-space-size=4096", ".next/standalone/server.js" ]

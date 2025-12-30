@@ -7,11 +7,9 @@
   },
   "scripts": {
     "dev": "next dev --turbopack | pino-pretty",
-    "build": "next build",
+    "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
     "start": "NODE_ENV=production next start",
     "start:inspect": "NODE_ENV=production NODE_OPTIONS=\"--inspect=0.0.0.0:9229\" next start",
-    "start-self-hosted": "pnpm run migrate:migrate && pnpm start",
-    "start-self-hosted:inspect": "pnpm run migrate:migrate && pnpm start:inspect",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "test": "dotenv -- vitest run --exclude '**/e2e/**'",

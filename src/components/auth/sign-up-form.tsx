@@ -8,11 +8,12 @@ import {Label} from '@/components/ui/label';
 import {MIN_PASSWORD_LENGTH} from '@/engine/core/constants';
 import {useTRPC} from '@/trpc/client';
 import {zodResolver} from '@hookform/resolvers/zod';
+import * as Sentry from '@sentry/nextjs';
 import {useMutation} from '@tanstack/react-query';
 import {KeyRound, Loader2} from 'lucide-react';
 import {signIn} from 'next-auth/react';
 import Link from 'next/link';
-import {redirect} from 'next/navigation';
+import {useRouter} from 'next/navigation';
 import {useState} from 'react';
 import {useForm} from 'react-hook-form';
 import {toast} from 'sonner';
@@ -52,6 +53,7 @@ export function SignUpForm({
   providers = [],
   passwordAuthEnabled = true,
 }: SignUpFormProps) {
+  const router = useRouter();
   const trpc = useTRPC();
   const registerMutation = useMutation(trpc.registerWithPassword.mutationOptions());
   const [serverError, setServerError] = useState<string | null>(null);
@@ -105,12 +107,14 @@ export function SignUpForm({
       });
 
       if (result?.ok) {
-        redirect(callbackUrl);
+        router.push(callbackUrl);
       } else {
         // Account created but sign-in failed, redirect to sign-in page
-        redirect(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        router.push(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       }
     } catch (error: any) {
+      Sentry.captureException(error);
+      console.error(error);
       const message = error?.message || 'Failed to create account. Please try again.';
       setServerError(message);
       toast.error('Registration failed', {
