@@ -46,9 +46,9 @@ primary_region = 'iad'
   # we also use fly.io secrets for variables like EMAIL_SERVER/GITHUB_CLIENT_SECRET/etc
 
 [[vm]]
-  cpus = 2
-  cpu_kind = "performance"
-  memory = '4gb'
+  cpus = 1
+  cpu_kind = "shared"
+  memory = '512mb'
 
 [metrics]
   port = 8080
