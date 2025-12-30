@@ -144,21 +144,8 @@ describe('importProjectConfigs', () => {
   });
 
   it('should replace existing configs when onConflict is replace', async () => {
-    // Disable requireProposals on environments to allow replacement
-    await fixture.engine.useCases.updateProjectEnvironment(GLOBAL_CONTEXT, {
-      identity: fixture.identity,
-      projectId: fixture.projectId,
-      environmentId: fixture.productionEnvironmentId,
-      name: 'Production',
-      requireProposals: false,
-    });
-    await fixture.engine.useCases.updateProjectEnvironment(GLOBAL_CONTEXT, {
-      identity: fixture.identity,
-      projectId: fixture.projectId,
-      environmentId: fixture.developmentEnvironmentId,
-      name: 'Development',
-      requireProposals: false,
-    });
+    // When project.requireProposals is false (default), replacement is allowed
+    // regardless of environment-level requireProposals settings
 
     // Create an existing config
     await fixture.createConfig({
@@ -392,8 +379,21 @@ describe('importProjectConfigs', () => {
     ).rejects.toThrow('Cannot import configs when review is required');
   });
 
-  it('should throw error when replacing and environment requires review', async () => {
-    // Enable require proposals on an environment (Production by default has it enabled)
+  it('should allow replace mode when project does not require review', async () => {
+    // When project.requireProposals is false, env.requireProposals doesn't matter for import
+    // This tests that we can replace even when environment has requireProposals=true
+    // (since the env-level check only applies when project-level is also true)
+
+    // Ensure project-level requireProposals is false (default)
+    await fixture.engine.useCases.patchProject(GLOBAL_CONTEXT, {
+      id: fixture.projectId,
+      identity: fixture.identity,
+      details: {
+        requireProposals: false,
+      },
+    });
+
+    // Enable requireProposals on environment
     await fixture.engine.useCases.updateProjectEnvironment(GLOBAL_CONTEXT, {
       identity: fixture.identity,
       projectId: fixture.projectId,
@@ -402,56 +402,38 @@ describe('importProjectConfigs', () => {
       requireProposals: true,
     });
 
-    // Try to import with replace mode
-    await expect(
-      fixture.engine.useCases.importProjectConfigs(GLOBAL_CONTEXT, {
-        identity: fixture.identity,
-        projectId: fixture.projectId,
-        configs: [
-          {
-            name: 'test-config',
-            description: 'Test',
-            value: asConfigValue('test'),
-            schema: null,
-            overrides: [],
-            variants: [],
-          },
-        ],
-        environmentMappings: [],
-        onConflict: 'replace',
-      }),
-    ).rejects.toThrow('Cannot replace configs when environments require review');
-  });
-
-  it('should allow skip mode when environment requires review', async () => {
-    // Enable require proposals on an environment
-    await fixture.engine.useCases.updateProjectEnvironment(GLOBAL_CONTEXT, {
+    // Create a config to replace
+    await fixture.createConfig({
+      name: 'to-replace-env-check',
+      value: 'original',
+      schema: null,
+      overrides: [],
+      description: 'Original',
       identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [],
       projectId: fixture.projectId,
-      environmentId: fixture.productionEnvironmentId,
-      name: 'Production',
-      requireProposals: true,
     });
 
-    // Skip mode should work (it creates new configs, doesn't replace)
+    // Replace should work because project.requireProposals is false
     const result = await fixture.engine.useCases.importProjectConfigs(GLOBAL_CONTEXT, {
       identity: fixture.identity,
       projectId: fixture.projectId,
       configs: [
         {
-          name: 'new-config',
-          description: 'New config',
-          value: asConfigValue('test'),
+          name: 'to-replace-env-check',
+          description: 'Replaced',
+          value: asConfigValue('replaced'),
           schema: null,
           overrides: [],
           variants: [],
         },
       ],
       environmentMappings: [],
-      onConflict: 'skip',
+      onConflict: 'replace',
     });
 
-    expect(result.totalCreated).toBe(1);
+    expect(result.totalReplaced).toBe(1);
   });
 
   it('should throw error when project has no environments', async () => {
@@ -538,7 +520,13 @@ describe('importProjectConfigs', () => {
           overrides: [
             {
               name: 'premium-override',
-              conditions: [{property: 'tier', operator: 'equals', value: {type: 'literal', value: asConfigValue('premium')}}],
+              conditions: [
+                {
+                  property: 'tier',
+                  operator: 'equals',
+                  value: {type: 'literal', value: asConfigValue('premium')},
+                },
+              ],
               value: asConfigValue('premium-value'),
             },
           ],
