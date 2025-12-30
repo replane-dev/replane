@@ -288,6 +288,68 @@ export const appRouter = createTRPCRouter({
       });
       return configList;
     }),
+  exportProjectConfigs: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+      }),
+    )
+    .query(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+
+      const result = await opts.ctx.engine.useCases.exportProjectConfigs(GLOBAL_CONTEXT, {
+        identity: opts.ctx.identity,
+        projectId: opts.input.projectId,
+      });
+      return result;
+    }),
+  importProjectConfigs: baseProcedure
+    .input(
+      z.object({
+        projectId: Uuid(),
+        configs: z.array(
+          z.object({
+            name: ConfigName(),
+            description: ConfigDescription(),
+            value: ConfigValue(),
+            schema: ConfigSchema().nullable(),
+            overrides: ConfigOverrides(),
+            variants: z.array(
+              z.object({
+                environmentName: z.string(),
+                value: ConfigValue(),
+                schema: ConfigSchema().nullable(),
+                useBaseSchema: z.boolean(),
+                overrides: ConfigOverrides(),
+              }),
+            ),
+          }),
+        ),
+        environmentMappings: z.array(
+          z.object({
+            sourceEnvironmentName: z.string(),
+            targetEnvironmentId: Uuid(),
+          }),
+        ),
+        onConflict: z.enum(['skip', 'replace']),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+
+      const result = await opts.ctx.engine.useCases.importProjectConfigs(GLOBAL_CONTEXT, {
+        identity: opts.ctx.identity,
+        projectId: opts.input.projectId,
+        configs: opts.input.configs,
+        environmentMappings: opts.input.environmentMappings,
+        onConflict: opts.input.onConflict,
+      });
+      return result;
+    }),
   createConfig: baseProcedure
     .input(
       z.object({

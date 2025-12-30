@@ -48,6 +48,7 @@ import {createDeleteProjectUseCase} from './core/use-cases/delete-project-use-ca
 import {createDeleteSdkKeyUseCase} from './core/use-cases/delete-sdk-key-use-case';
 import {createDeleteUserAccountUseCase} from './core/use-cases/delete-user-account-use-case';
 import {createDeleteWorkspaceUseCase} from './core/use-cases/delete-workspace-use-case';
+import {createExportProjectConfigsUseCase} from './core/use-cases/export-project-configs-use-case';
 import {createGetAdminApiKeyUseCase} from './core/use-cases/get-admin-api-key-use-case';
 import {createGetAppLayoutDataUseCase} from './core/use-cases/get-app-layout-data-use-case';
 import {createGetAuditLogMessageUseCase} from './core/use-cases/get-audit-log-message-use-case';
@@ -77,6 +78,7 @@ import {createGetWorkspaceListUseCase} from './core/use-cases/get-workspace-list
 import {createGetWorkspaceMembersUseCase} from './core/use-cases/get-workspace-members-use-case';
 import {createGetWorkspaceUseCase} from './core/use-cases/get-workspace-use-case';
 import {createHasUsersUseCase} from './core/use-cases/has-users-use-case';
+import {createImportProjectConfigsUseCase} from './core/use-cases/import-project-configs-use-case';
 import {createInitUserUseCase} from './core/use-cases/init-user-use-case';
 import {createListAdminApiKeysUseCase} from './core/use-cases/list-admin-api-keys-use-case';
 import {createPatchProjectUseCase} from './core/use-cases/patch-project-use-case';
@@ -276,6 +278,8 @@ export async function createEngine(options: EngineOptions) {
 
   const transactionalUseCases = {
     getConfigList: createGetConfigListUseCase({}),
+    exportProjectConfigs: createExportProjectConfigsUseCase(),
+    importProjectConfigs: createImportProjectConfigsUseCase(),
     getAuditLog: createGetAuditLogUseCase(),
     getAuditLogMessage: createGetAuditLogMessageUseCase(),
     createConfig: createCreateConfigUseCase({dateProvider}),

@@ -48,6 +48,17 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
   const [editEnvironmentName, setEditEnvironmentName] = useState('');
   const [editRequireProposals, setEditRequireProposals] = useState(false);
 
+  // Client-side validation for environment name conflicts
+  const isNameConflict = (name: string, excludeId?: string) => {
+    const normalizedName = name.trim().toLowerCase();
+    return environmentsData.environments.some(
+      env => env.name.toLowerCase() === normalizedName && env.id !== excludeId,
+    );
+  };
+
+  const newEnvNameConflict = isNameConflict(newEnvironmentName);
+  const editEnvNameConflict = isNameConflict(editEnvironmentName, selectedEnvironment?.id);
+
   const createEnvironment = useMutation(trpc.createProjectEnvironment.mutationOptions());
   const updateEnvironment = useMutation(trpc.updateProjectEnvironment.mutationOptions());
   const deleteEnvironment = useMutation(trpc.deleteProjectEnvironment.mutationOptions());
@@ -281,6 +292,11 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                 placeholder="e.g., Staging, QA"
                 maxLength={50}
               />
+              {newEnvNameConflict && (
+                <p className="text-xs text-destructive">
+                  An environment with this name already exists
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="copy-from-env">Copy configuration from</Label>
@@ -315,7 +331,10 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
             <Button
               onClick={handleCreateEnvironment}
               disabled={
-                createEnvironment.isPending || !newEnvironmentName.trim() || !copyFromEnvironmentId
+                createEnvironment.isPending ||
+                !newEnvironmentName.trim() ||
+                !copyFromEnvironmentId ||
+                newEnvNameConflict
               }
             >
               {createEnvironment.isPending ? 'Creating…' : 'Create'}
@@ -340,6 +359,11 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
                 onChange={e => setEditEnvironmentName(e.target.value)}
                 maxLength={50}
               />
+              {editEnvNameConflict && (
+                <p className="text-xs text-destructive">
+                  An environment with this name already exists
+                </p>
+              )}
             </div>
             {projectData.project?.requireProposals && (
               <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
@@ -382,7 +406,9 @@ export function ProjectEnvironmentsSettings({projectId}: {projectId: string}) {
             </Button>
             <Button
               onClick={handleUpdateEnvironment}
-              disabled={updateEnvironment.isPending || !editEnvironmentName.trim()}
+              disabled={
+                updateEnvironment.isPending || !editEnvironmentName.trim() || editEnvNameConflict
+              }
             >
               {updateEnvironment.isPending ? 'Saving…' : 'Save'}
             </Button>

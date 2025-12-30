@@ -49,7 +49,7 @@ export class ProjectEnvironmentStore {
       .selectFrom('project_environments')
       .selectAll()
       .where('project_id', '=', params.projectId)
-      .where('name', '=', params.name)
+      .where(eb => eb.fn('lower', ['name']), '=', params.name.toLowerCase())
       .executeTakeFirst();
 
     if (!row) return null;

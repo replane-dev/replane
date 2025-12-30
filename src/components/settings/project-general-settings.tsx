@@ -1,5 +1,6 @@
 'use client';
 
+import {ImportConfigsDialog} from '@/components/import-configs-dialog';
 import {Button} from '@/components/ui/button';
 import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
@@ -9,8 +10,8 @@ import {Switch} from '@/components/ui/switch';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {useTRPC} from '@/trpc/client';
-import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
-import {Globe, Trash2} from 'lucide-react';
+import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
+import {Download, Globe, Trash2, Upload} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 import {toast} from 'sonner';
@@ -18,6 +19,7 @@ import {toast} from 'sonner';
 export function ProjectGeneralSettings({projectId}: {projectId: string}) {
   const trpc = useTRPC();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const {data: projectData} = useSuspenseQuery(trpc.getProject.queryOptions({id: projectId}));
   const {data: environmentsData} = useSuspenseQuery(
@@ -43,6 +45,30 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
   const updateEnvironment = useMutation(trpc.updateProjectEnvironment.mutationOptions());
   const [saving, setSaving] = React.useState(false);
   const [updatingEnvId, setUpdatingEnvId] = React.useState<string | null>(null);
+  const [exporting, setExporting] = React.useState(false);
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const result = await queryClient.fetchQuery(
+        trpc.exportProjectConfigs.queryOptions({projectId}),
+      );
+      const blob = new Blob([JSON.stringify(result, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${result.projectName}-configs-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Configs exported successfully');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Unable to export configs — please try again');
+    }
+    setExporting(false);
+  };
 
   const handleEnvironmentRequireProposalsChange = async (
     envId: string,
@@ -183,6 +209,56 @@ export function ProjectGeneralSettings({projectId}: {projectId: string}) {
           {saving ? 'Saving…' : 'Save changes'}
         </Button>
       </form>
+
+      <div className="pt-6 border-t">
+        <div className="space-y-3">
+          <div>
+            <h4 className="text-sm font-semibold mb-1">Import / Export</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Import configs from a file or export all configs as JSON
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-block">
+                  <Button
+                    variant="outline"
+                    onClick={() => setImportDialogOpen(true)}
+                    disabled={!canEdit || requireProposals}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import configs
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {requireProposals && (
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    Import is disabled when review is required. Disable &ldquo;Require review&rdquo;
+                    to import configs.
+                  </p>
+                </TooltipContent>
+              )}
+              {!canEdit && !requireProposals && (
+                <TooltipContent>
+                  <p>You don&apos;t have permission to import configs</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? 'Exporting…' : 'Export configs'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <ImportConfigsDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        projectId={projectId}
+      />
 
       <div className="pt-6 border-t">
         <div className="space-y-3">
