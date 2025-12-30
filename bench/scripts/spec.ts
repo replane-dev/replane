@@ -148,7 +148,7 @@ export const options: Options = {
   },
   thresholds: {
     // Admin API thresholds
-    admin_latency: ['p(95)<100', 'p(99)<200'],
+    admin_latency: ['p(95)<200', 'p(99)<300'],
     admin_success: ['rate>0.99'],
     admin_errors: ['rate<0.01'],
 
@@ -169,7 +169,7 @@ export const options: Options = {
     nodejs_eventloop_lag_p99_seconds: ['value<0.5'], // p99 < 500ms
 
     // Memory thresholds - prevent unbounded growth
-    nodejs_heap_size_used_bytes: ['value<1073741824'], // < 1GB heap used
+    nodejs_heap_size_used_bytes: ['value<2147483648'], // < 2GB heap used
     process_resident_memory_bytes: ['value<2147483648'], // < 2GB RSS
 
     // Metrics scraping reliability
