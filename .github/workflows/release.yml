@@ -19,15 +19,19 @@ permissions:
   packages: write
 
 jobs:
-  release:
-    name: Release Docker Image
+  build-full:
+    name: Build Full Image
     runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.meta.outputs.version }}
+      labels: ${{ steps.meta.outputs.labels }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Docker meta (full)
+      - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -38,18 +42,6 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-
-      - name: Docker meta (slim)
-        id: meta-slim
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            replane/replane
-            ghcr.io/replane-dev/replane
-          tags: |
-            type=semver,pattern={{version}}-slim
-            type=semver,pattern={{major}}.{{minor}}-slim
-            type=semver,pattern={{major}}-slim
 
       - name: Set up QEMU (multi-arch)
         uses: docker/setup-qemu-action@v3
@@ -88,6 +80,52 @@ jobs:
             NEXT_PUBLIC_BUILD_SHA=${{ github.sha }}
             EMBEDDED_POSTGRES=true
 
+  build-slim:
+    name: Build Slim Image
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.meta.outputs.version }}
+      labels: ${{ steps.meta.outputs.labels }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            replane/replane
+            ghcr.io/replane-dev/replane
+          tags: |
+            type=semver,pattern={{version}}-slim
+            type=semver,pattern={{major}}.{{minor}}-slim
+            type=semver,pattern={{major}}-slim
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable corepack
+        run: corepack enable
+
       - name: Build and push image (slim without PostgreSQL)
         uses: docker/build-push-action@v6
         with:
@@ -97,21 +135,27 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ steps.meta-slim.outputs.tags }}
-          labels: ${{ steps.meta-slim.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NEXT_PUBLIC_BUILD_SHA=${{ github.sha }}
             EMBEDDED_POSTGRES=false
 
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-full, build-slim]
+
+    steps:
       - name: Summary
         run: |
           echo "## Published image tags" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Full (can start without an external database)" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.build-full.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Slim" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta-slim.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.build-slim.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ inputs.benchmark_results }}" ]; then
             echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
@@ -133,20 +177,20 @@ jobs:
             The default image includes PostgreSQL for easy single-container deployment.
 
             ```bash
-            docker pull replane/replane:${{ steps.meta.outputs.version }}
+            docker pull replane/replane:${{ needs.build-full.outputs.version }}
             ```
 
             ### Slim (must connect to an external PostgreSQL database)
             Use the slim image when connecting to an external PostgreSQL database.
 
             ```bash
-            docker pull replane/replane:${{ steps.meta.outputs.version }}-slim
+            docker pull replane/replane:${{ needs.build-slim.outputs.version }}
             ```
 
             ### All Published Tags
-            **Full:** ${{ steps.meta.outputs.tags }}
+            **Full:** ${{ needs.build-full.outputs.tags }}
 
-            **Slim:** ${{ steps.meta-slim.outputs.tags }}
+            **Slim:** ${{ needs.build-slim.outputs.tags }}
 
             <details>
             <summary>📊 Benchmark Results</summary>
