@@ -17,11 +17,15 @@ import {
   Mail,
 } from 'lucide-react';
 import {signIn} from 'next-auth/react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {useState} from 'react';
 import {useForm} from 'react-hook-form';
 import {toast} from 'sonner';
 import {z} from 'zod';
+import gmailIcon from './gmail-icon.svg';
+import outlookIcon from './outlook-icon.svg';
+import protonmailIcon from './protonmail-icon.svg';
 import {
   type AuthProvider,
   EmailDomainNotice,
@@ -30,6 +34,7 @@ import {
   OrDivider,
   PasswordInput,
 } from './shared';
+import yahooIcon from './yahoo-icon.svg';
 
 // ============================================================================
 // Types
@@ -127,10 +132,12 @@ function EmailProviderLink({
   href,
   title,
   icon,
+  hoverColor,
 }: {
   href: string;
   title: string;
   icon: React.ReactNode;
+  hoverColor?: string;
 }) {
   return (
     <a
@@ -138,13 +145,12 @@ function EmailProviderLink({
       target="_blank"
       rel="noopener noreferrer"
       title={title}
-      className="w-12 h-12 flex justify-center items-center border border-green-500/20 bg-green-500/5 rounded-xl transition-all hover:border-green-500/40 hover:bg-green-500/10 hover:scale-105 text-green-600 dark:text-green-400"
+      className={`w-12 h-12 flex justify-center items-center border border-muted-foreground/20 bg-muted/30 rounded-xl transition-all hover:scale-105 ${hoverColor ?? 'hover:text-foreground'}`}
     >
       {icon}
     </a>
   );
 }
-
 
 // ============================================================================
 // Password Sign-In Form
@@ -348,62 +354,26 @@ function MagicLinkForm({callbackUrl, onInteraction}: MagicLinkFormProps) {
           <EmailProviderLink
             href="https://mail.google.com"
             title="Open Gmail"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z"
-                  fill="currentColor"
-                />
-              </svg>
-            }
+            hoverColor="hover:text-[#EA4335]"
+            icon={<Image src={gmailIcon} alt="Gmail" className="w-5 h-5" />}
           />
           <EmailProviderLink
             href="https://outlook.live.com"
             title="Open Outlook"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M22 8.608V16.75C22 17.992 20.977 19 19.72 19H9.28C8.023 19 7 17.992 7 16.75V8.608L14.5 12.51L22 8.608Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M22 6.25V6.865L14.5 10.767L7 6.865V6.25C7 5.008 8.023 4 9.28 4H19.72C20.977 4 22 5.008 22 6.25Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M6 10.5C6 7.462 3.538 5 0.5 5C-2.538 5 -5 7.462 -5 10.5V13.5C-5 16.538 -2.538 19 0.5 19C3.538 19 6 16.538 6 13.5V10.5Z"
-                  fill="currentColor"
-                  transform="translate(5.5 0)"
-                />
-                <ellipse cx="5.5" cy="12" rx="4" ry="5.5" fill="currentColor" opacity="0.9" />
-                <ellipse cx="5.5" cy="12" rx="2.5" ry="3.5" fill="white" />
-              </svg>
-            }
+            hoverColor="hover:text-[#0078D4]"
+            icon={<Image src={outlookIcon} alt="Outlook Mail" className="w-5 h-5" />}
           />
           <EmailProviderLink
             href="https://mail.yahoo.com"
             title="Open Yahoo Mail"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 2L8.5 9H2L6.5 14L4.5 22L12 17L19.5 22L17.5 14L22 9H15.5L12 2Z"
-                  fill="currentColor"
-                />
-              </svg>
-            }
+            hoverColor="hover:text-[#6001D2]"
+            icon={<Image src={yahooIcon} alt="Yahoo Mail" className="w-5 h-5" />}
           />
           <EmailProviderLink
             href="https://proton.me/mail"
             title="Open Proton Mail"
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M3 6L12 12L21 6V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V6Z"
-                  fill="currentColor"
-                />
-                <path d="M21 6L12 12L3 6C3 4.9 3.9 4 5 4H19C20.1 4 21 4.9 21 6Z" fill="currentColor" />
-              </svg>
-            }
+            hoverColor="hover:text-[#6D4AFF]"
+            icon={<Image src={protonmailIcon} alt="Proton Mail" className="w-5 h-5" />}
           />
         </div>
 
@@ -629,7 +599,7 @@ export function SignInForm({
                     variant="signin"
                     onSignIn={handleOAuthSignIn}
                     loadingProvider={loadingProvider}
-                        />
+                  />
 
                   {/* Password option button */}
                   {hasCredentialsProvider && hasOtherProviders && (
