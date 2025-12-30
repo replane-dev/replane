@@ -500,10 +500,7 @@ describe('replica sync - config value types', () => {
           },
         },
       },
-      topLevelArray: [
-        {nested: {value: 1}},
-        {nested: {value: 2}},
-      ],
+      topLevelArray: [{nested: {value: 1}}, {nested: {value: 2}}],
     };
 
     await fixture.createConfig({
@@ -749,7 +746,9 @@ describe('replica sync - environment variants', () => {
       },
       environmentVariants: environments.map(env => ({
         environmentId: env.id,
-        value: asConfigValue(env.id === fixture.productionEnvironmentId ? 'updated-prod' : 'initial'),
+        value: asConfigValue(
+          env.id === fixture.productionEnvironmentId ? 'updated-prod' : 'initial',
+        ),
         schema: null,
         overrides: [],
         useBaseSchema: true,
@@ -1070,9 +1069,7 @@ describe('replica sync - multi-project isolation', () => {
       projectId: fixture.projectId,
       environmentId: fixture.productionEnvironmentId,
     });
-    expect(
-      project1Configs.configs.find(c => c.name === 'delete-isolation-config'),
-    ).toBeUndefined();
+    expect(project1Configs.configs.find(c => c.name === 'delete-isolation-config')).toBeUndefined();
 
     // Verify still exists in second project
     const project2Configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
