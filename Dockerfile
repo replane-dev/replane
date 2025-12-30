@@ -31,6 +31,7 @@ FROM base AS runner
 WORKDIR /app
 COPY --from=builder /app/.next/standalone .next/standalone
 
+ENV HOSTNAME=0.0.0.0
 ENV PORT=8080
 
 EXPOSE $PORT

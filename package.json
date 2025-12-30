@@ -8,8 +8,8 @@
   "scripts": {
     "dev": "next dev --turbopack | pino-pretty",
     "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
-    "start": "NODE_ENV=production next start",
-    "start:inspect": "NODE_ENV=production NODE_OPTIONS=\"--inspect=0.0.0.0:9229\" next start",
+    "start": "NODE_ENV=production node .next/standalone/server.js",
+    "start:inspect": "NODE_ENV=production node --inspect=0.0.0.0:9229 .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "test": "dotenv -- vitest run --exclude '**/e2e/**'",
