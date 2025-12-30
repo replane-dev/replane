@@ -48,6 +48,7 @@ primary_region = 'iad'
   memory = '1gb'
   cpus = 1
   memory_mb = 1024
+  swap_size_mb = 2048
 
 [metrics]
   port = 8080
