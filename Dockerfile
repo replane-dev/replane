@@ -41,4 +41,4 @@ COPY scripts/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT [ "./entrypoint.sh" ]
-CMD [ "node", "--optimize-for-size", "--enable-source-maps", "--max-old-space-size=4096", ".next/standalone/server.js" ]
+CMD [ "node", "--enable-source-maps", "--max-old-space-size=4096", ".next/standalone/server.js" ]
