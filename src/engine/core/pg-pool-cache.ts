@@ -5,41 +5,53 @@ import type {ConnectionOptions} from 'tls';
 const poolCache = new Map<string, Pool>();
 const poolCounter = new Map<string, number>();
 
+export interface CreatePgPoolOptions {
+  maxConnections?: number;
+  queryTimeout?: number;
+  idleTimeoutMillis?: number;
+  connectionTimeoutMillis?: number;
+}
+
+export function createPgPool(databaseUrl: string, options: CreatePgPoolOptions = {}) {
+  let ssl: ConnectionOptions | undefined;
+
+  // Support custom SSL certificate via environment variable
+  if (process.env.DATABASE_SSL_CA) {
+    ssl = {
+      ca: process.env.DATABASE_SSL_CA,
+    };
+  }
+
+  let maxConnections = 10;
+  if (process.env.DATABASE_MAX_CONNECTIONS) {
+    maxConnections = parseInt(process.env.DATABASE_MAX_CONNECTIONS);
+    if (Number.isNaN(maxConnections)) {
+      throw new Error('DATABASE_MAX_CONNECTIONS must be a number');
+    }
+    if (maxConnections < 1) {
+      throw new Error('DATABASE_MAX_CONNECTIONS must be greater than 0');
+    }
+  }
+
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: maxConnections,
+    idleTimeoutMillis: options.idleTimeoutMillis ?? 30000,
+    connectionTimeoutMillis: options.connectionTimeoutMillis ?? 2000,
+    // NOTE:
+    // Do NOT pass `statement_timeout` / `lock_timeout` / `idle_in_transaction_session_timeout`
+    // as connection options. Some Postgres poolers (e.g. PgBouncer) reject these startup
+    // parameters, causing boot/migrations to fail.
+    query_timeout: options.queryTimeout ?? 60000, // 60 seconds (client-side timeout in node-postgres)
+    ssl,
+  });
+
+  return pool;
+}
+
 export function getPgPool(databaseUrl: string) {
   if (!poolCache.has(databaseUrl)) {
-    let ssl: ConnectionOptions | undefined;
-
-    // Support custom SSL certificate via environment variable
-    if (process.env.DATABASE_SSL_CA) {
-      ssl = {
-        ca: process.env.DATABASE_SSL_CA,
-      };
-    }
-
-    let maxConnections = 10;
-    if (process.env.DATABASE_MAX_CONNECTIONS) {
-      maxConnections = parseInt(process.env.DATABASE_MAX_CONNECTIONS);
-      if (Number.isNaN(maxConnections)) {
-        throw new Error('DATABASE_MAX_CONNECTIONS must be a number');
-      }
-      if (maxConnections < 1) {
-        throw new Error('DATABASE_MAX_CONNECTIONS must be greater than 0');
-      }
-    }
-
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      max: maxConnections,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-      // NOTE:
-      // Do NOT pass `statement_timeout` / `lock_timeout` / `idle_in_transaction_session_timeout`
-      // as connection options. Some Postgres poolers (e.g. PgBouncer) reject these startup
-      // parameters, causing boot/migrations to fail.
-      query_timeout: 60000, // 60 seconds (client-side timeout in node-postgres)
-      ssl,
-    });
-
+    const pool = createPgPool(databaseUrl);
     poolCache.set(databaseUrl, pool);
   }
 

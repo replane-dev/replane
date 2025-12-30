@@ -2,12 +2,18 @@ import {getDatabaseUrl} from '@/environment';
 import {type Context, GLOBAL_CONTEXT} from '../core/context';
 import {createLogger} from '../core/logger';
 import {migrate} from '../core/migrations';
-import {getPgPool} from '../core/pg-pool-cache';
+import {createPgPool} from '../core/pg-pool-cache';
 
 async function main(ctx: Context) {
   const logger = createLogger({level: 'info'});
 
-  const [pool, free] = getPgPool(getDatabaseUrl());
+  // create pool with higher limits for migrations
+  const pool = createPgPool(getDatabaseUrl(), {
+    maxConnections: 10,
+    queryTimeout: 15 * 60 * 1000,
+    idleTimeoutMillis: 15 * 60 * 1000,
+    connectionTimeoutMillis: 3 * 1000,
+  });
 
   try {
     const client = await pool.connect();
@@ -23,7 +29,7 @@ async function main(ctx: Context) {
 
     return 1;
   } finally {
-    free();
+    pool.end();
   }
 }
 
