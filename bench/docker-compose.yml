@@ -54,7 +54,6 @@ services:
     restart: no
     ports:
       - "8091:8080"
-      - "9229:9229"
     environment:
       DATABASE_URL: postgres://replane:replane@postgres:5432/replane
       BASE_URL: http://localhost:8091
