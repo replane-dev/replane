@@ -29,7 +29,7 @@ jobs:
 
       - name: Docker meta (full)
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: |
             replane/replane
@@ -41,7 +41,7 @@ jobs:
 
       - name: Docker meta (slim)
         id: meta-slim
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: |
             replane/replane
