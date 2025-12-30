@@ -42,6 +42,3 @@ next-env.d.ts
 
 # replica data
 /data
-
-# deployment (generated Fly config)
-/deployment/fly.replane.toml

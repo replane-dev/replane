@@ -11,3 +11,4 @@ tests
 .gitignore
 Dockerfile
 docker-compose.yml
+fly.toml
