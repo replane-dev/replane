@@ -7,6 +7,6 @@ on:
 
 jobs:
   cla:
-    uses: replane-dev/.github/workflows/cla.yml@main
+    uses: replane-dev/.github/.github/workflows/cla.yml@main
     secrets:
       CLA_TOKEN: ${{ secrets.CLA_TOKEN }}
