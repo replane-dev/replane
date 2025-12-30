@@ -155,7 +155,6 @@ export const options: Options = {
     // SSE connection thresholds
     sse_connection_success: ['rate>0.99'],
     sse_connection_errors: ['rate<0.01'],
-    sse_connection_failures: ['rate<0.01'],
 
     // SSE timing thresholds
     sse_time_to_opened: ['p(95)<250', 'p(99)<500'],

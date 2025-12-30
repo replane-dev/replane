@@ -296,8 +296,8 @@ importers:
         specifier: ^7.6.13
         version: 7.6.13
       '@types/k6':
-        specifier: ^0.54.2
-        version: 0.54.2
+        specifier: ^1.4.0
+        version: 1.4.0
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.25
@@ -2997,8 +2997,8 @@ packages:
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
 
-  '@types/k6@0.54.2':
-    resolution: {integrity: sha512-B5LPxeQm97JnUTpoKNE1UX9jFp+JiJCAXgZOa2P7aChxVoPQXKfWMzK+739xHq3lPkKj1aV+HeOxkP56g/oWBg==}
+  '@types/k6@1.4.0':
+    resolution: {integrity: sha512-2tgKVnzNXZTZT1TDAGLY/3cuvHPZLyOF751N7M8T2dBgWzInzUVZYjGn9zVW01S1yNLqAr1az9gctyJHTW6GRQ==}
 
   '@types/mysql@2.15.27':
     resolution: {integrity: sha512-YfWiV16IY0OeBfBCk8+hXKmdTKrKlwKN1MNKAPBu5JYxLwBEZl7QzeEpGnlZb3VMGJrrGmB84gXiH+ofs/TezA==}
@@ -9250,7 +9250,7 @@ snapshots:
 
   '@types/json5@0.0.29': {}
 
-  '@types/k6@0.54.2': {}
+  '@types/k6@1.4.0': {}
 
   '@types/mysql@2.15.27':
     dependencies:

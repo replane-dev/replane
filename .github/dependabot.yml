@@ -9,7 +9,7 @@ updates:
     schedule:
       interval: 'weekly'
       day: 'monday'
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 16
     groups:
       # Group minor and patch updates together
       minor-and-patch:
