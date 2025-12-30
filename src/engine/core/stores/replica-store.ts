@@ -687,7 +687,7 @@ export class ReplicaStore {
 
     if (existingConfig) {
       // delete existing config
-      this.deleteConfigStmt.run({id: existingConfig.id});
+      this.deleteConfigStmt.run({id: existingConfig.config_id});
     }
 
     // insert new config
