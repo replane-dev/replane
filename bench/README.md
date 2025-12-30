@@ -70,6 +70,7 @@ Customize test parameters by editing [`.env`](./.env).
 ### 2b. Run Soak Test (Extended Duration)
 
 Soak testing runs the benchmark suite for an extended period (1 hour by default) to detect:
+
 - Memory leaks
 - Resource exhaustion
 - Connection pool depletion
@@ -130,7 +131,7 @@ Scrapes `/metrics` endpoint every 5 seconds and tracks:
 - **CPU**: `process_cpu_user_seconds_total`, `process_cpu_system_seconds_total`, `process_cpu_seconds_total`
 - **Memory**: `process_resident_memory_bytes`, `process_virtual_memory_bytes`, `nodejs_heap_size_total_bytes`, `nodejs_heap_size_used_bytes`, `nodejs_external_memory_bytes`
 - **Event Loop**: `nodejs_eventloop_lag_seconds`, `nodejs_eventloop_lag_p90_seconds`, `nodejs_eventloop_lag_p99_seconds`
-- **Handles**: `nodejs_active_handles_total`, `nodejs_active_requests_total`
+- **Handles**: `nodejs_active_handles_total`
 - **Replication**: `replane_replication_streams_active`, `replane_replication_streams_started_total`, `replane_replication_streams_stopped_total`
 
 ## Thresholds

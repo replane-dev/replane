@@ -60,9 +60,8 @@ const nodejsEventloopLagSeconds = new Gauge('nodejs_eventloop_lag_seconds');
 const nodejsEventloopLagP90Seconds = new Gauge('nodejs_eventloop_lag_p90_seconds');
 const nodejsEventloopLagP99Seconds = new Gauge('nodejs_eventloop_lag_p99_seconds');
 
-// Handle/request metrics
+// Handle metrics
 const nodejsActiveHandlesTotal = new Gauge('nodejs_active_handles_total');
-const nodejsActiveRequestsTotal = new Gauge('nodejs_active_requests_total');
 
 // Metrics scrape errors
 const metricsScrapeErrors = new Counter('metrics_scrape_errors');
@@ -84,7 +83,6 @@ const prometheusMetrics: Record<string, Gauge> = {
   nodejs_eventloop_lag_p90_seconds: nodejsEventloopLagP90Seconds,
   nodejs_eventloop_lag_p99_seconds: nodejsEventloopLagP99Seconds,
   nodejs_active_handles_total: nodejsActiveHandlesTotal,
-  nodejs_active_requests_total: nodejsActiveRequestsTotal,
 };
 
 // ============= SSE Metrics =============
