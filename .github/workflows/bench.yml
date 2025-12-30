@@ -154,7 +154,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           if [ -f benchmark-output.txt ]; then
-            sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -100 >> $GITHUB_STEP_SUMMARY
+            sed -n '/█ THRESHOLDS/,$ p' benchmark-output.txt | head -200 >> $GITHUB_STEP_SUMMARY
           else
             echo "No benchmark output available" >> $GITHUB_STEP_SUMMARY
           fi
