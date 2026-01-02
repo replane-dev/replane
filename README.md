@@ -273,6 +273,15 @@ environment:
 
 **User Feedback:** When Sentry is enabled, a "Send Feedback" option appears in the application sidebar. Users can submit feedback, report issues, or suggest features directly through the UI. All feedback is captured in your Sentry.
 
+## System requirements
+
+| Component  | Minimum    | Recommended |
+| ---------- | ---------- | ----------- |
+| CPU        | 0.25 cores | 2 cores     |
+| Memory     | 512 MB     | 4 GB        |
+| Storage    | 1 GB       | 10+ GB      |
+| PostgreSQL | 14+        | 16+         |
+
 ## Backups
 
 All state is stored in PostgreSQL when `DATABASE_URL` is set. For the integrated database, back up the `/data` volume. For PostgreSQL, use your standard backup/restore process (e.g., `pg_dump`/`pg_restore`).
