@@ -94,15 +94,7 @@ function GenerateTypesContent() {
     }),
   );
 
-  // Fetch SDK keys for the selected environment to get a valid SDK key for usage example
-  const {data: sdkKeysData} = useQuery(
-    trpc.getSdkKeyList.queryOptions({
-      projectId,
-      environmentId: selectedEnvironmentId,
-    }),
-  );
-
-  const sdkKey = sdkKeysData?.sdkKeys[0]?.key ?? 'your-project-sdk-key-here';
+  const sdkKey = 'your-sdk-key-here';
   const baseUrl =
     typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
 
