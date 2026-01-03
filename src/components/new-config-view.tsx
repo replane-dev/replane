@@ -3,6 +3,7 @@
 import {ConfigForm, type ConfigFormSubmitData} from '@/components/config-form';
 import {useUser} from '@/contexts/user-context';
 import type {Override} from '@/engine/core/override-evaluator';
+import type {ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
 import {useRouter} from 'next/navigation';
@@ -84,7 +85,7 @@ export function NewConfigView({projectId, onSuccess, onCancel, onDirtyChange}: N
       environments={environments}
       requireProposals={false}
       defaultVariant={{
-        value: null,
+        value: '{}' as ConfigValue,
         schema: null,
         overrides: [],
       }}
