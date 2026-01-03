@@ -10,6 +10,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
+import type {ConfigValue} from '@/engine/core/zod';
 import {
   ArrowDown,
   ArrowUp,
@@ -257,11 +258,10 @@ const OverrideCardComponent = ({
                       : `${override.name || `Override ${index + 1}`} - Value`
                   }
                   height={180}
-                  value={JSON.stringify(override.value, null, 2)}
+                  value={override.value}
                   onChange={(value: string) => {
                     try {
-                      const parsed = JSON.parse(value);
-                      onUpdate({...override, value: parsed});
+                      onUpdate({...override, value: value as ConfigValue});
                     } catch {
                       // Keep current value if parsing fails
                     }
