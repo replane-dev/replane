@@ -26,9 +26,9 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  title: 'Replane',
-  description: 'Replane application',
+export const generateMetadata = (): Metadata => ({
+  title: process.env.APP_TITLE || 'Replane',
+  description: process.env.APP_DESCRIPTION || 'Replane application',
   icons: {
     icon: [
       {url: '/favicon.ico'},
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     apple: '/favicon/apple-touch-icon.png',
     other: [{rel: 'manifest', url: '/favicon/site.webmanifest'}],
   },
-};
+});
 
 export default async function RootLayout({
   children,
