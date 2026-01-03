@@ -7,34 +7,41 @@ import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
 import Link from 'next/link';
-import {redirect, useSearchParams} from 'next/navigation';
+import {useRouter, useSearchParams} from 'next/navigation';
+import {useEffect} from 'react';
 import {NO_SIGNUP_REDIRECT_PARAM, NO_SIGNUP_REDIRECT_VALUE} from '../signup/page';
 
 export default function SignInPage() {
+  const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get('callbackUrl') ?? '/app';
   const {data: session} = useSession();
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getAuthProviders.queryOptions());
 
-  // If already signed in, redirect to callback URL or home
-  if (session) {
-    redirect(callbackUrl);
-  }
-
-  // If no users exist, redirect to signup page for initial setup
-  if (
-    !data.hasUsers &&
-    data.providers.some(x => x.name !== PASSWORD_PROVIDER_NAME) &&
-    data.passwordAuthEnabled &&
-    params.get(NO_SIGNUP_REDIRECT_PARAM) !== NO_SIGNUP_REDIRECT_VALUE
-  ) {
-    redirect(`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-  }
-
   const providers = data.providers;
   const allowedEmailDomains = data.allowedEmailDomains;
   const passwordAuthEnabled = data.passwordAuthEnabled;
+
+  const shouldRedirectToCallback = !!session;
+  const shouldRedirectToSignUp =
+    !data.hasUsers &&
+    data.providers.some(x => x.name !== PASSWORD_PROVIDER_NAME) &&
+    data.passwordAuthEnabled &&
+    params.get(NO_SIGNUP_REDIRECT_PARAM) !== NO_SIGNUP_REDIRECT_VALUE;
+
+  useEffect(() => {
+    if (shouldRedirectToCallback) {
+      router.replace(callbackUrl);
+    } else if (shouldRedirectToSignUp) {
+      router.replace(`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    }
+  }, [shouldRedirectToCallback, shouldRedirectToSignUp, callbackUrl, router]);
+
+  // Show nothing while redirecting
+  if (shouldRedirectToCallback || shouldRedirectToSignUp) {
+    return null;
+  }
 
   const errorMessages: Record<string, string> = {
     OAuthSignin: 'Error constructing authorization URL.',

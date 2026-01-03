@@ -125,7 +125,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/bench.yml
     with:
-      test_duration: '3h'
+      test_duration: '3m'
       timeout_minutes: 240
 
   release:

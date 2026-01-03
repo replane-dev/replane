@@ -6,32 +6,40 @@ import {useTRPC} from '@/trpc/client';
 import {useSuspenseQuery} from '@tanstack/react-query';
 import {useSession} from 'next-auth/react';
 import Link from 'next/link';
-import {redirect, useSearchParams} from 'next/navigation';
+import {useRouter, useSearchParams} from 'next/navigation';
+import {useEffect} from 'react';
 
 export const NO_SIGNUP_REDIRECT_PARAM = 'no-signup-redirect';
 export const NO_SIGNUP_REDIRECT_VALUE = 'true';
 
 export default function SignUpPage() {
+  const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get('callbackUrl') ?? '/app';
   const {data: session} = useSession();
   const trpc = useTRPC();
   const {data} = useSuspenseQuery(trpc.getAuthProviders.queryOptions());
 
-  // If already signed in, redirect to callback URL or home
-  if (session) {
-    redirect(callbackUrl);
-  }
-
-  // If password auth is not enabled and there are no OAuth providers, redirect to sign-in
-  if (!data.passwordAuthEnabled && data.providers.length === 0) {
-    redirect(
-      `/auth/signin?${NO_SIGNUP_REDIRECT_PARAM}=${NO_SIGNUP_REDIRECT_VALUE}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
-    );
-  }
-
   const allowedEmailDomains = data.allowedEmailDomains;
   const providers = data.providers;
+
+  const shouldRedirectToCallback = !!session;
+  const shouldRedirectToSignIn = !data.passwordAuthEnabled && data.providers.length === 0;
+
+  useEffect(() => {
+    if (shouldRedirectToCallback) {
+      router.replace(callbackUrl);
+    } else if (shouldRedirectToSignIn) {
+      router.replace(
+        `/auth/signin?${NO_SIGNUP_REDIRECT_PARAM}=${NO_SIGNUP_REDIRECT_VALUE}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
+      );
+    }
+  }, [shouldRedirectToCallback, shouldRedirectToSignIn, callbackUrl, router]);
+
+  // Show nothing while redirecting
+  if (shouldRedirectToCallback || shouldRedirectToSignIn) {
+    return null;
+  }
 
   return (
     <div className="bg-sidebar flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
