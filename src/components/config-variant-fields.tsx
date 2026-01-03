@@ -15,6 +15,7 @@ import {Help} from '@/components/ui/help';
 import {Label} from '@/components/ui/label';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import type {Override} from '@/engine/core/override-evaluator';
+import {parseJsonc} from '@/engine/core/utils';
 import {createSchemaFromValue} from '@/lib/json-schema-utils';
 import {Sparkles} from 'lucide-react';
 import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
@@ -108,7 +109,7 @@ export function ConfigVariantFields({
     const currentValue = getValues(valueFieldName);
 
     try {
-      const parsedValue = JSON.parse(currentValue);
+      const parsedValue = parseJsonc(currentValue);
       const inferredSchema = createSchemaFromValue(parsedValue);
       setValue(schemaFieldName, JSON.stringify(inferredSchema, null, 2));
 
