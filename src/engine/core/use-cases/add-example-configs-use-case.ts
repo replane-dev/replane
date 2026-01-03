@@ -142,15 +142,17 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'boolean',
       }) as ConfigSchema,
-      value: stringifyJsonc(true) as ConfigValue,
+      // JSONC: comments can be used to document why a flag is enabled/disabled
+      value: `// Feature is enabled for all users
+true` as ConfigValue,
       overrides: [],
       variants: [],
     },
 
-    // 2 - Object config with JSON Schema (demonstrates schema validation)
+    // 2 - Object config with JSON Schema (demonstrates schema validation and JSONC)
     {
       name: 'example-2-app-settings',
-      description: 'Application settings with JSON Schema validation',
+      description: 'Application settings',
       schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
@@ -162,11 +164,21 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         required: ['maxUploadSizeMb', 'allowedFileTypes', 'maintenanceMode'],
         additionalProperties: false,
       }) as ConfigSchema,
-      value: stringifyJsonc({
-        maxUploadSizeMb: 10,
-        allowedFileTypes: ['jpg', 'png', 'pdf'],
-        maintenanceMode: false,
-      }) as ConfigValue,
+      // JSONC: inline comments explain each setting, trailing commas allow easy reordering
+      value: `{
+  // Maximum file size in megabytes (adjust based on server capacity)
+  "maxUploadSizeMb": 10,
+
+  // Supported file extensions - add more as needed
+  "allowedFileTypes": [
+    "jpg",
+    "png",
+    "pdf", // trailing comma makes it easy to add more types
+  ],
+
+  // Set to true during deployments or outages
+  "maintenanceMode": false,
+}` as ConfigValue,
       overrides: [],
       variants: [],
     },
@@ -225,10 +237,14 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         required: ['requestsPerMinute', 'burstLimit'],
         additionalProperties: false,
       }) as ConfigSchema,
-      value: stringifyJsonc({
-        requestsPerMinute: 60,
-        burstLimit: 10,
-      }) as ConfigValue,
+      value: `{
+  /*
+   * Default rate limits for standard users.
+   * These values are tuned for typical API usage patterns.
+   */
+  "requestsPerMinute": 60,  // 1 request per second average
+  "burstLimit": 10,         // allows short bursts of activity
+}` as ConfigValue,
       overrides: [
         {
           name: 'High volume users',
@@ -239,10 +255,11 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               value: {type: 'literal', value: 10000},
             },
           ],
-          value: stringifyJsonc({
-            requestsPerMinute: 120,
-            burstLimit: 20,
-          }) as ConfigValue,
+          value: `{
+  // 2x limits for high-volume users (>10k monthly requests)
+  "requestsPerMinute": 120,
+  "burstLimit": 20,
+}` as ConfigValue,
         },
         {
           name: 'New users (low usage)',
@@ -253,10 +270,12 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               value: {type: 'literal', value: 30},
             },
           ],
-          value: stringifyJsonc({
-            requestsPerMinute: 30,
-            burstLimit: 5,
-          }) as ConfigValue,
+          value: `{
+  // Conservative limits for new accounts (<30 days)
+  // Prevents abuse while they build trust
+  "requestsPerMinute": 30,
+  "burstLimit": 5,
+}` as ConfigValue,
         },
       ],
       variants: [],
@@ -276,10 +295,14 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         required: ['variant', 'showNewCheckout'],
         additionalProperties: false,
       }) as ConfigSchema,
-      value: stringifyJsonc({
-        variant: 'control',
-        showNewCheckout: false,
-      }) as ConfigValue,
+      // Control group: 50% of users see the original checkout
+      value: `{
+  // Experiment: checkout-experiment-2024
+  // Hypothesis: Simplified checkout will increase conversion by 15%
+  // Start date: 2024-01-15
+  "variant": "control",
+  "showNewCheckout": false, // original checkout flow
+}` as ConfigValue,
       overrides: [
         {
           name: 'Treatment A (25%)',
@@ -292,10 +315,11 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               seed: 'checkout-experiment-2024',
             },
           ],
-          value: stringifyJsonc({
-            variant: 'treatment_a',
-            showNewCheckout: true,
-          }) as ConfigValue,
+          value: `{
+  // Treatment A: Single-page checkout (0-25% of users)
+  "variant": "treatment_a",
+  "showNewCheckout": true,
+}` as ConfigValue,
         },
         {
           name: 'Treatment B (25%)',
@@ -308,10 +332,11 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               seed: 'checkout-experiment-2024',
             },
           ],
-          value: stringifyJsonc({
-            variant: 'treatment_b',
-            showNewCheckout: true,
-          }) as ConfigValue,
+          value: `{
+  // Treatment B: Multi-step wizard checkout (25-50% of users)
+  "variant": "treatment_b",
+  "showNewCheckout": true,
+}` as ConfigValue,
         },
       ],
       variants: [],
@@ -332,11 +357,15 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         required: ['featureLevel', 'customBranding', 'supportPriority'],
         additionalProperties: false,
       }) as ConfigSchema,
-      value: stringifyJsonc({
-        featureLevel: 'basic',
-        customBranding: false,
-        supportPriority: 'standard',
-      }) as ConfigValue,
+      value: `{
+  /*
+   * Default tier for all users.
+   * Feature levels: basic < preview < unlimited
+   */
+  "featureLevel": "basic",
+  "customBranding": false,
+  "supportPriority": "standard", // 24-48h response time
+}` as ConfigValue,
       overrides: [
         {
           name: 'VIP customers',
@@ -357,11 +386,15 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               ],
             },
           ],
-          value: stringifyJsonc({
-            featureLevel: 'unlimited',
-            customBranding: true,
-            supportPriority: 'dedicated',
-          }) as ConfigValue,
+          value: `{
+  /*
+   * VIP Tier: Enterprise plan + $50k+ annual spend
+   * Per agreement with Sales team
+   */
+  "featureLevel": "unlimited",
+  "customBranding": true,        // white-label support
+  "supportPriority": "dedicated", // dedicated CSM, 1h SLA
+}` as ConfigValue,
         },
         {
           name: 'Beta testers or employees',
@@ -382,11 +415,13 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               ],
             },
           ],
-          value: stringifyJsonc({
-            featureLevel: 'preview',
-            customBranding: true,
-            supportPriority: 'priority',
-          }) as ConfigValue,
+          value: `{
+  // Preview access for internal testing
+  // Includes unreleased features - may be unstable!
+  "featureLevel": "preview",
+  "customBranding": true,
+  "supportPriority": "priority", // faster response for bug reports
+}` as ConfigValue,
         },
       ],
       variants: [],
@@ -407,31 +442,54 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         required: ['maxUploadSizeMb', 'allowedFileTypes', 'maintenanceMode'],
         additionalProperties: false,
       }) as ConfigSchema,
-      value: stringifyJsonc({
-        maxUploadSizeMb: 10,
-        allowedFileTypes: ['jpg', 'png', 'pdf'],
-        maintenanceMode: false,
-      }) as ConfigValue,
+      // Base/fallback values - used when no environment-specific variant matches
+      value: `{
+  // Base configuration - conservative defaults
+  "maxUploadSizeMb": 10,
+  "allowedFileTypes": ["jpg", "png", "pdf"],
+  "maintenanceMode": false,
+}` as ConfigValue,
       overrides: [],
       variants: [
         {
           environmentId: productionId,
-          value: stringifyJsonc({
-            maxUploadSizeMb: 100,
-            allowedFileTypes: ['jpg', 'png', 'pdf', 'gif'],
-            maintenanceMode: false,
-          }) as ConfigValue,
+          value: `{
+  /*
+   * PRODUCTION settings
+   * Higher limits to handle real user traffic
+   */
+  "maxUploadSizeMb": 100, // increased for enterprise customers
+
+  "allowedFileTypes": [
+    "jpg",
+    "png",
+    "pdf",
+    "gif", // added per customer request JIRA-1234
+  ],
+
+  "maintenanceMode": false, // NEVER set to true without approval!
+}` as ConfigValue,
           schema: null,
           overrides: [],
           useBaseSchema: true,
         },
         {
           environmentId: developmentId,
-          value: stringifyJsonc({
-            maxUploadSizeMb: 50,
-            allowedFileTypes: ['png', 'pdf'],
-            maintenanceMode: true,
-          }) as ConfigValue,
+          value: `{
+  /*
+   * DEVELOPMENT settings
+   * Restrictive limits to catch issues early
+   */
+  "maxUploadSizeMb": 50, // lower than prod to test edge cases
+
+  "allowedFileTypes": [
+    "png",
+    "pdf",
+    // TODO: add jpg once image processing is fixed
+  ],
+
+  "maintenanceMode": true, // enables maintenance UI for testing
+}` as ConfigValue,
           schema: null,
           overrides: [],
           useBaseSchema: true,
