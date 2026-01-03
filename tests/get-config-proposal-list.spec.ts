@@ -1,9 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ForbiddenError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -56,8 +64,8 @@ describe('getConfigProposalList', () => {
     const {configId: configAId} = await fixture.createConfig({
       overrides: [],
       name: 'config_a',
-      value: {a: 1},
-      schema: {type: 'object', properties: {a: {type: 'number'}}},
+      value: asConfigValue({a: 1}),
+      schema: asConfigSchema({type: 'object', properties: {a: {type: 'number'}}}),
       description: 'A',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],

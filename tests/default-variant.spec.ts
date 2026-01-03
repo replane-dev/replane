@@ -1,9 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -46,11 +54,13 @@ describe('Default Variant', () => {
       expect(config?.config.id).toBe(configId);
       expect(config?.config.name).toBe('default-only-config');
       // Default variant data is now in config.config (value, schema, overrides)
-      expect(config?.config.value).toEqual({feature: 'enabled'});
-      expect(config?.config.schema).toEqual({
-        type: 'object',
-        properties: {feature: {type: 'string'}},
-      });
+      expect(config?.config.value).toEqual(asConfigValue({feature: 'enabled'}));
+      expect(config?.config.schema).toEqual(
+        asConfigSchema({
+          type: 'object',
+          properties: {feature: {type: 'string'}},
+        }),
+      );
     });
 
     it('should create config with default variant and some environment-specific variants', async () => {
@@ -100,14 +110,14 @@ describe('Default Variant', () => {
       expect(config).toBeDefined();
 
       // Default variant data is in config.config
-      expect(config?.config.value).toEqual({limit: 100});
+      expect(config?.config.value).toEqual(asConfigValue({limit: 100}));
 
       // Production variant should be in variants array
       const prodVariant = config?.variants.find(
         v => v.environmentId === fixture.productionEnvironmentId,
       );
       expect(prodVariant).toBeDefined();
-      expect(prodVariant?.value).toEqual({limit: 1000});
+      expect(prodVariant?.value).toEqual(asConfigValue({limit: 1000}));
     });
 
     it('should create config with all environment-specific variants', async () => {
@@ -159,18 +169,18 @@ describe('Default Variant', () => {
       expect(config).toBeDefined();
 
       // Default variant is in config.config
-      expect(config?.config.value).toEqual({env: 'default'});
+      expect(config?.config.value).toEqual(asConfigValue({env: 'default'}));
 
       // Should have both environment-specific variants
       const prodVariant = config?.variants.find(
         v => v.environmentId === fixture.productionEnvironmentId,
       );
-      expect(prodVariant?.value).toEqual({env: 'production'});
+      expect(prodVariant?.value).toEqual(asConfigValue({env: 'production'}));
 
       const devVariant = config?.variants.find(
         v => v.environmentId === fixture.developmentEnvironmentId,
       );
-      expect(devVariant?.value).toEqual({env: 'development'});
+      expect(devVariant?.value).toEqual(asConfigValue({env: 'development'}));
     });
   });
 
@@ -221,6 +231,7 @@ describe('Default Variant', () => {
           schema: null,
           overrides: [],
         },
+        environmentVariants: [],
       });
 
       expect(result.configId).toBeDefined();
@@ -240,6 +251,7 @@ describe('Default Variant', () => {
             schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
             overrides: [],
           },
+          environmentVariants: [],
         }),
       ).rejects.toThrow(BadRequestError);
     });
@@ -428,7 +440,7 @@ describe('Default Variant', () => {
         v => v.environmentId === fixture.productionEnvironmentId,
       );
       expect(prodVariant).toBeDefined();
-      expect(prodVariant?.value).toEqual({count: 500});
+      expect(prodVariant?.value).toEqual(asConfigValue({count: 500}));
       // Schema should be null (inheriting from default)
       expect(prodVariant?.schema).toBeNull();
     });
@@ -559,8 +571,8 @@ describe('Default Variant', () => {
       expect(config).toBeDefined();
       expect(config?.config.name).toBe('api-response-test');
       // Default variant data is now in config.config
-      expect(config?.config.value).toEqual({key: 'default-value'});
-      expect(config?.config.schema).toEqual({type: 'object'});
+      expect(config?.config.value).toEqual(asConfigValue({key: 'default-value'}));
+      expect(config?.config.schema).toEqual(asConfigSchema({type: 'object'}));
       // No environment variants
       expect(config?.variants).toHaveLength(0);
     });
@@ -604,7 +616,7 @@ describe('Default Variant', () => {
       expect(config).toBeDefined();
 
       // Default variant data is in config.config
-      expect(config?.config.value).toEqual({base: 'default'});
+      expect(config?.config.value).toEqual(asConfigValue({base: 'default'}));
 
       // Should have 2 environment-specific variants
       expect(config?.variants).toHaveLength(2);
@@ -612,12 +624,12 @@ describe('Default Variant', () => {
       const prodVariant = config?.variants.find(
         v => v.environmentId === fixture.productionEnvironmentId,
       );
-      expect(prodVariant?.value).toEqual({base: 'production'});
+      expect(prodVariant?.value).toEqual(asConfigValue({base: 'production'}));
 
       const devVariant = config?.variants.find(
         v => v.environmentId === fixture.developmentEnvironmentId,
       );
-      expect(devVariant?.value).toEqual({base: 'development'});
+      expect(devVariant?.value).toEqual(asConfigValue({base: 'development'}));
     });
   });
 
@@ -712,7 +724,7 @@ describe('Default Variant', () => {
       const prodVariant = afterConfig?.variants.find(
         v => v.environmentId === fixture.productionEnvironmentId,
       );
-      expect(prodVariant?.value).toEqual({count: 500});
+      expect(prodVariant?.value).toEqual(asConfigValue({count: 500}));
       // Schema should now be null (inheriting from default)
       expect(prodVariant?.schema).toBeNull();
     });
@@ -874,7 +886,7 @@ describe('Default Variant', () => {
         projectId: fixture.projectId,
       });
 
-      expect(updatedConfig?.config.value).toEqual({key: 'updated-default'});
+      expect(updatedConfig?.config.value).toEqual(asConfigValue({key: 'updated-default'}));
       expect(updatedConfig?.config.description).toBe('Test patch with default - updated');
     });
   });

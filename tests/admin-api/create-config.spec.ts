@@ -574,6 +574,46 @@ describe('Admin API - Create Config', () => {
       expect(data.error).toContain('Invalid environment ID');
     });
 
+    it('should return 400 when using environment from another project', async () => {
+      // Create a second project with its own environments
+      const {projectId: otherProjectId, environments: otherEnvs} =
+        await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+          identity: fixture.identity,
+          workspaceId: fixture.workspaceId,
+          name: 'Other Project',
+          description: 'Other project',
+        });
+
+      const otherProductionEnvId = otherEnvs.find(e => e.name === 'Production')?.id;
+
+      const {token} = await fixture.createAdminApiKey({
+        scopes: ['config:write'],
+        projectIds: null, // Access to all projects
+      });
+
+      // Try to create a config in the first project using an environment from the second project
+      const response = await fixture.adminApiRequest(
+        'POST',
+        `/projects/${fixture.projectId}/configs`,
+        token,
+        createConfigBody('cross-project-env-config', 'value', null, {
+          variants: [
+            {
+              environmentId: otherProductionEnvId!, // Environment from other project
+              value: 'cross-project',
+              schema: null,
+              overrides: [],
+              useBaseSchema: false,
+            },
+          ],
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toContain('Invalid environment ID');
+    });
+
     it('should return 400 when variant value does not match its schema', async () => {
       const {token} = await fixture.createAdminApiKey({
         scopes: ['config:write'],

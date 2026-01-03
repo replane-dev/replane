@@ -117,7 +117,11 @@ export function createGetConfigProposalUseCase({}: GetConfigProposalUseCaseDeps)
         : 'pending';
 
     // Check for schema changes in environment variants or default variant
-    const hasEnvSchemaChanges = proposal.variants.some(vc => vc.schema !== undefined);
+    const hasEnvSchemaChanges = proposal.variants.some(vc => {
+      const variant = baseVersion.variants.find(v => v.environmentId === vc.environmentId);
+      assert(variant, 'Variant not found');
+      return JSON.stringify(vc.schema) !== JSON.stringify(variant.schema);
+    });
     const hasDefaultSchemaChange =
       JSON.stringify(proposal.schema) !== JSON.stringify(baseVersion.schema);
     const hasSchemaChanges = hasEnvSchemaChanges || hasDefaultSchemaChange;

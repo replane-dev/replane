@@ -25,7 +25,7 @@ import {
 } from './stores/replica-store';
 import {Subject} from './subject';
 import {MappedTopic} from './topic';
-import {groupBy} from './utils';
+import {groupBy, parseJsonc} from './utils';
 import type {ConfigValue} from './zod';
 
 export type ReplicaEvent = ReplicatorEvent<ConfigReplica>;
@@ -174,7 +174,11 @@ export class Replica {
     configName: string;
     environmentId: string;
   }): ConfigValue | undefined {
-    return this.replicaStore.getConfigValue(params);
+    const value = this.replicaStore.getConfigValue(params);
+    if (value === undefined) {
+      return undefined;
+    }
+    return parseJsonc(value);
   }
 
   async renderConfig(config: EnvironmentalConfigReplica): Promise<RenderedConfig> {
@@ -182,7 +186,7 @@ export class Replica {
       name: config.name,
       version: config.version,
       environmentId: config.environmentId,
-      value: config.value,
+      value: parseJsonc(config.value),
       overrides: await renderOverrides({
         overrides: config.overrides,
         configResolver: async params => this.getConfigValueWithoutOverrides(params),
@@ -214,7 +218,7 @@ export class Replica {
           configResolver: async params => this.getConfigValueWithoutOverrides(params),
           environmentId: params.environmentId,
         }),
-        value: config.value,
+        value: parseJsonc(config.value),
         projectId: config.projectId,
       });
     }
@@ -277,7 +281,7 @@ async function getReplicaConfigs(params: {
           id: variant.variant_id,
           configId: variant.config_id,
           environmentId: variant.variant_environment_id,
-          value: JSON.parse(variant.variant_value) as ConfigValue,
+          value: variant.variant_value as ConfigValue,
           overrides: JSON.parse(variant.variant_overrides) as Override[],
         };
       });
@@ -288,7 +292,7 @@ async function getReplicaConfigs(params: {
       name: firstVariant.name,
       version: firstVariant.version,
       variants: variants,
-      value: JSON.parse(firstVariant.value) as ConfigValue,
+      value: firstVariant.value as ConfigValue,
       overrides: JSON.parse(firstVariant.overrides) as Override[],
     };
   });

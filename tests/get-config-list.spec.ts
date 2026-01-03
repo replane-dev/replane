@@ -1,8 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {GetConfigListResponse} from '@/engine/core/use-cases/get-config-list-use-case';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
@@ -23,8 +32,8 @@ describe('getConfigList', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'first-config',
-      value: 'first-value',
-      schema: {type: 'string'},
+      value: asConfigValue('first-value'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'The first config',
       identity: fixture.identity,
       editorEmails: [],
@@ -34,8 +43,8 @@ describe('getConfigList', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'second-config',
-      value: {nested: 42},
-      schema: {type: 'object', properties: {nested: {type: 'number'}}},
+      value: asConfigValue({nested: 42}),
+      schema: asConfigSchema({type: 'object', properties: {nested: {type: 'number'}}}),
       description: 'The second config',
       identity: fixture.identity,
       editorEmails: [],
@@ -82,8 +91,8 @@ describe('getConfigList', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'z_owner_config',
-      value: 1,
-      schema: {type: 'number'},
+      value: asConfigValue(1),
+      schema: asConfigSchema({type: 'number'}),
       description: 'Owner config',
       identity: fixture.identity,
       editorEmails: [],
@@ -94,8 +103,8 @@ describe('getConfigList', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'm_editor_config',
-      value: 2,
-      schema: {type: 'number'},
+      value: asConfigValue(2),
+      schema: asConfigSchema({type: 'number'}),
       description: 'Editor config',
       identity: fixture.identity,
       editorEmails: [TEST_USER_EMAIL],
@@ -106,8 +115,8 @@ describe('getConfigList', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'a_viewer_config',
-      value: 3,
-      schema: {type: 'number'},
+      value: asConfigValue(3),
+      schema: asConfigSchema({type: 'number'}),
       description: 'Viewer config',
       identity: fixture.identity,
       editorEmails: [],
@@ -140,8 +149,8 @@ describe('getConfigList', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'long_desc_config',
-      value: 'v',
-      schema: {type: 'string'},
+      value: asConfigValue('x'),
+      schema: asConfigSchema({type: 'string'}),
       description: longDescription,
       identity: fixture.identity,
       editorEmails: [],

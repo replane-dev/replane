@@ -1,9 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {Override} from '@/engine/core/override-condition-schemas';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 
@@ -22,14 +30,14 @@ describe('replica sync', () => {
     // Step 1: Create the initial config
     await fixture.createConfig({
       name: configName,
-      value: originalValue,
-      schema: {
+      value: asConfigValue(originalValue),
+      schema: asConfigSchema({
         type: 'object',
         properties: {
           version: {type: 'number'},
           message: {type: 'string'},
         },
-      },
+      }),
       overrides: [],
       description: 'Test config for replica sync',
       identity: fixture.identity,
@@ -61,14 +69,14 @@ describe('replica sync', () => {
     // Step 4: Immediately create a new config with the same name but different value
     await fixture.createConfig({
       name: configName,
-      value: newValue,
-      schema: {
+      value: asConfigValue(newValue),
+      schema: asConfigSchema({
         type: 'object',
         properties: {
           version: {type: 'number'},
           message: {type: 'string'},
         },
-      },
+      }),
       overrides: [],
       description: 'Recreated config for replica sync test',
       identity: fixture.identity,
@@ -102,8 +110,8 @@ describe('replica sync', () => {
     // Step 1: Create the initial config
     await fixture.createConfig({
       name: configName,
-      value: originalValue,
-      schema: {type: 'string'},
+      value: asConfigValue(originalValue),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test config for replica sync without intermediate sync',
       identity: fixture.identity,
@@ -132,8 +140,8 @@ describe('replica sync', () => {
 
     await fixture.createConfig({
       name: configName,
-      value: newValue,
-      schema: {type: 'string'},
+      value: asConfigValue(newValue),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Recreated config',
       identity: fixture.identity,
@@ -162,8 +170,8 @@ describe('replica sync', () => {
     // Create initial config
     await fixture.createConfig({
       name: configName,
-      value: 'v1',
-      schema: {type: 'string'},
+      value: asConfigValue('v1'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Rapid cycle test',
       identity: fixture.identity,
@@ -184,8 +192,8 @@ describe('replica sync', () => {
 
     await fixture.createConfig({
       name: configName,
-      value: 'v2',
-      schema: {type: 'string'},
+      value: asConfigValue('v2'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Cycle 1',
       identity: fixture.identity,
@@ -204,8 +212,8 @@ describe('replica sync', () => {
 
     await fixture.createConfig({
       name: configName,
-      value: 'v3',
-      schema: {type: 'string'},
+      value: asConfigValue('v3'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Cycle 2',
       identity: fixture.identity,
@@ -224,8 +232,8 @@ describe('replica sync', () => {
 
     await fixture.createConfig({
       name: configName,
-      value: 'v4-final',
-      schema: {type: 'string'},
+      value: asConfigValue('v4-final'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Final cycle',
       identity: fixture.identity,
@@ -254,8 +262,8 @@ describe('replica sync', () => {
     // Create config
     await fixture.createConfig({
       name: configName,
-      value: 'to-be-deleted',
-      schema: {type: 'string'},
+      value: asConfigValue('to-be-deleted'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Will be deleted',
       identity: fixture.identity,
@@ -302,8 +310,8 @@ describe('replica sync - config value types', () => {
   it('should sync string config values', async () => {
     await fixture.createConfig({
       name: 'string-config',
-      value: 'hello world',
-      schema: {type: 'string'},
+      value: asConfigValue('hello world'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'String value test',
       identity: fixture.identity,
@@ -325,8 +333,8 @@ describe('replica sync - config value types', () => {
   it('should sync number config values (integer)', async () => {
     await fixture.createConfig({
       name: 'integer-config',
-      value: 42,
-      schema: {type: 'integer'},
+      value: asConfigValue(42),
+      schema: asConfigSchema({type: 'integer'}),
       overrides: [],
       description: 'Integer value test',
       identity: fixture.identity,
@@ -348,8 +356,8 @@ describe('replica sync - config value types', () => {
   it('should sync number config values (float)', async () => {
     await fixture.createConfig({
       name: 'float-config',
-      value: 3.14159,
-      schema: {type: 'number'},
+      value: asConfigValue(3.14159),
+      schema: asConfigSchema({type: 'number'}),
       overrides: [],
       description: 'Float value test',
       identity: fixture.identity,
@@ -371,8 +379,8 @@ describe('replica sync - config value types', () => {
   it('should sync boolean config values', async () => {
     await fixture.createConfig({
       name: 'bool-true-config',
-      value: true,
-      schema: {type: 'boolean'},
+      value: asConfigValue(true),
+      schema: asConfigSchema({type: 'boolean'}),
       overrides: [],
       description: 'Boolean true test',
       identity: fixture.identity,
@@ -383,8 +391,8 @@ describe('replica sync - config value types', () => {
 
     await fixture.createConfig({
       name: 'bool-false-config',
-      value: false,
-      schema: {type: 'boolean'},
+      value: asConfigValue(false),
+      schema: asConfigSchema({type: 'boolean'}),
       overrides: [],
       description: 'Boolean false test',
       identity: fixture.identity,
@@ -407,7 +415,7 @@ describe('replica sync - config value types', () => {
   it('should sync null config values', async () => {
     await fixture.createConfig({
       name: 'null-config',
-      value: null,
+      value: asConfigValue(null),
       schema: null,
       overrides: [],
       description: 'Null value test',
@@ -432,8 +440,8 @@ describe('replica sync - config value types', () => {
 
     await fixture.createConfig({
       name: 'array-config',
-      value: arrayValue,
-      schema: {type: 'array', items: {type: 'string'}},
+      value: asConfigValue(arrayValue),
+      schema: asConfigSchema({type: 'array', items: {type: 'string'}}),
       overrides: [],
       description: 'Array value test',
       identity: fixture.identity,
@@ -461,15 +469,15 @@ describe('replica sync - config value types', () => {
 
     await fixture.createConfig({
       name: 'object-config',
-      value: objectValue,
-      schema: {
+      value: asConfigValue(objectValue),
+      schema: asConfigSchema({
         type: 'object',
         properties: {
           name: {type: 'string'},
           count: {type: 'number'},
           enabled: {type: 'boolean'},
         },
-      },
+      }),
       overrides: [],
       description: 'Object value test',
       identity: fixture.identity,
@@ -505,7 +513,7 @@ describe('replica sync - config value types', () => {
 
     await fixture.createConfig({
       name: 'nested-config',
-      value: nestedValue,
+      value: asConfigValue(nestedValue),
       schema: null,
       overrides: [],
       description: 'Deeply nested value test',
@@ -528,8 +536,8 @@ describe('replica sync - config value types', () => {
   it('should sync empty string config values', async () => {
     await fixture.createConfig({
       name: 'empty-string-config',
-      value: '',
-      schema: {type: 'string'},
+      value: asConfigValue(''),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Empty string test',
       identity: fixture.identity,
@@ -551,8 +559,8 @@ describe('replica sync - config value types', () => {
   it('should sync empty array config values', async () => {
     await fixture.createConfig({
       name: 'empty-array-config',
-      value: [],
-      schema: {type: 'array', items: {type: 'string'}},
+      value: asConfigValue([]),
+      schema: asConfigSchema({type: 'array', items: {type: 'string'}}),
       overrides: [],
       description: 'Empty array test',
       identity: fixture.identity,
@@ -574,8 +582,8 @@ describe('replica sync - config value types', () => {
   it('should sync empty object config values', async () => {
     await fixture.createConfig({
       name: 'empty-object-config',
-      value: {},
-      schema: {type: 'object'},
+      value: asConfigValue({}),
+      schema: asConfigSchema({type: 'object'}),
       overrides: [],
       description: 'Empty object test',
       identity: fixture.identity,
@@ -597,8 +605,8 @@ describe('replica sync - config value types', () => {
   it('should sync zero value config', async () => {
     await fixture.createConfig({
       name: 'zero-config',
-      value: 0,
-      schema: {type: 'number'},
+      value: asConfigValue(0),
+      schema: asConfigSchema({type: 'number'}),
       overrides: [],
       description: 'Zero value test',
       identity: fixture.identity,
@@ -620,8 +628,8 @@ describe('replica sync - config value types', () => {
   it('should sync negative number config values', async () => {
     await fixture.createConfig({
       name: 'negative-config',
-      value: -999.5,
-      schema: {type: 'number'},
+      value: asConfigValue(-999.5),
+      schema: asConfigSchema({type: 'number'}),
       overrides: [],
       description: 'Negative number test',
       identity: fixture.identity,
@@ -785,8 +793,8 @@ describe('replica sync - version tracking', () => {
   it('should track version increments on updates', async () => {
     await fixture.createConfig({
       name: 'version-track-config',
-      value: 'v1',
-      schema: {type: 'string'},
+      value: asConfigValue('v1'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Version tracking test',
       identity: fixture.identity,
@@ -968,8 +976,8 @@ describe('replica sync - multi-project isolation', () => {
     // Create config in first project
     await fixture.createConfig({
       name: 'shared-name-config',
-      value: 'project-1-value',
-      schema: {type: 'string'},
+      value: asConfigValue('project-1-value'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Project 1 config',
       identity: fixture.identity,
@@ -981,8 +989,8 @@ describe('replica sync - multi-project isolation', () => {
     // Create config with same name in second project
     await fixture.createConfig({
       name: 'shared-name-config',
-      value: 'project-2-value',
-      schema: {type: 'string'},
+      value: asConfigValue('project-2-value'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Project 2 config',
       identity: fixture.identity,
@@ -1030,8 +1038,8 @@ describe('replica sync - multi-project isolation', () => {
     // Create config in both projects
     await fixture.createConfig({
       name: 'delete-isolation-config',
-      value: 'project-1',
-      schema: {type: 'string'},
+      value: asConfigValue('project-1'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Project 1',
       identity: fixture.identity,
@@ -1042,8 +1050,8 @@ describe('replica sync - multi-project isolation', () => {
 
     await fixture.createConfig({
       name: 'delete-isolation-config',
-      value: 'project-2',
-      schema: {type: 'string'},
+      value: asConfigValue('project-2'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Project 2',
       identity: fixture.identity,
@@ -1092,8 +1100,8 @@ describe('replica sync - special characters and edge cases', () => {
   it('should sync config with special characters in name', async () => {
     await fixture.createConfig({
       name: 'config-with-dashes',
-      value: 'dashes',
-      schema: {type: 'string'},
+      value: asConfigValue('dashes'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Dashes in name',
       identity: fixture.identity,
@@ -1104,8 +1112,8 @@ describe('replica sync - special characters and edge cases', () => {
 
     await fixture.createConfig({
       name: 'config_with_underscores',
-      value: 'underscores',
-      schema: {type: 'string'},
+      value: asConfigValue('underscores'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Underscores in name',
       identity: fixture.identity,
@@ -1137,7 +1145,7 @@ describe('replica sync - special characters and edge cases', () => {
 
     await fixture.createConfig({
       name: 'unicode-config',
-      value: unicodeValue,
+      value: asConfigValue(unicodeValue),
       schema: null,
       overrides: [],
       description: 'Unicode value test',
@@ -1162,8 +1170,8 @@ describe('replica sync - special characters and edge cases', () => {
 
     await fixture.createConfig({
       name: 'long-string-config',
-      value: longValue,
-      schema: {type: 'string'},
+      value: asConfigValue(longValue),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Long string test',
       identity: fixture.identity,
@@ -1187,8 +1195,8 @@ describe('replica sync - special characters and edge cases', () => {
 
     await fixture.createConfig({
       name: 'json-like-string-config',
-      value: jsonLikeString,
-      schema: {type: 'string'},
+      value: asConfigValue(jsonLikeString),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'JSON-like string test',
       identity: fixture.identity,
@@ -1216,8 +1224,8 @@ describe('replica sync - special characters and edge cases', () => {
   it('should sync config with large number values', async () => {
     await fixture.createConfig({
       name: 'large-number-config',
-      value: Number.MAX_SAFE_INTEGER,
-      schema: {type: 'integer'},
+      value: asConfigValue(Number.MAX_SAFE_INTEGER),
+      schema: asConfigSchema({type: 'integer'}),
       overrides: [],
       description: 'Large number test',
       identity: fixture.identity,
@@ -1252,8 +1260,8 @@ describe('replica sync - multiple configs', () => {
     for (let i = 0; i < configCount; i++) {
       await fixture.createConfig({
         name: `batch-config-${i.toString().padStart(3, '0')}`,
-        value: i,
-        schema: {type: 'number'},
+        value: asConfigValue(i),
+        schema: asConfigSchema({type: 'number'}),
         overrides: [],
         description: `Batch config ${i}`,
         identity: fixture.identity,
@@ -1441,8 +1449,8 @@ describe('replica sync - status', () => {
   it('should report up-to-date after sync', async () => {
     await fixture.createConfig({
       name: 'status-test-config',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Status test',
       identity: fixture.identity,
@@ -1455,5 +1463,530 @@ describe('replica sync - status', () => {
 
     const status = await fixture.edge.testing.replicaService.status();
     expect(status).toBe('up-to-date');
+  });
+});
+
+// =============================================================================
+// OVERRIDE VALUE TYPES - Ensures override values are correctly parsed/rendered
+// =============================================================================
+
+describe('replica sync - override value parsing', () => {
+  const fixture = useAppFixture({authEmail: ADMIN_USER_EMAIL});
+
+  it('should correctly render overrides with string values', async () => {
+    const overrides: Override[] = [
+      {
+        name: 'String Override',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'plan',
+            value: {type: 'literal', value: 'premium'},
+          },
+        ],
+        value: asConfigValue('premium-feature-enabled'),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'string-override-value-config',
+      description: 'Config with string override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue('default-feature'),
+        schema: asConfigSchema({type: 'string'}),
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue('default-feature'),
+        schema: asConfigSchema({type: 'string'}),
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'string-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toBe('premium-feature-enabled');
+    expect(typeof config?.overrides[0].value).toBe('string');
+  });
+
+  it('should correctly render overrides with object values', async () => {
+    const overrideValue = {
+      enabled: true,
+      maxItems: 100,
+      features: ['feature-a', 'feature-b'],
+    };
+
+    const overrides: Override[] = [
+      {
+        name: 'Object Override',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'tier',
+            value: {type: 'literal', value: 'enterprise'},
+          },
+        ],
+        value: asConfigValue(overrideValue),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'object-override-value-config',
+      description: 'Config with object override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue({enabled: false, maxItems: 10, features: []}),
+        schema: null,
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue({enabled: false, maxItems: 10, features: []}),
+        schema: null,
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'object-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toEqual(overrideValue);
+    expect(typeof config?.overrides[0].value).toBe('object');
+  });
+
+  it('should correctly render overrides with boolean values', async () => {
+    const overrides: Override[] = [
+      {
+        name: 'Enable for Beta',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'isBetaUser',
+            value: {type: 'literal', value: true},
+          },
+        ],
+        value: asConfigValue(true),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'boolean-override-value-config',
+      description: 'Config with boolean override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue(false),
+        schema: asConfigSchema({type: 'boolean'}),
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue(false),
+        schema: asConfigSchema({type: 'boolean'}),
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'boolean-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toBe(true);
+    expect(typeof config?.overrides[0].value).toBe('boolean');
+  });
+
+  it('should correctly render overrides with numeric values', async () => {
+    const overrides: Override[] = [
+      {
+        name: 'High Limit',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'plan',
+            value: {type: 'literal', value: 'unlimited'},
+          },
+        ],
+        value: asConfigValue(999999),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'numeric-override-value-config',
+      description: 'Config with numeric override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue(100),
+        schema: asConfigSchema({type: 'number'}),
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue(100),
+        schema: asConfigSchema({type: 'number'}),
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'numeric-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toBe(999999);
+    expect(typeof config?.overrides[0].value).toBe('number');
+  });
+
+  it('should correctly render overrides with array values', async () => {
+    const overrideValue = ['admin', 'superuser', 'moderator'];
+
+    const overrides: Override[] = [
+      {
+        name: 'Admin Roles',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'isAdmin',
+            value: {type: 'literal', value: true},
+          },
+        ],
+        value: asConfigValue(overrideValue),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'array-override-value-config',
+      description: 'Config with array override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue(['user']),
+        schema: asConfigSchema({type: 'array', items: {type: 'string'}}),
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue(['user']),
+        schema: asConfigSchema({type: 'array', items: {type: 'string'}}),
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'array-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toEqual(overrideValue);
+    expect(Array.isArray(config?.overrides[0].value)).toBe(true);
+  });
+
+  it('should correctly render overrides with null values', async () => {
+    const overrides: Override[] = [
+      {
+        name: 'Nullify for disabled',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'status',
+            value: {type: 'literal', value: 'disabled'},
+          },
+        ],
+        value: asConfigValue(null),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'null-override-value-config',
+      description: 'Config with null override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue({someData: 'exists'}),
+        schema: null,
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue({someData: 'exists'}),
+        schema: null,
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'null-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toBeNull();
+  });
+
+  it('should correctly render overrides with deeply nested object values', async () => {
+    const nestedOverrideValue = {
+      level1: {
+        level2: {
+          level3: {
+            deepValue: 'found',
+            items: [1, 2, 3],
+          },
+        },
+        siblingKey: 'sibling',
+      },
+      topLevelArray: [{nested: true}, {nested: false}],
+    };
+
+    const overrides: Override[] = [
+      {
+        name: 'Deep Nested Override',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'useComplexConfig',
+            value: {type: 'literal', value: true},
+          },
+        ],
+        value: asConfigValue(nestedOverrideValue),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'nested-override-value-config',
+      description: 'Config with deeply nested override value',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue({simple: 'default'}),
+        schema: null,
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue({simple: 'default'}),
+        schema: null,
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'nested-override-value-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(1);
+    expect(config?.overrides[0].value).toEqual(nestedOverrideValue);
+  });
+
+  it('should handle multiple overrides with different value types', async () => {
+    const overrides: Override[] = [
+      {
+        name: 'String Value',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'type',
+            value: {type: 'literal', value: 'string'},
+          },
+        ],
+        value: asConfigValue('a string value'),
+      },
+      {
+        name: 'Number Value',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'type',
+            value: {type: 'literal', value: 'number'},
+          },
+        ],
+        value: asConfigValue(42),
+      },
+      {
+        name: 'Object Value',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'type',
+            value: {type: 'literal', value: 'object'},
+          },
+        ],
+        value: asConfigValue({key: 'value'}),
+      },
+      {
+        name: 'Array Value',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'type',
+            value: {type: 'literal', value: 'array'},
+          },
+        ],
+        value: asConfigValue([1, 2, 3]),
+      },
+      {
+        name: 'Boolean Value',
+        conditions: [
+          {
+            operator: 'equals',
+            property: 'type',
+            value: {type: 'literal', value: 'boolean'},
+          },
+        ],
+        value: asConfigValue(true),
+      },
+    ];
+
+    const {environments} = await fixture.engine.useCases.getProjectEnvironments(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: fixture.identity,
+    });
+
+    await fixture.engine.useCases.createConfig(GLOBAL_CONTEXT, {
+      name: 'mixed-override-types-config',
+      description: 'Config with multiple override value types',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [ADMIN_USER_EMAIL],
+      projectId: fixture.projectId,
+      defaultVariant: {
+        value: asConfigValue(null),
+        schema: null,
+        overrides: overrides,
+      },
+      environmentVariants: environments.map(env => ({
+        environmentId: env.id,
+        value: asConfigValue(null),
+        schema: null,
+        overrides: overrides,
+        useBaseSchema: false,
+      })),
+    });
+
+    await fixture.syncReplica();
+
+    const configs = await fixture.edge.useCases.getSdkConfigs(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      environmentId: fixture.productionEnvironmentId,
+    });
+
+    const config = configs.configs.find(c => c.name === 'mixed-override-types-config');
+    expect(config).toBeDefined();
+    expect(config?.overrides.length).toBe(5);
+
+    // Verify each override value type
+    expect(config?.overrides[0].value).toBe('a string value');
+    expect(typeof config?.overrides[0].value).toBe('string');
+
+    expect(config?.overrides[1].value).toBe(42);
+    expect(typeof config?.overrides[1].value).toBe('number');
+
+    expect(config?.overrides[2].value).toEqual({key: 'value'});
+    expect(typeof config?.overrides[2].value).toBe('object');
+
+    expect(config?.overrides[3].value).toEqual([1, 2, 3]);
+    expect(Array.isArray(config?.overrides[3].value)).toBe(true);
+
+    expect(config?.overrides[4].value).toBe(true);
+    expect(typeof config?.overrides[4].value).toBe('boolean');
   });
 });

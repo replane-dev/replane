@@ -6,6 +6,7 @@ import Ajv2020 from 'ajv/dist/2020';
 import draft06MetaSchema from 'ajv/dist/refs/json-schema-draft-06.json';
 import assert from 'assert';
 import {Channel} from 'async-channel';
+import * as JSONC from 'jsonc-parser';
 import type {Kysely} from 'kysely';
 import type {Context} from './context';
 import type {DB} from './db';
@@ -13,7 +14,7 @@ import {ConflictError} from './errors';
 import type {Logger} from './logger';
 import type {NormalizedEmail} from './zod';
 
-export type Brand<T, B> = T & {__brandType: B};
+export type Brand<T, B extends string> = T & {[P in `__brandType_${B}`]: B};
 
 export function joinUndefined(...parts: (string | undefined)[]): undefined | string {
   if (parts.some(p => p === undefined)) {
@@ -217,7 +218,7 @@ export function validateAgainstJsonSchema<T = unknown>(
 ): JsonSchemaValidationResult<T> {
   let schema: JsonSchema;
   // Ajv doesn't allow to compile schema with the same $id, so we need to remove it.
-  if (Object.hasOwn(inputSchema, '$id')) {
+  if (inputSchema && Object.hasOwn(inputSchema, '$id')) {
     schema = {...inputSchema, $id: undefined};
   } else {
     schema = inputSchema;
@@ -413,4 +414,36 @@ export function bytesToHex(bytes: Uint8Array): string {
     hex.push(bytes[i].toString(16).padStart(2, '0'));
   }
   return hex.join('');
+}
+
+export function parseJsonc<T = unknown>(text: string): T {
+  const errors: JSONC.ParseError[] = [];
+  const result = JSONC.parse(text, errors, {
+    allowTrailingComma: true,
+  });
+  if (errors.length > 0) {
+    throw new Error(`Failed to parse JSONC: ${errors.map(formatJsoncError).join(', ')}`);
+  }
+  return result as T;
+}
+
+export function formatJsoncError(error: JSONC.ParseError): string {
+  return `${JSONC.printParseErrorCode(error.error)} at ${error.offset} - ${error.length}`;
+}
+
+export function formatJsonc(text: string): string {
+  const edits = JSONC.format(text, undefined, {});
+  return JSONC.applyEdits(text, edits);
+}
+
+export function stringifyJsonc(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+export function validateJsonc(text: string): string[] {
+  const errors: JSONC.ParseError[] = [];
+  JSONC.parse(text, errors, {
+    allowTrailingComma: true,
+  });
+  return errors.map(formatJsoncError);
 }

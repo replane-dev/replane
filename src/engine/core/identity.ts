@@ -146,12 +146,18 @@ export function hasScope(identity: ApiKeyIdentity, scope: AdminApiKeyScope): boo
 /**
  * Check if an API key identity has access to a specific project.
  */
-export function hasProjectAccess(identity: ApiKeyIdentity, projectId: string): boolean {
+export function hasProjectAccess(params: {
+  identity: ApiKeyIdentity;
+  project: {id: string; workspaceId: string};
+}): boolean {
   // Null means access to all projects in the workspace
-  if (identity.projectIds === null) {
-    return true;
+  if (params.identity.projectIds === null) {
+    return params.project.workspaceId === params.identity.workspaceId;
   }
-  return identity.projectIds.includes(projectId);
+  return (
+    params.identity.projectIds.includes(params.project.id) &&
+    params.project.workspaceId === params.identity.workspaceId
+  );
 }
 
 /**

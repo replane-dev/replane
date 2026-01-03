@@ -10,8 +10,16 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {Override} from '@/engine/core/override-evaluator';
-import {asConfigValue} from '@/engine/core/zod';
-import {ArrowDown, ArrowUp, ChevronDown, ChevronRight, Code2, LayoutGrid, Plus, Trash2} from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Code2,
+  LayoutGrid,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import React, {useCallback, useState} from 'react';
 import {ConditionEditor} from './condition-editor';
 
@@ -85,7 +93,7 @@ const OverrideCardComponent = ({
         {
           operator: 'equals',
           property: '',
-          value: {type: 'literal', value: asConfigValue('')},
+          value: {type: 'literal', value: ''},
         },
       ],
     });

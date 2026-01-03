@@ -1,10 +1,18 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -60,7 +68,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_description',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -126,7 +134,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_members',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -347,7 +355,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_approved',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -409,7 +417,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_rejected',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -472,7 +480,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_rejected_in_favor',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -569,7 +577,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_author',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -621,7 +629,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_reviewer',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -679,7 +687,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'my_special_config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -742,7 +750,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_any_user',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -794,7 +802,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_version',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -1041,7 +1049,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'member_diff_test',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -1352,7 +1360,7 @@ describe('getConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approved_with_null_author',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -1524,7 +1532,7 @@ describe('getConfigProposal', () => {
       overrides: [],
       name: 'get_proposal_with_variants',
       value: asConfigValue({enabled: true}),
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'Variant proposal test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
@@ -1578,7 +1586,7 @@ describe('getConfigProposal', () => {
     );
     expect(prodVariant).toMatchObject({
       environmentName: 'Production',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
     });
   });
 
@@ -1586,8 +1594,8 @@ describe('getConfigProposal', () => {
     const {configId, configVariantIds} = await fixture.createConfig({
       overrides: [],
       name: 'get_proposal_schema_change',
-      value: {enabled: true},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      value: asConfigValue({enabled: true}),
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'Schema change test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [OTHER_USER_EMAIL],

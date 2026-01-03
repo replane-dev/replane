@@ -67,8 +67,8 @@ export function createExportProjectConfigsUseCase(): TransactionalUseCase<
       configs.push({
         name: configRow.name,
         description: configRow.description,
-        value: JSON.parse(configRow.value),
-        schema: configRow.schema ? JSON.parse(configRow.schema) : null,
+        value: configRow.value as ConfigValue,
+        schema: configRow.schema as ConfigSchema | null,
         overrides: JSON.parse(configRow.overrides) ?? [],
         variants: variants.map(v => ({
           environmentName: v.environmentName,

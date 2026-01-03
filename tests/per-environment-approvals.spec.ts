@@ -1,9 +1,18 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail, toSettledResult} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc, toSettledResult} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {TRPCError} from '@trpc/server';
 import {assert, beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -46,7 +55,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'direct_save_no_approval_required',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -63,21 +72,21 @@ describe('Per-Environment Approvals', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           defaultVariant: {
-            value: {x: 1}, // Keep default value the same
+            value: asConfigValue({x: 1}), // Keep default value the same
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {x: 2}, // Change environment variant
+              value: asConfigValue({x: 2}), // Change environment variant
               schema: null,
               overrides: [],
               useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {x: 3}, // Change environment variant
+              value: asConfigValue({x: 3}), // Change environment variant
               schema: null,
               overrides: [],
               useBaseSchema: false,
@@ -118,7 +127,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'block_default_change',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -137,7 +146,7 @@ describe('Per-Environment Approvals', () => {
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
             defaultVariant: {
-              value: {x: 999}, // Changed default value
+              value: asConfigValue({x: 999}), // Changed default value
               schema: null,
               overrides: [],
             },
@@ -164,7 +173,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'allow_default_change_with_override',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -181,14 +190,14 @@ describe('Per-Environment Approvals', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           defaultVariant: {
-            value: {x: 1},
+            value: asConfigValue({x: 1}),
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {x: 100}, // Production-specific value (different from default)
+              value: asConfigValue({x: 100}), // Production-specific value (different from default)
               schema: null,
               overrides: [],
               useBaseSchema: false,
@@ -214,14 +223,14 @@ describe('Per-Environment Approvals', () => {
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
             defaultVariant: {
-              value: {x: 999}, // Changed default value
+              value: asConfigValue({x: 999}), // Changed default value
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: fixture.productionEnvironmentId,
-                value: {x: 100}, // Same production value (unchanged)
+                value: asConfigValue({x: 100}), // Same production value (unchanged)
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
@@ -238,7 +247,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'block_prod_change',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -256,21 +265,21 @@ describe('Per-Environment Approvals', () => {
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
             defaultVariant: {
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: fixture.productionEnvironmentId,
-                value: {x: 999}, // Changed production value
+                value: asConfigValue({x: 999}), // Changed production value
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: asConfigValue({x: 1}), // Same as before
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
@@ -289,7 +298,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'allow_dev_change',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -306,21 +315,21 @@ describe('Per-Environment Approvals', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           defaultVariant: {
-            value: {x: 1}, // Same as before
+            value: asConfigValue({x: 1}), // Same as before
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
               useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {x: 999}, // Changed development value - should be allowed
+              value: asConfigValue({x: 999}), // Changed development value - should be allowed
               schema: null,
               overrides: [],
               useBaseSchema: false,
@@ -339,14 +348,14 @@ describe('Per-Environment Approvals', () => {
         const devVariant = config?.variants.find(
           v => v.environmentId === fixture.developmentEnvironmentId,
         );
-        expect(devVariant?.value).toEqual({x: 999});
+        expect(devVariant?.value).toEqual(asConfigValue({x: 999}));
       });
 
       it('should allow direct save when only description changes', async () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'allow_description_change',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Original description',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -363,21 +372,21 @@ describe('Per-Environment Approvals', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           defaultVariant: {
-            value: {x: 1}, // Same as before
+            value: asConfigValue({x: 1}), // Same as before
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
               useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
               useBaseSchema: false,
@@ -417,7 +426,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'block_any_env_change',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -435,21 +444,21 @@ describe('Per-Environment Approvals', () => {
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL],
             defaultVariant: {
-              value: {x: 1},
+              value: asConfigValue({x: 1}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: fixture.productionEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: asConfigValue({x: 1}), // Same as before
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
-                value: {x: 999}, // Changed development value
+                value: asConfigValue({x: 999}), // Changed development value
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
@@ -468,7 +477,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'block_add_editor',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -488,21 +497,21 @@ describe('Per-Environment Approvals', () => {
             editorEmails: [newEditorEmail],
             maintainerEmails: [CURRENT_USER_EMAIL],
             defaultVariant: {
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: fixture.productionEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: asConfigValue({x: 1}), // Same as before
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: asConfigValue({x: 1}), // Same as before
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
@@ -523,7 +532,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'block_remove_maintainer',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Test config',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -541,21 +550,21 @@ describe('Per-Environment Approvals', () => {
             editorEmails: [],
             maintainerEmails: [CURRENT_USER_EMAIL], // Removed otherMaintainerEmail
             defaultVariant: {
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: fixture.productionEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: asConfigValue({x: 1}), // Same as before
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
               },
               {
                 environmentId: fixture.developmentEnvironmentId,
-                value: {x: 1}, // Same as before
+                value: asConfigValue({x: 1}), // Same as before
                 schema: null,
                 overrides: [],
                 useBaseSchema: false,
@@ -574,7 +583,7 @@ describe('Per-Environment Approvals', () => {
         const {configId} = await fixture.createConfig({
           overrides: [],
           name: 'allow_description_change',
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           description: 'Original description',
           identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -591,21 +600,21 @@ describe('Per-Environment Approvals', () => {
           editorEmails: [],
           maintainerEmails: [CURRENT_USER_EMAIL],
           defaultVariant: {
-            value: {x: 1}, // Same as before
+            value: asConfigValue({x: 1}), // Same as before
             schema: null,
             overrides: [],
           },
           environmentVariants: [
             {
               environmentId: fixture.productionEnvironmentId,
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
               useBaseSchema: false,
             },
             {
               environmentId: fixture.developmentEnvironmentId,
-              value: {x: 1}, // Same as before
+              value: asConfigValue({x: 1}), // Same as before
               schema: null,
               overrides: [],
               useBaseSchema: false,
@@ -638,7 +647,7 @@ describe('Per-Environment Approvals', () => {
       const {configId} = await fixture.createConfig({
         overrides: [],
         name: 'direct_save_proposals_disabled',
-        value: {x: 1},
+        value: asConfigValue({x: 1}),
         schema: null,
         description: 'Test config',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -655,21 +664,21 @@ describe('Per-Environment Approvals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         defaultVariant: {
-          value: {x: 999},
+          value: asConfigValue({x: 999}),
           schema: null,
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {x: 999},
+            value: asConfigValue({x: 999}),
             schema: null,
             overrides: [],
             useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {x: 999},
+            value: asConfigValue({x: 999}),
             schema: null,
             overrides: [],
             useBaseSchema: false,
@@ -684,7 +693,7 @@ describe('Per-Environment Approvals', () => {
       });
 
       expect(config?.config.version).toBe(2);
-      expect(config?.config.value).toEqual({x: 999});
+      expect(config?.config.value).toEqual(asConfigValue({x: 999}));
     });
   });
 });
@@ -781,7 +790,7 @@ describe('restoreConfigVersion with per-environment approvals', () => {
       const {configId} = await fixture.createConfig({
         overrides: [],
         name: 'block_restore',
-        value: {x: 1},
+        value: asConfigValue({x: 1}),
         schema: null,
         description: 'Version 1',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -810,21 +819,21 @@ describe('restoreConfigVersion with per-environment approvals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         defaultVariant: {
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {x: 2}, // Changed production value
+            value: asConfigValue({x: 2}), // Changed production value
             schema: null,
             overrides: [],
             useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {x: 2}, // Changed development value
+            value: asConfigValue({x: 2}), // Changed development value
             schema: null,
             overrides: [],
             useBaseSchema: false,
@@ -899,7 +908,7 @@ describe('Schema and override changes with per-environment approvals', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'block_schema_change',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test config',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -917,21 +926,21 @@ describe('Schema and override changes with per-environment approvals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         defaultVariant: {
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {x: 1},
-            schema: {type: 'object'}, // Adding schema to production
+            value: asConfigValue({x: 1}),
+            schema: asConfigSchema({type: 'object'}), // Adding schema to production
             overrides: [],
             useBaseSchema: false,
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {x: 1},
+            value: asConfigValue({x: 1}),
             schema: null,
             overrides: [],
             useBaseSchema: false,
@@ -950,7 +959,7 @@ describe('Schema and override changes with per-environment approvals', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'block_override_change',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test config',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -969,19 +978,19 @@ describe('Schema and override changes with per-environment approvals', () => {
         editorEmails: [],
         maintainerEmails: [CURRENT_USER_EMAIL],
         defaultVariant: {
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           overrides: [],
         },
         environmentVariants: [
           {
             environmentId: fixture.productionEnvironmentId,
-            value: {x: 1},
+            value: asConfigValue({x: 1}),
             schema: null,
             overrides: [
               {
                 name: 'test-override',
-                value: {x: 999},
+                value: asConfigValue({x: 999}),
                 conditions: [],
               },
             ], // Adding override to production
@@ -989,7 +998,7 @@ describe('Schema and override changes with per-environment approvals', () => {
           },
           {
             environmentId: fixture.developmentEnvironmentId,
-            value: {x: 1},
+            value: asConfigValue({x: 1}),
             schema: null,
             overrides: [],
             useBaseSchema: false,
@@ -1007,7 +1016,7 @@ describe('Schema and override changes with per-environment approvals', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'allow_dev_schema_change',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test config',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -1024,26 +1033,26 @@ describe('Schema and override changes with per-environment approvals', () => {
       editorEmails: [],
       maintainerEmails: [CURRENT_USER_EMAIL],
       defaultVariant: {
-        value: {x: 1},
+        value: asConfigValue({x: 1}),
         schema: null,
         overrides: [],
       },
       environmentVariants: [
         {
           environmentId: fixture.productionEnvironmentId,
-          value: {x: 1},
+          value: asConfigValue({x: 1}),
           schema: null,
           overrides: [],
           useBaseSchema: false,
         },
         {
           environmentId: fixture.developmentEnvironmentId,
-          value: {x: 1},
-          schema: {type: 'object'}, // Adding schema to development
+          value: asConfigValue({x: 1}),
+          schema: asConfigSchema({type: 'object'}), // Adding schema to development
           overrides: [
             {
               name: 'test-override',
-              value: {x: 999},
+              value: asConfigValue({x: 999}),
               conditions: [],
             },
           ], // Adding override to development
@@ -1062,7 +1071,7 @@ describe('Schema and override changes with per-environment approvals', () => {
     const devVariant = config?.variants.find(
       v => v.environmentId === fixture.developmentEnvironmentId,
     );
-    expect(devVariant?.schema).toEqual({type: 'object'});
+    expect(devVariant?.schema).toEqual(asConfigSchema({type: 'object'}));
     expect(devVariant?.overrides).toHaveLength(1);
   });
 });

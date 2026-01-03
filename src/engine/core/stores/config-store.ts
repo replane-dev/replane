@@ -6,7 +6,6 @@ import type {EventHubPublisher} from '../event-hub';
 import {OverrideSchema} from '../override-condition-schemas';
 import type {Override} from '../override-evaluator';
 import type {AppHubEvents} from '../replica';
-import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
 import {
   ConfigSchema,
@@ -93,9 +92,9 @@ export class ConfigStore {
     }
 
     return {
-      value: deserializeJson(row.value),
-      schema: row.schema ? deserializeJson(row.schema) : null,
-      overrides: deserializeJson(row.overrides) ?? [],
+      value: row.value as ConfigValue,
+      schema: row.schema as ConfigSchema | null,
+      overrides: JSON.parse(row.overrides),
       version: row.version,
     };
   }
@@ -128,8 +127,8 @@ export class ConfigStore {
       name: row.name,
       projectId: row.project_id,
       environmentId: row.environment_id,
-      value: deserializeJson(row.value),
-      overrides: deserializeJson(row.overrides) ?? [],
+      value: row.value as ConfigValue,
+      overrides: JSON.parse(row.overrides),
       version: row.version,
     }));
   }
@@ -226,9 +225,9 @@ export class ConfigStore {
         id: config.id,
         name: config.name,
         description: config.description,
-        value: serializeJson(config.value),
-        schema: serializeJson(config.schema),
-        overrides: serializeJson(config.overrides),
+        value: config.value,
+        schema: config.schema,
+        overrides: JSON.stringify(config.overrides),
         project_id: config.projectId,
         version: config.version,
       })
@@ -252,9 +251,9 @@ export class ConfigStore {
       .updateTable('configs')
       .set({
         description: params.description,
-        value: serializeJson(params.value),
-        schema: serializeJson(params.schema),
-        overrides: serializeJson(params.overrides),
+        value: params.value,
+        schema: params.schema,
+        overrides: JSON.stringify(params.overrides),
         version: params.version,
         updated_at: params.updatedAt,
       })
@@ -322,9 +321,9 @@ function mapConfig(config: Selectable<Configs>): Config {
     id: config.id,
     name: config.name,
     description: config.description,
-    value: deserializeJson(config.value),
-    schema: config.schema ? deserializeJson(config.schema) : null,
-    overrides: deserializeJson(config.overrides) ?? [],
+    value: config.value as ConfigValue,
+    schema: config.schema as ConfigSchema | null,
+    overrides: JSON.parse(config.overrides),
     createdAt: config.created_at,
     updatedAt: config.updated_at,
     projectId: config.project_id,

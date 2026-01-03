@@ -15,6 +15,7 @@ import {Label} from '@/components/ui/label';
 import type {Condition} from '@/engine/core/override-condition-schemas';
 import type {EvaluationResult, Override} from '@/engine/core/override-evaluator';
 import {evaluateConfigValue, renderOverrides} from '@/engine/core/override-evaluator';
+import {parseJsonc} from '@/engine/core/utils';
 import type {ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
@@ -96,7 +97,7 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
     projectId: string;
     configName: string;
     environmentId: string;
-  }): Promise<ConfigValue | undefined> => {
+  }): Promise<unknown | undefined> => {
     const config = await queryClient.fetchQuery(
       trpc.getConfig.queryOptions({projectId: params.projectId, name: params.configName}),
     );
@@ -104,12 +105,12 @@ export function OverrideTester({baseValue, overrides, open, onOpenChange}: Overr
     const variant = config.config?.variants.find(v => v.environmentId === params.environmentId);
 
     if (variant) {
-      return variant.value;
+      return parseJsonc(variant.value);
     }
 
     // Fall back to the default variant stored in config.config.config (the inner config object)
     if (config.config?.config.value !== undefined) {
-      return config.config.config.value;
+      return parseJsonc(config.config.config.value);
     }
 
     throw new Error(

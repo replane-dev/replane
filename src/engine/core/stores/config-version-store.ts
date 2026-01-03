@@ -1,9 +1,8 @@
 import type {Kysely} from 'kysely';
 import type {ConfigUserRole, DB} from '../db';
 import type {Override} from '../override-evaluator';
-import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
-import type {ConfigSchema, ConfigValue} from '../zod';
+import {type ConfigSchema, type ConfigValue} from '../zod';
 
 export function createConfigVersionId() {
   return createUuidV7();
@@ -64,9 +63,9 @@ export class ConfigVersionStore {
         config_name: configVersion.configName,
         version: configVersion.version,
         description: configVersion.description,
-        value: serializeJson(configVersion.value),
-        schema: configVersion.schema !== null ? serializeJson(configVersion.schema) : null,
-        overrides: serializeJson(configVersion.overrides),
+        value: configVersion.value,
+        schema: configVersion.schema !== null ? configVersion.schema : null,
+        overrides: JSON.stringify(configVersion.overrides),
         proposal_id: configVersion.proposalId,
         author_id: configVersion.authorId,
         created_at: configVersion.createdAt,
@@ -79,9 +78,9 @@ export class ConfigVersionStore {
         id: v.id,
         config_version_id: configVersion.id,
         environment_id: v.environmentId,
-        value: serializeJson(v.value),
-        schema: v.schema !== null ? serializeJson(v.schema) : null,
-        overrides: serializeJson(v.overrides),
+        value: v.value,
+        schema: v.schema !== null ? v.schema : null,
+        overrides: JSON.stringify(v.overrides),
         use_base_schema: v.useBaseSchema,
       }));
 
@@ -149,7 +148,10 @@ export class ConfigVersionStore {
     return this.fetchVersionsWithRelations(versionRows);
   }
 
-  async getLatestByConfigId(params: {configId: string; projectId: string}): Promise<ConfigVersion | null> {
+  async getLatestByConfigId(params: {
+    configId: string;
+    projectId: string;
+  }): Promise<ConfigVersion | null> {
     const versionRow = await this.db
       .selectFrom('config_versions')
       .innerJoin('configs', 'configs.id', 'config_versions.config_id')
@@ -237,18 +239,18 @@ export class ConfigVersionStore {
       configName: versionRow.config_name,
       version: versionRow.version,
       description: versionRow.description,
-      value: deserializeJson(versionRow.value),
-      schema: versionRow.schema !== null ? deserializeJson(versionRow.schema) : null,
-      overrides: deserializeJson(versionRow.overrides) ?? [],
+      value: versionRow.value as ConfigValue,
+      schema: versionRow.schema as ConfigSchema | null,
+      overrides: JSON.parse(versionRow.overrides),
       proposalId: versionRow.proposal_id,
       authorId: versionRow.author_id,
       createdAt: versionRow.created_at,
       variants: (variantsByVersionId.get(versionRow.id) ?? []).map(v => ({
         id: v.id,
         environmentId: v.environment_id,
-        value: deserializeJson(v.value),
-        schema: v.schema !== null ? deserializeJson(v.schema) : null,
-        overrides: deserializeJson(v.overrides) ?? [],
+        value: v.value as ConfigValue,
+        schema: v.schema as ConfigSchema | null,
+        overrides: JSON.parse(v.overrides),
         useBaseSchema: v.use_base_schema,
       })),
       members: (membersByVersionId.get(versionRow.id) ?? []).map(m => ({

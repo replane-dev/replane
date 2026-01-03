@@ -20,7 +20,7 @@ describe('Admin API - List Configs', () => {
     maintainers: [],
     base: {
       value,
-      schema: null,
+      schema: undefined,
       overrides: [],
     },
     variants: [],
@@ -246,7 +246,9 @@ describe('Admin API - List Configs', () => {
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
-        createConfigBody('format-test-config', 'value', {description: 'A test description for listing'}),
+        createConfigBody('format-test-config', 'value', {
+          description: 'A test description for listing',
+        }),
       );
 
       const response = await fixture.adminApiRequest(
@@ -321,7 +323,7 @@ describe('Admin API - List Configs', () => {
         {
           description: 'Updated',
           editors: [],
-          base: {value: 'v2', schema: null, overrides: []},
+          base: {value: 'v2', schema: undefined, overrides: []},
           variants: [],
         },
       );

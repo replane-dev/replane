@@ -1,9 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 
@@ -94,7 +102,7 @@ describe('importProjectConfigs', () => {
     // Create an existing config
     await fixture.createConfig({
       name: 'existing-config',
-      value: 'original',
+      value: asConfigValue('original'),
       schema: null,
       overrides: [],
       description: 'Original description',
@@ -140,7 +148,7 @@ describe('importProjectConfigs', () => {
     });
     expect(config?.config.description).toBe('Original description');
     const variant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(variant?.value).toBe('original');
+    expect(variant?.value).toBe(stringifyJsonc('original'));
   });
 
   it('should replace existing configs when onConflict is replace', async () => {
@@ -150,7 +158,7 @@ describe('importProjectConfigs', () => {
     // Create an existing config
     await fixture.createConfig({
       name: 'to-replace',
-      value: 'original',
+      value: asConfigValue('original'),
       schema: null,
       overrides: [],
       description: 'Original description',
@@ -241,8 +249,8 @@ describe('importProjectConfigs', () => {
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
     const developmentVariant = config?.variants.find(v => v.environmentName === 'Development');
 
-    expect(productionVariant?.value).toBe('prod-value');
-    expect(developmentVariant?.value).toBe('dev-value');
+    expect(productionVariant?.value).toBe(stringifyJsonc('prod-value'));
+    expect(developmentVariant?.value).toBe(stringifyJsonc('dev-value'));
   });
 
   it('should use default value for unmapped environments', async () => {
@@ -280,7 +288,7 @@ describe('importProjectConfigs', () => {
 
     // When no environment mappings are provided, no variants are created
     // The base config value should be 'default-value'
-    expect(config?.config.value).toBe('default-value');
+    expect(config?.config.value).toBe(stringifyJsonc('default-value'));
     // No explicit variants were created
     expect(config?.variants).toHaveLength(0);
   });
@@ -336,7 +344,7 @@ describe('importProjectConfigs', () => {
 
     // First mapping wins
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(productionVariant?.value).toBe('first-value');
+    expect(productionVariant?.value).toBe(stringifyJsonc('first-value'));
   });
 
   it('should throw error when project requires approvals', async () => {
@@ -405,7 +413,7 @@ describe('importProjectConfigs', () => {
     // Create a config to replace
     await fixture.createConfig({
       name: 'to-replace-env-check',
-      value: 'original',
+      value: asConfigValue('original'),
       schema: null,
       overrides: [],
       description: 'Original',
@@ -596,15 +604,15 @@ describe('importProjectConfigs', () => {
     });
 
     // The complex value is stored in the base config (no env variants created)
-    expect(config?.config.value).toEqual(complexValue);
+    expect(config?.config.value).toEqual(asConfigValue(complexValue));
   });
 
   it('should round-trip export and import correctly', async () => {
     // Create some configs
     await fixture.createConfig({
       name: 'roundtrip-1',
-      value: {key: 'value1'},
-      schema: {type: 'object', properties: {key: {type: 'string'}}},
+      value: asConfigValue({key: 'value1'}),
+      schema: asConfigSchema({type: 'object', properties: {key: {type: 'string'}}}),
       overrides: [],
       description: 'First roundtrip config',
       identity: fixture.identity,
@@ -615,8 +623,8 @@ describe('importProjectConfigs', () => {
 
     await fixture.createConfig({
       name: 'roundtrip-2',
-      value: 42,
-      schema: {type: 'number'},
+      value: asConfigValue(42),
+      schema: asConfigSchema({type: 'number'}),
       overrides: [],
       description: 'Second roundtrip config',
       identity: fixture.identity,

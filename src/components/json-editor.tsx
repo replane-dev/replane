@@ -217,10 +217,11 @@ function refreshJsonDiagnostics(monaco: typeof Monaco) {
   // By predefining all meta-schemas, we avoid remote requests for security and performance
   monaco.json.jsonDefaults.setDiagnosticsOptions({
     validate: true,
-    allowComments: false,
+    allowComments: true,
     enableSchemaRequest: true,
     schemaValidation: 'error',
     schemas: allSchemas,
+    trailingCommas: 'ignore',
   });
 }
 

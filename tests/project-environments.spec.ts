@@ -1,8 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 
@@ -105,7 +114,7 @@ describe('createProjectEnvironment', () => {
     // Create a config first
     await fixture.createConfig({
       name: 'test-config',
-      value: 'original',
+      value: asConfigValue('original'),
       schema: null,
       overrides: [],
       description: 'Test config',
@@ -131,7 +140,7 @@ describe('createProjectEnvironment', () => {
 
     const stagingVariant = config?.variants.find(v => v.environmentId === environmentId);
     expect(stagingVariant).toBeDefined();
-    expect(stagingVariant?.value).toBe('original');
+    expect(stagingVariant?.value).toBe(stringifyJsonc('original'));
   });
 
   it('should append new environment at the end of order', async () => {
@@ -347,7 +356,7 @@ describe('deleteProjectEnvironment', () => {
     // Create a config
     await fixture.createConfig({
       name: 'test-delete-env',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       overrides: [],
       description: 'Test',
@@ -460,4 +469,3 @@ describe('updateProjectEnvironmentsOrder', () => {
     expect(environments[2].name).toBe('Development');
   });
 });
-

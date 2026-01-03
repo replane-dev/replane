@@ -478,7 +478,7 @@ export class ReplicaStore {
       name: config.name,
       version: config.version,
       environmentId: params.environmentId,
-      value: JSON.parse(config.value) as ConfigValue,
+      value: config.value as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
       projectId: config.projectId,
     }));
@@ -495,7 +495,7 @@ export class ReplicaStore {
       projectId: config.project_id,
       name: config.name,
       version: config.version,
-      value: JSON.parse(config.value) as ConfigValue,
+      value: config.value as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
     };
   }
@@ -513,13 +513,13 @@ export class ReplicaStore {
       projectId: config.project_id,
       name: config.name,
       version: config.version,
-      value: JSON.parse(config.value) as ConfigValue,
+      value: config.value as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
       variants: variants.map(variant => ({
         id: variant.id,
         configId: configId,
         environmentId: variant.environmentId,
-        value: JSON.parse(variant.value) as ConfigValue,
+        value: variant.value as ConfigValue,
         overrides: JSON.parse(variant.overrides) as Override[],
       })),
     };
@@ -543,7 +543,7 @@ export class ReplicaStore {
       name: config.name,
       version: config.version,
       environmentId: params.environmentId,
-      value: JSON.parse(config.value) as ConfigValue,
+      value: config.value as ConfigValue,
       overrides: JSON.parse(config.overrides) as Override[],
       projectId: config.project_id,
     };
@@ -560,7 +560,7 @@ export class ReplicaStore {
       return undefined;
     }
 
-    return JSON.parse(config.value) as ConfigValue;
+    return config.value as ConfigValue;
   }
 
   deleteConfig(id: string) {
@@ -595,7 +595,7 @@ export class ReplicaStore {
             id: v.id,
             configId: existingConfig.id,
             environmentId: v.environmentId,
-            value: JSON.parse(v.value) as ConfigValue,
+            value: v.value as ConfigValue,
             overrides: JSON.parse(v.overrides) as Override[],
           })),
       },
@@ -696,7 +696,7 @@ export class ReplicaStore {
       projectId: config.projectId,
       name: config.name,
       version: config.version,
-      value: JSON.stringify(config.value),
+      value: config.value,
       overrides: JSON.stringify(config.overrides),
     });
 
@@ -706,7 +706,7 @@ export class ReplicaStore {
         id: variant.id,
         configId: config.id,
         environmentId: variant.environmentId,
-        value: JSON.stringify(variant.value),
+        value: variant.value,
         overrides: JSON.stringify(variant.overrides),
       });
     }

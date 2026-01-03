@@ -103,6 +103,38 @@ describe('Admin API - Create SDK Key', () => {
     expect(data.error).toBe('Environment not found');
   });
 
+  it('should return 400 when using environment from another project', async () => {
+    // Create a second project with its own environments
+    const {environments: otherEnvs} = await fixture.engine.useCases.createProject(GLOBAL_CONTEXT, {
+      identity: fixture.identity,
+      workspaceId: fixture.workspaceId,
+      name: 'Other Project',
+      description: 'Other project',
+    });
+
+    const otherProductionEnvId = otherEnvs.find(e => e.name === 'Production')?.id;
+
+    const {token} = await fixture.createAdminApiKey({
+      scopes: ['sdk_key:write'],
+      projectIds: null, // Access to all projects
+    });
+
+    // Try to create an SDK key in the first project using an environment from the second project
+    const response = await fixture.adminApiRequest(
+      'POST',
+      `/projects/${fixture.projectId}/sdk-keys`,
+      token,
+      {
+        name: 'Cross-Project SDK Key',
+        environmentId: otherProductionEnvId, // Environment from other project
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe('Environment not found');
+  });
+
   it('should create SDK key with minimal fields', async () => {
     const {token} = await fixture.createAdminApiKey({
       scopes: ['sdk_key:write'],

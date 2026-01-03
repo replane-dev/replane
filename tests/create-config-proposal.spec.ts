@@ -1,10 +1,18 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -40,7 +48,7 @@ describe('createConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'desc_test_config',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       description: 'Old description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -96,7 +104,7 @@ describe('createConfigProposal', () => {
       overrides: [],
       name: 'deletion_proposal_config',
       value: asConfigValue({x: 1}),
-      schema: {type: 'object', properties: {x: {type: 'number'}}},
+      schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
       description: 'To be deleted',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
@@ -147,7 +155,7 @@ describe('createConfigProposal', () => {
       overrides: [],
       name: 'members_proposal_config',
       value: asConfigValue({x: 1}),
-      schema: {type: 'object', properties: {x: {type: 'number'}}},
+      schema: asConfigSchema({type: 'object', properties: {x: {type: 'number'}}}),
       description: 'Members test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
@@ -673,7 +681,7 @@ describe('createConfigProposal', () => {
       overrides: [],
       name: 'variant_proposal_config',
       value: asConfigValue({enabled: true}),
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'Variant test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
       editorEmails: [],
@@ -729,7 +737,7 @@ describe('createConfigProposal', () => {
     const prodVariantChange = proposal?.variants.find(
       vc => vc.environmentId === fixture.productionEnvironmentId,
     );
-    expect(prodVariantChange?.value).toEqual({enabled: false});
+    expect(prodVariantChange?.value).toEqual(asConfigValue({enabled: false}));
   });
 
   it('should create a proposal with both config and variant changes', async () => {

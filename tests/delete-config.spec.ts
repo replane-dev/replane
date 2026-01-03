@@ -1,8 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError, NotFoundError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
@@ -15,8 +24,8 @@ describe('deleteConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'config_to_delete',
-      value: {enabled: true},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      value: asConfigValue({enabled: true}),
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'To be deleted',
       identity: fixture.identity,
       editorEmails: [],
@@ -27,8 +36,8 @@ describe('deleteConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'config_to_keep',
-      value: 'keep',
-      schema: {type: 'string'},
+      value: asConfigValue('keep'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Should remain',
       identity: fixture.identity,
       editorEmails: [],
@@ -98,8 +107,8 @@ describe('deleteConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'double_delete',
-      value: 1,
-      schema: {type: 'number'},
+      value: asConfigValue(1),
+      schema: asConfigSchema({type: 'number'}),
       description: 'double delete case',
       identity: fixture.identity,
       editorEmails: [],
@@ -131,8 +140,8 @@ describe('deleteConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cannot_delete_as_editor',
-      value: 123,
-      schema: {type: 'number'},
+      value: asConfigValue(123),
+      schema: asConfigSchema({type: 'number'}),
       description: 'Editor cannot delete',
       identity: fixture.identity,
       editorEmails: [TEST_USER_EMAIL],
@@ -165,8 +174,8 @@ describe('deleteConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cannot_delete_as_viewer',
-      value: 'v',
-      schema: {type: 'string'},
+      value: asConfigValue('v'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Viewer cannot delete',
       identity: fixture.identity,
       editorEmails: [],
@@ -195,8 +204,8 @@ describe('deleteConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'delete_audit',
-      value: 'x',
-      schema: {type: 'string'},
+      value: asConfigValue('x'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'audit',
       identity: fixture.identity,
       editorEmails: [],
@@ -250,8 +259,8 @@ describe('deleteConfig (requireProposals=true)', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cannot_delete_when_require_proposals',
-      value: 42,
-      schema: {type: 'number'},
+      value: asConfigValue(42) as ConfigValue,
+      schema: asConfigSchema({type: 'number'}),
       description: 'Test',
       identity: fixture.identity,
       editorEmails: [],
@@ -285,8 +294,8 @@ describe('deleteConfig (requireProposals=true)', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'version_mismatch_delete',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Test',
       identity: fixture.identity,
       editorEmails: [],

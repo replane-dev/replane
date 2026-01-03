@@ -8,8 +8,9 @@ import {cors} from 'hono/cors';
 import {HTTPException} from 'hono/http-exception';
 import {z} from 'zod';
 import {type ApiKeyIdentity, type SuperuserIdentity} from './engine/core/identity';
-import {OverrideSchema} from './engine/core/override-condition-schemas';
-import {ConfigSchema, ConfigValue} from './engine/core/zod';
+import {AdminApiOverrideSchema} from './engine/core/override-condition-schemas';
+import {parseJsonc, stringifyJsonc} from './engine/core/utils';
+import {type ConfigSchema, type ConfigValue} from './engine/core/zod';
 
 interface HonoEnv {
   Variables: {
@@ -53,9 +54,9 @@ const WorkspaceListResponse = z
 
 const ConfigVariantDto = z
   .object({
-    value: ConfigValue(),
-    schema: ConfigSchema().nullable(),
-    overrides: z.array(OverrideSchema),
+    value: z.unknown(),
+    schema: z.unknown().nullable(),
+    overrides: z.array(AdminApiOverrideSchema),
     useBaseSchema: z.boolean(),
   })
   .openapi('ConfigVariant');
@@ -67,9 +68,9 @@ const ConfigDto = z
     description: z.string().optional(),
     version: z.number(),
     base: z.object({
-      value: ConfigValue(),
-      schema: ConfigSchema().nullable(),
-      overrides: z.array(OverrideSchema),
+      value: z.unknown(),
+      schema: z.unknown().nullable(),
+      overrides: z.array(AdminApiOverrideSchema),
     }),
     variants: z.array(ConfigVariantDto),
     createdAt: z.iso.datetime(),
@@ -705,14 +706,14 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         updatedAt: cfg.updatedAt.toISOString(),
         editors: configDetails.editorEmails,
         base: {
-          value: cfg.value,
-          schema: cfg.schema,
+          value: parseJsonc(cfg.value),
+          schema: cfg.schema !== null ? (parseJsonc(cfg.schema) as ConfigSchema) : null,
           overrides: cfg.overrides,
         },
         variants: configDetails.variants.map(e => ({
           environmentId: e.environmentId,
-          value: e.value,
-          schema: e.schema,
+          value: parseJsonc(e.value),
+          schema: e.schema !== null ? (parseJsonc(e.schema) as ConfigSchema) : null,
           overrides: e.overrides,
           useBaseSchema: e.useBaseSchema,
         })),
@@ -738,16 +739,16 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
                 description: z.string().max(10000),
                 editors: z.array(z.email()),
                 base: z.object({
-                  value: ConfigValue(),
-                  schema: ConfigSchema().nullable(),
-                  overrides: z.array(OverrideSchema),
+                  value: z.unknown(),
+                  schema: z.unknown().nullable(),
+                  overrides: z.array(AdminApiOverrideSchema),
                 }),
                 variants: z.array(
                   z.object({
                     environmentId: z.uuid(),
-                    value: ConfigValue(),
-                    schema: ConfigSchema().nullable(),
-                    overrides: z.array(OverrideSchema),
+                    value: z.unknown(),
+                    schema: z.unknown().nullable(),
+                    overrides: z.array(AdminApiOverrideSchema),
                     useBaseSchema: z.boolean(),
                   }),
                 ),
@@ -783,15 +784,24 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         editorEmails: body.editors,
         maintainerEmails: [], // we don't support maintainers in the admin API
         defaultVariant: {
-          value: body.base.value,
-          schema: body.base.schema,
-          overrides: body.base.overrides,
+          value: stringifyJsonc(body.base.value) as ConfigValue,
+          schema:
+            body.base.schema !== null ? (stringifyJsonc(body.base.schema) as ConfigSchema) : null,
+          overrides: body.base.overrides.map(override => ({
+            name: override.name,
+            conditions: override.conditions,
+            value: stringifyJsonc(override.value) as ConfigValue,
+          })),
         },
         environmentVariants: body.variants.map(e => ({
           environmentId: e.environmentId,
-          value: e.value,
-          schema: e.schema,
-          overrides: e.overrides,
+          value: stringifyJsonc(e.value) as ConfigValue,
+          schema: e.schema !== null ? (stringifyJsonc(e.schema) as ConfigSchema) : null,
+          overrides: e.overrides.map(override => ({
+            name: override.name,
+            conditions: override.conditions,
+            value: stringifyJsonc(override.value) as ConfigValue,
+          })),
           useBaseSchema: e.useBaseSchema,
         })),
       });
@@ -818,16 +828,16 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
                 description: z.string().max(10000),
                 editors: z.array(z.email()),
                 base: z.object({
-                  value: ConfigValue(),
-                  schema: ConfigSchema().nullable(),
-                  overrides: z.array(OverrideSchema),
+                  value: z.unknown(),
+                  schema: z.unknown().nullable(),
+                  overrides: z.array(AdminApiOverrideSchema),
                 }),
                 variants: z.array(
                   z.object({
                     environmentId: z.uuid(),
-                    value: ConfigValue(),
-                    schema: ConfigSchema().nullable(),
-                    overrides: z.array(OverrideSchema),
+                    value: z.unknown(),
+                    schema: z.unknown().nullable(),
+                    overrides: z.array(AdminApiOverrideSchema),
                     useBaseSchema: z.boolean(),
                   }),
                 ),
@@ -865,15 +875,24 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
         // we don't support maintainers in the admin API
         maintainers: null,
         base: {
-          value: body.base.value,
-          schema: body.base.schema,
-          overrides: body.base.overrides,
+          value: stringifyJsonc(body.base.value) as ConfigValue,
+          schema:
+            body.base.schema !== null ? (stringifyJsonc(body.base.schema) as ConfigSchema) : null,
+          overrides: body.base.overrides.map(override => ({
+            name: override.name,
+            conditions: override.conditions,
+            value: stringifyJsonc(override.value) as ConfigValue,
+          })),
         },
         environments: body.variants.map(v => ({
           environmentId: v.environmentId,
-          value: v.value,
-          schema: v.schema,
-          overrides: v.overrides,
+          value: stringifyJsonc(v.value) as ConfigValue,
+          schema: v.schema !== null ? (stringifyJsonc(v.schema) as ConfigSchema) : null,
+          overrides: v.overrides.map(override => ({
+            name: override.name,
+            conditions: override.conditions,
+            value: stringifyJsonc(override.value) as ConfigValue,
+          })),
           useBaseSchema: v.useBaseSchema,
         })),
         prevVersion: undefined,

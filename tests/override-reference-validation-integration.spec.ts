@@ -1,10 +1,19 @@
-import {asConfigValue} from '@/engine/core/zod';
+import {stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {assert, describe, expect, it} from 'vitest';
 import {GLOBAL_CONTEXT} from '../src/engine/core/context';
 import {BadRequestError} from '../src/engine/core/errors';
 import type {Override} from '../src/engine/core/override-condition-schemas';
 import {normalizeEmail} from '../src/engine/core/utils';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 
@@ -27,7 +36,7 @@ describe('Override Reference Validation - Integration Tests', () => {
     it('should allow config creation without overrides', async () => {
       await fixture.createConfig({
         name: 'test-config',
-        value: {enabled: true},
+        value: asConfigValue({enabled: true}),
         description: 'Test config',
         schema: null,
         overrides: [],
@@ -49,7 +58,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       // Create referenced config first
       await fixture.createConfig({
         name: 'vip-users',
-        value: {users: ['alice@example.com', 'bob@example.com']},
+        value: asConfigValue({users: ['alice@example.com', 'bob@example.com']}),
         description: 'VIP user list',
         schema: null,
         overrides: [],
@@ -217,7 +226,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       // Create referenced config
       await fixture.createConfig({
         name: 'allowed-users',
-        value: {users: ['user1@example.com']},
+        value: asConfigValue({users: ['user1@example.com']}),
         description: 'Allowed users',
         schema: null,
         overrides: [],
@@ -460,7 +469,7 @@ describe('Override Reference Validation - Integration Tests', () => {
       // Create referenced config
       await fixture.createConfig({
         name: 'premium-list',
-        value: {users: ['premium@example.com']},
+        value: asConfigValue({users: ['premium@example.com']}),
         description: 'Premium users',
         schema: null,
         overrides: [],

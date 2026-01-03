@@ -1,41 +1,56 @@
 import z from 'zod';
-import {isValidJsonSchema, type Brand} from './utils';
+import {isValidJsonSchema, parseJsonc, validateJsonc, type Brand} from './utils';
 
-export type ConfigValue = Brand<unknown, 'ConfigValue'>;
+export type JSONCString = Brand<string, 'JSONCString'>;
+
+export function JSONCString() {
+  return z
+    .string()
+    .check(ctx => {
+      const errors = validateJsonc(ctx.value);
+      for (const error of errors) {
+        ctx.issues.push({
+          code: 'custom',
+          input: ctx.value,
+          message: error,
+        });
+      }
+    })
+    .transform(val => val as JSONCString);
+}
+
+export type ConfigValue = Brand<JSONCString, 'ConfigValue'>;
 
 export function ConfigValue() {
-  return z
-    .unknown()
-    .refine(val => {
-      return JSON.stringify(val).length < 1048576; // 1MB
-    })
+  return JSONCString()
+    .refine(
+      val => {
+        return val.length < 1048576; // 1MB
+      },
+      {
+        error: 'The configuration value is too large — maximum size is 1MB',
+      },
+    )
     .transform(val => val as ConfigValue);
 }
 
-export function asConfigValue(val: unknown): ConfigValue {
-  return val as ConfigValue;
-}
-
 export function ConfigSchema() {
-  return z
-    .unknown()
-    .refine(val => {
-      return JSON.stringify(val).length < 131072; // 128KB
-    })
-    .refine(val => val === null || typeof val === 'boolean' || typeof val === 'object', {
-      message: 'Schema must be a valid JSON object or boolean',
-    })
-    .refine(val => isValidJsonSchema(val), {
-      message: 'This is not a valid JSON Schema — please check the structure',
+  return JSONCString()
+    .refine(
+      val => {
+        return val.length < 131072; // 128KB
+      },
+      {
+        error: 'The configuration schema is too large — maximum size is 128KB',
+      },
+    )
+    .refine(val => isValidJsonSchema(parseJsonc(val)), {
+      error: 'This is not a valid JSON Schema — please check the structure',
     })
     .transform(val => val as ConfigSchema);
 }
 
-export function asConfigSchema(val: unknown): ConfigSchema {
-  return val as ConfigSchema;
-}
-
-export type ConfigSchema = Brand<unknown, 'ConfigSchema'>;
+export type ConfigSchema = Brand<JSONCString, 'ConfigSchema'>;
 
 export type NormalizedEmail = Brand<string, 'NormalizedEmail'>;
 

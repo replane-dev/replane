@@ -1,10 +1,18 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import type {Override} from '@/engine/core/override-condition-schemas';
 import type {ProjectEvent} from '@/engine/core/use-cases/get-project-events-use-case';
-import {normalizeEmail, wait} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc, wait} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 /**
  * Integration tests for createGetProjectEventsUseCase
@@ -73,8 +81,8 @@ describe('getProjectEvents', () => {
       // Create a config
       await fixture.createConfig({
         name: 'feature-flag',
-        value: {enabled: true},
-        schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+        value: asConfigValue({enabled: true}),
+        schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
         overrides: [],
         description: 'A feature flag',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -102,8 +110,8 @@ describe('getProjectEvents', () => {
       // First create a config
       const {configId} = await fixture.createConfig({
         name: 'update-test-config',
-        value: {count: 1},
-        schema: {type: 'object', properties: {count: {type: 'number'}}},
+        value: asConfigValue({count: 1}),
+        schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
         overrides: [],
         description: 'Config for update testing',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -170,8 +178,8 @@ describe('getProjectEvents', () => {
       // First create a config
       const {configId} = await fixture.createConfig({
         name: 'delete-test-config',
-        value: {data: 'test'},
-        schema: {type: 'object', properties: {data: {type: 'string'}}},
+        value: asConfigValue({data: 'test'}),
+        schema: asConfigSchema({type: 'object', properties: {data: {type: 'string'}}}),
         overrides: [],
         description: 'Config for delete testing',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -334,7 +342,7 @@ describe('getProjectEvents', () => {
       // Create config in the first project (should trigger event)
       await fixture.createConfig({
         name: 'first-project-config',
-        value: {first: true},
+        value: asConfigValue({first: true}),
         schema: null,
         overrides: [],
         description: 'Config in first project',
@@ -375,8 +383,8 @@ describe('getProjectEvents', () => {
       // Create a config
       const {configId} = await fixture.createConfig({
         name: 'lifecycle-config',
-        value: {version: 1},
-        schema: {type: 'object', properties: {version: {type: 'number'}}},
+        value: asConfigValue({version: 1}),
+        schema: asConfigSchema({type: 'object', properties: {version: {type: 'number'}}}),
         overrides: [],
         description: 'Config for lifecycle testing',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -466,7 +474,7 @@ describe('getProjectEvents', () => {
       // Create a config
       await fixture.createConfig({
         name: 'abort-test-config',
-        value: {test: true},
+        value: asConfigValue({test: true}),
         schema: null,
         overrides: [],
         description: 'Config for abort testing',
@@ -595,7 +603,7 @@ describe('getProjectEvents', () => {
       // Creating more configs after cleanup should not cause issues
       await fixture.createConfig({
         name: 'after-cleanup-config',
-        value: {cleanup: true},
+        value: asConfigValue({cleanup: true}),
         schema: null,
         overrides: [],
         description: 'Config created after cleanup',
@@ -619,8 +627,8 @@ describe('getProjectEvents', () => {
       // First, create the base config that will be referenced
       await fixture.createConfig({
         name: 'base-config',
-        value: {threshold: 100},
-        schema: {type: 'object', properties: {threshold: {type: 'number'}}},
+        value: asConfigValue({threshold: 100}),
+        schema: asConfigSchema({type: 'object', properties: {threshold: {type: 'number'}}}),
         overrides: [],
         description: 'Base config to be referenced',
         identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -745,7 +753,7 @@ describe('getProjectEvents', () => {
       // Create the base config
       await fixture.createConfig({
         name: 'shared-base',
-        value: {limit: 50},
+        value: asConfigValue({limit: 50}),
         schema: null,
         overrides: [],
         description: 'Shared base config',
@@ -914,7 +922,7 @@ describe('getProjectEvents', () => {
       // Create two independent configs with no references
       await fixture.createConfig({
         name: 'independent-config-a',
-        value: {a: 1},
+        value: asConfigValue({a: 1}),
         schema: null,
         overrides: [],
         description: 'Independent config A',
@@ -926,7 +934,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'independent-config-b',
-        value: {b: 2},
+        value: asConfigValue({b: 2}),
         schema: null,
         overrides: [],
         description: 'Independent config B',
@@ -1016,7 +1024,7 @@ describe('getProjectEvents', () => {
 
       const {configId} = await fixture.createConfig({
         name: 'multi-update-config',
-        value: {counter: 0},
+        value: asConfigValue({counter: 0}),
         schema: null,
         overrides: [],
         description: 'Config for multi-update testing',
@@ -1096,7 +1104,7 @@ describe('getProjectEvents', () => {
       // Create a config
       const {configId} = await fixture.createConfig({
         name: 'ephemeral-config',
-        value: {temporary: true},
+        value: asConfigValue({temporary: true}),
         schema: null,
         overrides: [],
         description: 'Ephemeral config',
@@ -1162,7 +1170,7 @@ describe('getProjectEvents', () => {
         maintainerEmails: [],
         projectId: fixture.projectId,
         defaultVariant: {
-          value: asConfigValue({env: 'default'}),
+          value: asConfigValue({env: stringifyJsonc('default')}),
           schema: null,
           overrides: [],
         },
@@ -1218,7 +1226,7 @@ describe('getProjectEvents', () => {
       // Create a config
       await fixture.createConfig({
         name: 'concurrent-sub-config',
-        value: {shared: true},
+        value: asConfigValue({shared: true}),
         schema: null,
         overrides: [],
         description: 'Config for concurrent subscription testing',
@@ -1259,7 +1267,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'no-overrides-config',
-        value: {simple: 'value'},
+        value: asConfigValue({simple: 'value'}),
         schema: null,
         overrides: [],
         description: 'Config with no overrides',
@@ -1306,7 +1314,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'complex-value-config',
-        value: complexValue,
+        value: asConfigValue(complexValue),
         schema: null,
         overrides: [],
         description: 'Config with complex nested value',
@@ -1341,7 +1349,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'null-value-config',
-        value: null,
+        value: asConfigValue(null),
         schema: null,
         overrides: [],
         description: 'Config with null value',
@@ -1378,7 +1386,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'array-value-config',
-        value: arrayValue,
+        value: asConfigValue(arrayValue),
         schema: null,
         overrides: [],
         description: 'Config with array value',
@@ -1415,7 +1423,7 @@ describe('getProjectEvents', () => {
       // String value
       await fixture.createConfig({
         name: 'string-value-config',
-        value: 'hello world',
+        value: asConfigValue('hello world'),
         schema: null,
         overrides: [],
         description: 'Config with string value',
@@ -1429,7 +1437,7 @@ describe('getProjectEvents', () => {
       // Number value
       await fixture.createConfig({
         name: 'number-value-config',
-        value: 42.5,
+        value: asConfigValue(42.5),
         schema: null,
         overrides: [],
         description: 'Config with number value',
@@ -1443,7 +1451,7 @@ describe('getProjectEvents', () => {
       // Boolean value
       await fixture.createConfig({
         name: 'boolean-value-config',
-        value: true,
+        value: asConfigValue(true),
         schema: null,
         overrides: [],
         description: 'Config with boolean value',
@@ -1513,7 +1521,7 @@ describe('getProjectEvents', () => {
       // Create config (version 1)
       const {configId} = await fixture.createConfig({
         name: 'version-tracking-config',
-        value: {v: 1},
+        value: asConfigValue({v: 1}),
         schema: null,
         overrides: [],
         description: 'Version tracking test',
@@ -1611,7 +1619,7 @@ describe('getProjectEvents', () => {
       // Create config without overrides
       const {configId} = await fixture.createConfig({
         name: 'add-overrides-config',
-        value: {feature: 'default'},
+        value: asConfigValue({feature: 'default'}),
         schema: null,
         overrides: [],
         description: 'Config to add overrides',
@@ -1871,7 +1879,7 @@ describe('getProjectEvents', () => {
       // Create the base config that will be referenced
       const {configId: baseConfigId} = await fixture.createConfig({
         name: 'deletable-base',
-        value: {data: 'original'},
+        value: asConfigValue({data: 'original'}),
         schema: null,
         overrides: [],
         description: 'Base config that will be deleted',
@@ -1972,7 +1980,7 @@ describe('getProjectEvents', () => {
       // Create the base config that will be referenced later
       await fixture.createConfig({
         name: 'later-referenced-base',
-        value: {refValue: 999},
+        value: asConfigValue({refValue: 999}),
         schema: null,
         overrides: [],
         description: 'Base config to be referenced later',
@@ -1985,7 +1993,7 @@ describe('getProjectEvents', () => {
       // Create a config without references initially
       const {configId} = await fixture.createConfig({
         name: 'will-add-reference',
-        value: {status: 'independent'},
+        value: asConfigValue({status: 'independent'}),
         schema: null,
         overrides: [],
         description: 'Config that will add a reference',
@@ -2088,7 +2096,7 @@ describe('getProjectEvents', () => {
       // Create a config in the real project
       await fixture.createConfig({
         name: 'real-project-config',
-        value: {real: true},
+        value: asConfigValue({real: true}),
         schema: null,
         overrides: [],
         description: 'Config in real project',
@@ -2124,7 +2132,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'first-sub-config',
-        value: {sub: 1},
+        value: asConfigValue({sub: 1}),
         schema: null,
         overrides: [],
         description: 'First subscription config',
@@ -2157,7 +2165,7 @@ describe('getProjectEvents', () => {
 
       await fixture.createConfig({
         name: 'second-sub-config',
-        value: {sub: 2},
+        value: asConfigValue({sub: 2}),
         schema: null,
         overrides: [],
         description: 'Second subscription config',
@@ -2213,7 +2221,7 @@ describe('getProjectEvents', () => {
       // Create config in project 1
       await fixture.createConfig({
         name: 'project1-config',
-        value: {project: 1},
+        value: asConfigValue({project: 1}),
         schema: null,
         overrides: [],
         description: 'Config in project 1',

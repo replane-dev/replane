@@ -21,7 +21,7 @@ export async function getEdgeSingleton(): Promise<Edge> {
     }
 
     const fallbackReplicaStoragePath =
-      process.env.NODE_ENV === 'development' ? './replica-data/replica.db' : undefined;
+      process.env.NODE_ENV === 'development' ? './replica-data/replica-v1.db' : undefined;
     const replicaStoragePath = ensureDefined(
       process.env.REPLICA_STORAGE_PATH ?? fallbackReplicaStoragePath,
       'REPLICA_STORAGE_PATH is not defined',

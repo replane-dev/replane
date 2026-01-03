@@ -1,14 +1,9 @@
-import type {
-  Config,
-  ConfigBase,
-  ConfigVariant,
-  Override,
-} from "@replanejs/admin";
+import type {Config, ConfigBase, ConfigVariant, Override} from '@replanejs/admin';
 
 // Random string generator
 function randomString(length: number): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -33,7 +28,7 @@ function randomBool(): boolean {
  */
 export function pickRandom<T>(array: T[]): T {
   if (array.length === 0) {
-    throw new Error("Cannot pick from empty array");
+    throw new Error('Cannot pick from empty array');
   }
   return array[Math.floor(Math.random() * array.length)];
 }
@@ -71,9 +66,9 @@ function randomOverrides(): Override[] {
       name: `override_${randomString(6)}`,
       conditions: [
         {
-          operator: "equals",
+          operator: 'equals',
           property: `user.${randomString(4)}`,
-          value: { type: "literal", value: randomString(8) },
+          value: {type: 'literal', value: randomString(8)},
         },
       ],
       value: randomValue(),
@@ -87,7 +82,7 @@ function randomOverrides(): Override[] {
 function randomConfigBase(): ConfigBase {
   return {
     value: randomValue(),
-    schema: null,
+    schema: undefined,
     overrides: randomOverrides(),
   };
 }
@@ -97,7 +92,7 @@ function randomConfigVariant(environmentId: string): ConfigVariant {
   return {
     environmentId,
     value: randomValue(),
-    schema: null,
+    schema: undefined,
     overrides: randomOverrides(),
     useBaseSchema: true,
   };
@@ -117,7 +112,7 @@ export function randomConfig(envIds: string[]): Config {
     description: `Benchmark config ${randomString(6)}`,
     version: 1,
     base: randomConfigBase(),
-    variants: envIds.map((envId) => randomConfigVariant(envId)),
+    variants: envIds.map(envId => randomConfigVariant(envId)),
     editors: [],
     createdAt: now,
     updatedAt: now,

@@ -1,8 +1,16 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 
@@ -24,14 +32,11 @@ describe('exportProjectConfigs', () => {
   it('should export a single config with all fields', async () => {
     await fixture.createConfig({
       name: 'test-config',
-      value: {enabled: true, count: 5},
-      schema: {
+      value: asConfigValue({enabled: true, count: 5}),
+      schema: asConfigSchema({
         type: 'object',
-        properties: {
-          enabled: {type: 'boolean'},
-          count: {type: 'number'},
-        },
-      },
+        properties: {enabled: {type: 'boolean'}, count: {type: 'number'}},
+      }),
       overrides: [],
       description: 'A test config for export',
       identity: fixture.identity,
@@ -49,21 +54,23 @@ describe('exportProjectConfigs', () => {
     const config = result.configs[0];
     expect(config.name).toBe('test-config');
     expect(config.description).toBe('A test config for export');
-    expect(config.value).toEqual({enabled: true, count: 5});
-    expect(config.schema).toEqual({
-      type: 'object',
-      properties: {
-        enabled: {type: 'boolean'},
-        count: {type: 'number'},
-      },
-    });
+    expect(config.value).toEqual(asConfigValue({enabled: true, count: 5}));
+    expect(config.schema).toEqual(
+      asConfigSchema({
+        type: 'object',
+        properties: {
+          enabled: {type: 'boolean'},
+          count: {type: 'number'},
+        },
+      }),
+    );
     expect(config.overrides).toEqual([]);
   });
 
   it('should export multiple configs sorted by name', async () => {
     await fixture.createConfig({
       name: 'zebra-config',
-      value: 'z',
+      value: asConfigValue('z'),
       schema: null,
       overrides: [],
       description: 'Last alphabetically',
@@ -75,7 +82,7 @@ describe('exportProjectConfigs', () => {
 
     await fixture.createConfig({
       name: 'alpha-config',
-      value: 'a',
+      value: asConfigValue('a'),
       schema: null,
       overrides: [],
       description: 'First alphabetically',
@@ -87,7 +94,7 @@ describe('exportProjectConfigs', () => {
 
     await fixture.createConfig({
       name: 'beta-config',
-      value: 'b',
+      value: asConfigValue('b'),
       schema: null,
       overrides: [],
       description: 'Middle',
@@ -111,7 +118,7 @@ describe('exportProjectConfigs', () => {
   it('should export config with environment variants', async () => {
     await fixture.createConfig({
       name: 'env-config',
-      value: {env: 'default'},
+      value: asConfigValue({env: 'default'}),
       schema: null,
       overrides: [],
       description: 'Config with env variants',
@@ -135,8 +142,8 @@ describe('exportProjectConfigs', () => {
 
     expect(productionVariant).toBeDefined();
     expect(developmentVariant).toBeDefined();
-    expect(productionVariant?.value).toEqual({env: 'default'});
-    expect(developmentVariant?.value).toEqual({env: 'default'});
+    expect(productionVariant?.value).toEqual(asConfigValue({env: 'default'}));
+    expect(developmentVariant?.value).toEqual(asConfigValue({env: 'default'}));
   });
 
   it('should export config with different values per environment', async () => {
@@ -190,14 +197,14 @@ describe('exportProjectConfigs', () => {
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
     const developmentVariant = config?.variants.find(v => v.environmentName === 'Development');
 
-    expect(productionVariant?.value).toBe('production-value');
-    expect(developmentVariant?.value).toBe('development-value');
+    expect(productionVariant?.value).toBe(stringifyJsonc('production-value'));
+    expect(developmentVariant?.value).toBe(stringifyJsonc('development-value'));
   });
 
   it('should export config with null schema', async () => {
     await fixture.createConfig({
       name: 'no-schema-config',
-      value: 'any-value',
+      value: asConfigValue('any-value'),
       schema: null,
       overrides: [],
       description: 'Config without schema',
@@ -229,7 +236,7 @@ describe('exportProjectConfigs', () => {
 
     await fixture.createConfig({
       name: 'complex-config',
-      value: complexValue,
+      value: asConfigValue(complexValue),
       schema: null,
       overrides: [],
       description: 'Complex nested config',
@@ -244,13 +251,13 @@ describe('exportProjectConfigs', () => {
       projectId: fixture.projectId,
     });
 
-    expect(result.configs[0].value).toEqual(complexValue);
+    expect(result.configs[0].value).toEqual(asConfigValue(complexValue));
   });
 
   it('should export config with overrides', async () => {
     await fixture.createConfig({
       name: 'override-config',
-      value: 'default',
+      value: asConfigValue('default'),
       schema: null,
       overrides: [
         {
@@ -305,4 +312,3 @@ describe('exportProjectConfigs', () => {
     ).rejects.toThrow();
   });
 });
-

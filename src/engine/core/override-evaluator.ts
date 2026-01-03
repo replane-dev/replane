@@ -7,7 +7,7 @@ import type {
   RenderedOverride,
   Value,
 } from './override-condition-schemas';
-import {assertNever} from './utils';
+import {assertNever, parseJsonc} from './utils';
 import type {ConfigValue} from './zod';
 
 export type {Override, RenderedCondition, RenderedOverride};
@@ -43,7 +43,7 @@ export type ConfigValueResolver = (params: {
   projectId: string;
   configName: string;
   environmentId: string;
-}) => Promise<ConfigValue | undefined>;
+}) => Promise<unknown | undefined>;
 
 async function renderValue(params: {
   value: Value;
@@ -138,7 +138,7 @@ export async function renderOverrides(params: {
     params.overrides.map(
       async (override): Promise<RenderedOverride> => ({
         name: override.name,
-        value: override.value,
+        value: parseJsonc(override.value),
         conditions: await Promise.all(
           override.conditions.map(c =>
             renderConditionInternal({
@@ -231,7 +231,7 @@ export function evaluateConfigValue(
 ): EvaluationResult {
   const overrideEvaluations: OverrideEvaluation[] = [];
   let matchedOverride: RenderedOverride | null = null;
-  let finalValue = config.value;
+  let finalValue = parseJsonc(config.value);
 
   for (const override of config.overrides) {
     const conditionEvaluations: ConditionEvaluation[] = [];

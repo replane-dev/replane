@@ -554,7 +554,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {production: true},
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: false,
               },
@@ -594,7 +594,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {version: 1},
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: false,
               },
@@ -614,7 +614,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {version: 2, newField: 'added'},
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: false,
               },
@@ -660,7 +660,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {enabled: false},
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: false,
               },
@@ -681,7 +681,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {enabled: false},
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: true, // Changed from false to true
               },
@@ -734,7 +734,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {count: 'not-a-number'}, // Invalid
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: true,
               },
@@ -744,6 +744,59 @@ describe('Admin API - Update Config', () => {
       );
 
       expect(response.status).toBe(400);
+    });
+
+    it('should return 400 when using environment from another project', async () => {
+      const {token} = await fixture.createAdminApiKey({
+        scopes: ['config:write', 'config:read'],
+        projectIds: null, // Access to all projects
+      });
+
+      // Create a config first
+      await fixture.adminApiRequest(
+        'POST',
+        `/projects/${fixture.projectId}/configs`,
+        token,
+        createConfigBody('cross-project-env-update-config', {original: true}),
+      );
+
+      // Create a second project with its own environments
+      const {environments: otherEnvs} = await fixture.engine.useCases.createProject(
+        GLOBAL_CONTEXT,
+        {
+          identity: fixture.identity,
+          workspaceId: fixture.workspaceId,
+          name: 'Other Project',
+          description: 'Other project',
+        },
+      );
+
+      const otherProductionEnvId = otherEnvs.find(e => e.name === 'Production')?.id;
+
+      // Try to update the config using an environment from the second project
+      const response = await fixture.adminApiRequest(
+        'PUT',
+        `/projects/${fixture.projectId}/configs/cross-project-env-update-config`,
+        token,
+        updateConfigBody(
+          {updated: true},
+          {
+            variants: [
+              {
+                environmentId: otherProductionEnvId!, // Environment from other project
+                value: {cross: 'project'},
+                schema: undefined,
+                overrides: [],
+                useBaseSchema: false,
+              },
+            ],
+          },
+        ),
+      );
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toContain('Invalid environment ID');
     });
   });
 
@@ -902,12 +955,13 @@ describe('Admin API - Update Config', () => {
         scopes: ['config:write', 'config:read'],
       });
 
-      await fixture.adminApiRequest(
+      const createResponse = await fixture.adminApiRequest(
         'POST',
         `/projects/${fixture.projectId}/configs`,
         token,
         createConfigBody('multi-field-update-config', {v: 1}, {description: 'Original'}),
       );
+      expect(createResponse.status).toBe(201);
 
       const newSchema = {
         type: 'object',
@@ -937,7 +991,7 @@ describe('Admin API - Update Config', () => {
               {
                 environmentId: fixture.productionEnvironmentId,
                 value: {v: 3, extra: 'prod'},
-                schema: null,
+                schema: undefined,
                 overrides: [],
                 useBaseSchema: true,
               },

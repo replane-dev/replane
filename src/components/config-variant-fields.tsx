@@ -15,7 +15,6 @@ import {Help} from '@/components/ui/help';
 import {Label} from '@/components/ui/label';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import type {Override} from '@/engine/core/override-evaluator';
-import {asConfigValue} from '@/engine/core/zod';
 import {createSchemaFromValue} from '@/lib/json-schema-utils';
 import {Sparkles} from 'lucide-react';
 import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
@@ -139,7 +138,7 @@ export function ConfigVariantFields({
           {
             operator: 'equals',
             property: '',
-            value: {type: 'literal', value: asConfigValue('')},
+            value: {type: 'literal', value: ''},
           },
         ],
         value: overrideBuilderDefaultValue,

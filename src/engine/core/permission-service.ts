@@ -414,12 +414,14 @@ export class PermissionService {
   // API Key permission checks
   // ============================================================================
 
-  private canApiKeyAccessProject(
+  private async canApiKeyAccessProject(
     ctx: Context,
     identity: ApiKeyIdentity,
     projectId: string,
-  ): boolean {
-    return hasProjectAccess(identity, projectId);
+  ): Promise<boolean> {
+    const project = await this.projectStore.getByIdWithoutPermissionCheck(projectId);
+    if (!project) return false;
+    return hasProjectAccess({identity, project});
   }
 
   private async getConfigProjectId(configId: string): Promise<string | null> {

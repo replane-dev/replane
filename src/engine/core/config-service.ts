@@ -20,10 +20,10 @@ import {
 import type {ProjectEnvironmentStore} from './stores/project-environment-store';
 import type {Project} from './stores/project-store';
 import type {UserStore} from './user-store';
-import {normalizeEmail, validateAgainstJsonSchema} from './utils';
+import {normalizeEmail, parseJsonc, validateAgainstJsonSchema} from './utils';
 import {createUuidV7} from './uuid';
 import {validateOverrideReferences} from './validate-override-references';
-import type {ConfigMember, ConfigSchema, ConfigValue} from './zod';
+import type {ConfigSchema, ConfigValue} from './zod';
 
 export interface ApprovalRequiredResult {
   required: boolean;
@@ -173,57 +173,67 @@ export class ConfigService {
   async validate(
     ctx: Context,
     config: {
+      members: Array<{email: string; role: 'editor' | 'maintainer'}>;
       projectId: string;
       description: string;
-      defaultVariant: {value: unknown; schema: unknown | null; overrides: Override[]} | null;
+      defaultVariant: {
+        value: ConfigValue;
+        schema: ConfigSchema | null;
+        overrides: Override[];
+      };
       environmentVariants: Array<{
         environmentId: string;
-        value: unknown;
-        schema: unknown | null;
+        value: ConfigValue;
+        schema: ConfigSchema | null;
         overrides: Override[];
-        useBaseSchema?: boolean;
+        useBaseSchema: boolean;
       }>;
     },
   ): Promise<void> {
-    // Validate default variant if provided
-    if (config.defaultVariant) {
-      // Validate default variant value against its schema
-      if (config.defaultVariant.schema !== null && config.defaultVariant.schema !== undefined) {
-        const result = validateAgainstJsonSchema(
-          config.defaultVariant.value,
-          config.defaultVariant.schema as any,
-        );
-        if (!result.ok) {
-          throw new BadRequestError(
-            `Default variant value does not match schema: ${result.errors.join('; ')}`,
-          );
-        }
-      }
+    // Validate members
+    this.ensureUniqueMembers(config.members);
 
-      // Validate default variant override references
-      validateOverrideReferences({
-        overrides: config.defaultVariant.overrides,
-        configProjectId: config.projectId,
-      });
+    const environments = await this.projectEnvironments.getByProjectId(config.projectId);
+
+    for (const variant of config.environmentVariants) {
+      const environment = environments.find(e => e.id === variant.environmentId);
+      if (!environment) {
+        throw new BadRequestError(`Invalid environment ID: ${variant.environmentId}`);
+      }
     }
+
+    // Validate default variant value against its schema
+    if (config.defaultVariant.schema !== null && config.defaultVariant.schema !== undefined) {
+      const result = validateAgainstJsonSchema(
+        parseJsonc(config.defaultVariant.value),
+        parseJsonc(config.defaultVariant.schema),
+      );
+      if (!result.ok) {
+        throw new BadRequestError(
+          `Default variant value does not match schema: ${result.errors.join('; ')}`,
+        );
+      }
+    }
+
+    // Validate default variant override references
+    validateOverrideReferences({
+      overrides: config.defaultVariant.overrides,
+      configProjectId: config.projectId,
+    });
 
     // Validate environment variants
     for (const envVariant of config.environmentVariants) {
       // Determine which schema to use for validation
-      let schemaForValidation = envVariant.schema;
-
-      if (envVariant.useBaseSchema) {
-        if (!config.defaultVariant) {
-          throw new BadRequestError(
-            'Cannot use default schema when no default variant is provided',
-          );
-        }
-        schemaForValidation = config.defaultVariant.schema;
-      }
+      let schemaForValidation = envVariant.useBaseSchema
+        ? config.defaultVariant.schema
+        : envVariant.schema;
 
       // Validate environment variant value against schema
       if (schemaForValidation !== null && schemaForValidation !== undefined) {
-        const result = validateAgainstJsonSchema(envVariant.value, schemaForValidation as any);
+        const result = validateAgainstJsonSchema(
+          parseJsonc(envVariant.value),
+          parseJsonc(schemaForValidation),
+        );
         if (!result.ok) {
           throw new BadRequestError(
             `Environment variant value does not match schema: ${result.errors.join('; ')}`,
@@ -245,6 +255,18 @@ export class ConfigService {
    * Creates/updates/deletes variants as needed.
    */
   async updateConfig(ctx: Context, params: UpdateConfigParams): Promise<void> {
+    const newMembers = [
+      ...params.editorEmails.map(email => ({email, role: 'editor' as const})),
+      ...params.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
+    ];
+    await this.validate(ctx, {
+      projectId: params.projectId,
+      description: params.description,
+      defaultVariant: params.defaultVariant,
+      environmentVariants: params.environmentVariants,
+      members: newMembers,
+    });
+
     const existingConfig = await this.configs.getById({
       id: params.configId,
       projectId: params.projectId,
@@ -393,49 +415,11 @@ export class ConfigService {
       }
     }
 
-    // Validate schema inheritance for environment variants
-    for (const variant of [...variantsToCreate, ...variantsToUpdate]) {
-      if (variant.useBaseSchema) {
-        if (!params.defaultVariant) {
-          throw new BadRequestError(
-            'Cannot use default schema when no default variant is provided',
-          );
-        }
-
-        if (params.defaultVariant.schema) {
-          const effectiveSchema = params.defaultVariant.schema;
-          const validationResult = validateAgainstJsonSchema(variant.value, effectiveSchema as any);
-          if (!validationResult.ok) {
-            throw new BadRequestError(
-              `Environment variant value does not match schema: ${validationResult.errors.join('; ')}`,
-            );
-          }
-        }
-      } else {
-        // Validate against the variant's own schema if it has one
-        if (variant.schema) {
-          const validationResult = validateAgainstJsonSchema(variant.value, variant.schema as any);
-          if (!validationResult.ok) {
-            throw new BadRequestError(
-              `Environment variant value does not match schema: ${validationResult.errors.join('; ')}`,
-            );
-          }
-        }
-      }
-    }
-
     const nextVersion = existingConfig.version + 1;
     const now = this.dateProvider.now();
 
     // Update members if changed
     if (membersChanged) {
-      const newMembers: ConfigMember[] = [
-        ...params.editorEmails.map(email => ({email, role: 'editor' as const})),
-        ...params.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
-      ];
-
-      this.ensureUniqueMembers(newMembers);
-
       // Map current members to MemberLike format
       const currentMembersLike = currentMembers.map(m => ({
         email: m.user_email_normalized,
@@ -546,12 +530,6 @@ export class ConfigService {
       version: nextVersion,
       updatedAt: now,
     });
-
-    // Create version history - one version record with all variants and members
-    const newMembers = [
-      ...params.editorEmails.map(email => ({email, role: 'editor' as const})),
-      ...params.maintainerEmails.map(email => ({email, role: 'maintainer' as const})),
-    ];
 
     await this.configVersions.create({
       id: createConfigVersionId(),
@@ -728,10 +706,18 @@ export class ConfigService {
         overrides: Override[];
         useBaseSchema: boolean;
       }>;
-      members?: Array<{email: string; role: 'editor' | 'maintainer'}>;
+      members: Array<{email: string; role: 'editor' | 'maintainer'}>;
       authorId: number | null;
     },
   ): Promise<{variantIds: Array<{variantId: string; environmentId: string}>}> {
+    await this.validate(ctx, {
+      projectId: params.projectId,
+      description: params.description,
+      defaultVariant: params.defaultVariant,
+      environmentVariants: params.environmentVariants,
+      members: params.members,
+    });
+
     const now = this.dateProvider.now();
 
     // Create the config record

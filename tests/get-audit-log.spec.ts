@@ -1,7 +1,16 @@
 import {createAuditLogId} from '@/engine/core/stores/audit-log-store';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const TEST_USER_EMAIL = normalizeEmail('auditor@example.com');
 
@@ -28,9 +37,9 @@ describe('getAuditLog', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cfg_a',
-      value: 1,
+      value: asConfigValue(1),
       description: 'A',
-      schema: {type: 'number'},
+      schema: asConfigSchema({type: 'number'}),
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
@@ -40,9 +49,9 @@ describe('getAuditLog', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cfg_b',
-      value: 2,
+      value: asConfigValue(2),
       description: 'B',
-      schema: {type: 'number'},
+      schema: asConfigSchema({type: 'number'}),
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
@@ -97,9 +106,9 @@ describe('getAuditLog', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cfg_c',
-      value: 3,
+      value: asConfigValue(3),
       description: 'C',
-      schema: {type: 'number'},
+      schema: asConfigSchema({type: 'number'}),
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
@@ -118,9 +127,9 @@ describe('getAuditLog', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cfg_filter_me',
-      value: 3,
+      value: asConfigValue(3),
       description: 'C',
-      schema: {type: 'number'},
+      schema: asConfigSchema({type: 'number'}),
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
@@ -129,9 +138,9 @@ describe('getAuditLog', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cfg_dont_filter_me',
-      value: 4,
+      value: asConfigValue(4),
       description: 'D',
-      schema: {type: 'number'},
+      schema: asConfigSchema({type: 'number'}),
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],
@@ -149,9 +158,9 @@ describe('getAuditLog', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'cfg_exists',
-      value: 5,
+      value: asConfigValue(5),
       description: 'E',
-      schema: {type: 'number'},
+      schema: asConfigSchema({type: 'number'}),
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: [],
       maintainerEmails: [],

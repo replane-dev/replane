@@ -1,8 +1,16 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -49,8 +57,8 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'test-config',
-      value: 'test-value',
-      schema: {type: 'string'},
+      value: asConfigValue('test-value'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'A test config',
       identity: fixture.identity,
       editorEmails: [],
@@ -76,8 +84,8 @@ describe('getConfig', () => {
     // Check variants
     expect(config?.variants).toHaveLength(2);
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(productionVariant?.value).toBe('test-value');
-    expect(productionVariant?.schema).toEqual({type: 'string'});
+    expect(productionVariant?.value).toBe(stringifyJsonc('test-value'));
+    expect(productionVariant?.schema).toEqual(asConfigSchema({type: 'string'}));
     expect(productionVariant?.overrides).toEqual([]);
 
     expect(config?.editorEmails).toEqual([]);
@@ -99,8 +107,8 @@ describe('getConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'owner-role-config',
-      value: 'x',
-      schema: {type: 'string'},
+      value: asConfigValue('x'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Owner role',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
       editorEmails: ['editor@example.com'],
@@ -126,8 +134,8 @@ describe('getConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'editor-role-config',
-      value: 'x',
-      schema: {type: 'string'},
+      value: asConfigValue('x'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Editor role',
       identity: fixture.identity,
       editorEmails: [OTHER_USER_EMAIL],
@@ -151,8 +159,8 @@ describe('getConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'viewer-role-config',
-      value: 'x',
-      schema: {type: 'string'},
+      value: asConfigValue('x'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Viewer role',
       identity: fixture.identity,
       editorEmails: [],
@@ -174,7 +182,7 @@ describe('getConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'no-proposals-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with no proposals',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -195,7 +203,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'with-proposals-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with proposals',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -253,7 +261,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'multiple-proposals-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with multiple proposals',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -347,7 +355,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approved-proposal-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with approved proposal',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -404,7 +412,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'rejected-proposal-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with rejected proposal',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -461,7 +469,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'mixed-proposals-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with mixed proposals',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -551,7 +559,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'null-author-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config with null author',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),
@@ -617,7 +625,7 @@ describe('getConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version-tracking-config',
-      value: {enabled: false},
+      value: asConfigValue({enabled: false}),
       schema: null,
       description: 'Config for version tracking',
       identity: await fixture.emailToIdentity(TEST_USER_EMAIL),

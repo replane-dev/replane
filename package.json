@@ -93,6 +93,7 @@
     "import-in-the-middle": "^2.0.0",
     "input-otp": "^1.4.2",
     "jotai": "^2.15.2",
+    "jsonc-parser": "^3.3.1",
     "kysely": "^0.28.8",
     "lru-cache": "^11.2.4",
     "lucide-react": "^0.535.0",

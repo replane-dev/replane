@@ -25,7 +25,6 @@ import {
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {formatJsonPath, getValueByPath, parseJsonPath} from '@/engine/core/json-path';
 import type {Condition} from '@/engine/core/override-condition-schemas';
-import {asConfigValue} from '@/engine/core/zod';
 import {useDebounce} from '@/hooks/use-debounce';
 import {useTRPC} from '@/trpc/client';
 import {useQueryClient} from '@tanstack/react-query';
@@ -208,7 +207,7 @@ export function ConditionEditor({
       const newCondition: Condition = {
         operator: 'equals',
         property: '',
-        value: {type: 'literal', value: asConfigValue('')},
+        value: {type: 'literal', value: ''},
       };
       onChange({
         ...condition,
@@ -339,7 +338,7 @@ export function ConditionEditor({
                         condition: {
                           operator: 'equals',
                           property: '',
-                          value: {type: 'literal', value: asConfigValue('')},
+                          value: {type: 'literal', value: ''},
                         },
                       } as Condition);
                     } else if (newOperator === 'segmentation') {
@@ -422,7 +421,7 @@ export function ConditionEditor({
                         onChange={e => {
                           onChange({
                             ...condition,
-                            value: {type: 'literal', value: asConfigValue(e.target.value)},
+                            value: {type: 'literal', value: e.target.value},
                           });
                         }}
                         disabled={readOnly}
@@ -604,7 +603,7 @@ export function ConditionEditor({
                           condition.operator === 'in' || condition.operator === 'not_in' ? [] : '';
                         onChange({
                           ...condition,
-                          value: {type: 'literal', value: asConfigValue(defaultValue)},
+                          value: {type: 'literal', value: defaultValue},
                         });
                       }}
                       className="h-9 w-9 p-0 hover:bg-accent"
@@ -732,7 +731,7 @@ export function ConditionEditor({
                                   newValues[idx] = e.target.value;
                                   onChange({
                                     ...condition,
-                                    value: {type: 'literal', value: asConfigValue(newValues)},
+                                    value: {type: 'literal', value: newValues},
                                   });
                                 }}
                                 disabled={readOnly}
@@ -751,9 +750,7 @@ export function ConditionEditor({
                                           ...condition,
                                           value: {
                                             type: 'literal',
-                                            value: asConfigValue(
-                                              newValues.length > 0 ? newValues : [],
-                                            ),
+                                            value: newValues.length > 0 ? newValues : [],
                                           },
                                         });
                                       }}
@@ -785,7 +782,7 @@ export function ConditionEditor({
                             const newValues = [...values, ''];
                             onChange({
                               ...condition,
-                              value: {type: 'literal', value: asConfigValue(newValues)},
+                              value: {type: 'literal', value: newValues},
                             });
                           }
                         }}
@@ -867,7 +864,7 @@ export function ConditionEditor({
                       onChange({
                         operator: newOperator,
                         property: '',
-                        value: {type: 'literal', value: asConfigValue('')},
+                        value: {type: 'literal', value: ''},
                       } as Condition);
                     }
                   }}

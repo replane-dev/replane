@@ -1,11 +1,19 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError, ForbiddenError} from '@/engine/core/errors';
 import type {ConfigProposalApprovedAuditLogPayload} from '@/engine/core/stores/audit-log-store';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
 import {createUuidV4} from '@/engine/core/uuid';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OTHER_USER_EMAIL = normalizeEmail('other@example.com');
@@ -60,7 +68,7 @@ describe('approveConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approve_description_only',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Old description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -117,7 +125,7 @@ describe('approveConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approve_members',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       description: 'Test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -174,7 +182,7 @@ describe('approveConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'approve_deletion',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'To be deleted',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -215,7 +223,7 @@ describe('approveConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'reject_others_on_approve',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Initial',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -320,7 +328,7 @@ describe('approveConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'already_approved',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       description: 'Test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -501,7 +509,7 @@ describe('approveConfigProposal', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'version_conflict',
-      value: 'test',
+      value: asConfigValue('test'),
       schema: null,
       description: 'Initial',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -581,8 +589,8 @@ describe('approveConfigProposal', () => {
   it('should approve a proposal with variant value changes', async () => {
     const {configId, configVariantIds} = await fixture.createConfig({
       name: 'approve_variant_value',
-      value: {enabled: true},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      value: asConfigValue({enabled: true}),
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       overrides: [],
       description: 'Variant test',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),
@@ -642,8 +650,8 @@ describe('approveConfigProposal', () => {
   it('should approve a proposal with both config and variant changes', async () => {
     const {configId, configVariantIds} = await fixture.createConfig({
       name: 'approve_combined_changes',
-      value: {count: 10},
-      schema: {type: 'object', properties: {count: {type: 'number'}}},
+      value: asConfigValue({count: 10}),
+      schema: asConfigSchema({type: 'object', properties: {count: {type: 'number'}}}),
       overrides: [],
       description: 'Original description',
       identity: await fixture.emailToIdentity(CURRENT_USER_EMAIL),

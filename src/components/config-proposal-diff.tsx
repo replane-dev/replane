@@ -321,16 +321,12 @@ export function ConfigProposalDiff({
 
         // Check if useBaseSchema changed
         const useBaseSchemaChanged =
-          variant.useBaseSchema !== undefined &&
-          variant.currentUseDefaultSchema !== undefined &&
+          variant.useBaseSchema &&
+          variant.currentUseDefaultSchema &&
           variant.useBaseSchema !== variant.currentUseDefaultSchema;
 
         // Only show value if it actually changed
-        if (
-          variant.proposedValue !== undefined &&
-          variant.currentValue !== undefined &&
-          JSON.stringify(variant.proposedValue) !== JSON.stringify(variant.currentValue)
-        ) {
+        if (JSON.stringify(variant.proposedValue) !== JSON.stringify(variant.currentValue)) {
           variantDiffs.push({
             title: 'Value',
             before: variant.currentValue,
@@ -339,11 +335,7 @@ export function ConfigProposalDiff({
         }
 
         // Only show schema if it actually changed
-        if (
-          variant.proposedSchema !== undefined &&
-          variant.currentSchema !== undefined &&
-          JSON.stringify(variant.proposedSchema) !== JSON.stringify(variant.currentSchema)
-        ) {
+        if (JSON.stringify(variant.proposedSchema) !== JSON.stringify(variant.currentSchema)) {
           variantDiffs.push({
             title: 'Schema',
             before: variant.currentSchema,
@@ -353,8 +345,6 @@ export function ConfigProposalDiff({
 
         // Only show overrides if they actually changed
         if (
-          variant.proposedOverrides !== undefined &&
-          variant.currentOverrides !== undefined &&
           JSON.stringify(variant.proposedOverrides) !== JSON.stringify(variant.currentOverrides)
         ) {
           variantDiffs.push({

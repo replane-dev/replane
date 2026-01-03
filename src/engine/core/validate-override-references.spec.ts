@@ -1,7 +1,16 @@
 import {describe, expect, it} from 'vitest';
-import {extractConditionReferences, extractOverrideReferences, validateOverrideReferences, type ConfigReference} from './validate-override-references';
 import type {Condition, Override} from './override-condition-schemas';
-import {asConfigValue} from './zod';
+import {stringifyJsonc} from './utils';
+import {
+  extractConditionReferences,
+  extractOverrideReferences,
+  validateOverrideReferences,
+} from './validate-override-references';
+import {ConfigValue} from './zod';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
 
 describe('extractReferences', () => {
   describe('equals condition', () => {
@@ -255,7 +264,7 @@ describe('extractReferences', () => {
             property: 'isPremium',
             value: {
               type: 'literal',
-              value: asConfigValue(true),
+              value: stringifyJsonc(true) as ConfigValue,
             },
           },
         ],
@@ -285,9 +294,7 @@ describe('extractReferences', () => {
 
       const references = extractConditionReferences(condition);
 
-      expect(references).toEqual([
-        {projectId: 'proj-y', configName: 'blocked', path: ['status']},
-      ]);
+      expect(references).toEqual([{projectId: 'proj-y', configName: 'blocked', path: ['status']}]);
     });
 
     it('should extract references from deeply nested conditions', () => {
@@ -581,9 +588,7 @@ describe('extractOverrideReferences', () => {
 
     const references = extractOverrideReferences(override);
 
-    expect(references).toEqual([
-      {projectId: 'proj-ref', configName: 'ref-config', path: ['path']},
-    ]);
+    expect(references).toEqual([{projectId: 'proj-ref', configName: 'ref-config', path: ['path']}]);
   });
 
   it('should handle single condition with reference', () => {
@@ -1039,4 +1044,3 @@ describe('validateOverrideReferences', () => {
     });
   });
 });
-

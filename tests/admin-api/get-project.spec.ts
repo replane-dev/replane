@@ -12,11 +12,7 @@ describe('Admin API - Get Project', () => {
       scopes: ['project:read'],
     });
 
-    const response = await fixture.adminApiRequest(
-      'GET',
-      `/projects/${fixture.projectId}`,
-      token,
-    );
+    const response = await fixture.adminApiRequest('GET', `/projects/${fixture.projectId}`, token);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -32,11 +28,7 @@ describe('Admin API - Get Project', () => {
       scopes: ['config:read'],
     });
 
-    const response = await fixture.adminApiRequest(
-      'GET',
-      `/projects/${fixture.projectId}`,
-      token,
-    );
+    const response = await fixture.adminApiRequest('GET', `/projects/${fixture.projectId}`, token);
 
     expect(response.status).toBe(403);
   });
@@ -60,18 +52,14 @@ describe('Admin API - Get Project', () => {
     });
 
     // Try to access the first project
-    const response = await fixture.adminApiRequest(
-      'GET',
-      `/projects/${fixture.projectId}`,
-      token,
-    );
+    const response = await fixture.adminApiRequest('GET', `/projects/${fixture.projectId}`, token);
 
     expect(response.status).toBe(403);
     const data = await response.json();
     expect(data.error).toBe('Forbidden');
   });
 
-  it('should return 404 for non-existent project', async () => {
+  it('should return 403 for non-existent project', async () => {
     const {token} = await fixture.createAdminApiKey({
       scopes: ['project:read'],
     });
@@ -79,7 +67,7 @@ describe('Admin API - Get Project', () => {
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
     const response = await fixture.adminApiRequest('GET', `/projects/${nonExistentId}`, token);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
   });
 
   it('should return 400 for invalid UUID', async () => {
@@ -92,4 +80,3 @@ describe('Admin API - Get Project', () => {
     expect(response.status).toBe(400);
   });
 });
-

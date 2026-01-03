@@ -62,7 +62,9 @@ export function createGetProjectListUseCase(): TransactionalUseCase<
       const allProjects = await tx.projects.getByWorkspaceId(apiKeyIdentity.workspaceId);
 
       // Filter to only accessible projects based on API key's projectIds restriction
-      const accessibleProjects = allProjects.filter(p => hasProjectAccess(apiKeyIdentity, p.id));
+      const accessibleProjects = allProjects.filter(p =>
+        hasProjectAccess({identity: apiKeyIdentity, project: p}),
+      );
 
       return {
         projects: accessibleProjects.map(p => ({

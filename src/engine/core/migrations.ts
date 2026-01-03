@@ -1619,6 +1619,28 @@ export const migrations: Migration[] = [
       ALTER TABLE admin_api_keys ALTER COLUMN key_suffix SET NOT NULL;
     `,
   },
+  {
+    name: 'Remove all existing overrides',
+    sql: /*sql*/ `
+      -- Clear all overrides from configs (base config)
+      UPDATE configs SET overrides = '[]' WHERE overrides != '[]';
+
+      -- Clear all overrides from config_variants (environment-specific variants)
+      UPDATE config_variants SET overrides = '[]' WHERE overrides != '[]';
+
+      -- Clear all overrides from config_proposals
+      UPDATE config_proposals SET overrides = '[]' WHERE overrides != '[]';
+
+      -- Clear all overrides from config_proposal_variants
+      UPDATE config_proposal_variants SET overrides = '[]' WHERE overrides != '[]';
+
+      -- Clear all overrides from config_versions (historical versions)
+      UPDATE config_versions SET overrides = '[]' WHERE overrides != '[]';
+
+      -- Clear all overrides from config_version_variants (historical environment variants)
+      UPDATE config_version_variants SET overrides = '[]' WHERE overrides != '[]';
+    `,
+  },
 ];
 
 export type MigrateStepResult = 'lagging' | 'ready';

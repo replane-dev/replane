@@ -1,9 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ForbiddenError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const CURRENT_USER_EMAIL = normalizeEmail('test@example.com');
 const OUTSIDER_USER_EMAIL = normalizeEmail('outsider@example.com');
@@ -29,7 +37,7 @@ describe('Read Use Cases - Permission Checks', () => {
     it('should prevent non-org member from viewing config', async () => {
       const {configId} = await fixture.createConfig({
         name: 'secret_config',
-        value: {secret: true},
+        value: asConfigValue({secret: true}),
         schema: null,
         overrides: [],
         description: 'Secret config',
@@ -144,7 +152,7 @@ describe('Read Use Cases - Permission Checks', () => {
       // Create a config and proposal first
       const {configId} = await fixture.createConfig({
         name: 'test_config',
-        value: {test: true},
+        value: asConfigValue({test: true}),
         schema: null,
         overrides: [],
         description: 'Test',
@@ -201,7 +209,7 @@ describe('Read Use Cases - Permission Checks', () => {
       // Create a config to generate an audit log
       await fixture.createConfig({
         name: 'audit_test_config',
-        value: {test: true},
+        value: asConfigValue({test: true}),
         schema: null,
         overrides: [],
         description: 'Test',

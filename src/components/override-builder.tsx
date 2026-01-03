@@ -2,7 +2,6 @@
 
 import {Button} from '@/components/ui/button';
 import type {Override} from '@/engine/core/override-evaluator';
-import {asConfigValue} from '@/engine/core/zod';
 import {Plus} from 'lucide-react';
 import {useCallback} from 'react';
 import {OverrideCard} from './override-card';
@@ -33,7 +32,7 @@ export function OverrideBuilder({
         {
           operator: 'equals',
           property: '',
-          value: {type: 'literal', value: asConfigValue('')},
+          value: {type: 'literal', value: ''},
         },
       ],
       value: defaultValue !== undefined ? defaultValue : null,
@@ -59,7 +58,10 @@ export function OverrideBuilder({
     (index: number) => {
       if (index <= 0) return;
       const newOverrides = [...overrides];
-      [newOverrides[index - 1], newOverrides[index]] = [newOverrides[index], newOverrides[index - 1]];
+      [newOverrides[index - 1], newOverrides[index]] = [
+        newOverrides[index],
+        newOverrides[index - 1],
+      ];
       onChange(newOverrides);
     },
     [overrides, onChange],
@@ -69,7 +71,10 @@ export function OverrideBuilder({
     (index: number) => {
       if (index >= overrides.length - 1) return;
       const newOverrides = [...overrides];
-      [newOverrides[index], newOverrides[index + 1]] = [newOverrides[index + 1], newOverrides[index]];
+      [newOverrides[index], newOverrides[index + 1]] = [
+        newOverrides[index + 1],
+        newOverrides[index],
+      ];
       onChange(newOverrides);
     },
     [overrides, onChange],

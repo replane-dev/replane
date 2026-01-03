@@ -70,12 +70,18 @@ export function createCreateConfigProposalUseCase(
       });
     }
 
+    const proposedMembers = [
+      ...req.editorEmails!.map(email => ({email, role: 'editor' as const})),
+      ...req.maintainerEmails!.map(email => ({email, role: 'maintainer' as const})),
+    ];
+
     // Validate the proposed state
     await tx.configService.validate(ctx, {
       projectId: config.projectId,
       description: req.description,
       defaultVariant: req.defaultVariant,
       environmentVariants: req.environmentVariants,
+      members: proposedMembers,
     });
 
     const currentUser = await tx.users.getByEmail(currentUserEmail);
@@ -137,12 +143,6 @@ export function createCreateConfigProposalUseCase(
         },
       });
     } else {
-      // Normal proposal with full proposed state
-      const proposedMembers = [
-        ...req.editorEmails!.map(email => ({email, role: 'editor' as const})),
-        ...req.maintainerEmails!.map(email => ({email, role: 'maintainer' as const})),
-      ];
-
       await tx.configProposals.create({
         id: configProposalId,
         configId: req.configId,

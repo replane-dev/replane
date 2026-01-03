@@ -28,7 +28,12 @@ import {
   isProposalRequired,
 } from '@/engine/core/proposal-requirement';
 import {ConfigOverrides} from '@/engine/core/stores/config-store';
-import {isValidJsonSchema, validateAgainstJsonSchema} from '@/engine/core/utils';
+import {
+  formatJsonc,
+  isValidJsonSchema,
+  parseJsonc,
+  validateAgainstJsonSchema,
+} from '@/engine/core/utils';
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -49,8 +54,8 @@ export interface Environment {
 export interface ConfigVariantData {
   configVariantId?: string; // undefined for new configs
   environmentId: string;
-  value: unknown;
-  schema: unknown | null;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
   overrides: Override[];
   useBaseSchema?: boolean; // Whether to inherit schema from default variant
 }
@@ -81,8 +86,8 @@ export interface ConfigFormProps {
   environments: Environment[]; // Available environments
   requireProposals: boolean; // Whether the project requires proposals
   defaultVariant?: {
-    value: unknown;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: Override[];
   };
   environmentVariants: ConfigVariantData[]; // Environment-specific variants (can be empty or partial)
@@ -182,7 +187,7 @@ export function ConfigForm(props: ConfigFormProps) {
       .min(1, 'Please enter a configuration value')
       .refine(val => {
         try {
-          JSON.parse(val);
+          parseJsonc(val);
           return true;
         } catch {
           return false;
@@ -208,7 +213,7 @@ export function ConfigForm(props: ConfigFormProps) {
           return;
         }
         try {
-          JSON.parse(val);
+          parseJsonc(val);
         } catch {
           ctx.addIssue({
             code: 'custom',
@@ -228,7 +233,7 @@ export function ConfigForm(props: ConfigFormProps) {
         .min(1, 'Please enter a base configuration value')
         .refine(val => {
           try {
-            JSON.parse(val);
+            parseJsonc(val);
             return true;
           } catch {
             return false;
@@ -250,7 +255,7 @@ export function ConfigForm(props: ConfigFormProps) {
             return;
           }
           try {
-            JSON.parse(val);
+            parseJsonc(val);
           } catch {
             ctx.addIssue({
               code: 'custom',
@@ -319,9 +324,9 @@ export function ConfigForm(props: ConfigFormProps) {
       ...(mode === 'new' ? {name: defaultName} : {}),
       description: defaultDescription,
       defaultVariant: {
-        value: defaultVariant ? JSON.stringify(defaultVariant.value, null, 2) : '{}',
+        value: defaultVariant?.value ? formatJsonc(defaultVariant.value) : '{}',
         schemaEnabled: defaultVariant?.schema !== null && defaultVariant?.schema !== undefined,
-        schema: defaultVariant?.schema ? JSON.stringify(defaultVariant.schema, null, 2) : '',
+        schema: defaultVariant?.schema ? formatJsonc(defaultVariant.schema) : '',
         overrides: defaultVariant?.overrides ?? [],
       },
       environmentVariants: environments.map(env => {
@@ -329,10 +334,10 @@ export function ConfigForm(props: ConfigFormProps) {
         return {
           environmentId: env.id,
           enabled: !!existingVariant,
-          value: existingVariant ? JSON.stringify(existingVariant.value, null, 2) : '{}',
+          value: existingVariant ? formatJsonc(existingVariant.value) : '{}',
           useBaseSchema: existingVariant?.useBaseSchema ?? true,
           schemaEnabled: existingVariant?.schema !== null && existingVariant?.schema !== undefined,
-          schema: existingVariant?.schema ? JSON.stringify(existingVariant.schema, null, 2) : '',
+          schema: existingVariant?.schema ? formatJsonc(existingVariant.schema) : '',
           overrides: existingVariant?.overrides ?? [],
         };
       }),
@@ -343,13 +348,12 @@ export function ConfigForm(props: ConfigFormProps) {
 
   async function handleSubmit(values: FormValues) {
     // Process default variant
-    let processedDefaultVariant: any = undefined;
-    const defaultValue = JSON.parse(values.defaultVariant.value);
-    let defaultParsedSchema: any | null = null;
+    const defaultValue = parseJsonc(values.defaultVariant.value);
+    let defaultParsedSchema: unknown | undefined = undefined;
 
     if (values.defaultVariant.schemaEnabled) {
       try {
-        defaultParsedSchema = JSON.parse(values.defaultVariant.schema || '');
+        defaultParsedSchema = parseJsonc(values.defaultVariant.schema || '');
       } catch {
         form.setError('defaultVariant.schema', {
           message: 'Invalid JSON Schema — check for missing quotes, brackets, or commas',
@@ -366,7 +370,7 @@ export function ConfigForm(props: ConfigFormProps) {
       }
 
       // Validate the value against the schema
-      const validationResult = validateAgainstJsonSchema(defaultValue, defaultParsedSchema);
+      const validationResult = validateAgainstJsonSchema(defaultValue, defaultParsedSchema as any);
       if (!validationResult.ok) {
         const errors = validationResult.errors.join('; ');
         form.setError('defaultVariant.value', {
@@ -376,15 +380,8 @@ export function ConfigForm(props: ConfigFormProps) {
       }
     }
 
-    processedDefaultVariant = {
-      value: defaultValue,
-      schema: values.defaultVariant.schemaEnabled ? defaultParsedSchema : null,
-      overrides: values.defaultVariant.overrides as Override[],
-    };
-
     // Process environment variants (only enabled ones)
     const processedEnvVariants: Array<{
-      configVariantId?: string;
       environmentId: string;
       value: ConfigValue;
       schema: ConfigSchema | null;
@@ -395,18 +392,17 @@ export function ConfigForm(props: ConfigFormProps) {
       const variant = values.environmentVariants[i];
       if (!variant.enabled) continue; // Skip disabled environments
 
-      const originalVariant = environmentVariants.find(
-        v => v.environmentId === variant.environmentId,
-      );
-
-      const payloadValue = JSON.parse(variant.value);
-      let parsedSchema: any | null = null;
+      const payloadValue = parseJsonc(variant.value);
+      let parsedSchema: unknown | undefined;
 
       // Determine which schema to use for validation
       if (variant.useBaseSchema) {
         // Use default schema for validation if available
-        if (defaultParsedSchema) {
-          const validationResult = validateAgainstJsonSchema(payloadValue, defaultParsedSchema);
+        if (defaultParsedSchema !== undefined && defaultParsedSchema !== null) {
+          const validationResult = validateAgainstJsonSchema(
+            payloadValue,
+            defaultParsedSchema as any,
+          );
           if (!validationResult.ok) {
             const errors = validationResult.errors.join('; ');
             form.setError(`environmentVariants.${i}.value`, {
@@ -415,11 +411,11 @@ export function ConfigForm(props: ConfigFormProps) {
             return;
           }
         }
-        // Schema will be null - backend will use default schema via COALESCE
-        parsedSchema = null;
+
+        parsedSchema = undefined;
       } else if (variant.schemaEnabled) {
         try {
-          parsedSchema = JSON.parse(variant.schema || '');
+          parsedSchema = parseJsonc(variant.schema || '');
         } catch {
           form.setError(`environmentVariants.${i}.schema`, {
             message: 'Invalid JSON Schema — check for missing quotes, brackets, or commas',
@@ -436,7 +432,7 @@ export function ConfigForm(props: ConfigFormProps) {
         }
 
         // Validate the value against the schema
-        const validationResult = validateAgainstJsonSchema(payloadValue, parsedSchema);
+        const validationResult = validateAgainstJsonSchema(payloadValue, parsedSchema as any);
         if (!validationResult.ok) {
           const errors = validationResult.errors.join('; ');
           form.setError(`environmentVariants.${i}.value`, {
@@ -447,10 +443,9 @@ export function ConfigForm(props: ConfigFormProps) {
       }
 
       processedEnvVariants.push({
-        configVariantId: originalVariant?.configVariantId,
         environmentId: variant.environmentId,
-        value: payloadValue,
-        schema: parsedSchema,
+        value: variant.value as ConfigValue,
+        schema: variant.schema as ConfigSchema | null,
         overrides: variant.overrides as Override[],
         useBaseSchema: variant.useBaseSchema,
       });
@@ -463,7 +458,13 @@ export function ConfigForm(props: ConfigFormProps) {
 
     const submitData: ConfigFormSubmitData = {
       name: values.name ?? defaultName,
-      defaultVariant: processedDefaultVariant,
+      defaultVariant: {
+        value: values.defaultVariant.value as ConfigValue,
+        schema: values.defaultVariant.schemaEnabled
+          ? (values.defaultVariant.schema as ConfigSchema | null)
+          : null,
+        overrides: values.defaultVariant.overrides as Override[],
+      },
       environmentVariants: processedEnvVariants,
       description: values.description ?? '',
       maintainerEmails: [],

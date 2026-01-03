@@ -1,8 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {BadRequestError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const ADMIN_USER_EMAIL = normalizeEmail('admin@example.com');
 const TEST_USER_EMAIL = normalizeEmail('test@example.com');
@@ -14,8 +23,8 @@ describe('createConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'new_config',
-      value: {flag: true},
-      schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+      value: asConfigValue({flag: true}),
+      schema: asConfigSchema({type: 'object', properties: {flag: {type: 'boolean'}}}),
       description: 'A new config for testing',
       identity: fixture.identity,
       editorEmails: [],
@@ -39,11 +48,13 @@ describe('createConfig', () => {
     expect(config?.variants).toHaveLength(2); // Production and Development
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
     expect(productionVariant).toBeDefined();
-    expect(productionVariant?.value).toEqual({flag: true});
-    expect(productionVariant?.schema).toEqual({
-      type: 'object',
-      properties: {flag: {type: 'boolean'}},
-    });
+    expect(productionVariant?.value).toEqual(asConfigValue({flag: true}));
+    expect(productionVariant?.schema).toEqual(
+      asConfigSchema({
+        type: 'object',
+        properties: {flag: {type: 'boolean'}},
+      }),
+    );
     expect(productionVariant?.overrides).toEqual([]);
   });
 
@@ -52,8 +63,8 @@ describe('createConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name,
-      value: {enabled: true},
-      schema: {type: 'object', properties: {enabled: {type: 'boolean'}}},
+      value: asConfigValue({enabled: true}),
+      schema: asConfigSchema({type: 'object', properties: {enabled: {type: 'boolean'}}}),
       description: 'Mixed case + digits + hyphen',
       identity: fixture.identity,
       editorEmails: [],
@@ -69,8 +80,8 @@ describe('createConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'dup_config',
-      value: 'v1',
-      schema: {type: 'string'},
+      value: asConfigValue('v1'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'A duplicate config for testing v1',
       identity: fixture.identity,
       editorEmails: [],
@@ -82,8 +93,8 @@ describe('createConfig', () => {
       fixture.createConfig({
         overrides: [],
         name: 'dup_config',
-        value: 'v2',
-        schema: {type: 'string'},
+        value: asConfigValue('v2'),
+        schema: asConfigSchema({type: 'string'}),
         description: 'A duplicate config for testing v2',
         identity: fixture.identity,
         editorEmails: [],
@@ -100,14 +111,14 @@ describe('createConfig', () => {
     expect(config?.config.name).toBe('dup_config');
     expect(config?.config.description).toBe('A duplicate config for testing v1');
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(productionVariant?.value).toBe('v1');
+    expect(productionVariant?.value).toBe(stringifyJsonc('v1'));
   });
 
   it('should accept config without a schema', async () => {
     await fixture.createConfig({
       overrides: [],
       name: 'no_schema_config',
-      value: 'v1',
+      value: asConfigValue('v1'),
       schema: null,
       description: 'A config without a schema',
       identity: fixture.identity,
@@ -123,7 +134,7 @@ describe('createConfig', () => {
 
     expect(config?.config.name).toBe('no_schema_config');
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(productionVariant?.value).toBe('v1');
+    expect(productionVariant?.value).toBe(stringifyJsonc('v1'));
     expect(productionVariant?.schema).toBeNull();
   });
 
@@ -132,8 +143,8 @@ describe('createConfig', () => {
       fixture.createConfig({
         overrides: [],
         name: 'schema_mismatch_on_create',
-        value: {flag: 'not_boolean'},
-        schema: {type: 'object', properties: {flag: {type: 'boolean'}}},
+        value: asConfigValue({flag: 'not_boolean'}),
+        schema: asConfigSchema({type: 'object', properties: {flag: {type: 'boolean'}}}),
         description: 'Invalid create schema',
         identity: fixture.identity,
         editorEmails: [],
@@ -147,8 +158,8 @@ describe('createConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'config_with_members_owner',
-      value: 1,
-      schema: {type: 'number'},
+      value: asConfigValue(1),
+      schema: asConfigSchema({type: 'number'}),
       description: 'Members test owner',
       identity: fixture.identity,
       editorEmails: ['editor1@example.com', 'editor2@example.com'],
@@ -170,7 +181,7 @@ describe('createConfig', () => {
     );
     expect(config?.myRole).toBe('maintainer');
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(productionVariant?.value).toBe(1);
+    expect(productionVariant?.value).toBe(stringifyJsonc(1));
   });
 
   it('should set myRole=editor when current user only an editor', async () => {
@@ -180,8 +191,8 @@ describe('createConfig', () => {
     await fixture.createConfig({
       overrides: [],
       name: 'config_with_editor_role',
-      value: 'x',
-      schema: {type: 'string'},
+      value: asConfigValue('x'),
+      schema: asConfigSchema({type: 'string'}),
       description: 'Members test editor',
       identity: fixture.identity,
       editorEmails: [TEST_USER_EMAIL],
@@ -200,15 +211,15 @@ describe('createConfig', () => {
     expect(config?.maintainerEmails).toEqual([normalizeEmail('other-owner@example.com')]);
     expect(config?.myRole).toBe('editor');
     const productionVariant = config?.variants.find(v => v.environmentName === 'Production');
-    expect(productionVariant?.value).toBe('x');
+    expect(productionVariant?.value).toBe(stringifyJsonc('x'));
   });
 
   it('creates audit message (config_created)', async () => {
     await fixture.createConfig({
       overrides: [],
       name: 'audit_config_created',
-      value: 123,
-      schema: {type: 'number'},
+      value: asConfigValue(123),
+      schema: asConfigSchema({type: 'number'}),
       description: 'audit test',
       identity: fixture.identity,
       editorEmails: [],
@@ -239,7 +250,7 @@ describe('createConfig', () => {
       fixture.createConfig({
         overrides: [],
         name: 'duplicate_user_config',
-        value: {x: 1},
+        value: asConfigValue({x: 1}),
         schema: null,
         description: 'Test duplicate user',
         identity: fixture.identity,
@@ -255,7 +266,7 @@ describe('createConfig', () => {
       fixture.createConfig({
         overrides: [],
         name: 'case_insensitive_duplicate',
-        value: {x: 1},
+        value: asConfigValue({x: 1}),
         schema: null,
         description: 'Test case insensitive duplicate',
         identity: fixture.identity,
@@ -271,7 +282,7 @@ describe('createConfig', () => {
       fixture.createConfig({
         overrides: [],
         name: 'case_insensitive_duplicate',
-        value: {x: 1},
+        value: asConfigValue({x: 1}),
         schema: null,
         description: 'Test case insensitive duplicate',
         identity: fixture.identity,
@@ -286,7 +297,7 @@ describe('createConfig', () => {
     const {configId} = await fixture.createConfig({
       overrides: [],
       name: 'variant_per_env_config',
-      value: {x: 1},
+      value: asConfigValue({x: 1}),
       schema: null,
       description: 'Test',
       identity: fixture.identity,
@@ -311,7 +322,7 @@ describe('createConfig', () => {
 
     expect(productionVariant).toBeDefined();
     expect(developmentVariant).toBeDefined();
-    expect(productionVariant?.value).toEqual({x: 1});
-    expect(developmentVariant?.value).toEqual({x: 1});
+    expect(productionVariant?.value).toEqual(asConfigValue({x: 1}));
+    expect(developmentVariant?.value).toEqual(asConfigValue({x: 1}));
   });
 });

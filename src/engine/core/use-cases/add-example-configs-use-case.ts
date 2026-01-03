@@ -5,7 +5,8 @@ import type {Override} from '../override-condition-schemas';
 import {ConfigStore, createConfigId} from '../stores/config-store';
 import type {ProjectEnvironmentStore} from '../stores/project-environment-store';
 import type {TransactionalUseCase} from '../use-case';
-import {asConfigSchema, asConfigValue, type ConfigValue} from '../zod';
+import {stringifyJsonc} from '../utils';
+import {ConfigSchema, type ConfigValue} from '../zod';
 
 export interface AddExampleConfigsRequest {
   projectId: string;
@@ -88,17 +89,17 @@ export async function createExampleConfigs(params: {
       description: config.description,
       defaultVariant: {
         value: config.value,
-        schema: asConfigSchema(config.schema),
+        schema: config.schema,
         overrides: config.overrides,
       },
       environmentVariants: config.variants.map(v => ({
         environmentId: v.environmentId,
         value: v.value,
-        schema: asConfigSchema(v.schema),
+        schema: v.schema,
         overrides: v.overrides,
         useBaseSchema: v.useBaseSchema,
       })),
-      members: undefined, // Example configs don't have members
+      members: [],
       authorId: userId,
     });
 
@@ -110,14 +111,14 @@ export async function createExampleConfigs(params: {
 
 interface ExampleConfig {
   name: string;
-  schema: unknown;
+  schema: ConfigSchema;
   value: ConfigValue;
   overrides: Override[];
   description: string;
   variants: Array<{
     environmentId: string;
     value: ConfigValue;
-    schema: unknown;
+    schema: ConfigSchema | null;
     overrides: Override[];
     useBaseSchema: boolean;
   }>;
@@ -137,11 +138,11 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-1-feature-flag',
       description: 'A simple feature flag to enable/disable a feature',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'boolean',
-      },
-      value: asConfigValue(true),
+      }) as ConfigSchema,
+      value: stringifyJsonc(true) as ConfigValue,
       overrides: [],
       variants: [],
     },
@@ -150,7 +151,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-2-app-settings',
       description: 'Application settings with JSON Schema validation',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
         properties: {
@@ -160,12 +161,12 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         },
         required: ['maxUploadSizeMb', 'allowedFileTypes', 'maintenanceMode'],
         additionalProperties: false,
-      },
-      value: asConfigValue({
+      }) as ConfigSchema,
+      value: stringifyJsonc({
         maxUploadSizeMb: 10,
         allowedFileTypes: ['jpg', 'png', 'pdf'],
         maintenanceMode: false,
-      }),
+      }) as ConfigValue,
       overrides: [],
       variants: [],
     },
@@ -174,12 +175,12 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-3-user-access',
       description: 'User access level with conditional overrides based on user properties',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'string',
         enum: ['basic', 'premium', 'enterprise'],
-      },
-      value: asConfigValue('basic'),
+      }) as ConfigSchema,
+      value: stringifyJsonc('basic') as ConfigValue,
       overrides: [
         {
           name: 'Premium users',
@@ -187,10 +188,10 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
             {
               operator: 'equals',
               property: 'subscription',
-              value: {type: 'literal', value: asConfigValue('premium')},
+              value: {type: 'literal', value: 'premium'},
             },
           ],
-          value: asConfigValue('premium'),
+          value: stringifyJsonc('premium') as ConfigValue,
         },
         {
           name: 'Enterprise users',
@@ -198,10 +199,13 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
             {
               operator: 'in',
               property: 'organization',
-              value: {type: 'literal', value: asConfigValue(['acme-corp', 'globex', 'initech'])},
+              value: {
+                type: 'literal',
+                value: ['acme-corp', 'globex', 'initech'],
+              },
             },
           ],
-          value: asConfigValue('enterprise'),
+          value: stringifyJsonc('enterprise') as ConfigValue,
         },
       ],
       variants: [],
@@ -211,7 +215,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-4-rate-limits',
       description: 'API rate limits based on user tier and usage',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
         properties: {
@@ -220,11 +224,11 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         },
         required: ['requestsPerMinute', 'burstLimit'],
         additionalProperties: false,
-      },
-      value: asConfigValue({
+      }) as ConfigSchema,
+      value: stringifyJsonc({
         requestsPerMinute: 60,
         burstLimit: 10,
-      }),
+      }) as ConfigValue,
       overrides: [
         {
           name: 'High volume users',
@@ -232,13 +236,13 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
             {
               operator: 'greater_than',
               property: 'monthlyRequests',
-              value: {type: 'literal', value: asConfigValue(10000)},
+              value: {type: 'literal', value: 10000},
             },
           ],
-          value: asConfigValue({
+          value: stringifyJsonc({
             requestsPerMinute: 120,
             burstLimit: 20,
-          }),
+          }) as ConfigValue,
         },
         {
           name: 'New users (low usage)',
@@ -246,13 +250,13 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
             {
               operator: 'less_than',
               property: 'accountAgeDays',
-              value: {type: 'literal', value: asConfigValue(30)},
+              value: {type: 'literal', value: 30},
             },
           ],
-          value: asConfigValue({
+          value: stringifyJsonc({
             requestsPerMinute: 30,
             burstLimit: 5,
-          }),
+          }) as ConfigValue,
         },
       ],
       variants: [],
@@ -262,7 +266,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-5-experiment-flags-ab-testing',
       description: 'A/B testing with percentage-based segmentation',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
         properties: {
@@ -271,11 +275,11 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         },
         required: ['variant', 'showNewCheckout'],
         additionalProperties: false,
-      },
-      value: asConfigValue({
+      }) as ConfigSchema,
+      value: stringifyJsonc({
         variant: 'control',
         showNewCheckout: false,
-      }),
+      }) as ConfigValue,
       overrides: [
         {
           name: 'Treatment A (25%)',
@@ -288,10 +292,10 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               seed: 'checkout-experiment-2024',
             },
           ],
-          value: asConfigValue({
+          value: stringifyJsonc({
             variant: 'treatment_a',
             showNewCheckout: true,
-          }),
+          }) as ConfigValue,
         },
         {
           name: 'Treatment B (25%)',
@@ -304,10 +308,10 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
               seed: 'checkout-experiment-2024',
             },
           ],
-          value: asConfigValue({
+          value: stringifyJsonc({
             variant: 'treatment_b',
             showNewCheckout: true,
-          }),
+          }) as ConfigValue,
         },
       ],
       variants: [],
@@ -317,7 +321,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-6-advanced-targeting',
       description: 'Advanced targeting with composite AND/OR conditions',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
         properties: {
@@ -327,12 +331,12 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         },
         required: ['featureLevel', 'customBranding', 'supportPriority'],
         additionalProperties: false,
-      },
-      value: asConfigValue({
+      }) as ConfigSchema,
+      value: stringifyJsonc({
         featureLevel: 'basic',
         customBranding: false,
         supportPriority: 'standard',
-      }),
+      }) as ConfigValue,
       overrides: [
         {
           name: 'VIP customers',
@@ -343,21 +347,21 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
                 {
                   operator: 'equals',
                   property: 'plan',
-                  value: {type: 'literal', value: asConfigValue('enterprise')},
+                  value: {type: 'literal', value: 'enterprise'},
                 },
                 {
                   operator: 'greater_than_or_equal',
                   property: 'annualSpend',
-                  value: {type: 'literal', value: asConfigValue(50000)},
+                  value: {type: 'literal', value: 50000},
                 },
               ],
             },
           ],
-          value: asConfigValue({
+          value: stringifyJsonc({
             featureLevel: 'unlimited',
             customBranding: true,
             supportPriority: 'dedicated',
-          }),
+          }) as ConfigValue,
         },
         {
           name: 'Beta testers or employees',
@@ -368,21 +372,21 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
                 {
                   operator: 'equals',
                   property: 'isBetaTester',
-                  value: {type: 'literal', value: asConfigValue(true)},
+                  value: {type: 'literal', value: true},
                 },
                 {
                   operator: 'equals',
                   property: 'isEmployee',
-                  value: {type: 'literal', value: asConfigValue(true)},
+                  value: {type: 'literal', value: true},
                 },
               ],
             },
           ],
-          value: asConfigValue({
+          value: stringifyJsonc({
             featureLevel: 'preview',
             customBranding: true,
             supportPriority: 'priority',
-          }),
+          }) as ConfigValue,
         },
       ],
       variants: [],
@@ -392,7 +396,7 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
     {
       name: 'example-7-environment-specific-configs',
       description: 'Environment-specific configs with different values for different environments',
-      schema: {
+      schema: stringifyJsonc({
         $schema: 'http://json-schema.org/draft-07/schema#',
         type: 'object',
         properties: {
@@ -402,32 +406,32 @@ function getExampleConfigs(params: {productionId: string; developmentId: string}
         },
         required: ['maxUploadSizeMb', 'allowedFileTypes', 'maintenanceMode'],
         additionalProperties: false,
-      },
-      value: asConfigValue({
+      }) as ConfigSchema,
+      value: stringifyJsonc({
         maxUploadSizeMb: 10,
         allowedFileTypes: ['jpg', 'png', 'pdf'],
         maintenanceMode: false,
-      }),
+      }) as ConfigValue,
       overrides: [],
       variants: [
         {
           environmentId: productionId,
-          value: asConfigValue({
+          value: stringifyJsonc({
             maxUploadSizeMb: 100,
             allowedFileTypes: ['jpg', 'png', 'pdf', 'gif'],
             maintenanceMode: false,
-          }),
+          }) as ConfigValue,
           schema: null,
           overrides: [],
           useBaseSchema: true,
         },
         {
           environmentId: developmentId,
-          value: asConfigValue({
+          value: stringifyJsonc({
             maxUploadSizeMb: 50,
             allowedFileTypes: ['png', 'pdf'],
             maintenanceMode: true,
-          }),
+          }) as ConfigValue,
           schema: null,
           overrides: [],
           useBaseSchema: true,

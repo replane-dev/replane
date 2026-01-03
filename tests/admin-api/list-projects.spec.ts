@@ -96,4 +96,3 @@ describe('Admin API - List Projects', () => {
     expect(data.error).toBe('API key has expired');
   });
 });
-

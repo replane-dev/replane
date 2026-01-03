@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useTRPC} from '@/trpc/client';
 import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {AlertCircle, ArrowRight, Check, FileJson, Globe, Upload} from 'lucide-react';
@@ -33,13 +34,13 @@ interface ImportConfigsDialogProps {
 interface Override {
   name: string;
   conditions: unknown[];
-  value: unknown;
+  value: ConfigValue;
 }
 
 interface ImportedConfigVariant {
   environmentName: string;
-  value: unknown;
-  schema: unknown | null;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
   useBaseSchema: boolean;
   overrides: Override[];
 }
@@ -47,8 +48,8 @@ interface ImportedConfigVariant {
 interface ImportedConfig {
   name: string;
   description: string;
-  value: unknown;
-  schema: unknown | null;
+  value: ConfigValue;
+  schema: ConfigSchema | null;
   overrides: Override[];
   variants: ImportedConfigVariant[];
 }

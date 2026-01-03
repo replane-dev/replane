@@ -3,9 +3,11 @@ import {JsonPathSchema} from './json-path';
 import {ConfigName} from './stores/config-store';
 import {ConfigValue} from './zod';
 
+const PrimitiveValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+
 const LiteralValueSchema = z.object({
   type: z.literal('literal'),
-  value: ConfigValue(),
+  value: z.union([PrimitiveValueSchema, z.array(PrimitiveValueSchema)]),
 });
 
 const ReferenceValueSchema = z.object({
@@ -140,6 +142,14 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   ]),
 );
 
+export const OverrideSchema = z.object({
+  name: z.string(),
+  conditions: z.array(ConditionSchema),
+  value: ConfigValue(),
+});
+
+export type Override = z.infer<typeof OverrideSchema>;
+
 // ========================================
 // Rendered Condition Schemas (after resolving references)
 // ========================================
@@ -271,22 +281,168 @@ export const RenderedConditionSchema: z.ZodType<RenderedCondition> = z.lazy(() =
   ]),
 );
 
-// ========================================
-// Override Schemas
-// ========================================
-
-export const OverrideSchema = z.object({
-  name: z.string(),
-  conditions: z.array(ConditionSchema),
-  value: ConfigValue(),
-});
-
-export type Override = z.infer<typeof OverrideSchema>;
-
 export const RenderedOverrideSchema = z.object({
   name: z.string(),
   conditions: z.array(RenderedConditionSchema),
-  value: ConfigValue(),
+  value: z.unknown(),
 });
 
 export type RenderedOverride = z.infer<typeof RenderedOverrideSchema>;
+
+// ========================================
+// Admin api override schemas
+// ========================================
+
+const AdminApiPrimitiveValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+
+const AdminApiLiteralValueSchema = z.object({
+  type: z.literal('literal'),
+  value: z.union([PrimitiveValueSchema, z.array(PrimitiveValueSchema)]),
+});
+
+const AdminApiReferenceValueSchema = z.object({
+  type: z.literal('reference'),
+  projectId: z.string(),
+  configName: ConfigName(),
+  path: JsonPathSchema,
+});
+
+export const AdminApiValueSchema = z.discriminatedUnion('type', [
+  AdminApiLiteralValueSchema,
+  AdminApiReferenceValueSchema,
+]);
+
+export type AdminApiValue = z.infer<typeof AdminApiValueSchema>;
+
+// Property-based condition schemas
+const AdminApiPropertyConditionBase = z.object({
+  property: z.string(),
+  value: AdminApiValueSchema,
+});
+
+export const AdminApiEqualsConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('equals'),
+});
+
+export const AdminApiInConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('in'),
+});
+
+export const AdminApiNotInConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('not_in'),
+});
+
+export const AdminApiLessThanConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('less_than'),
+});
+
+export const AdminApiLessThanOrEqualConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('less_than_or_equal'),
+});
+
+export const AdminApiGreaterThanConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('greater_than'),
+});
+
+export const AdminApiGreaterThanOrEqualConditionSchema = AdminApiPropertyConditionBase.extend({
+  operator: z.literal('greater_than_or_equal'),
+});
+
+const AdminApiSegmentationConditionSchema = z.object({
+  operator: z.literal('segmentation'),
+  property: z.string(),
+  fromPercentage: z.number().min(0).max(100),
+  toPercentage: z.number().min(0).max(100),
+  seed: z.string(),
+});
+
+// Infer property-based condition types
+export type AdminApiEqualsCondition = z.infer<typeof AdminApiEqualsConditionSchema>;
+export type AdminApiInCondition = z.infer<typeof AdminApiInConditionSchema>;
+export type AdminApiNotInCondition = z.infer<typeof AdminApiNotInConditionSchema>;
+export type AdminApiLessThanCondition = z.infer<typeof AdminApiLessThanConditionSchema>;
+export type AdminApiLessThanOrEqualCondition = z.infer<
+  typeof AdminApiLessThanOrEqualConditionSchema
+>;
+export type AdminApiGreaterThanCondition = z.infer<typeof AdminApiGreaterThanConditionSchema>;
+export type AdminApiGreaterThanOrEqualCondition = z.infer<
+  typeof AdminApiGreaterThanOrEqualConditionSchema
+>;
+export type AdminApiSegmentationCondition = z.infer<typeof AdminApiSegmentationConditionSchema>;
+
+// TypeScript types for composite conditions (defined before schemas for proper typing)
+export type AdminApiAndCondition = {
+  operator: 'and';
+  conditions: AdminApiCondition[];
+};
+
+export type AdminApiOrCondition = {
+  operator: 'or';
+  conditions: AdminApiCondition[];
+};
+
+export type AdminApiNotCondition = {
+  operator: 'not';
+  condition: AdminApiCondition;
+};
+
+// Union of all condition types
+export type AdminApiCondition =
+  | AdminApiEqualsCondition
+  | AdminApiInCondition
+  | AdminApiNotInCondition
+  | AdminApiLessThanCondition
+  | AdminApiLessThanOrEqualCondition
+  | AdminApiGreaterThanCondition
+  | AdminApiGreaterThanOrEqualCondition
+  | AdminApiSegmentationCondition
+  | AdminApiAndCondition
+  | AdminApiOrCondition
+  | AdminApiNotCondition;
+
+// Composite condition schemas with proper typing
+export const AdminApiAndConditionSchema: z.ZodType<AdminApiAndCondition> = z.lazy(() =>
+  z.object({
+    operator: z.literal('and'),
+    conditions: z.array(AdminApiConditionSchema),
+  }),
+);
+
+export const AdminApiOrConditionSchema: z.ZodType<AdminApiOrCondition> = z.lazy(() =>
+  z.object({
+    operator: z.literal('or'),
+    conditions: z.array(AdminApiConditionSchema),
+  }),
+);
+
+export const AdminApiNotConditionSchema: z.ZodType<AdminApiNotCondition> = z.lazy(() =>
+  z.object({
+    operator: z.literal('not'),
+    condition: AdminApiConditionSchema,
+  }),
+);
+
+// Main condition schema using discriminated union for better performance
+export const AdminApiConditionSchema: z.ZodType<AdminApiCondition> = z.lazy(() =>
+  z.discriminatedUnion('operator', [
+    AdminApiEqualsConditionSchema,
+    AdminApiInConditionSchema,
+    AdminApiNotInConditionSchema,
+    AdminApiLessThanConditionSchema,
+    AdminApiLessThanOrEqualConditionSchema,
+    AdminApiGreaterThanConditionSchema,
+    AdminApiGreaterThanOrEqualConditionSchema,
+    AdminApiSegmentationConditionSchema,
+    AdminApiAndConditionSchema as any,
+    AdminApiOrConditionSchema as any,
+    AdminApiNotConditionSchema as any,
+  ]),
+);
+
+export const AdminApiOverrideSchema = z.object({
+  name: z.string(),
+  conditions: z.array(AdminApiConditionSchema),
+  value: z.unknown(),
+});
+
+export type AdminApiOverride = z.infer<typeof AdminApiOverrideSchema>;

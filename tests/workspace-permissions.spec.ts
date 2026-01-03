@@ -1,9 +1,17 @@
 import {GLOBAL_CONTEXT} from '@/engine/core/context';
 import {ForbiddenError} from '@/engine/core/errors';
-import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue} from '@/engine/core/zod';
+import {normalizeEmail, stringifyJsonc} from '@/engine/core/utils';
+import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {describe, expect, it} from 'vitest';
 import {useAppFixture} from './fixtures/app-fixture';
+
+function asConfigValue(value: unknown): ConfigValue {
+  return stringifyJsonc(value) as ConfigValue;
+}
+
+function asConfigSchema(value: unknown): ConfigSchema {
+  return stringifyJsonc(value) as ConfigSchema;
+}
 
 const WORKSPACE_ADMIN_EMAIL = normalizeEmail('workspace-admin@example.com');
 const WORKSPACE_MEMBER_EMAIL = normalizeEmail('workspace-member@example.com');
@@ -81,10 +89,9 @@ describe('Workspace Admin Permissions', () => {
       });
 
       // Verify project was deleted using raw query
-      const res = await fixture.engine.testing.pool.query(
-        `SELECT * FROM projects WHERE id = $1`,
-        [projectId],
-      );
+      const res = await fixture.engine.testing.pool.query(`SELECT * FROM projects WHERE id = $1`, [
+        projectId,
+      ]);
       expect(res.rows).toHaveLength(0);
     });
 
@@ -124,8 +131,8 @@ describe('Workspace Admin Permissions', () => {
     it('workspace admin can create a config', async () => {
       const {configId} = await fixture.createConfig({
         name: 'admin-created-config',
-        value: 'test',
-        schema: {type: 'string'},
+        value: asConfigValue('test'),
+        schema: asConfigSchema({type: 'string'}),
         overrides: [],
         description: 'Created by admin',
         identity: fixture.identity,
@@ -140,8 +147,8 @@ describe('Workspace Admin Permissions', () => {
     it('workspace admin can view any config', async () => {
       await fixture.createConfig({
         name: 'view-test-config',
-        value: 123,
-        schema: {type: 'number'},
+        value: asConfigValue(123),
+        schema: asConfigSchema({type: 'number'}),
         overrides: [],
         description: 'Test config',
         identity: fixture.identity,
@@ -163,8 +170,8 @@ describe('Workspace Admin Permissions', () => {
     it('workspace admin can update any config', async () => {
       await fixture.createConfig({
         name: 'update-test-config',
-        value: 'original',
-        schema: {type: 'string'},
+        value: asConfigValue('original'),
+        schema: asConfigSchema({type: 'string'}),
         overrides: [],
         description: 'Original description',
         identity: fixture.identity,
@@ -208,14 +215,14 @@ describe('Workspace Admin Permissions', () => {
       });
 
       const prodVariant = updated?.variants.find(v => v.environmentName === 'Production');
-      expect(prodVariant?.value).toBe('updated');
+      expect(prodVariant?.value).toBe(stringifyJsonc('updated'));
     });
 
     it('workspace admin can delete any config', async () => {
       await fixture.createConfig({
         name: 'delete-test-config',
-        value: true,
-        schema: {type: 'boolean'},
+        value: asConfigValue(true),
+        schema: asConfigSchema({type: 'boolean'}),
         overrides: [],
         description: 'To be deleted',
         identity: fixture.identity,
@@ -357,8 +364,8 @@ describe('Project Admin Permissions (Non-Workspace-Admin)', () => {
 
       const {configId} = await fixture.createConfig({
         name: 'project-admin-config',
-        value: 'test',
-        schema: {type: 'string'},
+        value: asConfigValue('test'),
+        schema: asConfigSchema({type: 'string'}),
         overrides: [],
         description: 'Created by project admin',
         identity: projectAdminIdentity,
@@ -375,8 +382,8 @@ describe('Project Admin Permissions (Non-Workspace-Admin)', () => {
 
       await fixture.createConfig({
         name: 'view-as-project-admin',
-        value: 123,
-        schema: {type: 'number'},
+        value: asConfigValue(123),
+        schema: asConfigSchema({type: 'number'}),
         overrides: [],
         description: 'Test',
         identity: fixture.identity,
@@ -399,8 +406,8 @@ describe('Project Admin Permissions (Non-Workspace-Admin)', () => {
 
       await fixture.createConfig({
         name: 'update-as-project-admin',
-        value: 'original',
-        schema: {type: 'string'},
+        value: asConfigValue('original'),
+        schema: asConfigSchema({type: 'string'}),
         overrides: [],
         description: 'Test',
         identity: fixture.identity,
@@ -444,7 +451,7 @@ describe('Project Admin Permissions (Non-Workspace-Admin)', () => {
       });
 
       const prodVariant = updated?.variants.find(v => v.environmentName === 'Production');
-      expect(prodVariant?.value).toBe('updated by project admin');
+      expect(prodVariant?.value).toBe(stringifyJsonc('updated by project admin'));
     });
 
     it('project admin can delete configs', async () => {
@@ -452,8 +459,8 @@ describe('Project Admin Permissions (Non-Workspace-Admin)', () => {
 
       await fixture.createConfig({
         name: 'delete-as-project-admin',
-        value: true,
-        schema: {type: 'boolean'},
+        value: asConfigValue(true),
+        schema: asConfigSchema({type: 'boolean'}),
         overrides: [],
         description: 'To delete',
         identity: fixture.identity,
@@ -621,10 +628,9 @@ describe('Project Admin Permissions (Non-Workspace-Admin)', () => {
       });
 
       // Verify project was deleted using raw query
-      const res = await fixture.engine.testing.pool.query(
-        `SELECT * FROM projects WHERE id = $1`,
-        [projectId],
-      );
+      const res = await fixture.engine.testing.pool.query(`SELECT * FROM projects WHERE id = $1`, [
+        projectId,
+      ]);
       expect(res.rows).toHaveLength(0);
     });
   });
@@ -702,8 +708,8 @@ describe('Workspace Member Permissions', () => {
 
     await fixture.createConfig({
       name: 'member-view-config',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,
@@ -728,8 +734,8 @@ describe('Workspace Member Permissions', () => {
     await expect(
       fixture.createConfig({
         name: 'should-fail-config',
-        value: 'test',
-        schema: {type: 'string'},
+        value: asConfigValue('test'),
+        schema: asConfigSchema({type: 'string'}),
         overrides: [],
         description: 'Test',
         identity: memberIdentity,
@@ -745,8 +751,8 @@ describe('Workspace Member Permissions', () => {
 
     await fixture.createConfig({
       name: 'no-update-config',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,
@@ -791,8 +797,8 @@ describe('Workspace Member Permissions', () => {
 
     await fixture.createConfig({
       name: 'no-delete-config',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,
@@ -859,8 +865,8 @@ describe('Non-Workspace Member Permissions', () => {
 
     await fixture.createConfig({
       name: 'non-member-test',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,
@@ -899,8 +905,8 @@ describe('Config-Level Permissions', () => {
 
     await fixture.createConfig({
       name: 'editor-role-test',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,
@@ -924,8 +930,8 @@ describe('Config-Level Permissions', () => {
 
     await fixture.createConfig({
       name: 'editor-cannot-delete',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,
@@ -950,8 +956,8 @@ describe('Config-Level Permissions', () => {
 
     await fixture.createConfig({
       name: 'maintainer-can-delete',
-      value: 'test',
-      schema: {type: 'string'},
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
       overrides: [],
       description: 'Test',
       identity: fixture.identity,

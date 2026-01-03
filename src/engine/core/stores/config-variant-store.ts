@@ -1,8 +1,7 @@
 import type {Kysely} from 'kysely';
 import type {DB} from '../db';
 import type {Override} from '../override-evaluator';
-import {deserializeJson, serializeJson} from '../store-utils';
-import type {ConfigSchema, ConfigValue} from '../zod';
+import {type ConfigSchema, type ConfigValue} from '../zod';
 
 export interface ConfigVariant {
   id: string;
@@ -127,7 +126,10 @@ export class ConfigVariantStore {
     // The caller should handle notifying the change
   }
 
-  async getByEnvironmentId(params: {environmentId: string; projectId: string}): Promise<ConfigVariant[]> {
+  async getByEnvironmentId(params: {
+    environmentId: string;
+    projectId: string;
+  }): Promise<ConfigVariant[]> {
     const rows = await this.db
       .selectFrom('config_variants')
       .innerJoin('configs', 'configs.id', 'config_variants.config_id')
@@ -156,9 +158,9 @@ export class ConfigVariantStore {
         id: variant.id,
         config_id: variant.configId,
         environment_id: variant.environmentId,
-        value: serializeJson(variant.value),
-        schema: serializeJson(variant.schema),
-        overrides: serializeJson(variant.overrides),
+        value: variant.value,
+        schema: variant.schema,
+        overrides: JSON.stringify(variant.overrides),
         created_at: variant.createdAt,
         updated_at: variant.updatedAt,
         use_base_schema: variant.useBaseSchema,
@@ -181,13 +183,13 @@ export class ConfigVariantStore {
     };
 
     if (params.value !== undefined) {
-      updateData.value = serializeJson(params.value);
+      updateData.value = params.value;
     }
     if (params.schema !== undefined) {
-      updateData.schema = serializeJson(params.schema);
+      updateData.schema = params.schema;
     }
     if (params.overrides !== undefined) {
-      updateData.overrides = serializeJson(params.overrides);
+      updateData.overrides = JSON.stringify(params.overrides);
     }
     if (params.useBaseSchema !== undefined) {
       updateData.use_base_schema = params.useBaseSchema;
@@ -241,9 +243,9 @@ export class ConfigVariantStore {
       id: row.id,
       configId: row.config_id,
       environmentId: row.environment_id,
-      value: deserializeJson(row.value),
-      schema: row.schema ? deserializeJson(row.schema) : null,
-      overrides: deserializeJson(row.overrides) ?? [],
+      value: row.value as ConfigValue,
+      schema: row.schema as ConfigSchema | null,
+      overrides: JSON.parse(row.overrides),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       useBaseSchema: row.use_base_schema,

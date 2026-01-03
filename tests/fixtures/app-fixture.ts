@@ -5,7 +5,7 @@ import type {AdminApiKeyScope} from '@/engine/core/db';
 import {createUserIdentity, type Identity} from '@/engine/core/identity';
 import type {LogLevel} from '@/engine/core/logger';
 import {normalizeEmail} from '@/engine/core/utils';
-import {asConfigSchema, asConfigValue, type NormalizedEmail} from '@/engine/core/zod';
+import type {ConfigSchema, ConfigValue, NormalizedEmail} from '@/engine/core/zod';
 import {createEdge, type Edge} from '@/engine/edge';
 import {createEngine, type Engine} from '@/engine/engine';
 import {getDatabaseUrl} from '@/environment';
@@ -244,8 +244,8 @@ export class AppFixture {
    */
   async createConfig(params: {
     name: string;
-    value: unknown;
-    schema: unknown | null;
+    value: ConfigValue;
+    schema: ConfigSchema | null;
     overrides: any[];
     description: string;
     identity: Identity;
@@ -267,14 +267,14 @@ export class AppFixture {
       maintainerEmails: params.maintainerEmails,
       projectId: params.projectId,
       defaultVariant: {
-        value: asConfigValue(params.value),
-        schema: params.schema !== null ? asConfigSchema(params.schema) : null,
+        value: params.value,
+        schema: params.schema,
         overrides: params.overrides,
       },
       environmentVariants: environments.map(env => ({
         environmentId: env.id,
-        value: asConfigValue(params.value),
-        schema: params.schema !== null ? asConfigSchema(params.schema) : null,
+        value: params.value,
+        schema: params.schema,
         overrides: params.overrides,
         useBaseSchema: false,
       })),

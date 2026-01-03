@@ -1,6 +1,5 @@
 import type {Kysely, Selectable} from 'kysely';
 import type {AuditLogs, DB} from '../db';
-import {deserializeJson, serializeJson} from '../store-utils';
 import {createUuidV7} from '../uuid';
 import type {ConfigId} from './config-store';
 
@@ -458,7 +457,7 @@ export class AuditLogStore {
           id: log.id,
           created_at: log.createdAt,
           config_id: log.configId,
-          payload: serializeJson(log.payload),
+          payload: JSON.stringify(log.payload),
           user_id: log.userId,
           project_id: log.projectId,
         },
@@ -496,7 +495,7 @@ function toAuditLog(log: Selectable<AuditLogs>): AuditLog {
     configId: log.config_id,
     createdAt: log.created_at,
     id: log.id,
-    payload: deserializeJson<AuditLogPayload>(log.payload),
+    payload: JSON.parse(log.payload) as AuditLogPayload,
     userId: log.user_id,
     projectId: log.project_id,
   };
