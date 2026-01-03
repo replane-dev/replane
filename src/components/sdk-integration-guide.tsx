@@ -13,14 +13,8 @@ import {
 import {Skeleton} from '@/components/ui/skeleton';
 import {Switch} from '@/components/ui/switch';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
-import {
-  generateUsageSnippet,
-  generateUsageSnippetWithCodegen,
-  getTypesFileName,
-  SDK_LANGUAGE_LIST,
-  SDK_LANGUAGES,
-  type SdkLanguage,
-} from '@/lib/sdk-languages';
+import {UsageExampleSnippet} from '@/components/usage-example-snippet';
+import {getTypesFileName, SDK_LANGUAGE_LIST, SDK_LANGUAGES, type SdkLanguage} from '@/lib/sdk-languages';
 import {SDK_STORAGE_KEYS, useLocalStorage} from '@/lib/use-local-storage';
 import {useTRPC} from '@/trpc/client';
 import {useQuery, useSuspenseQuery} from '@tanstack/react-query';
@@ -111,25 +105,6 @@ export function SdkIntegrationGuide({
   const langConfig = SDK_LANGUAGES[selectedLanguage];
   const installSnippet = langConfig.installSnippet;
   const defineTypesSnippet = typesData?.types ?? '';
-  const exampleConfigName = typesData?.exampleConfigName ?? 'your-config';
-  const configNames = typesData?.configNames ?? ['your-config'];
-
-  // Generate usage snippet based on whether codegen is enabled
-  const usageSnippet =
-    codegenEnabled && typesData
-      ? generateUsageSnippetWithCodegen({
-          language: selectedLanguage,
-          sdkKey: sdkKeyValue,
-          baseUrl,
-          exampleConfigName,
-          configNames,
-        })
-      : generateUsageSnippet({
-          language: selectedLanguage,
-          sdkKey: sdkKeyValue,
-          baseUrl,
-          exampleConfigName,
-        });
 
   const showEnvironmentSelector = !initialEnvironmentId;
 
@@ -251,23 +226,15 @@ export function SdkIntegrationGuide({
 
             {/* Basic Usage */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-foreground">3. Use the client</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(usageSnippet, `basic-${lang}`)}
-                  className="h-7 text-xs"
-                  disabled={codegenEnabled && isTypesLoading}
-                >
-                  {copiedSnippet === `basic-${lang}` ? 'Copied!' : 'Copy'}
-                </Button>
-              </div>
-              {codegenEnabled && isTypesLoading ? (
-                <Skeleton className="h-64 w-full rounded-lg" />
-              ) : (
-                <CodeSnippet tabSize={4} code={usageSnippet} language={langConfig.codeLanguage} />
-              )}
+              <h4 className="text-sm font-semibold text-foreground">3. Use the client</h4>
+              <UsageExampleSnippet
+                language={selectedLanguage}
+                sdkKey={sdkKeyValue}
+                baseUrl={baseUrl}
+                typesData={codegenEnabled ? typesData : null}
+                isLoading={codegenEnabled && isTypesLoading}
+                label=""
+              />
               {!sdkKey && (
                 <p className="text-xs text-muted-foreground italic">
                   Replace{' '}

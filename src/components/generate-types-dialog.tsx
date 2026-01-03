@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {UsageExampleSnippet} from '@/components/usage-example-snippet';
 import {
   getTypesFileName,
   SDK_LANGUAGE_LIST,
@@ -92,6 +93,18 @@ function GenerateTypesContent() {
       language: codegenLanguage,
     }),
   );
+
+  // Fetch SDK keys for the selected environment to get a valid SDK key for usage example
+  const {data: sdkKeysData} = useQuery(
+    trpc.getSdkKeyList.queryOptions({
+      projectId,
+      environmentId: selectedEnvironmentId,
+    }),
+  );
+
+  const sdkKey = sdkKeysData?.sdkKeys[0]?.key ?? 'your-project-sdk-key-here';
+  const baseUrl =
+    typeof window !== 'undefined' ? window.location.origin : 'https://replane.your-domain.com';
 
   // Show toast when fetch completes after environment change
   useEffect(() => {
@@ -194,6 +207,16 @@ function GenerateTypesContent() {
                 <CodeSnippet code={data.types} language={langConfig.codeLanguage} />
               )}
             </div>
+
+            {/* Usage example */}
+            <UsageExampleSnippet
+              language={selectedLanguage}
+              sdkKey={sdkKey}
+              baseUrl={baseUrl}
+              typesData={data}
+              isLoading={isLoading}
+              label="Usage Example"
+            />
           </TabsContent>
         ))}
       </Tabs>
