@@ -25,7 +25,7 @@ primary_region = 'iad'
     path = "/api/health"
 
 [env]
-  APP_TITLE = "Replane Cloud: Managed Dynamic Configuration Platform"
+  APP_TITLE = "Replane Cloud: Dynamic Configuration Platform"
   APP_DESCRIPTION = "Open-source platform for feature flags, remote configuration, and A/B testing. Real-time updates with zero downtime."
 
   BASE_URL = "https://cloud.replane.dev"
