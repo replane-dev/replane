@@ -1,4 +1,5 @@
 import assert from 'assert';
+import {spawn} from 'child_process';
 import {InputData, JSONSchemaInput, quicktype} from 'quicktype-core';
 import {BadRequestError} from '../errors';
 import type {Identity} from '../identity';
@@ -139,9 +140,7 @@ const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
   },
   python: {
     lang: 'python',
-    rendererOptions: {
-      'python-version': '3.7',
-    },
+    rendererOptions: {},
     commentPrefix: '"""\n',
     commentSuffix: '\n"""',
   },
@@ -156,6 +155,61 @@ const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
     commentSuffix: '\n */',
   },
 };
+
+/**
+ * Generates Python types using datamodel-code-generator.
+ * Uses TypedDict output for type-safe dictionary definitions.
+ */
+async function generatePythonTypes(schema: Record<string, any>): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('python3', [
+      '-m',
+      'datamodel_code_generator',
+      '--input-file-type',
+      'jsonschema',
+      '--output-model-type',
+      'typing.TypedDict',
+    ]);
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code: number | null) => {
+      if (code === 0) {
+        // Remove the auto-generated header from datamodel-code-generator
+        // as we'll add our own header
+        const lines = stdout.split('\n');
+        const contentStartIndex = lines.findIndex(
+          line => line.startsWith('from __future__') || line.startsWith('from typing'),
+        );
+        const content = contentStartIndex >= 0 ? lines.slice(contentStartIndex).join('\n') : stdout;
+        resolve(content.trim());
+      } else {
+        reject(
+          new Error(
+            `datamodel-code-generator failed with code ${code}: ${stderr || 'Unknown error'}`,
+          ),
+        );
+      }
+    });
+
+    proc.on('error', (err: Error) => {
+      reject(new Error(`Failed to spawn datamodel-code-generator: ${err.message}`));
+    });
+
+    // Write the schema to stdin
+    proc.stdin.write(JSON.stringify(schema));
+    proc.stdin.end();
+  });
+}
 
 /**
  * Generates the header comment for the types file.
@@ -239,24 +293,33 @@ export function createGetProjectConfigTypesUseCase(
       schemas as Array<{name: string; schema: Record<string, any> | null}>,
     );
 
-    // Get language-specific configuration
-    const langConfig = LANGUAGE_CONFIGS[language];
+    // Generate types based on language
+    let generatedTypes: string;
 
-    // Use quicktype to generate types for the specified language
-    const schemaInput = new JSONSchemaInput(undefined);
-    await schemaInput.addSource({
-      name: 'Configs',
-      schema: JSON.stringify(configsSchema),
-    });
+    if (language === 'python') {
+      // Use datamodel-code-generator for Python
+      generatedTypes = await generatePythonTypes(configsSchema);
+    } else {
+      // Use quicktype for TypeScript and C#
+      const langConfig = LANGUAGE_CONFIGS[language];
 
-    const inputData = new InputData();
-    inputData.addInput(schemaInput);
+      const schemaInput = new JSONSchemaInput(undefined);
+      await schemaInput.addSource({
+        name: 'Configs',
+        schema: JSON.stringify(configsSchema),
+      });
 
-    const result = await quicktype({
-      inputData,
-      lang: langConfig.lang,
-      rendererOptions: langConfig.rendererOptions,
-    });
+      const inputData = new InputData();
+      inputData.addInput(schemaInput);
+
+      const result = await quicktype({
+        inputData,
+        lang: langConfig.lang,
+        rendererOptions: langConfig.rendererOptions,
+      });
+
+      generatedTypes = result.lines.join('\n').trim();
+    }
 
     const projectEnvironment = await tx.projectEnvironments.getById({
       environmentId: req.environmentId,
@@ -284,7 +347,7 @@ export function createGetProjectConfigTypesUseCase(
     });
 
     return {
-      types: `${header}\n\n${result.lines.join('\n').trim()}`,
+      types: `${header}\n\n${generatedTypes}`,
       configNames: schemas.map(schema => schema.name),
       exampleConfigName: exampleConfig.name,
       language,

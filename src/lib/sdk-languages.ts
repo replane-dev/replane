@@ -4,7 +4,13 @@
 
 export type SdkLanguage = 'javascript' | 'python' | 'csharp';
 
-export type CodeSnippetLanguage = 'typescript' | 'javascript' | 'shell' | 'json' | 'python' | 'csharp';
+export type CodeSnippetLanguage =
+  | 'typescript'
+  | 'javascript'
+  | 'shell'
+  | 'json'
+  | 'python'
+  | 'csharp';
 
 export interface SdkLanguageConfig {
   id: SdkLanguage;
@@ -98,15 +104,18 @@ with Replane(
     sdk_key="${sdkKey}",
 ) as client:
     # Get config value
-    config = client.get("${exampleConfigName}")
+    config = client.configs["${exampleConfigName}"]
+
+    # Safe access with default fallback
+    # config = client.configs.get("${exampleConfigName}", default_value)
 
     # Configs are automatically updated in realtime via SSE
-    # No need to refetch or reload - just call get() again
+    # No need to refetch - just access .configs again
 
 # Alternative: async client
 # from replane import AsyncReplane
 # async with AsyncReplane(...) as client:
-#     config = client.get("${exampleConfigName}")`;
+#     config = client.configs["${exampleConfigName}"]`;
 
     case 'csharp':
       return `using Replane;
@@ -181,29 +190,26 @@ replane.disconnect();`;
 
     case 'python':
       return `from replane import Replane
-from replane_types import Configs, ${sampleConfigs.map(toPascalCase).join(', ')}
+from replane_types import Configs
 
 # Using context manager (recommended)
-with Replane(
+with Replane[Configs](
     base_url="${baseUrl}",
     sdk_key="${sdkKey}",
 ) as client:
-    # Get raw config value
-    raw_config = client.get("${exampleConfigName}")
-
-    # Parse into typed dataclass for full type safety
-    ${toSnakeCase(exampleConfigName)} = ${toPascalCase(exampleConfigName)}.from_dict(raw_config)
+    # Access configs with full type safety using .configs
+    ${toSnakeCase(exampleConfigName)} = client.configs["${exampleConfigName}"]
 ${sampleConfigs
   .filter(name => name !== exampleConfigName)
   .slice(0, 1)
-  .map(name => `    ${toSnakeCase(name)} = ${toPascalCase(name)}.from_dict(client.get("${name}"))`)
+  .map(name => `    ${toSnakeCase(name)} = client.configs["${name}"]`)
   .join('\n')}
 
-    # Access typed properties
-    # print(${toSnakeCase(exampleConfigName)}.some_property)
+    # Access typed properties using bracket notation
+    # print(${toSnakeCase(exampleConfigName)}["some_property"])
 
     # Configs are automatically updated in realtime via SSE
-    # No need to refetch or reload - just call get() again`;
+    # No need to refetch - just access .configs again`;
 
     case 'csharp':
       return `using Replane;
