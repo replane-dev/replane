@@ -102,20 +102,20 @@ replane.disconnect();`;
 with Replane(
     base_url="${baseUrl}",
     sdk_key="${sdkKey}",
-) as client:
+) as replane:
     # Get config value
-    config = client.configs["${exampleConfigName}"]
+    config = replane.configs["${exampleConfigName}"]
 
     # Safe access with default fallback
-    # config = client.configs.get("${exampleConfigName}", default_value)
+    # config = replane.configs.get("${exampleConfigName}", default_value)
 
     # Configs are automatically updated in realtime via SSE
     # No need to refetch - just access .configs again
 
 # Alternative: async client
 # from replane import AsyncReplane
-# async with AsyncReplane(...) as client:
-#     config = client.configs["${exampleConfigName}"]`;
+# async with AsyncReplane(...) as replane:
+#     config = replane.configs["${exampleConfigName}"]`;
 
     case 'csharp':
       return `using Replane;
@@ -196,13 +196,13 @@ from replane_types import Configs
 with Replane[Configs](
     base_url="${baseUrl}",
     sdk_key="${sdkKey}",
-) as client:
+) as replane:
     # Access configs with full type safety using .configs
-    ${toSnakeCase(exampleConfigName)} = client.configs["${exampleConfigName}"]
+    ${toSnakeCase(exampleConfigName)} = replane.configs["${exampleConfigName}"]
 ${sampleConfigs
   .filter(name => name !== exampleConfigName)
   .slice(0, 1)
-  .map(name => `    ${toSnakeCase(name)} = client.configs["${name}"]`)
+  .map(name => `    ${toSnakeCase(name)} = replane.configs["${name}"]`)
   .join('\n')}
 
     # Access typed properties using bracket notation
