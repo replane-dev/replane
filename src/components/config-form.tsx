@@ -553,15 +553,6 @@ export function ConfigForm(props: ConfigFormProps) {
   const watchedEnvVariants = useWatch({control: form.control, name: 'environmentVariants'});
   const watchedEditors = useWatch({control: form.control, name: 'editors'});
 
-  const overrideBuilderDefaultValue = React.useMemo(() => {
-    if (!watchedDefaultVariant?.value) return null;
-    try {
-      return JSON.parse(watchedDefaultVariant.value);
-    } catch {
-      return null;
-    }
-  }, [watchedDefaultVariant?.value]);
-
   // Notify parent of value changes for live testing
   React.useEffect(() => {
     if (onValuesChange && watchedDefaultVariant) {
@@ -1026,7 +1017,7 @@ export function ConfigForm(props: ConfigFormProps) {
             canEditSchema={canEditSchema}
             canEditOverrides={canEditOverrides}
             watchedVariant={watchedDefaultVariant}
-            overrideBuilderDefaultValue={overrideBuilderDefaultValue}
+            overrideBuilderDefaultValue={watchedDefaultVariant.value}
             liveSchema={liveSchema}
             configName={watchedName || currentName}
           />
