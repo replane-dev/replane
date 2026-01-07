@@ -445,7 +445,10 @@ export function ConfigForm(props: ConfigFormProps) {
       processedEnvVariants.push({
         environmentId: variant.environmentId,
         value: variant.value as ConfigValue,
-        schema: variant.schema as ConfigSchema | null,
+        schema:
+          !variant.useBaseSchema && variant.schemaEnabled
+            ? (variant.schema as ConfigSchema | null)
+            : null,
         overrides: variant.overrides as Override[],
         useBaseSchema: variant.useBaseSchema,
       });
