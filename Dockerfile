@@ -26,11 +26,11 @@ COPY scripts/install-pg.sh .
 RUN chmod +x install-pg.sh
 RUN ./install-pg.sh
 
-# Install Python and datamodel-code-generator for Python type generation
+# Install Python and jsonschema-gentypes for Python type generation
 RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 \
   python3-pip \
-  && pip3 install --no-cache-dir --break-system-packages datamodel-code-generator \
+  && pip3 install --no-cache-dir --break-system-packages jsonschema-gentypes \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 

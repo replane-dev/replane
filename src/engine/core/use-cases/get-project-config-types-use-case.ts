@@ -1,5 +1,8 @@
 import assert from 'assert';
 import {spawn} from 'child_process';
+import {mkdtemp, readFile, rm, writeFile} from 'fs/promises';
+import {tmpdir} from 'os';
+import {join} from 'path';
 import {InputData, JSONSchemaInput, quicktype} from 'quicktype-core';
 import {BadRequestError} from '../errors';
 import type {Identity} from '../identity';
@@ -157,58 +160,75 @@ const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
 };
 
 /**
- * Generates Python types using datamodel-code-generator.
+ * Generates Python types using jsonschema-gentypes.
  * Uses TypedDict output for type-safe dictionary definitions.
+ * jsonschema-gentypes only works with files, so we use temp files for input/output.
  */
 async function generatePythonTypes(schema: Record<string, any>): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('python3', [
-      '-m',
-      'datamodel_code_generator',
-      '--input-file-type',
-      'jsonschema',
-      '--output-model-type',
-      'typing.TypedDict',
-    ]);
+  // Create a temp directory for our files
+  const tempDir = await mkdtemp(join(tmpdir(), 'replane-types-'));
+  const schemaPath = join(tempDir, 'schema.json');
+  const outputPath = join(tempDir, 'models.py');
 
-    let stdout = '';
-    let stderr = '';
+  try {
+    // Write the schema to a temp file
+    await writeFile(
+      schemaPath,
+      JSON.stringify(
+        {
+          title: 'Configs',
+          ...schema,
+        },
+        null,
+        2,
+      ),
+    );
 
-    proc.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
+    // Run jsonschema-gentypes
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('jsonschema-gentypes', [
+        '--json-schema',
+        schemaPath,
+        '--python',
+        outputPath,
+      ]);
+
+      let stderr = '';
+
+      proc.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code: number | null) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(`jsonschema-gentypes failed with code ${code}: ${stderr || 'Unknown error'}`),
+          );
+        }
+      });
+
+      proc.on('error', (err: Error) => {
+        reject(new Error(`Failed to spawn jsonschema-gentypes: ${err.message}`));
+      });
     });
 
-    proc.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
+    // Read the generated output
+    const output = await readFile(outputPath, 'utf-8');
 
-    proc.on('close', (code: number | null) => {
-      if (code === 0) {
-        // Remove the auto-generated header from datamodel-code-generator
-        // as we'll add our own header
-        const lines = stdout.split('\n');
-        const contentStartIndex = lines.findIndex(
-          line => line.startsWith('from __future__') || line.startsWith('from typing'),
-        );
-        const content = contentStartIndex >= 0 ? lines.slice(contentStartIndex).join('\n') : stdout;
-        resolve(content.trim());
-      } else {
-        reject(
-          new Error(
-            `datamodel-code-generator failed with code ${code}: ${stderr || 'Unknown error'}`,
-          ),
-        );
-      }
-    });
+    // Remove any auto-generated header as we'll add our own
+    const lines = output.split('\n');
+    const contentStartIndex = lines.findIndex(
+      line => line.startsWith('from __future__') || line.startsWith('from typing'),
+    );
+    const content = contentStartIndex >= 0 ? lines.slice(contentStartIndex).join('\n') : output;
 
-    proc.on('error', (err: Error) => {
-      reject(new Error(`Failed to spawn datamodel-code-generator: ${err.message}`));
-    });
-
-    // Write the schema to stdin
-    proc.stdin.write(JSON.stringify(schema));
-    proc.stdin.end();
-  });
+    return content.trim();
+  } finally {
+    // Clean up temp files
+    await rm(tempDir, {recursive: true, force: true});
+  }
 }
 
 /**
@@ -297,7 +317,7 @@ export function createGetProjectConfigTypesUseCase(
     let generatedTypes: string;
 
     if (language === 'python') {
-      // Use datamodel-code-generator for Python
+      // Use jsonschema-gentypes for Python
       generatedTypes = await generatePythonTypes(configsSchema);
     } else {
       // Use quicktype for TypeScript and C#
