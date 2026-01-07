@@ -56,6 +56,7 @@ export function ConfigDetailView({
   );
   const updateConfig = useMutation(trpc.updateConfig.mutationOptions());
   const createConfigProposal = useMutation(trpc.createConfigProposal.mutationOptions());
+  const deleteConfigMutation = useMutation(trpc.deleteConfig.mutationOptions());
   const rejectAllPendingProposals = useMutation(
     trpc.rejectAllPendingConfigProposals.mutationOptions(),
   );
@@ -143,6 +144,28 @@ export function ConfigDetailView({
     setShowPendingWarning(false);
     setPendingEditData(null);
     await executeUpdateConfig(pendingEditData);
+  }
+
+  async function handleDelete() {
+    if (!config) return;
+
+    try {
+      await deleteConfigMutation.mutateAsync({
+        projectId,
+        configName,
+        prevVersion: config.config.version,
+      });
+      toast.success('Config deleted successfully');
+      onDelete?.();
+    } catch (error: any) {
+      if (error?.data?.cause?.code === 'CONFIG_VERSION_MISMATCH') {
+        alert(
+          'The config was modified by another user. Please refresh the page and try again.',
+        );
+      } else {
+        throw error;
+      }
+    }
   }
 
   return (
@@ -270,8 +293,8 @@ export function ConfigDetailView({
         updatedAt={config.config.updatedAt}
         currentVersion={config.config.version}
         versionsLink={`/app/projects/${projectId}/configs/${encodeURIComponent(configName)}/versions`}
-        submitting={updateConfig.isPending || createConfigProposal.isPending}
-        onDelete={onDelete}
+        submitting={updateConfig.isPending || createConfigProposal.isPending || deleteConfigMutation.isPending}
+        onDelete={onDelete ? handleDelete : undefined}
         onSave={handleSave}
         onPropose={handlePropose}
         onTestOverrides={() => {
