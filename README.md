@@ -14,7 +14,7 @@
     <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-with-border-v2.jpg">
 </picture>
 
-Replane is a dynamic configuration manager that lets you store feature flags, app settings, validation rules, UI text, and more in one place—with version history, optional approvals, and realtime sync. Delegate editing to teammates and share config across services. No redeploys needed.
+Replane is a dynamic configuration manager that lets you tweak your software without running scripts or building your own admin panel. Store feature flags, rate limits, UI text, log level, rollout percentage, and more—with real-time sync. Delegate editing to teammates and share config across services. No redeploys needed.
 
 ## Quick Start
 
