@@ -14,7 +14,7 @@
     <img alt="Replane Screenshot" src="./public/replane-window-screenshot-light-with-border-v2.jpg">
 </picture>
 
-Replane is a dynamic configuration manager that lets you tweak your software without running scripts or building your own admin panel. Store feature flags, rate limits, UI text, log level, rollout percentage, and more—with real-time sync. Delegate editing to teammates and share config across services. No redeploys needed.
+Replane is a dynamic configuration manager that lets you tweak your software without running scripts or building your own admin panel. Store feature flags, rate limits, UI text, log level, rollout percentage, and more. Delegate editing to teammates and share config across services. No redeploys needed.
 
 ## Quick Start
 
@@ -37,17 +37,16 @@ Open your browser at http://localhost:8080.
 
 ## Features
 
+- **JSON Schema validation** – prevent invalid configs; auto-generate TypeScript types
+- **Real-time updates** – sub-millisecond config reads; sub-second config change via SSE
 - **Version history** – every change creates a snapshot; restore any previous state
 - **Change proposals** – require review before changes go live; per-project or per-environment
-- **Realtime updates** – SDKs receive latest changes via Server-Sent Events
 - **Audit log** – track who changed what, when, and why
-- **JSON Schema validation** – prevent invalid configs; auto-generate TypeScript types
 - **Environments** – different values for production, staging, development
 - **Overrides** – return different values based on context (user ID, plan, region)
 - **Role-based access** – workspace admins, project maintainers, config editors
 - **Email notifications** – notify approvers and authors on proposal events
 - **High availability** – each node [can operate independently](https://replane.dev/docs/concepts/architecture/#high-availability) if others are down
-- **Low latency** – sub-millisecond config reads; sub-second propagation via SSE
 
 ## Official SDKs
 
