@@ -6,6 +6,7 @@ import {
   REPLICA_STEP_INTERVAL_MS as REPLICATOR_STEP_INTERVAL_MS,
 } from './constants';
 import {GLOBAL_CONTEXT, type Context} from './context';
+import {getErrorFingerprint} from './errors';
 import {ConsumerDestroyedError, EventHubTopic} from './event-hub';
 import type {Logger} from './logger';
 import type {Observer} from './observable';
@@ -139,7 +140,7 @@ export class Replicator<TSource, TTarget> {
   }
 
   private _isStopped = false;
-  private lastErrorReportTime = 0;
+  private lastErrorReportTimeByFingerprint = new Map<string, number>();
 
   private constructor(
     private readonly source: ReplicatorSource<TSource>,
@@ -176,10 +177,13 @@ export class Replicator<TSource, TTarget> {
       } catch (error) {
         this.logger.error(GLOBAL_CONTEXT, {msg: 'Replicator step error', error});
 
-        // Debounce Sentry error reporting to avoid flooding during network issues
+        // Debounce Sentry error reporting per error fingerprint to avoid flooding
+        // during network issues while still capturing different error types
+        const fingerprint = getErrorFingerprint(error);
         const now = Date.now();
-        if (now - this.lastErrorReportTime >= REPLICATOR_ERROR_REPORT_DEBOUNCE_MS) {
-          this.lastErrorReportTime = now;
+        const lastReportTime = this.lastErrorReportTimeByFingerprint.get(fingerprint) ?? 0;
+        if (now - lastReportTime >= REPLICATOR_ERROR_REPORT_DEBOUNCE_MS) {
+          this.lastErrorReportTimeByFingerprint.set(fingerprint, now);
           Sentry.captureException(error, {
             extra: {
               consumerId: this.consumer.consumerId,

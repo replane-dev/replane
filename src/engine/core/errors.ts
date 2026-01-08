@@ -41,3 +41,12 @@ export class TooManyRequestsError extends Error {
     this.name = 'TooManyRequestsError';
   }
 }
+
+export function getErrorFingerprint(error: unknown): string {
+  if (error instanceof Error) {
+    const messageLine = error.message;
+    const stackLines = (error.stack ?? '').split('\n').join('|');
+    return `${error.name}:${messageLine}:${stackLines}`;
+  }
+  return String(error).slice(0, 100);
+}
