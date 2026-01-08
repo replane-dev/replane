@@ -45,6 +45,9 @@ on:
         type: number
         default: 5
 
+permissions:
+  contents: read
+
 env:
   REPLANE_SUPERADMIN_API_KEY: 'test-superadmin-api-key-for-bench'
   REPLANE_ADMIN_URL: http://localhost:8091

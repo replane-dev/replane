@@ -4,6 +4,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   SUPERUSER_API_KEY: 'test-superuser-api-key-for-e2e'
   REPLANE_ADMIN_API_PORT: 8084
