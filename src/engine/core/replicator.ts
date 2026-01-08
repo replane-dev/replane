@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import {
   REPLICA_CONFIGS_DUMP_BATCH_SIZE as REPLICATOR_CONFIGS_DUMP_BATCH_SIZE,
+  REPLICATOR_ERROR_REPORT_DEBOUNCE_MS,
   REPLICA_STEP_EVENTS_COUNT as REPLICATOR_STEP_EVENTS_COUNT,
   REPLICA_STEP_INTERVAL_MS as REPLICATOR_STEP_INTERVAL_MS,
 } from './constants';
@@ -138,6 +139,7 @@ export class Replicator<TSource, TTarget> {
   }
 
   private _isStopped = false;
+  private lastErrorReportTime = 0;
 
   private constructor(
     private readonly source: ReplicatorSource<TSource>,
@@ -173,12 +175,18 @@ export class Replicator<TSource, TTarget> {
         status = await this.step().then(s => s.status);
       } catch (error) {
         this.logger.error(GLOBAL_CONTEXT, {msg: 'Replicator step error', error});
-        Sentry.captureException(error, {
-          extra: {
-            consumerId: this.consumer.consumerId,
-            topic: this.consumer.topic,
-          },
-        });
+
+        // Debounce Sentry error reporting to avoid flooding during network issues
+        const now = Date.now();
+        if (now - this.lastErrorReportTime >= REPLICATOR_ERROR_REPORT_DEBOUNCE_MS) {
+          this.lastErrorReportTime = now;
+          Sentry.captureException(error, {
+            extra: {
+              consumerId: this.consumer.consumerId,
+              topic: this.consumer.topic,
+            },
+          });
+        }
 
         if (error instanceof ConsumerDestroyedError) {
           this._isStopped = true;
