@@ -281,8 +281,8 @@ importers:
         specifier: ^0.9.4
         version: 0.9.4
       '@replanejs/sdk':
-        specifier: ^0.9.4
-        version: 0.9.4
+        specifier: ^1.0.2
+        version: 1.0.2
       '@replanejs/test-suite':
         specifier: ^0.9.4
         version: 0.9.4(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
@@ -2243,6 +2243,10 @@ packages:
     resolution: {integrity: sha512-FvOfoYcPHTR6ecHIGyg/H1ZhoGebnOgjtMWsijsMPtdC1fx42RGbF8cXTJb8TbFqEUHMumz/H22N8t1XwwMTxQ==}
     engines: {node: '>=18.0.0'}
 
+  '@replanejs/sdk@1.0.2':
+    resolution: {integrity: sha512-w6Z3sGfxnE0ZRQIGdVsu9ICjvnj1BxZ5zC3hz/r2O7vJQtROYdwT8legViBZ7Gd3/K8nqxO0r9qv6vQopg2u1A==}
+    engines: {node: '>=18.0.0'}
+
   '@replanejs/test-suite@0.9.4':
     resolution: {integrity: sha512-wZOBe3Xj0Gby4MPOvNyX9Zf9vRlQdiEMygCmX+6XHspgUtdFir0S+HeiPcFcprksQKyiOX9n7j7v+3IweNM6Yw==}
     engines: {node: '>=18.0.0'}
@@ -2921,8 +2925,8 @@ packages:
   '@types/node@20.19.25':
     resolution: {integrity: sha512-ZsJzA5thDQMSQO788d7IocwwQbI8B5OPzmqNvpf3NY/+MHDAS759Wo0gd2WQeXYt5AAAQjzcrTVC6SKCuYgoCQ==}
 
-  '@types/node@20.19.27':
-    resolution: {integrity: sha512-N2clP5pJhB2YnZJ3PIHFk5RkygRX5WO/5f0WC08tp0wd+sv0rsJk3MqWn3CbNmT2J505a5336jaQj4ph1AdMug==}
+  '@types/node@20.19.28':
+    resolution: {integrity: sha512-VyKBr25BuFDzBFCK5sUM6ZXiWfqgCTwTAOK8qzGV/m9FCirXYDlmczJ+d5dXBAQALGCdRRdbteKYfJ84NGEusw==}
 
   '@types/nodemailer@7.0.4':
     resolution: {integrity: sha512-ee8fxWqOchH+Hv6MDDNNy028kwvVnLplrStm4Zf/3uHWw5zzo8FoYYeffpJtGs2wWysEumMH0ZIdMGMY1eMAow==}
@@ -8356,6 +8360,8 @@ snapshots:
 
   '@replanejs/sdk@0.9.4': {}
 
+  '@replanejs/sdk@1.0.2': {}
+
   '@replanejs/test-suite@0.9.4(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@replanejs/admin': 0.9.4
@@ -9150,7 +9156,7 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@20.19.27':
+  '@types/node@20.19.28':
     dependencies:
       undici-types: 6.21.0
 
@@ -11037,7 +11043,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 20.19.27
+      '@types/node': 20.19.28
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
