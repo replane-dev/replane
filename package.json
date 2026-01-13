@@ -113,7 +113,7 @@
     "react-dropzone": "^14.3.8",
     "react-error-boundary": "^6.0.3",
     "react-hook-form": "^7.71.0",
-    "react-resizable-panels": "^3.0.6",
+    "react-resizable-panels": "^4.4.0",
     "recharts": "^2.15.4",
     "require-in-the-middle": "^8.0.1",
     "server-only": "^0.0.1",
