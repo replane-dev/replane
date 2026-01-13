@@ -278,8 +278,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0(hono@4.11.4)(zod@4.3.5)
       '@replanejs/admin':
-        specifier: ^0.9.4
-        version: 0.9.4
+        specifier: ^1.0.2
+        version: 1.0.2
       '@replanejs/sdk':
         specifier: ^1.0.2
         version: 1.0.2
@@ -2281,6 +2281,10 @@ packages:
 
   '@replanejs/admin@0.9.4':
     resolution: {integrity: sha512-tDo47MsYX0zwU0hlp/VqpUkYlju9hJAZdsLBYV8qsZMLcYr/5zP6kqFpTIawcQVuAn3Di9cLzJaEaIIr1/E3qg==}
+    engines: {node: '>=18.0.0'}
+
+  '@replanejs/admin@1.0.2':
+    resolution: {integrity: sha512-WiY+DoYNJdrYxAeSud6pOdLl2eKyjnOGE0yDax4wEyHP6TyRfd7bF0AzieYbSr2DvGyT9laxfyWRoESRbmtEoA==}
     engines: {node: '>=18.0.0'}
 
   '@replanejs/next@0.9.4':
@@ -8504,6 +8508,8 @@ snapshots:
   '@radix-ui/rect@1.1.1': {}
 
   '@replanejs/admin@0.9.4': {}
+
+  '@replanejs/admin@1.0.2': {}
 
   '@replanejs/next@0.9.4(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
