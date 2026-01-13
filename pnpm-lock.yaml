@@ -278,8 +278,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0(hono@4.11.4)(zod@4.3.5)
       '@replanejs/admin':
-        specifier: ^0.9.4
-        version: 0.9.4
+        specifier: ^1.0.2
+        version: 1.0.2
       '@replanejs/sdk':
         specifier: ^1.0.2
         version: 1.0.2
