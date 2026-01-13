@@ -103,8 +103,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@replanejs/next':
-        specifier: ^0.9.4
-        version: 0.9.4(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+        specifier: ^1.0.2
+        version: 1.0.2(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@sentry/nextjs':
         specifier: ^10.33.0
         version: 10.33.0(@opentelemetry/context-async-hooks@2.3.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.3.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.3.0(@opentelemetry/api@1.9.0))(encoding@0.1.13)(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(webpack@5.103.0)
@@ -2279,30 +2279,22 @@ packages:
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
 
-  '@replanejs/admin@0.9.4':
-    resolution: {integrity: sha512-tDo47MsYX0zwU0hlp/VqpUkYlju9hJAZdsLBYV8qsZMLcYr/5zP6kqFpTIawcQVuAn3Di9cLzJaEaIIr1/E3qg==}
-    engines: {node: '>=18.0.0'}
-
   '@replanejs/admin@1.0.2':
     resolution: {integrity: sha512-WiY+DoYNJdrYxAeSud6pOdLl2eKyjnOGE0yDax4wEyHP6TyRfd7bF0AzieYbSr2DvGyT9laxfyWRoESRbmtEoA==}
     engines: {node: '>=18.0.0'}
 
-  '@replanejs/next@0.9.4':
-    resolution: {integrity: sha512-Nkw+AkxAtGB+MFyWwj+vYCliHTo31qXxZvoiWXKdp+f+Bxyps3rXx1/WohdCGwgZ9ePVEuCNejvUkuscTWfgAw==}
+  '@replanejs/next@1.0.2':
+    resolution: {integrity: sha512-txQ7DLGRgqky++D0Mvf+WVIfemOslD5y31pyuWzXNNvlt+gAk/GekvAT1Fn9/vcJ3q+yOQlLhu6wc0UOUOpaBw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       next: '>=13.0.0'
       react: '>=18.0.0'
 
-  '@replanejs/react@0.9.4':
-    resolution: {integrity: sha512-EZyOAuNrFUuQNwhjb4huPST3Y5s7wNfPAuuuuR5u3M7mNiP4Qh08V4i7QyHVbQ0oGE8f/oxtk/x8iLtwgYLAxQ==}
+  '@replanejs/react@1.0.2':
+    resolution: {integrity: sha512-QeV93Wvc3GPi6RA4i8Wvso2pE/H/AAzapmAn3RgBcMzJMudUVfVVogfR4N3LldiXBRBpv9seHMP8vbcsVG9rOA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: '>=18.0.0'
-
-  '@replanejs/sdk@0.9.4':
-    resolution: {integrity: sha512-FvOfoYcPHTR6ecHIGyg/H1ZhoGebnOgjtMWsijsMPtdC1fx42RGbF8cXTJb8TbFqEUHMumz/H22N8t1XwwMTxQ==}
-    engines: {node: '>=18.0.0'}
 
   '@replanejs/sdk@1.0.2':
     resolution: {integrity: sha512-w6Z3sGfxnE0ZRQIGdVsu9ICjvnj1BxZ5zC3hz/r2O7vJQtROYdwT8legViBZ7Gd3/K8nqxO0r9qv6vQopg2u1A==}
@@ -8507,23 +8499,19 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@replanejs/admin@0.9.4': {}
-
   '@replanejs/admin@1.0.2': {}
 
-  '@replanejs/next@0.9.4(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
+  '@replanejs/next@1.0.2(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@replanejs/react': 0.9.4(react@19.2.3)
-      '@replanejs/sdk': 0.9.4
+      '@replanejs/react': 1.0.2(react@19.2.3)
+      '@replanejs/sdk': 1.0.2
       next: 16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
 
-  '@replanejs/react@0.9.4(react@19.2.3)':
+  '@replanejs/react@1.0.2(react@19.2.3)':
     dependencies:
-      '@replanejs/sdk': 0.9.4
+      '@replanejs/sdk': 1.0.2
       react: 19.2.3
-
-  '@replanejs/sdk@0.9.4': {}
 
   '@replanejs/sdk@1.0.2': {}
 
