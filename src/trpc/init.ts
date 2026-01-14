@@ -60,12 +60,30 @@ const t = initTRPC.context<TrpcContext>().create({
    */
   transformer: superjson,
   errorFormatter: ({shape, error, path}) => {
-    Sentry.captureException(error.cause ?? error, {
-      extra: {
-        path,
-        code: error.code,
-      },
-    });
+    // Only capture server errors to Sentry, not client errors (crawlers, bad requests, etc.)
+    const isClientError =
+      error.code === 'PARSE_ERROR' ||
+      error.code === 'BAD_REQUEST' ||
+      error.code === 'UNAUTHORIZED' ||
+      error.code === 'NOT_FOUND' ||
+      error.code === 'FORBIDDEN' ||
+      error.code === 'METHOD_NOT_SUPPORTED' ||
+      error.code === 'TIMEOUT' ||
+      error.code === 'CONFLICT' ||
+      error.code === 'PRECONDITION_FAILED' ||
+      error.code === 'PAYLOAD_TOO_LARGE' ||
+      error.code === 'UNPROCESSABLE_CONTENT' ||
+      error.code === 'TOO_MANY_REQUESTS' ||
+      error.code === 'CLIENT_CLOSED_REQUEST';
+
+    if (!isClientError) {
+      Sentry.captureException(error.cause ?? error, {
+        extra: {
+          path,
+          code: error.code,
+        },
+      });
+    }
 
     // Pass through BadRequestError codes to the frontend
     if (error.cause instanceof BadRequestError && error.cause.code) {
