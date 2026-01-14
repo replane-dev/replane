@@ -50,6 +50,23 @@ export const createTrpcContext = cache(async (): Promise<TrpcContext> => {
   };
 });
 
+// Client errors that shouldn't be logged at error level
+export const CLIENT_ERROR_CODES = new Set([
+  'PARSE_ERROR',
+  'BAD_REQUEST',
+  'UNAUTHORIZED',
+  'NOT_FOUND',
+  'FORBIDDEN',
+  'METHOD_NOT_SUPPORTED',
+  'TIMEOUT',
+  'CONFLICT',
+  'PRECONDITION_FAILED',
+  'PAYLOAD_TOO_LARGE',
+  'UNPROCESSABLE_CONTENT',
+  'TOO_MANY_REQUESTS',
+  'CLIENT_CLOSED_REQUEST',
+]);
+
 // Avoid exporting the entire t-object
 // since it's not very descriptive.
 // For instance, the use of a t variable
@@ -61,20 +78,7 @@ const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   errorFormatter: ({shape, error, path}) => {
     // Only capture server errors to Sentry, not client errors (crawlers, bad requests, etc.)
-    const isClientError =
-      error.code === 'PARSE_ERROR' ||
-      error.code === 'BAD_REQUEST' ||
-      error.code === 'UNAUTHORIZED' ||
-      error.code === 'NOT_FOUND' ||
-      error.code === 'FORBIDDEN' ||
-      error.code === 'METHOD_NOT_SUPPORTED' ||
-      error.code === 'TIMEOUT' ||
-      error.code === 'CONFLICT' ||
-      error.code === 'PRECONDITION_FAILED' ||
-      error.code === 'PAYLOAD_TOO_LARGE' ||
-      error.code === 'UNPROCESSABLE_CONTENT' ||
-      error.code === 'TOO_MANY_REQUESTS' ||
-      error.code === 'CLIENT_CLOSED_REQUEST';
+    const isClientError = CLIENT_ERROR_CODES.has(error.code);
 
     if (!isClientError) {
       Sentry.captureException(error.cause ?? error, {
