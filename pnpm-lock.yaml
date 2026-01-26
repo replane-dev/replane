@@ -103,8 +103,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@replanejs/next':
-        specifier: ^1.0.2
-        version: 1.0.2(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
+        specifier: ^1.0.4
+        version: 1.0.4(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@sentry/nextjs':
         specifier: ^10.33.0
         version: 10.33.0(@opentelemetry/context-async-hooks@2.3.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.3.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.3.0(@opentelemetry/api@1.9.0))(encoding@0.1.13)(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(webpack@5.103.0)
@@ -278,14 +278,14 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0(hono@4.11.4)(zod@4.3.5)
       '@replanejs/admin':
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^1.0.4
+        version: 1.0.4
       '@replanejs/sdk':
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^1.0.4
+        version: 1.0.4
       '@replanejs/test-suite':
-        specifier: ^1.0.2
-        version: 1.0.2(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: ^1.0.4
+        version: 1.0.4(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
@@ -2279,29 +2279,29 @@ packages:
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
 
-  '@replanejs/admin@1.0.2':
-    resolution: {integrity: sha512-WiY+DoYNJdrYxAeSud6pOdLl2eKyjnOGE0yDax4wEyHP6TyRfd7bF0AzieYbSr2DvGyT9laxfyWRoESRbmtEoA==}
+  '@replanejs/admin@1.0.4':
+    resolution: {integrity: sha512-Sh06yE7LzvOo8woAw4diYIs26iV87TV8M2uqS+kXNsk6F7l3OTesetQTe2MGG3osWIZnGYJbwE5GkdEy1KaYjw==}
     engines: {node: '>=18.0.0'}
 
-  '@replanejs/next@1.0.2':
-    resolution: {integrity: sha512-txQ7DLGRgqky++D0Mvf+WVIfemOslD5y31pyuWzXNNvlt+gAk/GekvAT1Fn9/vcJ3q+yOQlLhu6wc0UOUOpaBw==}
+  '@replanejs/next@1.0.4':
+    resolution: {integrity: sha512-5RTnjm6PamWKuzsjPFP50JbS2/uI9fyPRtB8kuq1ZjS/KZIGQo/JB5GNWpzXfaTfEtIgTMpvv+vIkhO/UD62AA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       next: '>=13.0.0'
       react: '>=18.0.0'
 
-  '@replanejs/react@1.0.2':
-    resolution: {integrity: sha512-QeV93Wvc3GPi6RA4i8Wvso2pE/H/AAzapmAn3RgBcMzJMudUVfVVogfR4N3LldiXBRBpv9seHMP8vbcsVG9rOA==}
+  '@replanejs/react@1.0.4':
+    resolution: {integrity: sha512-OHSieaMb5K+HOAC4Pchap/ieXwGLJHSKreeea56w6K+dX/JjLGH+npImbzNebTJXMRqXR9EBB8WjstVCGoC77Q==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: '>=18.0.0'
 
-  '@replanejs/sdk@1.0.2':
-    resolution: {integrity: sha512-w6Z3sGfxnE0ZRQIGdVsu9ICjvnj1BxZ5zC3hz/r2O7vJQtROYdwT8legViBZ7Gd3/K8nqxO0r9qv6vQopg2u1A==}
+  '@replanejs/sdk@1.0.4':
+    resolution: {integrity: sha512-4FGCAwKcpPPymaCVItsAb45Fs61HR8JW3SuEnASbHj+fqoeC63YlwAc6j3m5CvwUduElByqLgJdC328/bHQjDg==}
     engines: {node: '>=18.0.0'}
 
-  '@replanejs/test-suite@1.0.2':
-    resolution: {integrity: sha512-U6/4lBYs9TSoqNaEMVNT4d4kfCc6khlz2cYuPrY6tmQI6FKUKp7OL0HWuc/YCIMkpgEpiSp2edugOtIgqGJJRQ==}
+  '@replanejs/test-suite@1.0.4':
+    resolution: {integrity: sha512-rPSzot5lByfmdkuRrJAl2t3SC/FeK9B6YSfeVlsU6fiILgRFGFlOQ4RsFJq5mvyuhMBnZhkLS97dTG049xYPSg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       vitest: '>=2.0.0'
@@ -8499,26 +8499,26 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@replanejs/admin@1.0.2': {}
+  '@replanejs/admin@1.0.4': {}
 
-  '@replanejs/next@1.0.2(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
+  '@replanejs/next@1.0.4(next@16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@replanejs/react': 1.0.2(react@19.2.3)
-      '@replanejs/sdk': 1.0.2
+      '@replanejs/react': 1.0.4(react@19.2.3)
+      '@replanejs/sdk': 1.0.4
       next: 16.1.1(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
 
-  '@replanejs/react@1.0.2(react@19.2.3)':
+  '@replanejs/react@1.0.4(react@19.2.3)':
     dependencies:
-      '@replanejs/sdk': 1.0.2
+      '@replanejs/sdk': 1.0.4
       react: 19.2.3
 
-  '@replanejs/sdk@1.0.2': {}
+  '@replanejs/sdk@1.0.4': {}
 
-  '@replanejs/test-suite@1.0.2(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@replanejs/test-suite@1.0.4(vitest@3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
-      '@replanejs/admin': 1.0.2
-      '@replanejs/sdk': 1.0.2
+      '@replanejs/admin': 1.0.4
+      '@replanejs/sdk': 1.0.4
       vitest: 3.2.4(@types/node@20.19.25)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@rolldown/pluginutils@1.0.0-beta.53': {}
