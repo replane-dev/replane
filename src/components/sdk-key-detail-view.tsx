@@ -2,13 +2,15 @@
 
 import {SdkIntegrationGuide} from '@/components/sdk-integration-guide';
 import {Button} from '@/components/ui/button';
+import {Textarea} from '@/components/ui/textarea';
+import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {isValidUuid} from '@/engine/core/utils';
 import {useTRPC} from '@/trpc/client';
-import {useMutation, useSuspenseQuery} from '@tanstack/react-query';
+import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query';
 import {format, formatDistanceToNow} from 'date-fns';
-import {AlignLeft, CalendarDays, FileKey, Globe, Mail, Trash2} from 'lucide-react';
+import {AlignLeft, CalendarDays, FileKey, Globe, Pencil, Trash2} from 'lucide-react';
 import {notFound} from 'next/navigation';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {toast} from 'sonner';
 
 export interface SdkKeyDetailViewProps {
@@ -25,15 +27,58 @@ export function SdkKeyDetailView({id, projectId, onDelete, onDirtyChange}: SdkKe
   }
 
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const {data} = useSuspenseQuery(trpc.getSdkKeyPageData.queryOptions({id, projectId}));
   const deleteMutation = useMutation(trpc.deleteSdkKey.mutationOptions());
+  const updateMutation = useMutation(trpc.updateSdkKey.mutationOptions());
   const sdkKey = data.sdkKey;
   const [confirming, setConfirming] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(sdkKey?.description ?? '');
+
+  // Keep editedDescription in sync with sdkKey.description when not editing
+  useEffect(() => {
+    if (!isEditingDescription && sdkKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditedDescription(sdkKey.description ?? '');
+    }
+  }, [sdkKey, isEditingDescription]);
+
+  // Notify parent about dirty state
+  useEffect(() => {
+    if (onDirtyChange) {
+      const isDirty = isEditingDescription && editedDescription !== (sdkKey?.description ?? '');
+      onDirtyChange(isDirty);
+    }
+  }, [isEditingDescription, editedDescription, sdkKey?.description, onDirtyChange]);
 
   // Trigger 404 page if SDK key doesn't exist
   if (!sdkKey) {
     notFound();
   }
+
+  const handleSaveDescription = async () => {
+    try {
+      await updateMutation.mutateAsync({
+        id,
+        projectId,
+        description: editedDescription,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: trpc.getSdkKeyPageData.queryKey({id, projectId}),
+      });
+      setIsEditingDescription(false);
+      toast.success('Description updated');
+    } catch (e) {
+      console.error(e);
+      toast.error('Unable to update description — please try again');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditedDescription(sdkKey.description ?? '');
+    setIsEditingDescription(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -89,19 +134,69 @@ export function SdkKeyDetailView({id, projectId, onDelete, onDirtyChange}: SdkKe
             </div>
 
             {/* Description */}
-            {sdkKey.description && (
-              <div className="flex items-start gap-2.5 sm:col-span-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0 mt-0.5">
-                  <AlignLeft className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-muted-foreground mb-0.5">Description</div>
-                  <p className="text-sm font-medium whitespace-pre-wrap wrap-break-word">
-                    {sdkKey.description}
-                  </p>
-                </div>
+            <div className="flex items-start gap-2.5 sm:col-span-2">
+              <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted/50 shrink-0 mt-0.5">
+                <AlignLeft className="h-4 w-4 text-muted-foreground" />
               </div>
-            )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className="text-xs text-muted-foreground">Description</div>
+                  {!isEditingDescription && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4"
+                          onClick={() => setIsEditingDescription(true)}
+                        >
+                          <Pencil className="size-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit description</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                {isEditingDescription ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={editedDescription}
+                      onChange={e => setEditedDescription(e.target.value)}
+                      placeholder="Add a description..."
+                      className="min-h-[80px] text-sm"
+                      maxLength={1000}
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveDescription}
+                        disabled={updateMutation.isPending}
+                      >
+                        {updateMutation.isPending ? 'Saving…' : <>Save</>}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelEdit}
+                        disabled={updateMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {editedDescription.length}/1000
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium whitespace-pre-wrap wrap-break-word">
+                    {sdkKey.description || (
+                      <span className="text-muted-foreground italic">No description</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -181,4 +276,3 @@ export function SdkKeyDetailView({id, projectId, onDelete, onDirtyChange}: SdkKe
     </div>
   );
 }
-

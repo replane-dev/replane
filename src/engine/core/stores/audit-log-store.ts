@@ -110,6 +110,20 @@ export interface SdkKeyDeletedAuditLogPayload extends BaseAuditLogPayload<'sdk_k
   };
 }
 
+export interface SdkKeyUpdatedAuditLogPayload extends BaseAuditLogPayload<'sdk_key_updated'> {
+  sdkKey: {
+    id: string;
+    name: string;
+    createdAt: Date;
+  };
+  before: {
+    description: string;
+  };
+  after: {
+    description: string;
+  };
+}
+
 export interface ConfigMembersChangedAuditLogPayload extends BaseAuditLogPayload<'config_members_changed'> {
   config: AuditLogPayloadConfig;
   added: Array<{email: string; role: string}>;
@@ -349,6 +363,7 @@ export type AuditLogPayload =
   | ConfigVariantVersionRestoredAuditLogPayload
   | SdkKeyCreatedAuditLogPayload
   | SdkKeyDeletedAuditLogPayload
+  | SdkKeyUpdatedAuditLogPayload
   | ConfigMembersChangedAuditLogPayload
   | ProjectCreatedAuditLogPayload
   | ProjectUpdatedAuditLogPayload

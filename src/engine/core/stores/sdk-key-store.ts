@@ -137,4 +137,22 @@ export class SdkKeyStore {
       sdkKeyId: params.id,
     });
   }
+
+  async updateById(
+    ctx: Context,
+    params: {id: string; projectId: string; description: string},
+  ) {
+    await this.db
+      .updateTable('sdk_keys')
+      .set({
+        description: params.description,
+      })
+      .where('id', '=', params.id)
+      .where('project_id', '=', params.projectId)
+      .execute();
+
+    this.hub.pushEvent(ctx, 'sdkKeys', {
+      sdkKeyId: params.id,
+    });
+  }
 }

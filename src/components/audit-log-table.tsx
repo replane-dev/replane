@@ -55,6 +55,8 @@ function humanizePayload(payload: AuditLogPayload): {action: string; details: st
     return {action: 'SDK Key Created', details: `SDK Key name '${payload.sdkKey.name}'`};
   } else if (payload.type === 'sdk_key_deleted') {
     return {action: 'SDK Key Deleted', details: `SDK Key name '${payload.sdkKey.name}'`};
+  } else if (payload.type === 'sdk_key_updated') {
+    return {action: 'SDK Key Updated', details: `SDK Key name '${payload.sdkKey.name}'`};
   } else if (payload.type === 'config_members_changed') {
     return {action: 'Config Members Changed', details: `Config name '${payload.config.name}'`};
   } else if (payload.type === 'project_created') {

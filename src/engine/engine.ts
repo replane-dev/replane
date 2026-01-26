@@ -92,6 +92,7 @@ import {createUpdateNotificationPreferencesUseCase} from './core/use-cases/updat
 import {createUpdateProjectEnvironmentUseCase} from './core/use-cases/update-project-environment-use-case';
 import {createUpdateProjectEnvironmentsOrderUseCase} from './core/use-cases/update-project-environments-order-use-case';
 import {createUpdateProjectUsersUseCase} from './core/use-cases/update-project-users-use-case';
+import {createUpdateSdkKeyUseCase} from './core/use-cases/update-sdk-key-use-case';
 import {createUpdateUserProfileUseCase} from './core/use-cases/update-user-profile-use-case';
 import {createUpdateWorkspaceMemberRoleUseCase} from './core/use-cases/update-workspace-member-role-use-case';
 import {createUpdateWorkspaceUseCase} from './core/use-cases/update-workspace-use-case';
@@ -304,6 +305,7 @@ export async function createEngine(options: EngineOptions) {
     getSdkKeyList: createGetSdkKeyListUseCase(),
     getSdkKey: createGetSdkKeyUseCase(),
     deleteSdkKey: createDeleteSdkKeyUseCase(),
+    updateSdkKey: createUpdateSdkKeyUseCase(),
     getProjectList: createGetProjectListUseCase(),
     getProject: createGetProjectUseCase(),
     createProject: createCreateProjectUseCase(),

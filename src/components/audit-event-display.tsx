@@ -423,6 +423,32 @@ export function AuditEventDisplay({payload, projectId}: AuditEventDisplayProps) 
         )}
       </div>
     );
+  } else if (type === 'sdk_key_updated') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+          <FileKey className="h-5 w-5" />
+          <span className="font-semibold">SDK Key Updated</span>
+        </div>
+        <Link
+          href={`/app/projects/${projectId}/sdk-keys/${payload.sdkKey.id}`}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-foreground/80 transition-colors group"
+        >
+          <span>{payload.sdkKey.name}</span>
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground/60" />
+        </Link>
+        <div className="text-sm space-y-1">
+          <div>
+            <span className="text-muted-foreground">Description changed from: </span>
+            <span>{payload.before.description || <span className="italic">empty</span>}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">To: </span>
+            <span>{payload.after.description || <span className="italic">empty</span>}</span>
+          </div>
+        </div>
+      </div>
+    );
   } else if (type === 'project_created') {
     return (
       <div className="space-y-4">

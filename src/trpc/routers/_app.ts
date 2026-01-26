@@ -921,6 +921,26 @@ export const appRouter = createTRPCRouter({
       });
       return {};
     }),
+  updateSdkKey: baseProcedure
+    .input(
+      z.object({
+        id: Uuid(),
+        projectId: Uuid(),
+        description: z.string().max(1000),
+      }),
+    )
+    .mutation(async opts => {
+      if (!opts.ctx.identity) {
+        throw new TRPCError({code: 'UNAUTHORIZED', message: 'User is not authenticated'});
+      }
+      await opts.ctx.engine.useCases.updateSdkKey(GLOBAL_CONTEXT, {
+        id: opts.input.id,
+        projectId: opts.input.projectId,
+        description: opts.input.description,
+        identity: opts.ctx.identity,
+      });
+      return {};
+    }),
   createProject: baseProcedure
     .input(
       z.object({
