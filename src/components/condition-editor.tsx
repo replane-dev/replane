@@ -156,8 +156,6 @@ export function ConditionEditor({
             return;
           }
 
-          // TODO: use the same environment as the current variant
-          // Use Production variant or first variant
           const variant = config.config.config;
 
           if (!variant) {
@@ -250,7 +248,6 @@ export function ConditionEditor({
         return;
       }
 
-      // Use Production variant or first variant
       const variant = config.config.config;
 
       if (!variant) {
@@ -997,10 +994,7 @@ export function ConditionEditor({
               )}
               {previewValue.value !== undefined && !previewValue.error && !previewValue.loading && (
                 <div className="max-h-32 overflow-auto">
-                  <CodeSnippet
-                    code={JSON.stringify(previewValue.value, null, 2)}
-                    language="json"
-                  />
+                  <CodeSnippet code={JSON.stringify(previewValue.value, null, 2)} language="json" />
                 </div>
               )}
               {!previewValue.loading &&
