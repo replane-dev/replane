@@ -2,6 +2,36 @@ import {defaultShouldDehydrateQuery, QueryClient} from '@tanstack/react-query';
 import {toast} from 'sonner';
 import superjson from 'superjson';
 
+// Track when the tab became visible to suppress transient connection errors
+// that occur when returning to an inactive tab. Browsers throttle network
+// activity for background tabs, so initial fetches may fail briefly.
+let lastVisibleTimestamp = Date.now();
+const VISIBILITY_GRACE_PERIOD_MS = 5000; // Suppress network errors for 5s after tab becomes visible
+
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      lastVisibleTimestamp = Date.now();
+    }
+  });
+}
+
+function isWithinVisibilityGracePeriod(): boolean {
+  return Date.now() - lastVisibleTimestamp < VISIBILITY_GRACE_PERIOD_MS;
+}
+
+function isNetworkError(error: unknown): boolean {
+  if (!error) return false;
+  let raw: string | undefined;
+  if (typeof error === 'string') raw = error;
+  else if (error instanceof Error) raw = error.message;
+  if (!raw) return false;
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes('failed to fetch') || lower.includes('network') || lower.includes('fetch error')
+  );
+}
+
 export function makeQueryClient() {
   const qc = new QueryClient({
     defaultOptions: {
@@ -41,7 +71,9 @@ export function makeQueryClient() {
     if (event.type === 'updated' && event.mutation.state.status === 'error') {
       if (typeof window !== 'undefined') {
         const msg = normalizeErrorMessage(event.mutation.state.error);
-        toast.error(msg, {description: 'Please try again or contact support if the issue persists.'});
+        toast.error(msg, {
+          description: 'Please try again or contact support if the issue persists.',
+        });
       }
     }
   });
@@ -49,7 +81,14 @@ export function makeQueryClient() {
   qc.getQueryCache().subscribe(event => {
     if (event.type === 'updated' && event.query.state.status === 'error') {
       if (typeof window !== 'undefined') {
-        const msg = normalizeErrorMessage(event.query.state.error);
+        const error = event.query.state.error;
+        // Suppress network errors briefly after tab becomes visible.
+        // When users return to an inactive tab, browsers may briefly fail
+        // network requests before reconnecting - no need to alarm them.
+        if (isNetworkError(error) && isWithinVisibilityGracePeriod()) {
+          return;
+        }
+        const msg = normalizeErrorMessage(error);
         toast.error(msg, {description: 'Please refresh the page or try again later.'});
       }
     }
