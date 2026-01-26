@@ -2,6 +2,7 @@
 
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
+import {CodeSnippet} from '@/components/code-snippet';
 import {Dialog, DialogContent} from '@/components/ui/dialog';
 import {Separator} from '@/components/ui/separator';
 import {AlertCircle, Check, ExternalLink, Loader2} from 'lucide-react';
@@ -130,10 +131,11 @@ export function ReferenceValuePreviewDialog({
                     JSON
                   </Badge>
                 </div>
-                <div className="rounded-lg border bg-muted/30 p-4 overflow-auto max-h-[400px]">
-                  <pre className="text-xs font-mono whitespace-pre-wrap break-words">
-                    {JSON.stringify(previewState.value, null, 2)}
-                  </pre>
+                <div className="max-h-[400px] overflow-auto">
+                  <CodeSnippet
+                    code={JSON.stringify(previewState.value, null, 2)}
+                    language="json"
+                  />
                 </div>
               </div>
             </div>

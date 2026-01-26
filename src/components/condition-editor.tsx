@@ -1,5 +1,6 @@
 'use client';
 
+import {CodeSnippet} from '@/components/code-snippet';
 import {ReferenceValuePreviewDialog} from '@/components/reference-value-preview-dialog';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import {formatJsonPath, getValueByPath, parseJsonPath} from '@/engine/core/json-path';
 import type {Condition} from '@/engine/core/override-condition-schemas';
+import {parseJsonc} from '@/engine/core/utils';
 import {useDebounce} from '@/hooks/use-debounce';
 import {useTRPC} from '@/trpc/client';
 import {useQueryClient} from '@tanstack/react-query';
@@ -156,9 +158,7 @@ export function ConditionEditor({
 
           // TODO: use the same environment as the current variant
           // Use Production variant or first variant
-          const variant =
-            config.config.variants.find(v => v.environmentName === 'Production') ??
-            config.config.variants[0];
+          const variant = config.config.config;
 
           if (!variant) {
             setReferenceValidation({valid: false, checking: false, error: 'No variants found'});
@@ -167,8 +167,8 @@ export function ConditionEditor({
 
           const resolvedValue =
             reference.path.length > 0
-              ? getValueByPath(variant.value, reference.path)
-              : variant.value;
+              ? getValueByPath(parseJsonc(variant.value), reference.path)
+              : parseJsonc(variant.value);
 
           if (resolvedValue === undefined) {
             setReferenceValidation({
@@ -251,9 +251,7 @@ export function ConditionEditor({
       }
 
       // Use Production variant or first variant
-      const variant =
-        config.config.variants.find(v => v.environmentName === 'Production') ??
-        config.config.variants[0];
+      const variant = config.config.config;
 
       if (!variant) {
         setPreviewValue({loading: false, error: 'No variants found'});
@@ -262,7 +260,9 @@ export function ConditionEditor({
 
       const parsedPath = path.trim() ? parseJsonPath(path.trim()) : [];
       const resolvedValue =
-        parsedPath.length > 0 ? getValueByPath(variant.value, parsedPath) : variant.value;
+        parsedPath.length > 0
+          ? getValueByPath(parseJsonc(variant.value), parsedPath)
+          : parseJsonc(variant.value);
 
       // Check if the resolved value is undefined (bad reference/path)
       if (resolvedValue === undefined) {
@@ -996,10 +996,11 @@ export function ConditionEditor({
                 </div>
               )}
               {previewValue.value !== undefined && !previewValue.error && !previewValue.loading && (
-                <div className="rounded-md border bg-muted p-3">
-                  <pre className="text-xs font-mono overflow-auto max-h-32">
-                    {JSON.stringify(previewValue.value, null, 2)}
-                  </pre>
+                <div className="max-h-32 overflow-auto">
+                  <CodeSnippet
+                    code={JSON.stringify(previewValue.value, null, 2)}
+                    language="json"
+                  />
                 </div>
               )}
               {!previewValue.loading &&
