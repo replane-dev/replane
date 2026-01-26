@@ -47,6 +47,7 @@ export function inferSchemaFromValue(value: unknown): object {
       type: 'object',
       properties,
       ...(required.length > 0 ? {required} : {}),
+      additionalProperties: false,
     };
   }
 
