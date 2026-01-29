@@ -89,7 +89,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
-    "hono": "^4.11.4",
+    "hono": "^4.11.7",
     "import-in-the-middle": "^2.0.2",
     "input-otp": "^1.4.2",
     "jotai": "^2.16.1",
