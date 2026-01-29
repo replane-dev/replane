@@ -15,6 +15,21 @@ import type {Subject} from './subject';
 import type {Topic, TopicConsumer} from './topic';
 import {assertNever, chunkArray, wait} from './utils';
 
+/**
+ * Check if an error should be ignored for Sentry reporting.
+ * Some errors are transient/expected and shouldn't spam error tracking.
+ */
+function shouldIgnoreErrorForSentry(error: unknown): boolean {
+  if (error instanceof Error) {
+    // "Query read timeout" is a transient postgres timeout during event polling.
+    // It's not actionable and recovers automatically on next poll cycle.
+    if (error.message === 'Query read timeout') {
+      return true;
+    }
+  }
+  return false;
+}
+
 export type ReplicatorEvent<TTarget> =
   | {
       type: 'created';
@@ -177,19 +192,22 @@ export class Replicator<TSource, TTarget> {
       } catch (error) {
         this.logger.error(GLOBAL_CONTEXT, {msg: 'Replicator step error', error});
 
-        // Debounce Sentry error reporting per error fingerprint to avoid flooding
-        // during network issues while still capturing different error types
-        const fingerprint = getErrorFingerprint(error);
-        const now = Date.now();
-        const lastReportTime = this.lastErrorReportTimeByFingerprint.get(fingerprint) ?? 0;
-        if (now - lastReportTime >= REPLICATOR_ERROR_REPORT_DEBOUNCE_MS) {
-          this.lastErrorReportTimeByFingerprint.set(fingerprint, now);
-          Sentry.captureException(error, {
-            extra: {
-              consumerId: this.consumer.consumerId,
-              topic: this.consumer.topic,
-            },
-          });
+        // Skip Sentry reporting for known transient/non-actionable errors
+        if (!shouldIgnoreErrorForSentry(error)) {
+          // Debounce Sentry error reporting per error fingerprint to avoid flooding
+          // during network issues while still capturing different error types
+          const fingerprint = getErrorFingerprint(error);
+          const now = Date.now();
+          const lastReportTime = this.lastErrorReportTimeByFingerprint.get(fingerprint) ?? 0;
+          if (now - lastReportTime >= REPLICATOR_ERROR_REPORT_DEBOUNCE_MS) {
+            this.lastErrorReportTimeByFingerprint.set(fingerprint, now);
+            Sentry.captureException(error, {
+              extra: {
+                consumerId: this.consumer.consumerId,
+                topic: this.consumer.topic,
+              },
+            });
+          }
         }
 
         if (error instanceof ConsumerDestroyedError) {

@@ -123,6 +123,7 @@ describe('inferSchemaFromValue', () => {
             age: {type: 'integer'},
           },
           required: ['name', 'age'],
+          additionalProperties: false,
         },
       });
     });
@@ -148,6 +149,7 @@ describe('inferSchemaFromValue', () => {
       expect(result).toEqual({
         type: 'object',
         properties: {},
+        additionalProperties: false,
       });
     });
 
@@ -163,6 +165,7 @@ describe('inferSchemaFromValue', () => {
           age: {type: 'integer'},
         },
         required: ['name', 'age'],
+        additionalProperties: false,
       });
     });
 
@@ -184,6 +187,7 @@ describe('inferSchemaFromValue', () => {
           nil: {type: 'null'},
         },
         required: ['str', 'int', 'float', 'bool', 'nil'],
+        additionalProperties: false,
       });
     });
 
@@ -211,12 +215,15 @@ describe('inferSchemaFromValue', () => {
                   phone: {type: 'string'},
                 },
                 required: ['email', 'phone'],
+                additionalProperties: false,
               },
             },
             required: ['name', 'contact'],
+            additionalProperties: false,
           },
         },
         required: ['user'],
+        additionalProperties: false,
       });
     });
 
@@ -235,6 +242,7 @@ describe('inferSchemaFromValue', () => {
           },
         },
         required: ['name', 'tags'],
+        additionalProperties: false,
       });
     });
   });
@@ -279,6 +287,7 @@ describe('inferSchemaFromValue', () => {
               zip: {type: 'integer'},
             },
             required: ['city', 'zip'],
+            additionalProperties: false,
           },
           projects: {
             type: 'array',
@@ -289,10 +298,12 @@ describe('inferSchemaFromValue', () => {
                 completed: {type: 'boolean'},
               },
               required: ['name', 'completed'],
+              additionalProperties: false,
             },
           },
         },
         required: ['name', 'age', 'isActive', 'score', 'tags', 'address', 'projects'],
+        additionalProperties: false,
       });
     });
   });
@@ -308,6 +319,7 @@ describe('createSchemaFromValue', () => {
         name: {type: 'string'},
       },
       required: ['name'],
+      additionalProperties: false,
     });
   });
 
