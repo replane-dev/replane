@@ -326,6 +326,7 @@ export class ConfigService {
       useBaseSchema: boolean;
     }> = [];
     const variantsToDelete: string[] = [];
+    let variantSchemaOrOverridesChanged = false;
 
     for (const envVariant of params.environmentVariants) {
       const existing = currentEnvVariants.find(v => v.environmentId === envVariant.environmentId);
@@ -338,6 +339,10 @@ export class ConfigService {
         const overridesChanged =
           JSON.stringify(envVariant.overrides) !== JSON.stringify(existing.overrides);
         const useBaseSchemaChanged = envVariant.useBaseSchema !== existing.useBaseSchema;
+
+        if (schemaChanged || overridesChanged) {
+          variantSchemaOrOverridesChanged = true;
+        }
 
         if (valueChanged || schemaChanged || overridesChanged || useBaseSchemaChanged) {
           variantsToUpdate.push({
@@ -363,16 +368,14 @@ export class ConfigService {
     }
 
     // Check if schema/overrides changed (requires maintainer permission)
+    const defaultVariantSchemaOrOverridesChanged =
+      JSON.stringify(params.defaultVariant.schema) !== JSON.stringify(existingConfig.schema) ||
+      JSON.stringify(params.defaultVariant.overrides) !== JSON.stringify(existingConfig.overrides);
+
     const schemaOrOverridesChanged =
-      defaultVariantChanged ||
+      defaultVariantSchemaOrOverridesChanged ||
+      variantSchemaOrOverridesChanged ||
       variantsToCreate.some(v => v.schema !== null || v.overrides.length > 0) ||
-      variantsToUpdate.some(
-        v =>
-          v.schema !== null ||
-          v.overrides.length > 0 ||
-          currentEnvVariants.find(cv => cv.id === v.variantId)?.schema !== null ||
-          currentEnvVariants.find(cv => cv.id === v.variantId)?.overrides.length,
-      ) ||
       variantsToDelete.some(
         id =>
           currentEnvVariants.find(v => v.id === id)?.schema !== null ||

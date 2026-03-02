@@ -981,4 +981,198 @@ describe('Config-Level Permissions', () => {
 
     expect(config).toBeUndefined();
   });
+
+  it('config editor can update only the config value', async () => {
+    const editorEmail = 'value-editor@example.com';
+    const editorIdentity = await fixture.registerNonAdminWorkspaceMember(editorEmail);
+
+    await fixture.createConfig({
+      name: 'editor-value-update',
+      value: asConfigValue('original'),
+      schema: asConfigSchema({type: 'string'}),
+      overrides: [],
+      description: 'Test',
+      identity: fixture.identity,
+      editorEmails: [editorEmail],
+      maintainerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
+      name: 'editor-value-update',
+      projectId: fixture.projectId,
+      identity: editorIdentity,
+    });
+
+    await fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+      projectId: fixture.projectId,
+      identity: editorIdentity,
+      configName: 'editor-value-update',
+      description: 'Test',
+      editors: [editorEmail],
+      maintainers: null,
+      prevVersion: config!.config.version,
+      base: {
+        value: asConfigValue('updated by editor'),
+        schema: asConfigSchema({type: 'string'}),
+        overrides: [],
+      },
+      environments: config!.variants.map(v => ({
+        environmentId: v.environmentId,
+        value: asConfigValue('updated by editor'),
+        schema: v.schema as ConfigSchema | null,
+        overrides: [],
+        useBaseSchema: false,
+      })),
+    });
+
+    const {config: updated} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
+      name: 'editor-value-update',
+      projectId: fixture.projectId,
+      identity: editorIdentity,
+    });
+
+    expect(updated?.config.value).toBe(stringifyJsonc('updated by editor'));
+  });
+
+  it('config editor cannot change schema', async () => {
+    const editorEmail = 'schema-editor@example.com';
+    const editorIdentity = await fixture.registerNonAdminWorkspaceMember(editorEmail);
+
+    await fixture.createConfig({
+      name: 'editor-no-schema',
+      value: asConfigValue(42),
+      schema: asConfigSchema({type: 'number'}),
+      overrides: [],
+      description: 'Test',
+      identity: fixture.identity,
+      editorEmails: [editorEmail],
+      maintainerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
+      name: 'editor-no-schema',
+      projectId: fixture.projectId,
+      identity: editorIdentity,
+    });
+
+    await expect(
+      fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        identity: editorIdentity,
+        configName: 'editor-no-schema',
+        description: 'Test',
+        editors: [editorEmail],
+        maintainers: null,
+        prevVersion: config!.config.version,
+        base: {
+          value: asConfigValue('now a string'),
+          schema: asConfigSchema({type: 'string'}),
+          overrides: [],
+        },
+        environments: config!.variants.map(v => ({
+          environmentId: v.environmentId,
+          value: asConfigValue('now a string'),
+          schema: asConfigSchema({type: 'string'}),
+          overrides: [],
+          useBaseSchema: false,
+        })),
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('config editor cannot change members', async () => {
+    const editorEmail = 'members-editor@example.com';
+    const editorIdentity = await fixture.registerNonAdminWorkspaceMember(editorEmail);
+
+    await fixture.createConfig({
+      name: 'editor-no-members',
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
+      overrides: [],
+      description: 'Test',
+      identity: fixture.identity,
+      editorEmails: [editorEmail],
+      maintainerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
+      name: 'editor-no-members',
+      projectId: fixture.projectId,
+      identity: editorIdentity,
+    });
+
+    await expect(
+      fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        identity: editorIdentity,
+        configName: 'editor-no-members',
+        description: 'Test',
+        editors: [editorEmail, 'someone-else@example.com'],
+        maintainers: null,
+        prevVersion: config!.config.version,
+        base: {
+          value: asConfigValue('test'),
+          schema: asConfigSchema({type: 'string'}),
+          overrides: [],
+        },
+        environments: config!.variants.map(v => ({
+          environmentId: v.environmentId,
+          value: asConfigValue('test'),
+          schema: v.schema as ConfigSchema | null,
+          overrides: [],
+          useBaseSchema: false,
+        })),
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('viewer cannot update config value', async () => {
+    const viewerEmail = 'viewer@example.com';
+    const viewerIdentity = await fixture.registerNonAdminWorkspaceMember(viewerEmail);
+
+    await fixture.createConfig({
+      name: 'viewer-no-edit',
+      value: asConfigValue('test'),
+      schema: asConfigSchema({type: 'string'}),
+      overrides: [],
+      description: 'Test',
+      identity: fixture.identity,
+      editorEmails: [],
+      maintainerEmails: [],
+      projectId: fixture.projectId,
+    });
+
+    const {config} = await fixture.engine.useCases.getConfig(GLOBAL_CONTEXT, {
+      name: 'viewer-no-edit',
+      projectId: fixture.projectId,
+      identity: viewerIdentity,
+    });
+
+    await expect(
+      fixture.engine.useCases.updateConfig(GLOBAL_CONTEXT, {
+        projectId: fixture.projectId,
+        identity: viewerIdentity,
+        configName: 'viewer-no-edit',
+        description: 'Test',
+        editors: [],
+        maintainers: null,
+        prevVersion: config!.config.version,
+        base: {
+          value: asConfigValue('should fail'),
+          schema: asConfigSchema({type: 'string'}),
+          overrides: [],
+        },
+        environments: config!.variants.map(v => ({
+          environmentId: v.environmentId,
+          value: asConfigValue('should fail'),
+          schema: v.schema as ConfigSchema | null,
+          overrides: [],
+          useBaseSchema: false,
+        })),
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
 });
