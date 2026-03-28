@@ -163,8 +163,8 @@ importers:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.3)
       hono:
-        specifier: ^4.11.4
-        version: 4.11.4
+        specifier: ^4.12.7
+        version: 4.12.7
       import-in-the-middle:
         specifier: ^2.0.2
         version: 2.0.2
@@ -276,7 +276,7 @@ importers:
         version: 3.3.3
       '@hono/zod-openapi':
         specifier: ^1.2.0
-        version: 1.2.0(hono@4.11.4)(zod@4.3.5)
+        version: 1.2.0(hono@4.12.7)(zod@4.3.5)
       '@replanejs/admin':
         specifier: ^1.0.4
         version: 1.0.4
@@ -4381,8 +4381,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.11.4:
-    resolution: {integrity: sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==}
+  hono@4.12.7:
+    resolution: {integrity: sha512-jq9l1DM0zVIvsm3lv9Nw9nlJnMNPOcAtsbsgiUhWcFzPE99Gvo6yRTlszSLLYacMeQ6quHD6hMfId8crVHvexw==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -7336,17 +7336,17 @@ snapshots:
 
   '@glideapps/ts-necessities@2.2.3': {}
 
-  '@hono/zod-openapi@1.2.0(hono@4.11.4)(zod@4.3.5)':
+  '@hono/zod-openapi@1.2.0(hono@4.12.7)(zod@4.3.5)':
     dependencies:
       '@asteasolutions/zod-to-openapi': 8.4.0(zod@4.3.5)
-      '@hono/zod-validator': 0.7.6(hono@4.11.4)(zod@4.3.5)
-      hono: 4.11.4
+      '@hono/zod-validator': 0.7.6(hono@4.12.7)(zod@4.3.5)
+      hono: 4.12.7
       openapi3-ts: 4.5.0
       zod: 4.3.5
 
-  '@hono/zod-validator@0.7.6(hono@4.11.4)(zod@4.3.5)':
+  '@hono/zod-validator@0.7.6(hono@4.12.7)(zod@4.3.5)':
     dependencies:
-      hono: 4.11.4
+      hono: 4.12.7
       zod: 4.3.5
 
   '@hookform/resolvers@5.2.2(react-hook-form@7.71.0(react@19.2.3))':
@@ -10975,7 +10975,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.11.4: {}
+  hono@4.12.7: {}
 
   html-encoding-sniffer@6.0.0:
     dependencies:
