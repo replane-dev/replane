@@ -178,8 +178,8 @@ importers:
         specifier: ^3.3.1
         version: 3.3.1
       kysely:
-        specifier: ^0.28.9
-        version: 0.28.9
+        specifier: ^0.28.14
+        version: 0.28.14
       lru-cache:
         specifier: ^11.2.4
         version: 11.2.4
@@ -342,7 +342,7 @@ importers:
         version: 27.4.0
       kysely-codegen:
         specifier: ^0.19.0
-        version: 0.19.0(better-sqlite3@12.6.0)(kysely@0.28.9)(pg@8.16.3)(typescript@5.9.3)
+        version: 0.19.0(better-sqlite3@12.6.0)(kysely@0.28.14)(pg@8.16.3)(typescript@5.9.3)
       node-addon-api:
         specifier: ^8.5.0
         version: 8.5.0
@@ -4746,8 +4746,8 @@ packages:
       tedious:
         optional: true
 
-  kysely@0.28.9:
-    resolution: {integrity: sha512-3BeXMoiOhpOwu62CiVpO6lxfq4eS6KMYfQdMsN/2kUCRNuF2YiEr7u0HLHaQU+O4Xu8YXE3bHVkwaQ85i72EuA==}
+  kysely@0.28.14:
+    resolution: {integrity: sha512-SU3lgh0rPvq7upc6vvdVrCsSMUG1h3ChvHVOY7wJ2fw4C9QEB7X3d5eyYEyULUX7UQtxZJtZXGuT6U2US72UYA==}
     engines: {node: '>=20.0.0'}
 
   language-subtag-registry@0.3.23:
@@ -11308,14 +11308,14 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  kysely-codegen@0.19.0(better-sqlite3@12.6.0)(kysely@0.28.9)(pg@8.16.3)(typescript@5.9.3):
+  kysely-codegen@0.19.0(better-sqlite3@12.6.0)(kysely@0.28.14)(pg@8.16.3)(typescript@5.9.3):
     dependencies:
       chalk: 4.1.2
       cosmiconfig: 9.0.0(typescript@5.9.3)
       dotenv: 17.2.3
       dotenv-expand: 12.0.3
       git-diff: 2.0.6
-      kysely: 0.28.9
+      kysely: 0.28.14
       micromatch: 4.0.8
       minimist: 1.2.8
       pluralize: 8.0.0
@@ -11326,7 +11326,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  kysely@0.28.9: {}
+  kysely@0.28.14: {}
 
   language-subtag-registry@0.3.23: {}
 
