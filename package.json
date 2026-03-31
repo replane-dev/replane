@@ -94,7 +94,7 @@
     "input-otp": "^1.4.2",
     "jotai": "^2.16.1",
     "jsonc-parser": "^3.3.1",
-    "kysely": "^0.28.9",
+    "kysely": "^0.28.14",
     "lru-cache": "^11.2.4",
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.55.1",
