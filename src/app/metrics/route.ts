@@ -1,9 +1,7 @@
-import {collectDefaultMetrics, register} from 'prom-client';
 import {isPrometheusMetricsEnabled} from '@/environment';
+import {collectDefaultMetrics, register} from 'prom-client';
 
-if (isPrometheusMetricsEnabled()) {
-  collectDefaultMetrics();
-}
+collectDefaultMetrics();
 
 export async function GET() {
   if (!isPrometheusMetricsEnabled()) {
