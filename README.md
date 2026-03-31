@@ -142,6 +142,9 @@ services:
       # Custom health check path (defaults to /api/health)
       # HEALTHCHECK_PATH: /api/health
 
+      # Enable Prometheus metrics at /metrics
+      # PROMETHEUS_METRICS_ENABLED: true
+
 volumes:
   replane-db:
 ```
@@ -153,7 +156,7 @@ Notes
 - Replane includes an integrated database. No external database required.
 - If using an integrated database, data is stored in `/data` inside the container. Mount a volume to persist data.
 - Health check: GET /api/health → `{ "status": "ok" }`.
-- Prometheus metrics: GET /metrics → Prometheus-formatted metrics (CPU, memory, event loop, etc.).
+- Prometheus metrics: Set `PROMETHEUS_METRICS_ENABLED=true` to expose metrics at GET /metrics (CPU, memory, event loop, etc.).
 
 ## Environment variables
 
@@ -252,6 +255,7 @@ Email server configuration is required for magic link authentication. It can be 
 - `DISABLE_REGISTRATION=true` – Disables new user registration. Existing users can still sign in. Useful for private instances or when you want to manage users manually.
 - `ALLOWED_EMAIL_DOMAINS` – comma-separated list of email domains allowed for user registration (e.g., `gmail.com,my-company.com`). If not set, all email domains are allowed. Users with email addresses from other domains will be blocked from signing up.
 - `HEALTHCHECK_PATH` – custom path for the health check endpoint. Defaults to `/api/health`.
+- `PROMETHEUS_METRICS_ENABLED=true` – Enables the Prometheus metrics endpoint at `/metrics`. Disabled by default.
 
 ### Error Tracking (Sentry)
 

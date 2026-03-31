@@ -296,3 +296,14 @@ export function getSuperuserApiKey(): string | undefined {
 export function isTestingModeEnabled(): boolean {
   return process.env.TESTING_MODE === 'true';
 }
+
+/**
+ * Checks if Prometheus metrics endpoint is enabled.
+ * When enabled, the /metrics endpoint exposes Prometheus-compatible metrics.
+ * Controlled by PROMETHEUS_METRICS_ENABLED environment variable.
+ *
+ * @returns true if Prometheus metrics are enabled, false otherwise
+ */
+export function isPrometheusMetricsEnabled(): boolean {
+  return process.env.PROMETHEUS_METRICS_ENABLED === 'true';
+}
