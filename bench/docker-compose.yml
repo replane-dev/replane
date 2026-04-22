@@ -59,6 +59,7 @@ services:
       BASE_URL: http://localhost:8091
       SECRET_KEY: test-secret-key
       SUPERUSER_API_KEY: ${REPLANE_SUPERADMIN_API_KEY}
+      PROMETHEUS_METRICS_ENABLED: "true"
       DATABASE_MAX_CONNECTIONS: 100
       LOG_LEVEL: info
     healthcheck:
