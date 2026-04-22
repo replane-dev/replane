@@ -827,6 +827,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
               schema: z.object({
                 description: z.string().max(10000),
                 editors: z.array(z.email()),
+                baseVersion: z.number().int().optional(),
                 base: z.object({
                   value: z.unknown(),
                   schema: z.unknown().nullable(),
@@ -895,7 +896,7 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
           })),
           useBaseSchema: v.useBaseSchema,
         })),
-        prevVersion: undefined,
+        prevVersion: body.baseVersion,
       });
 
       return c.json({id: configId, version});

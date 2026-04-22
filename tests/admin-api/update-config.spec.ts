@@ -42,6 +42,7 @@ describe('Admin API - Update Config', () => {
     options: {
       description?: string;
       schema?: unknown;
+      baseVersion?: number;
       editors?: string[];
       overrides?: Array<{name: string; conditions: unknown; value: unknown}>;
       variants?: Array<{
@@ -55,6 +56,7 @@ describe('Admin API - Update Config', () => {
   ) => ({
     description: options.description ?? 'Test config',
     editors: options.editors ?? [],
+    ...(options.baseVersion !== undefined ? {baseVersion: options.baseVersion} : {}),
     base: {
       value,
       schema: options.schema ?? null,
@@ -284,6 +286,93 @@ describe('Admin API - Update Config', () => {
       expect(response3.status).toBe(200);
       const data3 = await response3.json();
       expect(data3.version).toBe(4);
+    });
+
+    it('should update config when baseVersion matches current version', async () => {
+      const {token} = await fixture.createAdminApiKey({
+        scopes: ['config:write', 'config:read'],
+      });
+
+      await fixture.adminApiRequest(
+        'POST',
+        `/projects/${fixture.projectId}/configs`,
+        token,
+        createConfigBody('base-version-update-config', {enabled: false}),
+      );
+
+      const getResponse = await fixture.adminApiRequest(
+        'GET',
+        `/projects/${fixture.projectId}/configs/base-version-update-config`,
+        token,
+      );
+      expect(getResponse.status).toBe(200);
+      const configData = await getResponse.json();
+
+      const response = await fixture.adminApiRequest(
+        'PUT',
+        `/projects/${fixture.projectId}/configs/base-version-update-config`,
+        token,
+        updateConfigBody(
+          {enabled: true},
+          {
+            baseVersion: configData.version,
+          },
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.version).toBe(configData.version + 1);
+    });
+
+    it('should return 400 when baseVersion is stale', async () => {
+      const {token} = await fixture.createAdminApiKey({
+        scopes: ['config:write', 'config:read'],
+      });
+
+      await fixture.adminApiRequest(
+        'POST',
+        `/projects/${fixture.projectId}/configs`,
+        token,
+        createConfigBody('stale-base-version-config', {enabled: false}),
+      );
+
+      const getResponse = await fixture.adminApiRequest(
+        'GET',
+        `/projects/${fixture.projectId}/configs/stale-base-version-config`,
+        token,
+      );
+      expect(getResponse.status).toBe(200);
+      const configData = await getResponse.json();
+
+      const firstUpdateResponse = await fixture.adminApiRequest(
+        'PUT',
+        `/projects/${fixture.projectId}/configs/stale-base-version-config`,
+        token,
+        updateConfigBody(
+          {enabled: true},
+          {
+            baseVersion: configData.version,
+          },
+        ),
+      );
+      expect(firstUpdateResponse.status).toBe(200);
+
+      const staleResponse = await fixture.adminApiRequest(
+        'PUT',
+        `/projects/${fixture.projectId}/configs/stale-base-version-config`,
+        token,
+        updateConfigBody(
+          {enabled: 'stale'},
+          {
+            baseVersion: configData.version,
+          },
+        ),
+      );
+
+      expect(staleResponse.status).toBe(400);
+      const staleData = await staleResponse.json();
+      expect(staleData.error).toContain('Config was edited by another user');
     });
   });
 
