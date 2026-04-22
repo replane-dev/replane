@@ -19,6 +19,26 @@ interface HonoEnv {
   };
 }
 
+function isErrorNamed(err: unknown, name: string): err is Error {
+  return err instanceof Error && err.name === name;
+}
+
+function isBadRequestError(err: unknown): boolean {
+  return err instanceof BadRequestError || isErrorNamed(err, 'BadRequestError');
+}
+
+function isNotFoundError(err: unknown): boolean {
+  return err instanceof NotFoundError || isErrorNamed(err, 'NotFoundError');
+}
+
+function isForbiddenError(err: unknown): boolean {
+  return err instanceof ForbiddenError || isErrorNamed(err, 'ForbiddenError');
+}
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 // ===== Schema definitions =====
 
 const ProjectDto = z
@@ -153,15 +173,15 @@ export function createAdminApi(engine: Engine): OpenAPIHono<HonoEnv> {
       return err.getResponse();
     }
 
-    if (err instanceof BadRequestError) {
-      return c.json({error: err.message}, 400);
+    if (isBadRequestError(err)) {
+      return c.json({error: getErrorMessage(err)}, 400);
     }
 
-    if (err instanceof NotFoundError) {
-      return c.json({error: err.message}, 404);
+    if (isNotFoundError(err)) {
+      return c.json({error: getErrorMessage(err)}, 404);
     }
 
-    if (err instanceof ForbiddenError) {
+    if (isForbiddenError(err)) {
       return c.json({error: 'Forbidden'}, 403);
     }
 
