@@ -2,7 +2,6 @@
 <p align="center">Dynamic configuration for apps and services.</p>
 
 <p align="center">
-  <a href="https://cloud.replane.dev"><img src="https://img.shields.io/badge/Try-Replane%20Cloud-blue" alt="Replane Cloud"></a>
   <a href="https://hub.docker.com/r/replane/replane"><img src="https://img.shields.io/docker/v/replane/replane?label=docker" alt="Docker"></a>
   <a href="https://github.com/replane-dev/replane/blob/main/LICENSE"><img src="https://img.shields.io/github/license/replane-dev/replane" alt="License"></a>
   <a href="https://github.com/orgs/replane-dev/discussions"><img src="https://img.shields.io/badge/discussions-join-blue?logo=github" alt="Community"></a>
@@ -18,7 +17,7 @@ Replane is a dynamic configuration manager that lets you tweak your software wit
 
 ## Quick Start
 
-[Use Replane Cloud](https://cloud.replane.dev) or run Replane on your own infrastructure:
+Run Replane on your own infrastructure:
 
 ```sh
 docker run -p 8080:8080 -e BASE_URL=http://localhost:8080 -e SECRET_KEY=xxx replane/replane

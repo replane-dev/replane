@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for replane-cloud-prod on 2025-12-27T20:41:29+03:00
+# fly.toml app configuration file generated for replane-prod on 2025-12-27T20:41:29+03:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'replane-cloud-prod'
+app = 'replane-prod'
 primary_region = 'iad'
 
 [http_service]
@@ -25,10 +25,10 @@ primary_region = 'iad'
     path = "/api/health"
 
 [env]
-  APP_TITLE = "Replane Cloud: Dynamic Configuration Platform"
+  APP_TITLE = "Replane: Dynamic Configuration Platform"
   APP_DESCRIPTION = "Open-source platform for feature flags, remote configuration, and A/B testing. Real-time updates with zero downtime."
 
-  BASE_URL = "https://cloud.replane.dev"
+  BASE_URL = "https://replane.example.com"
   PORT = "8080"
   SWAP_SIZE = "2048M"
 
@@ -43,7 +43,7 @@ primary_region = 'iad'
   SENTRY_ENVIRONMENT = "production"
   SENTRY_TRACES_SAMPLE_RATE = "0.1"
 
-  REPLANE_BASE_URL = "https://cloud.replane.dev"
+  REPLANE_BASE_URL = "https://replane.example.com"
   REPLANE_SDK_KEY = "rp_bc00ae4689b434600899a6f244f286608ba357ad740b3126019b62195e6877b99b6476a2cbe16ad2"
 
   # we also use fly.io secrets for variables like EMAIL_SERVER/GITHUB_CLIENT_SECRET/etc
