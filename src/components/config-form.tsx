@@ -882,14 +882,7 @@ export function ConfigForm(props: ConfigFormProps) {
           <div className="space-y-3">
             {environments.map((env, envIndex) => {
               const envVariant = watchedEnvVariants?.[envIndex];
-              const envVariantDefaultValue = (() => {
-                if (!envVariant?.value) return null;
-                try {
-                  return JSON.parse(envVariant.value);
-                } catch {
-                  return null;
-                }
-              })();
+              const envVariantDefaultValue = envVariant?.value || 'null';
 
               const envEnabled = envVariant?.schemaEnabled ?? false;
               const envSchemaText = (envVariant?.schema ?? '').toString().trim();

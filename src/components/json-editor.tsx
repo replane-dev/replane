@@ -290,6 +290,7 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
   ) => {
     const {resolvedTheme} = useTheme();
     const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
+    const editorValue = typeof value === 'string' ? value : JSON.stringify(value ?? null, null, 2);
 
     const reactId = React.useId();
     const path = React.useMemo(() => `inmemory://model/${id ?? reactId}.json`, [id, reactId]);
@@ -298,7 +299,7 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
     const monacoRef = React.useRef<Parameters<OnMount>[0] | null>(null);
     const monacoNsRef = React.useRef<typeof Monaco | null>(null);
     const registeredRef = React.useRef(false);
-    const currentValueRef = React.useRef(value);
+    const currentValueRef = React.useRef(editorValue);
 
     // Expose imperative methods via ref
     React.useImperativeHandle(
@@ -335,7 +336,7 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
       // Ensure the model has our path so fileMatch works
       const model = editor.getModel();
       if (!model || model.uri.toString() !== path) {
-        const newModel = monaco.editor.createModel(value ?? '', 'json', monaco.Uri.parse(path));
+        const newModel = monaco.editor.createModel(editorValue, 'json', monaco.Uri.parse(path));
         editor.setModel(newModel);
       }
       // Register schema on mount if provided
@@ -371,8 +372,8 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
 
     // Sync currentValueRef when value prop changes
     React.useEffect(() => {
-      currentValueRef.current = value;
-    }, [value]);
+      currentValueRef.current = editorValue;
+    }, [editorValue]);
 
     React.useEffect(() => {
       const monaco = monacoNsRef.current;
@@ -405,7 +406,7 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
           defaultLanguage="json"
           theme={editorTheme}
           path={path}
-          value={value}
+          value={editorValue}
           onMount={handleMount}
           height={height}
           options={{
@@ -422,7 +423,7 @@ const JsonEditorImpl = React.forwardRef<JsonEditorRef, JsonEditorProps>(
             fixedOverflowWidgets: true,
           }}
         />
-        {placeholder && !value && (
+        {placeholder && !editorValue && (
           <div className="pointer-events-none absolute left-0 top-0 p-3 text-muted-foreground/60 text-sm">
             {placeholder}
           </div>

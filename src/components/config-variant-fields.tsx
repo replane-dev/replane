@@ -49,7 +49,7 @@ interface ConfigVariantFieldsProps {
   canEditSchema: boolean;
   canEditOverrides: boolean;
   watchedVariant?: any;
-  overrideBuilderDefaultValue: unknown;
+  overrideBuilderDefaultValue: string;
   liveSchema: any | undefined;
   // For schema inheritance
   isEnvironmentVariant?: boolean;

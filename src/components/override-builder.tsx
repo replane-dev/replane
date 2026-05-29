@@ -2,6 +2,7 @@
 
 import {Button} from '@/components/ui/button';
 import type {Override} from '@/engine/core/override-evaluator';
+import type {ConfigValue} from '@/engine/core/zod';
 import {Plus} from 'lucide-react';
 import {useCallback} from 'react';
 import {OverrideCard} from './override-card';
@@ -11,7 +12,7 @@ interface OverrideBuilderProps {
   onChange: (overrides: Override[]) => void;
   readOnly?: boolean;
   schema?: any;
-  defaultValue?: any; // Current config value to use as default for new overrides
+  defaultValue?: string; // Current config value to use as default for new overrides
   projectId?: string;
   configName?: string;
 }
@@ -35,7 +36,7 @@ export function OverrideBuilder({
           value: {type: 'literal', value: ''},
         },
       ],
-      value: defaultValue !== undefined ? defaultValue : null,
+      value: (defaultValue !== undefined ? defaultValue : 'null') as ConfigValue,
     };
     onChange([...overrides, newOverride]);
   }, [overrides, onChange, defaultValue]);
