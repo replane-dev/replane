@@ -41,7 +41,7 @@ primary_region = 'iad'
 
   SENTRY_DSN = "https://91b9a5d0d1dca2615d6f3fbc085d1dc8@o4510523200503808.ingest.de.sentry.io/4510523212431440"
   SENTRY_ENVIRONMENT = "production"
-  SENTRY_TRACES_SAMPLE_RATE = "0.1"
+  SENTRY_TRACES_SAMPLE_RATE = "0.02"
 
   REPLANE_BASE_URL = "https://replane.example.com"
   REPLANE_SDK_KEY = "rp_bc00ae4689b434600899a6f244f286608ba357ad740b3126019b62195e6877b99b6476a2cbe16ad2"

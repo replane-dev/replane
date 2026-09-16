@@ -26,9 +26,8 @@ if (config?.dsn) {
 
     sendDefaultPii: true,
 
-    // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
-    // Adjust this value in production.
-    tracesSampleRate: parseFloat(config.tracesSampleRate || '0.1'),
+    // Capture 2% of transactions by default to limit performance-monitoring volume.
+    tracesSampleRate: parseFloat(config.tracesSampleRate || '0.02'),
 
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,

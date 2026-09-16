@@ -262,7 +262,7 @@ Replane supports optional [Sentry](https://sentry.io) integration for error trac
 
 - `SENTRY_DSN` – Your Sentry Data Source Name (DSN). Enables Sentry when set.
 - `SENTRY_ENVIRONMENT` – Environment name for Sentry (e.g., `production`, `staging`).
-- `SENTRY_TRACES_SAMPLE_RATE` – Sample rate for performance tracing (0.0 to 1.0). Defaults to `0.1` (10%).
+- `SENTRY_TRACES_SAMPLE_RATE` – Sample rate for performance tracing (0.0 to 1.0). Defaults to `0.02` (2%).
 
 Example configuration:
 
@@ -270,7 +270,7 @@ Example configuration:
 environment:
   SENTRY_DSN: https://xxx@xxx.ingest.sentry.io/xxx
   SENTRY_ENVIRONMENT: production
-  SENTRY_TRACES_SAMPLE_RATE: '0.1'
+  SENTRY_TRACES_SAMPLE_RATE: '0.02'
 ```
 
 **User Feedback:** When Sentry is enabled, a "Send Feedback" option appears in the application sidebar. Users can submit feedback, report issues, or suggest features directly through the UI. All feedback is captured in your Sentry.
