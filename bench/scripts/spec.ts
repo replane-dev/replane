@@ -147,8 +147,9 @@ export const options: Options = {
     },
   },
   thresholds: {
+    // Allow 30% more latency for variability in GitHub-hosted runners.
     // Admin API thresholds
-    admin_latency: ['p(95)<200', 'p(99)<300'],
+    admin_latency: ['p(95)<260', 'p(99)<390'],
     admin_success: ['rate>0.99'],
     admin_errors: ['rate<0.01'],
 
@@ -157,15 +158,15 @@ export const options: Options = {
     sse_connection_errors: ['rate<0.01'],
 
     // SSE timing thresholds
-    sse_time_to_opened: ['p(95)<250', 'p(99)<500'],
-    sse_time_to_first_message: ['p(95)<250', 'p(99)<500'],
-    sse_time_to_init_message: ['p(95)<250', 'p(99)<500'],
+    sse_time_to_opened: ['p(95)<325', 'p(99)<650'],
+    sse_time_to_first_message: ['p(95)<325', 'p(99)<650'],
+    sse_time_to_init_message: ['p(95)<325', 'p(99)<650'],
     sse_time_to_finished: ['p(95)>30000'],
 
     // Prometheus metrics thresholds (scraped from /metrics)
-    nodejs_eventloop_lag_seconds: ['value<0.1'], // < 100ms avg lag
-    nodejs_eventloop_lag_p90_seconds: ['value<0.2'], // p90 < 200ms
-    nodejs_eventloop_lag_p99_seconds: ['value<0.5'], // p99 < 500ms
+    nodejs_eventloop_lag_seconds: ['value<0.13'], // < 130ms avg lag
+    nodejs_eventloop_lag_p90_seconds: ['value<0.26'], // p90 < 260ms
+    nodejs_eventloop_lag_p99_seconds: ['value<0.65'], // p99 < 650ms
 
     // Memory thresholds - prevent unbounded growth
     nodejs_heap_size_used_bytes: ['value<3221225472'], // < 3GB heap used

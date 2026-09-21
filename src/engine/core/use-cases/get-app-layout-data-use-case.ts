@@ -1,4 +1,4 @@
-import {isEmailServerConfigured} from '@/environment';
+import {isEmailServerConfigured, isInstanceTransferEnabled} from '@/environment';
 import {requireUserEmail, type Identity} from '../identity';
 import type {ProjectListItem} from '../project-query-service';
 import type {TransactionalUseCase} from '../use-case';
@@ -12,6 +12,7 @@ export interface GetAppLayoutDataResponse {
   projects: ProjectListItem[];
   workspaces: WorkspaceListItem[];
   isEmailServerConfigured: boolean;
+  isInstanceTransferEnabled: boolean;
 }
 
 export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
@@ -35,6 +36,7 @@ export function createGetAppLayoutDataUseCase(): TransactionalUseCase<
       projects,
       workspaces,
       isEmailServerConfigured: isEmailServerConfigured(),
+      isInstanceTransferEnabled: isInstanceTransferEnabled(),
     };
   };
 }
