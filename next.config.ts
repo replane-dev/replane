@@ -6,8 +6,6 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: true,
   experimental: {
     serverSourceMaps: true,
-    // Instance JSON restores accept up to 100 MiB.
-    proxyClientMaxBodySize: 100 * 1024 * 1024,
   },
   redirects: async () => [
     {

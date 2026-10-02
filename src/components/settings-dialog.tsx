@@ -20,7 +20,6 @@ import {Suspense} from 'react';
 import {AccountAppearanceSettings} from './settings/account-appearance-settings';
 import {AccountEmailPreferencesSettings} from './settings/account-email-preferences-settings';
 import {AccountGeneralSettings} from './settings/account-general-settings';
-import {InstanceTransferSettings} from './settings/instance-transfer-settings';
 import {ProjectEnvironmentsSettings} from './settings/project-environments-settings';
 import {ProjectGeneralSettings} from './settings/project-general-settings';
 import {ProjectMembersSettings} from './settings/project-members-settings';
@@ -29,7 +28,6 @@ import {WorkspaceGeneralSettings} from './settings/workspace-general-settings';
 import {WorkspaceMembersSettings} from './settings/workspace-members-settings';
 
 type SettingsSection =
-  | 'instance-transfer'
   | 'account-general'
   | 'account-appearance'
   | 'account-email-preferences'
@@ -56,7 +54,7 @@ export function SettingsDialog({
   initialSection = 'project-general',
 }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSection>(initialSection);
-  const {isEmailServerConfigured, isInstanceTransferEnabled} = useAppContext();
+  const {isEmailServerConfigured} = useAppContext();
 
   // Update active section when initialSection changes and dialog opens
   React.useEffect(() => {
@@ -67,20 +65,6 @@ export function SettingsDialog({
 
   const navSections = React.useMemo(
     () => [
-      ...(isInstanceTransferEnabled
-        ? [
-            {
-              label: 'Instance',
-              items: [
-                {
-                  name: 'Backup & restore',
-                  icon: SettingsIcon,
-                  section: 'instance-transfer' as SettingsSection,
-                },
-              ],
-            },
-          ]
-        : []),
       {
         label: 'Account',
         items: [
@@ -114,15 +98,11 @@ export function SettingsDialog({
         ],
       },
     ],
-    [isEmailServerConfigured, isInstanceTransferEnabled],
+    [isEmailServerConfigured],
   );
 
   const getSectionTitle = (section: SettingsSection): {title: string; breadcrumb: string[]} => {
     const map: Record<SettingsSection, {title: string; breadcrumb: string[]}> = {
-      'instance-transfer': {
-        title: 'Backup & restore',
-        breadcrumb: ['Instance', 'Backup & restore'],
-      },
       'account-general': {title: 'Account', breadcrumb: ['Account', 'General']},
       'account-appearance': {title: 'Appearance', breadcrumb: ['Account', 'Appearance']},
       'account-email-preferences': {
@@ -175,9 +155,6 @@ export function SettingsDialog({
           <main className="flex h-[600px] flex-1 flex-col overflow-hidden py-4">
             <div className="flex flex-1 flex-col overflow-y-auto p-6">
               <Suspense fallback={<SettingsLoadingFallback />}>
-                {activeSection === 'instance-transfer' && isInstanceTransferEnabled && (
-                  <InstanceTransferSettings />
-                )}
                 {activeSection === 'account-general' && <AccountGeneralSettings />}
                 {activeSection === 'account-appearance' && <AccountAppearanceSettings />}
                 {activeSection === 'account-email-preferences' && isEmailServerConfigured && (

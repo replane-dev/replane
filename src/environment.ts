@@ -307,8 +307,3 @@ export function isTestingModeEnabled(): boolean {
 export function isPrometheusMetricsEnabled(): boolean {
   return process.env.PROMETHEUS_METRICS_ENABLED === 'true';
 }
-
-/** Enables operator-only instance backup and restore. Never expose the token to clients. */
-export function isInstanceTransferEnabled(): boolean {
-  return !!process.env.INSTANCE_TRANSFER_TOKEN;
-}

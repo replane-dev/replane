@@ -24,7 +24,6 @@ interface AppContextValue {
   workspaces: WorkspaceSummary[];
   projects: ProjectSummary[];
   isEmailServerConfigured: boolean;
-  isInstanceTransferEnabled: boolean;
   // refreshes project and workspace lists
   refresh: () => Promise<void>;
 }
@@ -73,16 +72,9 @@ export function AppProvider({children}: {children: React.ReactNode}) {
       projects,
       workspaces,
       isEmailServerConfigured: appLayoutData.isEmailServerConfigured,
-      isInstanceTransferEnabled: appLayoutData.isInstanceTransferEnabled,
       refresh,
     }),
-    [
-      projects,
-      workspaces,
-      appLayoutData.isEmailServerConfigured,
-      appLayoutData.isInstanceTransferEnabled,
-      refresh,
-    ],
+    [projects, workspaces, appLayoutData.isEmailServerConfigured, refresh],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
