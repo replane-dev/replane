@@ -5,7 +5,6 @@ import * as React from 'react';
 import {SettingsDialog} from './settings-dialog';
 
 export type SettingsSection =
-  | 'instance-transfer'
   | 'account-general'
   | 'account-appearance'
   | 'account-email-preferences'

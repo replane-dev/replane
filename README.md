@@ -317,13 +317,6 @@ For detailed security guidelines and to report vulnerabilities, see [SECURITY.md
 
 Have questions or want to discuss Replane? Join the conversation in [GitHub Discussions](https://github.com/orgs/replane-dev/discussions).
 
-### Instance backup and restore
-
-To move all projects, configs, users, memberships, and history to another instance,
-set `INSTANCE_TRANSFER_TOKEN` and use **Settings → Instance → Backup & restore**.
-See the [instance migration guide](docs/instance-transfer.md) for the export/import
-workflow, credential handling, and required restart steps.
-
 ## License
 
 MIT
