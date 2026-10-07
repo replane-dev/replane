@@ -35,7 +35,7 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     codeLanguage: 'typescript',
     installSnippet: 'npm install @replanejs/sdk',
     packageName: '@replanejs/sdk',
-    docsUrl: 'https://replane.dev/docs/sdks/javascript',
+    docsUrl: 'https://replane.dev/docs/sdk/javascript',
   },
   python: {
     id: 'python',
@@ -46,7 +46,7 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     codeLanguage: 'python',
     installSnippet: 'pip install replane',
     packageName: 'replane',
-    docsUrl: 'https://replane.dev/docs/sdks/python',
+    docsUrl: 'https://replane.dev/docs/sdk/python',
   },
   csharp: {
     id: 'csharp',
@@ -57,7 +57,7 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     codeLanguage: 'csharp',
     installSnippet: 'dotnet add package Replane',
     packageName: 'Replane',
-    docsUrl: 'https://replane.dev/docs/sdks/dotnet',
+    docsUrl: 'https://replane.dev/docs/sdk/dotnet',
   },
   rust: {
     id: 'rust',
@@ -69,7 +69,7 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     installSnippet:
       'cargo add replane serde_json\ncargo add serde --features derive\ncargo add tokio --features macros,rt-multi-thread',
     packageName: 'replane',
-    docsUrl: 'https://replane.dev/docs/sdks/rust',
+    docsUrl: 'https://replane.dev/docs/sdk/rust',
   },
 };
 
