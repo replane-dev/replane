@@ -9,7 +9,7 @@ import type {Identity} from '../identity';
 import type {TransactionalUseCase} from '../use-case';
 import {trimEnd} from '../utils';
 
-export type CodegenLanguage = 'typescript' | 'python' | 'csharp';
+export type CodegenLanguage = 'typescript' | 'python' | 'csharp' | 'rust';
 
 export interface GetProjectConfigTypesRequest {
   projectId: string;
@@ -124,10 +124,12 @@ function buildCombinedConfigsSchema(schemas: ConfigSchema[]): Record<string, any
  * Language-specific configuration for quicktype.
  */
 interface LanguageConfig {
-  lang: 'typescript' | 'python' | 'csharp';
+  lang: CodegenLanguage;
   rendererOptions: Record<string, string>;
   commentPrefix: string;
   commentSuffix: string;
+  commentLinePrefix: string;
+  headerNote?: string;
 }
 
 const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
@@ -140,12 +142,14 @@ const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
     },
     commentPrefix: '/**\n',
     commentSuffix: '\n */',
+    commentLinePrefix: ' * ',
   },
   python: {
     lang: 'python',
     rendererOptions: {},
     commentPrefix: '"""\n',
     commentSuffix: '\n"""',
+    commentLinePrefix: '',
   },
   csharp: {
     lang: 'csharp',
@@ -156,6 +160,22 @@ const LANGUAGE_CONFIGS: Record<CodegenLanguage, LanguageConfig> = {
     },
     commentPrefix: '/**\n',
     commentSuffix: '\n */',
+    commentLinePrefix: ' * ',
+  },
+  rust: {
+    lang: 'rust',
+    rendererOptions: {
+      visibility: 'public',
+      'derive-debug': 'true',
+      'derive-clone': 'true',
+      'derive-partial-eq': 'true',
+      'leading-comments': 'false',
+    },
+    commentPrefix: '',
+    commentSuffix: '',
+    commentLinePrefix: '// ',
+    headerNote:
+      'Requires the serde crate with the "derive" feature (and serde_json for configs without a schema).',
   },
 };
 
@@ -232,6 +252,37 @@ async function generatePythonTypes(schema: Record<string, any>): Promise<string>
 }
 
 /**
+ * Generates Rust (serde) types using quicktype.
+ * The Rust SDK reads configs one at a time (`replane.get::<T>("name")`), so every config gets its
+ * own top-level type named after it, including primitive configs (`pub type RateLimit = i64;`).
+ */
+export async function generateRustTypes(schemas: ConfigSchema[]): Promise<string> {
+  const {properties, $defs} = buildCombinedConfigsSchema(schemas);
+
+  const schemaInput = new JSONSchemaInput(undefined);
+  for (const config of schemas) {
+    const schema = properties[config.name] === true ? {} : {...properties[config.name]};
+    // quicktype may prefer a top-level title over the source name, breaking `get::<ConfigName>`
+    delete schema.title;
+    await schemaInput.addSource({
+      name: config.name,
+      schema: JSON.stringify($defs ? {...schema, $defs} : schema),
+    });
+  }
+
+  const inputData = new InputData();
+  inputData.addInput(schemaInput);
+
+  const result = await quicktype({
+    inputData,
+    lang: LANGUAGE_CONFIGS.rust.lang,
+    rendererOptions: LANGUAGE_CONFIGS.rust.rendererOptions,
+  });
+
+  return `#![allow(dead_code)]\n\n${result.lines.join('\n').trim()}`;
+}
+
+/**
  * Generates the header comment for the types file.
  */
 function generateTypesHeader(params: {
@@ -242,20 +293,22 @@ function generateTypesHeader(params: {
   language: CodegenLanguage;
 }): string {
   const config = LANGUAGE_CONFIGS[params.language];
-  const linePrefix = params.language === 'python' ? '' : ' * ';
 
   const content = [
-    `${linePrefix}Auto-generated types for Replane configuration`,
-    `${linePrefix}`,
-    `${linePrefix}Workspace:   ${params.workspaceName}`,
-    `${linePrefix}Project:     ${params.projectName}`,
-    `${linePrefix}Environment: ${params.environmentName}`,
-    `${linePrefix}`,
-    `${linePrefix}These types are automatically generated from your config schemas.`,
-    `${linePrefix}Regenerate them whenever you update your schema definitions.`,
-    `${linePrefix}`,
-    `${linePrefix}@link ${params.codegenUrl}`,
-  ].join('\n');
+    'Auto-generated types for Replane configuration',
+    '',
+    `Workspace:   ${params.workspaceName}`,
+    `Project:     ${params.projectName}`,
+    `Environment: ${params.environmentName}`,
+    '',
+    'These types are automatically generated from your config schemas.',
+    'Regenerate them whenever you update your schema definitions.',
+    ...(config.headerNote ? ['', config.headerNote] : []),
+    '',
+    `@link ${params.codegenUrl}`,
+  ]
+    .map(line => `${config.commentLinePrefix}${line}`.trimEnd())
+    .join('\n');
 
   return `${config.commentPrefix}${content}${config.commentSuffix}`;
 }
@@ -319,6 +372,10 @@ export function createGetProjectConfigTypesUseCase(
     if (language === 'python') {
       // Use jsonschema-gentypes for Python
       generatedTypes = await generatePythonTypes(configsSchema);
+    } else if (language === 'rust') {
+      generatedTypes = await generateRustTypes(
+        schemas as Array<{name: string; schema: Record<string, any> | null}>,
+      );
     } else {
       // Use quicktype for TypeScript and C#
       const langConfig = LANGUAGE_CONFIGS[language];

@@ -57,6 +57,7 @@ Open your browser at http://localhost:8080.
 | Svelte     | `@replanejs/svelte` | [npm](https://www.npmjs.com/package/@replanejs/svelte) · [GitHub](https://github.com/replane-dev/replane-javascript/tree/main/packages/svelte#readme) |
 | Python     | `replane`           | [PyPI](https://pypi.org/project/replane/) · [GitHub](https://github.com/replane-dev/replane-python)                                                   |
 | .NET       | `Replane`           | [NuGet](https://www.nuget.org/packages/Replane) · [GitHub](https://github.com/replane-dev/replane-dotnet)                                             |
+| Rust       | `replane`           | [crates.io](https://crates.io/crates/replane) · [GitHub](https://github.com/replane-dev/replane-rust)                                                 |
 
 ## Self‑hosting with Docker
 

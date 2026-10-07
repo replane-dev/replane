@@ -127,7 +127,7 @@ function GenerateTypesContent() {
         value={selectedLanguage}
         onValueChange={value => setSelectedLanguage(value as SdkLanguage)}
       >
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           {SDK_LANGUAGE_LIST.map(lang => (
             <TabsTrigger key={lang} value={lang}>
               {SDK_LANGUAGES[lang].displayName}

@@ -2,7 +2,7 @@
  * SDK language configurations for the integration guide and codegen.
  */
 
-export type SdkLanguage = 'javascript' | 'python' | 'csharp';
+export type SdkLanguage = 'javascript' | 'python' | 'csharp' | 'rust';
 
 export type CodeSnippetLanguage =
   | 'typescript'
@@ -10,13 +10,14 @@ export type CodeSnippetLanguage =
   | 'shell'
   | 'json'
   | 'python'
-  | 'csharp';
+  | 'csharp'
+  | 'rust';
 
 export interface SdkLanguageConfig {
   id: SdkLanguage;
   name: string;
   displayName: string;
-  codegenLanguage: 'typescript' | 'python' | 'csharp';
+  codegenLanguage: 'typescript' | 'python' | 'csharp' | 'rust';
   typesFileExtension: string;
   codeLanguage: CodeSnippetLanguage;
   installSnippet: string;
@@ -34,7 +35,7 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     codeLanguage: 'typescript',
     installSnippet: 'npm install @replanejs/sdk',
     packageName: '@replanejs/sdk',
-    docsUrl: 'https://replane.dev/docs/sdks/javascript',
+    docsUrl: 'https://replane.dev/docs/sdk/javascript',
   },
   python: {
     id: 'python',
@@ -45,7 +46,7 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     codeLanguage: 'python',
     installSnippet: 'pip install replane',
     packageName: 'replane',
-    docsUrl: 'https://replane.dev/docs/sdks/python',
+    docsUrl: 'https://replane.dev/docs/sdk/python',
   },
   csharp: {
     id: 'csharp',
@@ -56,11 +57,23 @@ export const SDK_LANGUAGES: Record<SdkLanguage, SdkLanguageConfig> = {
     codeLanguage: 'csharp',
     installSnippet: 'dotnet add package Replane',
     packageName: 'Replane',
-    docsUrl: 'https://replane.dev/docs/sdks/dotnet',
+    docsUrl: 'https://replane.dev/docs/sdk/dotnet',
+  },
+  rust: {
+    id: 'rust',
+    name: 'Rust',
+    displayName: 'Rust',
+    codegenLanguage: 'rust',
+    typesFileExtension: '.rs',
+    codeLanguage: 'rust',
+    installSnippet:
+      'cargo add replane serde_json\ncargo add serde --features derive\ncargo add tokio --features macros,rt-multi-thread',
+    packageName: 'replane',
+    docsUrl: 'https://replane.dev/docs/sdk/rust',
   },
 };
 
-export const SDK_LANGUAGE_LIST: SdkLanguage[] = ['javascript', 'python', 'csharp'];
+export const SDK_LANGUAGE_LIST: SdkLanguage[] = ['javascript', 'python', 'csharp', 'rust'];
 
 /**
  * Generates the basic usage code snippet (without codegen types).
@@ -138,6 +151,28 @@ var config = client.Get<string>("${exampleConfigName}");
 
 // Clean up when your application shuts down
 await client.DisposeAsync();`;
+
+    case 'rust':
+      return `use replane::{ConnectOptions, Replane};
+use serde_json::Value;
+
+#[tokio::main]
+async fn main() -> replane::Result<()> {
+    // Connect to the server (fetches project's configs during initialization)
+    let replane = Replane::builder()
+        .connect(ConnectOptions::new("${baseUrl}", "${sdkKey}"))
+        .await?;
+
+    // Get config value
+    let config: Value = replane.get("${exampleConfigName}")?;
+
+    // Configs are automatically updated in realtime via SSE
+    // No need to refetch or reload - just call get() again
+
+    // Clean up when your application shuts down
+    replane.disconnect();
+    Ok(())
+}`;
 
     default:
       return '';
@@ -242,6 +277,40 @@ ${sampleConfigs
 // Clean up when your application shuts down
 await client.DisposeAsync();`;
 
+    case 'rust': {
+      const shownConfigs = [
+        exampleConfigName,
+        ...sampleConfigs.filter(name => name !== exampleConfigName).slice(0, 2),
+      ];
+      const typeNames = shownConfigs.map(toPascalCase);
+      const imports = typeNames.length === 1 ? typeNames[0] : `{${typeNames.join(', ')}}`;
+
+      return `mod replane_types;
+
+use replane::{ConnectOptions, Replane};
+use replane_types::${imports};
+
+#[tokio::main]
+async fn main() -> replane::Result<()> {
+    // Connect to the server (fetches project's configs during initialization)
+    let replane = Replane::builder()
+        .connect(ConnectOptions::new("${baseUrl}", "${sdkKey}"))
+        .await?;
+
+    // Get config values deserialized into the generated types
+${shownConfigs
+  .map(name => `    let ${toRustSnakeCase(name)}: ${toPascalCase(name)} = replane.get("${name}")?;`)
+  .join('\n')}
+
+    // Configs are automatically updated in realtime via SSE
+    // No need to refetch or reload - just call get() again
+
+    // Clean up when your application shuts down
+    replane.disconnect();
+    Ok(())
+}`;
+    }
+
     default:
       return '';
   }
@@ -258,6 +327,8 @@ export function getTypesFileName(language: SdkLanguage): string {
       return 'replane_types.py';
     case 'csharp':
       return 'ReplaneTypes.cs';
+    case 'rust':
+      return 'replane_types.rs';
     default:
       return 'types';
   }
@@ -286,4 +357,14 @@ function toPascalCase(str: string): string {
  */
 function toSnakeCase(str: string): string {
   return str.replace(/-/g, '_');
+}
+
+/**
+ * Convert a kebab-case, snake_case or camelCase string to snake_case.
+ */
+function toRustSnakeCase(str: string): string {
+  return str
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/-/g, '_')
+    .toLowerCase();
 }
