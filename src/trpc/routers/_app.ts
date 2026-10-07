@@ -540,7 +540,7 @@ export const appRouter = createTRPCRouter({
       z.object({
         projectId: Uuid(),
         environmentId: Uuid(),
-        language: z.enum(['typescript', 'python', 'csharp']).optional(),
+        language: z.enum(['typescript', 'python', 'csharp', 'rust']).optional(),
       }),
     )
     .query(async opts => {
