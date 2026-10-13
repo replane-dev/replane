@@ -117,7 +117,7 @@
     "recharts": "^2.15.4",
     "require-in-the-middle": "^8.0.1",
     "server-only": "^0.0.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.0",
     "sonner": "^2.0.7",
     "superjson": "^2.2.6",
     "tailwind-merge": "^3.4.0",
