@@ -4,6 +4,15 @@ import {
   isProposalRequired,
   type ProposalRequirementParams,
 } from './proposal-requirement';
+import type {ConfigSchema, ConfigValue} from './zod';
+
+function json(value: unknown, space?: number): ConfigValue {
+  return JSON.stringify(value, null, space) as ConfigValue;
+}
+
+function jsonSchema(value: unknown, space?: number): ConfigSchema {
+  return JSON.stringify(value, null, space) as ConfigSchema;
+}
 
 describe('proposal-requirement', () => {
   // Helper to create base params
@@ -18,7 +27,7 @@ describe('proposal-requirement', () => {
       ],
       current: {
         defaultVariant: {
-          value: {key: 'value'},
+          value: json({key: 'value'}),
           schema: null,
           overrides: [],
         },
@@ -28,7 +37,7 @@ describe('proposal-requirement', () => {
       },
       proposed: {
         defaultVariant: {
-          value: {key: 'value'},
+          value: json({key: 'value'}),
           schema: null,
           overrides: [],
         },
@@ -118,7 +127,7 @@ describe('proposal-requirement', () => {
           projectRequiresProposals: false,
           proposed: {
             defaultVariant: {
-              value: {key: 'different'},
+              value: json({key: 'different'}),
               schema: null,
               overrides: [],
             },
@@ -139,7 +148,7 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -160,7 +169,7 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -180,7 +189,7 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -190,7 +199,7 @@ describe('proposal-requirement', () => {
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -211,7 +220,7 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           proposed: {
             defaultVariant: {
-              value: {key: 'changed'},
+              value: json({key: 'changed'}),
               schema: null,
               overrides: [],
             },
@@ -232,8 +241,8 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
-              schema: {type: 'object'},
+              value: json({key: 'value'}),
+              schema: jsonSchema({type: 'object'}),
               overrides: [],
             },
             environmentVariants: [],
@@ -252,10 +261,9 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
-              // Using 'as any' because the test only verifies JSON comparison behavior
-              overrides: [{conditions: [], value: {type: 'literal', value: 'override'}}] as any,
+              overrides: [{name: 'override', conditions: [], value: json('override')}],
             },
             environmentVariants: [],
             editorEmails: [],
@@ -273,24 +281,24 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'changed'},
+              value: json({key: 'changed'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
@@ -310,7 +318,7 @@ describe('proposal-requirement', () => {
           ],
           proposed: {
             defaultVariant: {
-              value: {key: 'changed'},
+              value: json({key: 'changed'}),
               schema: null,
               overrides: [],
             },
@@ -331,24 +339,24 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-changed'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-changed'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
@@ -366,24 +374,24 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'dev', value: {key: 'dev-value'}, schema: null, overrides: []},
+              {environmentId: 'dev', value: json({key: 'dev-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'dev', value: {key: 'dev-changed'}, schema: null, overrides: []},
+              {environmentId: 'dev', value: json({key: 'dev-changed'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
@@ -399,7 +407,7 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -409,12 +417,12 @@ describe('proposal-requirement', () => {
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
@@ -432,19 +440,19 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -465,19 +473,19 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'dev', value: {key: 'dev-value'}, schema: null, overrides: []},
+              {environmentId: 'dev', value: json({key: 'dev-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
@@ -496,27 +504,27 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: 'prod',
-                value: {key: 'prod-value'},
-                schema: {type: 'object'},
+                value: json({key: 'prod-value'}),
+                schema: jsonSchema({type: 'object'}),
                 overrides: [],
               },
             ],
@@ -535,29 +543,28 @@ describe('proposal-requirement', () => {
         const params = createBaseParams({
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: 'prod',
-                value: {key: 'prod-value'},
+                value: json({key: 'prod-value'}),
                 schema: null,
-                // Using 'as any' because the test only verifies JSON comparison behavior
-                overrides: [{conditions: [], value: {type: 'literal', value: 'override'}}] as any,
+                overrides: [{name: 'override', conditions: [], value: json('override')}],
               },
             ],
             editorEmails: [],
@@ -569,6 +576,76 @@ describe('proposal-requirement', () => {
 
         expect(result.required).toBe(true);
         expect(result.reason).toBe('Changes affect environments that require proposals');
+      });
+    });
+
+    describe('when only formatting differs', () => {
+      const schema = {type: 'object', properties: {key: {type: 'string'}}};
+
+      function variant(space?: number) {
+        return {
+          value: json({key: 'value'}, space),
+          schema: jsonSchema(schema, space),
+          overrides: [{name: 'beta', conditions: [], value: json({key: 'beta'}, space)}],
+        };
+      }
+
+      it('should not require proposal for a pretty-printed default variant', () => {
+        const params = createBaseParams({
+          current: {
+            defaultVariant: variant(),
+            environmentVariants: [],
+            editorEmails: [],
+            maintainerEmails: ['maintainer@example.com'],
+          },
+          proposed: {
+            defaultVariant: variant(2),
+            environmentVariants: [],
+            editorEmails: [],
+            maintainerEmails: ['maintainer@example.com'],
+          },
+        });
+
+        expect(isProposalRequired(params)).toEqual({required: false});
+      });
+
+      it('should not require proposal for a pretty-printed protected environment variant', () => {
+        const params = createBaseParams({
+          current: {
+            defaultVariant: variant(),
+            environmentVariants: [{environmentId: 'prod', ...variant()}],
+            editorEmails: [],
+            maintainerEmails: ['maintainer@example.com'],
+          },
+          proposed: {
+            defaultVariant: variant(),
+            environmentVariants: [{environmentId: 'prod', ...variant(2)}],
+            editorEmails: [],
+            maintainerEmails: ['maintainer@example.com'],
+          },
+        });
+
+        expect(isProposalRequired(params)).toEqual({required: false});
+      });
+
+      it('should still require proposal when a pretty-printed value has a real change', () => {
+        const params = createBaseParams({
+          proposed: {
+            defaultVariant: {
+              value: json({key: 'changed'}, 2),
+              schema: null,
+              overrides: [],
+            },
+            environmentVariants: [],
+            editorEmails: [],
+            maintainerEmails: ['maintainer@example.com'],
+          },
+        });
+
+        const result = isProposalRequired(params);
+
+        expect(result.required).toBe(true);
+        expect(result.reason).toBe('Default value changed');
       });
     });
 
@@ -593,14 +670,14 @@ describe('proposal-requirement', () => {
           ],
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: 'staging',
-                value: {key: 'staging-value'},
+                value: json({key: 'staging-value'}),
                 schema: null,
                 overrides: [],
               },
@@ -610,14 +687,14 @@ describe('proposal-requirement', () => {
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'changed'},
+              value: json({key: 'changed'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
               {
                 environmentId: 'staging',
-                value: {key: 'staging-value'},
+                value: json({key: 'staging-value'}),
                 schema: null,
                 overrides: [],
               },
@@ -640,19 +717,19 @@ describe('proposal-requirement', () => {
           environments: [{id: 'prod', requireProposals: true}],
           current: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
             environmentVariants: [
-              {environmentId: 'prod', value: {key: 'prod-value'}, schema: null, overrides: []},
+              {environmentId: 'prod', value: json({key: 'prod-value'}), schema: null, overrides: []},
             ],
             editorEmails: [],
             maintainerEmails: ['maintainer@example.com'],
           },
           proposed: {
             defaultVariant: {
-              value: {key: 'value'},
+              value: json({key: 'value'}),
               schema: null,
               overrides: [],
             },
