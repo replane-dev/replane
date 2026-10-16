@@ -327,7 +327,7 @@ export function ConfigForm(props: ConfigFormProps) {
         value: defaultVariant?.value ? formatJsonc(defaultVariant.value) : '{}',
         schemaEnabled: defaultVariant?.schema !== null && defaultVariant?.schema !== undefined,
         schema: defaultVariant?.schema ? formatJsonc(defaultVariant.schema) : '',
-        overrides: defaultVariant?.overrides ?? [],
+        overrides: formatOverrides(defaultVariant?.overrides ?? []),
       },
       environmentVariants: environments.map(env => {
         const existingVariant = environmentVariants.find(v => v.environmentId === env.id);
@@ -338,7 +338,7 @@ export function ConfigForm(props: ConfigFormProps) {
           useBaseSchema: existingVariant?.useBaseSchema ?? true,
           schemaEnabled: existingVariant?.schema !== null && existingVariant?.schema !== undefined,
           schema: existingVariant?.schema ? formatJsonc(existingVariant.schema) : '',
-          overrides: existingVariant?.overrides ?? [],
+          overrides: formatOverrides(existingVariant?.overrides ?? []),
         };
       }),
       editors: defaultEditorEmails,
@@ -648,42 +648,16 @@ export function ConfigForm(props: ConfigFormProps) {
       .filter(e => e.trim())
       .map(e => e.trim().toLowerCase());
 
-    // Parse default variant values
-    let proposedDefaultValue: unknown = null;
-    let proposedDefaultSchema: unknown = null;
-    let proposedDefaultOverrides: Override[] = [];
-    try {
-      proposedDefaultValue = watchedDefaultVariant?.value
-        ? JSON.parse(watchedDefaultVariant.value)
-        : null;
-    } catch {}
-    try {
-      proposedDefaultSchema =
-        watchedDefaultVariant?.schemaEnabled && watchedDefaultVariant?.schema
-          ? JSON.parse(watchedDefaultVariant.schema)
-          : null;
-    } catch {}
-    proposedDefaultOverrides = (watchedDefaultVariant?.overrides ?? []) as Override[];
-
-    // Parse environment variants
+    // Mirror what handleSubmit sends, so the check sees the exact payload
     const proposedEnvVariants = (watchedEnvVariants ?? [])
-      .filter((v: any) => v.enabled)
-      .map((v: any) => {
-        let value: unknown = null;
-        let schema: unknown = null;
-        try {
-          value = v.value ? JSON.parse(v.value) : null;
-        } catch {}
-        try {
-          schema = v.schemaEnabled && v.schema ? JSON.parse(v.schema) : null;
-        } catch {}
-        return {
-          environmentId: v.environmentId,
-          value,
-          schema,
-          overrides: (v.overrides ?? []) as Override[],
-        };
-      });
+      .filter(v => v.enabled)
+      .map(v => ({
+        environmentId: v.environmentId,
+        value: v.value as ConfigValue,
+        schema:
+          !v.useBaseSchema && v.schemaEnabled && v.schema ? (v.schema as ConfigSchema) : null,
+        overrides: (v.overrides ?? []) as Override[],
+      }));
 
     return isProposalRequired({
       projectRequiresProposals: requireProposals,
@@ -693,7 +667,7 @@ export function ConfigForm(props: ConfigFormProps) {
       })),
       current: {
         defaultVariant: {
-          value: defaultVariant?.value ?? null,
+          value: (defaultVariant?.value ?? '') as ConfigValue,
           schema: defaultVariant?.schema ?? null,
           overrides: defaultVariant?.overrides ?? [],
         },
@@ -708,9 +682,12 @@ export function ConfigForm(props: ConfigFormProps) {
       },
       proposed: {
         defaultVariant: {
-          value: proposedDefaultValue,
-          schema: proposedDefaultSchema,
-          overrides: proposedDefaultOverrides,
+          value: (watchedDefaultVariant?.value ?? '') as ConfigValue,
+          schema:
+            watchedDefaultVariant?.schemaEnabled && watchedDefaultVariant.schema
+              ? (watchedDefaultVariant.schema as ConfigSchema)
+              : null,
+          overrides: (watchedDefaultVariant?.overrides ?? []) as Override[],
         },
         environmentVariants: proposedEnvVariants,
         editorEmails: proposalCurrentEditors,
@@ -1160,6 +1137,13 @@ export function ConfigForm(props: ConfigFormProps) {
       )}
     </Form>
   );
+}
+
+function formatOverrides(overrides: Override[]): Override[] {
+  return overrides.map(override => ({
+    ...override,
+    value: formatJsonc(override.value) as ConfigValue,
+  }));
 }
 
 function ChangesRequireProposalsBadge({tooltip, onClick}: {tooltip: string; onClick?: () => void}) {

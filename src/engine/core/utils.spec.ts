@@ -5,6 +5,7 @@ import {
   getDaysAgo,
   isValidJsonSchema,
   mapConcurrently,
+  minifyJsonc,
   normalizeEmail,
   trimEnd,
   unique,
@@ -1095,5 +1096,52 @@ describe('bytesToHex', () => {
 
     expect(result).toBe('aa'.repeat(1000));
     expect(result.length).toBe(2000);
+  });
+});
+
+describe('minifyJsonc', () => {
+  it('removes whitespace between tokens', () => {
+    const text = '{\n  "a": 1,\n  "b": [1, 2, {"c": true}],\n  "d": null\n}';
+
+    expect(minifyJsonc(text)).toBe('{"a":1,"b":[1,2,{"c":true}],"d":null}');
+  });
+
+  it('preserves whitespace inside strings', () => {
+    expect(minifyJsonc('{ "a": "hello   world\\n" }')).toBe('{"a":"hello   world\\n"}');
+  });
+
+  it('preserves number literals and string escapes exactly', () => {
+    const text = '{ "big": 12345678901234567890, "f": 1.50, "e": 1E3, "u": "\\u00e9" }';
+
+    expect(minifyJsonc(text)).toBe('{"big":12345678901234567890,"f":1.50,"e":1E3,"u":"\\u00e9"}');
+  });
+
+  it('minifies primitive values', () => {
+    expect(minifyJsonc('  "basic"  ')).toBe('"basic"');
+    expect(minifyJsonc('\n42\n')).toBe('42');
+  });
+
+  it('leaves text with line comments unchanged', () => {
+    const text = '{\n  // comment\n  "a": 1\n}';
+
+    expect(minifyJsonc(text)).toBe(text);
+  });
+
+  it('leaves text with block comments unchanged', () => {
+    const text = '{\n  /* comment */\n  "a": 1\n}';
+
+    expect(minifyJsonc(text)).toBe(text);
+  });
+
+  it('minifies text that has comment markers only inside strings', () => {
+    expect(minifyJsonc('{ "url": "https://example.com", "x": "/* y */" }')).toBe(
+      '{"url":"https://example.com","x":"/* y */"}',
+    );
+  });
+
+  it('leaves invalid JSONC unchanged', () => {
+    const text = '{ "a": 1, ';
+
+    expect(minifyJsonc(text)).toBe(text);
   });
 });
