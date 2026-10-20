@@ -432,12 +432,45 @@ export function formatJsoncError(error: JSONC.ParseError): string {
 }
 
 export function formatJsonc(text: string): string {
-  const edits = JSONC.format(text, undefined, {});
+  const edits = JSONC.format(text, undefined, {tabSize: 2, insertSpaces: true});
   return JSONC.applyEdits(text, edits);
 }
 
+// jsonc-parser declares SyntaxKind as an ambient const enum, which can't be accessed
+// with verbatimModuleSyntax enabled
+const JSONC_LINE_COMMENT = 12 as JSONC.SyntaxKind;
+const JSONC_BLOCK_COMMENT = 13 as JSONC.SyntaxKind;
+const JSONC_LINE_BREAK = 14 as JSONC.SyntaxKind;
+const JSONC_WHITESPACE = 15 as JSONC.SyntaxKind;
+const JSONC_EOF = 17 as JSONC.SyntaxKind;
+
+/**
+ * Removes whitespace between tokens without re-serializing, so number literals and
+ * string escapes are kept exactly as written. Text with comments or parse errors is
+ * returned unchanged.
+ */
+export function minifyJsonc(text: string): string {
+  if (validateJsonc(text).length > 0) {
+    return text;
+  }
+
+  const scanner = JSONC.createScanner(text, false);
+  const tokens: string[] = [];
+  for (let kind = scanner.scan(); kind !== JSONC_EOF; kind = scanner.scan()) {
+    if (kind === JSONC_LINE_COMMENT || kind === JSONC_BLOCK_COMMENT) {
+      return text;
+    }
+    if (kind === JSONC_WHITESPACE || kind === JSONC_LINE_BREAK) {
+      continue;
+    }
+    const offset = scanner.getTokenOffset();
+    tokens.push(text.slice(offset, offset + scanner.getTokenLength()));
+  }
+  return tokens.join('');
+}
+
 export function stringifyJsonc(value: unknown): string {
-  return JSON.stringify(value, null, 2);
+  return JSON.stringify(value);
 }
 
 export function validateJsonc(text: string): string[] {

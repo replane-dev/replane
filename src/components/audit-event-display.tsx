@@ -1,7 +1,7 @@
 'use client';
 
 import type {AuditLogPayload} from '@/engine/core/stores/audit-log-store';
-import {assertNever} from '@/engine/core/utils';
+import {assertNever, formatJsonc} from '@/engine/core/utils';
 import {DiffEditor} from '@monaco-editor/react';
 import {
   ArrowRight,
@@ -26,9 +26,10 @@ interface AuditEventDisplayProps {
   projectId: string;
 }
 
-function stringify(value: unknown): string {
+function stringify(value: unknown, language: 'json' | 'plaintext'): string {
   if (value === undefined) return 'undefined';
-  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  if (typeof value !== 'string') return JSON.stringify(value, null, 2);
+  return language === 'json' ? formatJsonc(value) : value;
 }
 
 function DiffRow({
@@ -42,8 +43,8 @@ function DiffRow({
   after: unknown;
   language?: 'json' | 'plaintext';
 }) {
-  const beforeStr = React.useMemo(() => stringify(before), [before]);
-  const afterStr = React.useMemo(() => stringify(after), [after]);
+  const beforeStr = React.useMemo(() => stringify(before, language), [before, language]);
+  const afterStr = React.useMemo(() => stringify(after, language), [after, language]);
 
   if (beforeStr === afterStr) return null;
 

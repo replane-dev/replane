@@ -327,7 +327,7 @@ export function ConfigForm(props: ConfigFormProps) {
         value: defaultVariant?.value ? formatJsonc(defaultVariant.value) : '{}',
         schemaEnabled: defaultVariant?.schema !== null && defaultVariant?.schema !== undefined,
         schema: defaultVariant?.schema ? formatJsonc(defaultVariant.schema) : '',
-        overrides: defaultVariant?.overrides ?? [],
+        overrides: formatOverrides(defaultVariant?.overrides ?? []),
       },
       environmentVariants: environments.map(env => {
         const existingVariant = environmentVariants.find(v => v.environmentId === env.id);
@@ -338,7 +338,7 @@ export function ConfigForm(props: ConfigFormProps) {
           useBaseSchema: existingVariant?.useBaseSchema ?? true,
           schemaEnabled: existingVariant?.schema !== null && existingVariant?.schema !== undefined,
           schema: existingVariant?.schema ? formatJsonc(existingVariant.schema) : '',
-          overrides: existingVariant?.overrides ?? [],
+          overrides: formatOverrides(existingVariant?.overrides ?? []),
         };
       }),
       editors: defaultEditorEmails,
@@ -1160,6 +1160,13 @@ export function ConfigForm(props: ConfigFormProps) {
       )}
     </Form>
   );
+}
+
+function formatOverrides(overrides: Override[]): Override[] {
+  return overrides.map(override => ({
+    ...override,
+    value: formatJsonc(override.value) as ConfigValue,
+  }));
 }
 
 function ChangesRequireProposalsBadge({tooltip, onClick}: {tooltip: string; onClick?: () => void}) {

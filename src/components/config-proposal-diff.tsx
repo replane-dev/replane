@@ -2,6 +2,7 @@
 
 import {Badge} from '@/components/ui/badge';
 import type {Override} from '@/engine/core/override-evaluator';
+import {formatJsonc} from '@/engine/core/utils';
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {cn} from '@/lib/utils';
 import {DiffEditor} from '@monaco-editor/react';
@@ -9,9 +10,10 @@ import {ArrowRight, Minus, Plus} from 'lucide-react';
 import {useTheme} from 'next-themes';
 import * as React from 'react';
 
-function stringify(value: unknown): string {
+function stringify(value: unknown, language: 'json' | 'plaintext'): string {
   if (value === undefined) return 'undefined';
-  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  if (typeof value !== 'string') return JSON.stringify(value, null, 2);
+  return language === 'json' ? formatJsonc(value) : value;
 }
 
 function DiffRow(props: {
@@ -22,8 +24,8 @@ function DiffRow(props: {
   height?: number;
 }) {
   const {title, before, after, language, height = 280} = props;
-  const original = React.useMemo(() => stringify(before), [before]);
-  const modified = React.useMemo(() => stringify(after), [after]);
+  const original = React.useMemo(() => stringify(before, language), [before, language]);
+  const modified = React.useMemo(() => stringify(after, language), [after, language]);
   const {resolvedTheme} = useTheme();
   const editorTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'light';
   return (

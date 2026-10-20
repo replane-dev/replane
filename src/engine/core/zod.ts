@@ -1,5 +1,5 @@
 import z from 'zod';
-import {isValidJsonSchema, parseJsonc, validateJsonc, type Brand} from './utils';
+import {isValidJsonSchema, minifyJsonc, parseJsonc, validateJsonc, type Brand} from './utils';
 
 export type JSONCString = Brand<string, 'JSONCString'>;
 
@@ -23,6 +23,7 @@ export type ConfigValue = Brand<JSONCString, 'ConfigValue'>;
 
 export function ConfigValue() {
   return JSONCString()
+    .transform(val => minifyJsonc(val) as JSONCString)
     .refine(
       val => {
         return val.length < 1048576; // 1MB
@@ -36,12 +37,13 @@ export function ConfigValue() {
 
 export function ConfigSchema() {
   return JSONCString()
+    .transform(val => minifyJsonc(val) as JSONCString)
     .refine(
       val => {
-        return val.length < 131072; // 128KB
+        return val.length < 1048576; // 1MB
       },
       {
-        error: 'The configuration schema is too large — maximum size is 128KB',
+        error: 'The configuration schema is too large — maximum size is 1MB',
       },
     )
     .refine(val => isValidJsonSchema(parseJsonc(val)), {
