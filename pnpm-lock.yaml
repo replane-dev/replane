@@ -192,8 +192,8 @@ importers:
         specifier: ^3.3.1
         version: 3.3.1
       kysely:
-        specifier: ^0.28.17
-        version: 0.28.19
+        specifier: 0.28.17
+        version: 0.28.17
       lru-cache:
         specifier: ^11.2.4
         version: 11.2.4
@@ -283,14 +283,14 @@ importers:
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zod:
         specifier: ^4.6.6
-        version: 4.6.7
+        version: 4.6.6
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.3
         version: 3.3.3
       '@hono/zod-openapi':
         specifier: ^1.2.0
-        version: 1.2.0(hono@4.13.17)(zod@4.6.7)
+        version: 1.2.0(hono@4.13.17)(zod@4.6.6)
       '@replanejs/admin':
         specifier: ^1.0.4
         version: 1.0.4
@@ -356,7 +356,7 @@ importers:
         version: 27.4.0
       kysely-codegen:
         specifier: ^0.19.0
-        version: 0.19.0(better-sqlite3@12.6.0)(kysely@0.28.19)(pg@8.16.3)(typescript@5.9.3)
+        version: 0.19.0(better-sqlite3@12.6.0)(kysely@0.28.17)(pg@8.16.3)(typescript@5.9.3)
       node-addon-api:
         specifier: ^8.5.0
         version: 8.5.0
@@ -4393,8 +4393,8 @@ packages:
       tedious:
         optional: true
 
-  kysely@0.28.19:
-    resolution: {integrity: sha512-sXoKWuQjtorwxDLiws0ZSPGGne/hs+fGHIII7vXquSBFgHwLXgFIHN9tTv3kNdVkJ5d3xtXC84GjjWMYLqdFWg==}
+  kysely@0.28.17:
+    resolution: {integrity: sha512-nbD8lB9EB3wNdMhOCdx5Li8DxnLbvKByylRLcJ1h+4SkrowVeECAyZlyiKMThF7xFdRz0jSQ2MoJr+wXux2y0Q==}
     engines: {node: '>=20.0.0'}
 
   language-subtag-registry@0.3.23:
@@ -6044,8 +6044,8 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@4.6.7:
-    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
 snapshots:
 
@@ -6071,10 +6071,10 @@ snapshots:
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
-  '@asteasolutions/zod-to-openapi@8.4.0(zod@4.6.7)':
+  '@asteasolutions/zod-to-openapi@8.4.0(zod@4.6.6)':
     dependencies:
       openapi3-ts: 4.5.0
-      zod: 4.6.7
+      zod: 4.6.6
 
   '@auth/core@0.41.3(nodemailer@10.5.0)':
     dependencies:
@@ -6813,18 +6813,18 @@ snapshots:
 
   '@glideapps/ts-necessities@2.2.3': {}
 
-  '@hono/zod-openapi@1.2.0(hono@4.13.17)(zod@4.6.7)':
+  '@hono/zod-openapi@1.2.0(hono@4.13.17)(zod@4.6.6)':
     dependencies:
-      '@asteasolutions/zod-to-openapi': 8.4.0(zod@4.6.7)
-      '@hono/zod-validator': 0.7.6(hono@4.13.17)(zod@4.6.7)
+      '@asteasolutions/zod-to-openapi': 8.4.0(zod@4.6.6)
+      '@hono/zod-validator': 0.7.6(hono@4.13.17)(zod@4.6.6)
       hono: 4.13.17
       openapi3-ts: 4.5.0
-      zod: 4.6.7
+      zod: 4.6.6
 
-  '@hono/zod-validator@0.7.6(hono@4.13.17)(zod@4.6.7)':
+  '@hono/zod-validator@0.7.6(hono@4.13.17)(zod@4.6.6)':
     dependencies:
       hono: 4.13.17
-      zod: 4.6.7
+      zod: 4.6.6
 
   '@hookform/resolvers@5.2.2(react-hook-form@7.71.0(react@19.2.3))':
     dependencies:
@@ -9818,8 +9818,8 @@ snapshots:
       '@babel/parser': 7.28.5
       eslint: 9.39.2(jiti@2.6.1)
       hermes-parser: 0.25.1
-      zod: 4.6.7
-      zod-validation-error: 4.0.2(zod@4.6.7)
+      zod: 4.6.6
+      zod-validation-error: 4.0.2(zod@4.6.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -10488,25 +10488,25 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  kysely-codegen@0.19.0(better-sqlite3@12.6.0)(kysely@0.28.19)(pg@8.16.3)(typescript@5.9.3):
+  kysely-codegen@0.19.0(better-sqlite3@12.6.0)(kysely@0.28.17)(pg@8.16.3)(typescript@5.9.3):
     dependencies:
       chalk: 4.1.2
       cosmiconfig: 9.0.0(typescript@5.9.3)
       dotenv: 17.2.3
       dotenv-expand: 12.0.3
       git-diff: 2.0.6
-      kysely: 0.28.19
+      kysely: 0.28.17
       micromatch: 4.0.8
       minimist: 1.2.8
       pluralize: 8.0.0
-      zod: 4.6.7
+      zod: 4.6.6
     optionalDependencies:
       better-sqlite3: 12.6.0
       pg: 8.16.3
     transitivePeerDependencies:
       - typescript
 
-  kysely@0.28.19: {}
+  kysely@0.28.17: {}
 
   language-subtag-registry@0.3.23: {}
 
@@ -12256,8 +12256,8 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod-validation-error@4.0.2(zod@4.6.7):
+  zod-validation-error@4.0.2(zod@4.6.6):
     dependencies:
-      zod: 4.6.7
+      zod: 4.6.6
 
-  zod@4.6.7: {}
+  zod@4.6.6: {}
