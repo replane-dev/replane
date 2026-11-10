@@ -1,4 +1,12 @@
 import type {Override} from './override-condition-schemas';
+import {minifyJsonc} from './utils';
+import type {ConfigSchema, ConfigValue} from './zod';
+
+interface VariantState {
+  value: ConfigValue;
+  schema: ConfigSchema | null;
+  overrides: Override[];
+}
 
 export interface ProposalRequirementParams {
   /** Whether the project requires proposals */
@@ -10,36 +18,33 @@ export interface ProposalRequirementParams {
   }>;
   /** Current config state */
   current: {
-    defaultVariant: {
-      value: unknown;
-      schema: unknown | null;
-      overrides: Override[];
-    };
-    environmentVariants: Array<{
-      environmentId: string;
-      value: unknown;
-      schema: unknown | null;
-      overrides: Override[];
-    }>;
+    defaultVariant: VariantState;
+    environmentVariants: Array<VariantState & {environmentId: string}>;
     editorEmails: string[];
     maintainerEmails: string[];
   };
   /** Proposed config state */
   proposed: {
-    defaultVariant: {
-      value: unknown;
-      schema: unknown | null;
-      overrides: Override[];
-    };
-    environmentVariants: Array<{
-      environmentId: string;
-      value: unknown;
-      schema: unknown | null;
-      overrides: Override[];
-    }>;
+    defaultVariant: VariantState;
+    environmentVariants: Array<VariantState & {environmentId: string}>;
     editorEmails: string[];
     maintainerEmails: string[];
   };
+}
+
+function normalizeVariant(variant: VariantState): string {
+  return JSON.stringify({
+    value: minifyJsonc(variant.value),
+    schema: variant.schema === null ? null : minifyJsonc(variant.schema),
+    overrides: variant.overrides.map(override => ({
+      ...override,
+      value: minifyJsonc(override.value),
+    })),
+  });
+}
+
+function hasVariantChanged(a: VariantState, b: VariantState): boolean {
+  return normalizeVariant(a) !== normalizeVariant(b);
 }
 
 export interface ProposalRequirementResult {
@@ -111,13 +116,7 @@ export function isProposalRequired(params: ProposalRequirementParams): ProposalR
   }
 
   // Check if default value has changed
-  const defaultValueChanged =
-    JSON.stringify(proposed.defaultVariant.value) !==
-      JSON.stringify(current.defaultVariant.value) ||
-    JSON.stringify(proposed.defaultVariant.schema) !==
-      JSON.stringify(current.defaultVariant.schema) ||
-    JSON.stringify(proposed.defaultVariant.overrides) !==
-      JSON.stringify(current.defaultVariant.overrides);
+  const defaultValueChanged = hasVariantChanged(proposed.defaultVariant, current.defaultVariant);
 
   if (defaultValueChanged) {
     // Base config changes should only require proposals if they affect
@@ -162,13 +161,7 @@ export function isProposalRequired(params: ProposalRequirementParams): ProposalR
       continue;
     }
 
-    // Check if the variant has changed
-    const variantChanged =
-      JSON.stringify(proposedVariant.value) !== JSON.stringify(existingVariant.value) ||
-      JSON.stringify(proposedVariant.schema) !== JSON.stringify(existingVariant.schema) ||
-      JSON.stringify(proposedVariant.overrides) !== JSON.stringify(existingVariant.overrides);
-
-    if (variantChanged) {
+    if (hasVariantChanged(proposedVariant, existingVariant)) {
       affectedEnvIds.push(proposedVariant.environmentId);
     }
   }
