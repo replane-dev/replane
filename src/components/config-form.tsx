@@ -1,7 +1,7 @@
 'use client';
 
 import {useProjectId} from '@/app/app/projects/[projectId]/utils';
-import {EditorList} from '@/components/config-member-list';
+import {EditorJsonEditor, EditorList} from '@/components/config-member-list';
 import {ConfigMetadataHeader} from '@/components/config-metadata-header';
 import {ConfigVariantFields} from '@/components/config-variant-fields';
 import {SchemaDiffWarning} from '@/components/schema-diff-warning';
@@ -20,6 +20,7 @@ import {
 import {Help} from '@/components/ui/help';
 import {Input} from '@/components/ui/input';
 import {Separator} from '@/components/ui/separator';
+import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Textarea} from '@/components/ui/textarea';
 import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip';
 import type {Override} from '@/engine/core/override-evaluator';
@@ -37,7 +38,7 @@ import {
 import type {ConfigSchema, ConfigValue} from '@/engine/core/zod';
 import {useSchemaDiffCheck} from '@/hooks/use-schema-diff-check';
 import {zodResolver} from '@hookform/resolvers/zod';
-import {Layers, ShieldCheck} from 'lucide-react';
+import {Code2, Layers, LayoutGrid, ShieldCheck} from 'lucide-react';
 import * as React from 'react';
 import {useForm, useWatch, type FieldErrors} from 'react-hook-form';
 import {toast} from 'sonner';
@@ -555,6 +556,7 @@ export function ConfigForm(props: ConfigFormProps) {
   const watchedDefaultVariant = useWatch({control: form.control, name: 'defaultVariant'});
   const watchedEnvVariants = useWatch({control: form.control, name: 'environmentVariants'});
   const watchedEditors = useWatch({control: form.control, name: 'editors'});
+  const [editorsViewMode, setEditorsViewMode] = React.useState<'form' | 'json'>('form');
 
   // Notify parent of value changes for live testing
   React.useEffect(() => {
@@ -1054,6 +1056,21 @@ export function ConfigForm(props: ConfigFormProps) {
                   can edit value and overrides, but not the schema or other editors.
                 </p>
               </Help>
+              <Tabs
+                value={editorsViewMode}
+                onValueChange={v => setEditorsViewMode(v as 'form' | 'json')}
+              >
+                <TabsList className="h-8 shrink-0">
+                  <TabsTrigger value="form" className="h-7 text-xs px-2">
+                    <LayoutGrid className="h-3 w-3 mr-1" />
+                    Form
+                  </TabsTrigger>
+                  <TabsTrigger value="json" className="h-7 text-xs px-2">
+                    <Code2 className="h-3 w-3 mr-1" />
+                    JSON
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <FormField
@@ -1062,12 +1079,23 @@ export function ConfigForm(props: ConfigFormProps) {
               render={({field}) => (
                 <FormItem>
                   <FormControl>
-                    <EditorList
-                      editors={field.value ?? []}
-                      onChange={field.onChange}
-                      disabled={!canEditMembers}
-                      errors={form.formState.errors.editors as any}
-                    />
+                    {editorsViewMode === 'json' ? (
+                      <EditorJsonEditor
+                        id={`${editorIdPrefix ?? 'config'}-editors-json`}
+                        editorName={`${watchedName || currentName || 'Config'} - Editors`}
+                        editors={field.value ?? []}
+                        onChange={field.onChange}
+                        disabled={!canEditMembers}
+                        errors={form.formState.errors.editors as any}
+                      />
+                    ) : (
+                      <EditorList
+                        editors={field.value ?? []}
+                        onChange={field.onChange}
+                        disabled={!canEditMembers}
+                        errors={form.formState.errors.editors as any}
+                      />
+                    )}
                   </FormControl>
                   {mode === 'edit' && !canEditMembers && (
                     <FormDescription>Only maintainers can modify editors.</FormDescription>
