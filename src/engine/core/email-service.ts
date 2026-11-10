@@ -604,7 +604,7 @@ export class NodemailerEmailService implements EmailService {
     try {
       const result = await this.transport.sendMail(mailOptions);
 
-      const failed = result.rejected.filter(Boolean);
+      const failed = result.rejected?.filter(Boolean) ?? [];
       if (failed.length) {
         throw new Error(`Email(s) (${failed.join(', ')}) could not be sent`);
       }
