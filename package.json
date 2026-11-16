@@ -160,7 +160,7 @@
     "@vitejs/plugin-react": "^5.1.2",
     "bumpp": "^10.4.0",
     "dotenv-cli": "^11.0.0",
-    "editorconfig": "^3.0.1",
+    "editorconfig": "^4.0.0",
     "eslint": "^9.39.2",
     "eslint-config-next": "16.1.1",
     "jsdom": "^27.4.0",
