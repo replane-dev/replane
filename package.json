@@ -106,7 +106,7 @@
     "hono": "^4.13.17",
     "import-in-the-middle": "^2.0.2",
     "input-otp": "^1.4.2",
-    "jotai": "^2.16.1",
+    "jotai": "^3.0.2",
     "jsonc-parser": "^3.3.1",
     "kysely": "0.28.17",
     "lru-cache": "^11.2.4",
